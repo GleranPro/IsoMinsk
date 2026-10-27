@@ -21,12 +21,32 @@ import { chromium } from '@playwright/test';
 const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const SHOTS_DIR = path.join(ROOT, 'screenshots');
 
-const pngFiles = (await readdir(SHOTS_DIR).catch(() => []))
+const CANONICAL_SHOTS = [
+  '01-overview.png',
+  '02-closeup-residential.png',
+  '03-closeup-landmark.png',
+  '04-night.png',
+  '05-clean-3d.png',
+  '06-rotated.png',
+];
+
+const allPngs = (await readdir(SHOTS_DIR).catch(() => []))
   .filter((name) => name.toLowerCase().endsWith('.png'))
   .sort();
 
+// Other agents also drop PNGs into screenshots/; analyse only the canonical
+// capture set by default so their files cannot pollute the metrics or race with
+// a write. Use QA_ANALYZE_ALL=1 to include everything.
+const pngFiles =
+  process.env.QA_ANALYZE_ALL === '1'
+    ? allPngs
+    : allPngs.filter((name) => CANONICAL_SHOTS.includes(name));
+
 if (pngFiles.length === 0) {
-  console.error(`No PNG screenshots found in ${SHOTS_DIR}. Run scripts/qa/capture.mjs first.`);
+  console.error(
+    `No canonical screenshots (${CANONICAL_SHOTS.join(', ')}) found in ${SHOTS_DIR}. ` +
+      'Run scripts/qa/capture.mjs first.',
+  );
   process.exit(1);
 }
 

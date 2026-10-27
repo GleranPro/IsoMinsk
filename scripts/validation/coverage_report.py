@@ -289,6 +289,10 @@ def main() -> int:
                  "Independence Avenue), not authoritative.")
     lines.append("- Trees marked *heuristic* are procedurally placed inside land-use polygons; they do "
                  "not represent individually surveyed trees.")
+    lines.append("- Underground infrastructure is intentionally not drawn: Minsk metro lines "
+                 "(`railway=subway`, 5 ways in the pilot area) and underground roads are skipped, "
+                 "because drawing them as ground surfaces paints black strips across the squares. "
+                 "Surface tram tracks are rendered.")
     lines.append("- Flat terrain: no DEM is used yet. See docs/DATA_SOURCES.md.")
     lines.append("")
 

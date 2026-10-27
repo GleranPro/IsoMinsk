@@ -1094,7 +1094,22 @@ def main() -> int:
     for entry, line in rails_raw:
         tags = entry["tags"]
         railway = tags.get("railway", "rail")
-        width = 3.2 if railway == "rail" else 2.8
+        # The Minsk metro is mapped as railway=subway UNDER the streets. Drawing
+        # it as a surface rail strip paints a black line across Independence
+        # Square, so underground rail is never rendered as a ground surface.
+        # (Metro geometry stays in the raw extract for future station features.)
+        if railway == "subway":
+            stats["subway_skipped"] += 1
+            continue
+        if tags.get("tunnel") in {"yes", "building_passage"}:
+            stats["rail_tunnels_skipped"] += 1
+            continue
+        layer = parse_number(tags.get("layer"))
+        if layer is not None and layer < 0:
+            stats["rail_tunnels_skipped"] += 1
+            continue
+        # Tram rails are embedded in the carriageway: thin strip, heavy rail wider.
+        width = 2.2 if railway == "tram" else 3.4
         for poly in buffer_line(line, width):
             if poly.area < 6:
                 continue
@@ -1103,10 +1118,12 @@ def main() -> int:
                 "class": "unknown",
                 "polygon": poly_to_rings(poly),
                 "width": width,
-                "name": tags.get("name", ""),
+                **({"name": tags["name"]} if tags.get("name") else {}),
             })
     stats["road_polygons"] = len(road_polys)
-    print(f"Road/rail polygons: {len(road_polys):,}")
+    print(f"Road/rail polygons: {len(road_polys):,} "
+          f"(metro skipped: {stats['subway_skipped']}, "
+          f"underground rail skipped: {stats['rail_tunnels_skipped']})")
 
     # --- water from waterways (rivers without polygon areas) --------------
     water_polys: list[dict] = []

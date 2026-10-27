@@ -428,7 +428,12 @@ export class PixelArtPipeline {
     this.uniforms.uDither.value = this.settings.dither;
     const quantise = this.settings.colorLevels >= 2;
     this.uniforms.uLevels.value = quantise ? this.settings.colorLevels : 0;
-    this.uniforms.uPaletteMix.value = quantise ? 1 : 0;
+    // Global palette snapping is intentionally OFF: a 41-entry global LUT
+    // pulls saturated mid-tones onto neutral entries and washes the city out.
+    // The limited-palette feel comes from the materials plus ordered dithering
+    // and per-channel posterisation. The palette LUT remains available through
+    // the debug uniform for experiments.
+    this.uniforms.uPaletteMix.value = 0;
   }
 
   /** Update per-frame environment uniforms (fog/sky/outline/edges/exposure). */

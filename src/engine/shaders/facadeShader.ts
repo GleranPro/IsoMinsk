@@ -198,6 +198,8 @@ vec3 facadeGlazing(vec2 uv, vec3 baseSrgb, float groundHeight, float seed, float
 
   vec3 glass = mix(uGlassColor, uGlassLightColor, 0.36 + 0.28 * facadeHash21(uv * 0.37 + seed));
   glass *= mix(0.84, 1.18, smoothstep(0.0, 14.0, uv.y));
+  // Glassy teal cast shared by shopfronts and office glazing.
+  glass = mix(glass, glass * vec3(0.88, 1.02, 1.08), 0.6);
 
   // Mullions/transoms are kept at >= ~2 px pitch so they never alias to noise.
   float mullPeriod = max(1.5, 2.0 * px);
@@ -278,6 +280,8 @@ vec3 facadeUpperFloors(
   float bayLod = mix(max(bay, 2.5 * px), bay, lodFade);
   float fhLod = mix(max(fh, 2.6 * px), fh, lodFade);
   float textureFade = smoothstep(1.4, 3.0, baseMinPx);
+  float panelity = step(1.5, float(archetype)) * step(float(archetype), 2.5);
+  float modernity = step(2.5, float(archetype)) * step(float(archetype), 3.5);
 
   float colF = uv.x / bayLod;
   float col = floor(colF);
@@ -294,11 +298,12 @@ vec3 facadeUpperFloors(
   // averaged tone was what turned distant facades into speckled mush.
   float crisp = smoothstep(1.2, 2.3, min(bayPx, floorPx));
 
-  // Windows are enlarged to at least ~1.3 px so each one reads as a pixel.
+  // Windows are enlarged to at least ~1.6 px so each one stays a readable dark
+  // pixel against a light wall even after the low-res frame is upscaled.
   float winW = mix(winWRatio, 1.0, ribbon ? 1.0 : 0.0);
-  winW = clamp(max(winW, 1.25 * px / bayLod), 0.05, 0.97);
+  winW = clamp(max(winW, 1.60 * px / bayLod), 0.05, 0.97);
   float winH = winHRatio;
-  winH = clamp(max(winH, 1.35 * px / fhLod), 0.05, 0.94);
+  winH = clamp(max(winH, 1.70 * px / fhLod), 0.05, 0.94);
   float sillR = min(sillRatio, max(1.0 - winH - 0.02, 0.0));
   vec2 winLo = vec2(0.5 - winW * 0.5, sillR);
   vec2 winHi = vec2(0.5 + winW * 0.5, sillR + winH);
@@ -312,9 +317,11 @@ vec3 facadeUpperFloors(
   if (blank) win = 0.0;
 
   vec3 outWall = wallSrgb;
-  // Slab / spandrel line: the floor rhythm that survives at every zoom.
+  // Slab / spandrel line: the floor rhythm. Panel blocks get a stronger, darker
+  // joint band so their precast structure reads at overview zoom.
   float slab = facadeBand(v, 0.0, 0.05, aaV);
-  outWall *= 1.0 - slab * mix(0.12, 0.06, textureFade) * detail;
+  float slabStrength = mix(0.12, 0.06, textureFade) * mix(1.0, 1.75, panelity);
+  outWall *= 1.0 - slab * slabStrength * detail;
   outWall *= 1.0 + (facadeHash21(vec2(col * 1.7 + seed * 31.0, row * 0.7 + 3.0)) - 0.5)
     * 0.03 * detail * textureFade;
 
@@ -327,40 +334,53 @@ vec3 facadeUpperFloors(
     outWall = mix(outWall, uTrimColor * 0.85, cap * 0.5);
   }
 
-  // Daytime glass, with a warm low-sun reflection in the golden hour. Per-window
-  // brightness variation is faded out with distance so a 2 px window grid stays
-  // a clean grid instead of becoming speckle noise.
+  // Daytime glass, with a warm low-sun reflection in the golden hour. Modern
+  // towers get a glassy teal cast; per-window brightness variation is faded out
+  // with distance so a 2 px window grid stays a clean grid instead of speckle.
   float glassVar = mix(0.5, facadeHash21(vec2(col, row) + seed * 7.0), lodFade);
   vec3 glass = mix(uGlassColor, uGlassLightColor, 0.32 + 0.4 * glassVar);
   glass *= mix(0.85, 1.20, smoothstep(winLo.y, winHi.y, v));
   glass = mix(glass, glass * 1.10 + 0.010, ribbon ? 1.0 : 0.0);
+  glass = mix(glass, glass * vec3(0.84, 1.04, 1.14), modernity);
   float hh = mod(uTimeHours, 24.0);
   float golden = smoothstep(15.5, 18.5, hh) * (1.0 - smoothstep(18.5, 21.5, hh));
   glass = mix(glass, glass * vec3(1.14, 1.0, 0.82), golden * 0.6);
 
-  // Frames and sills only when the window is large enough to resolve them;
-  // at overview zoom the window itself is the pixel-art cue.
+  // Frames and sills. These must NOT dominate the window: at overview/close
+  // distances a light frame + sill can turn a dark window into a white block.
+  // Frames stay dark and only appear when the window is large enough; the light
+  // sill line is the only bright accent and appears once the window is >= ~2.5 px.
   float windowPx = min(winW * bayLod, winH * fhLod) / px;
-  float fineFade = smoothstep(1.8, 3.2, windowPx);
-  float frameM = min(max(0.9 * px, 0.04), 0.22 * winW * bayLod);
-  frameM = min(frameM, 0.22 * winH * fhLod);
+  float frameFade = smoothstep(3.2, 5.5, windowPx);
+  float sillFade = smoothstep(2.4, 4.0, windowPx);
+  float frameM = max(0.45 * px, 0.03);
+  frameM = min(frameM, 0.13 * winW * bayLod);
+  frameM = min(frameM, 0.13 * winH * fhLod);
   vec2 frameSize = vec2(frameM / bayLod, frameM / fhLod);
   float inner = facadeRect(vec2(u, v), winLo + frameSize, winHi - frameSize, vec2(aaU, aaV));
-  float frameMask = clamp(winCrisp - inner, 0.0, 1.0) * crisp * detail * fineFade;
-  vec3 frameCol = mix(uTrimColor * 0.70, wallSrgb * 0.90, 0.35);
+  float frameMask = clamp(winCrisp - inner, 0.0, 1.0) * crisp * detail * frameFade;
+  vec3 frameCol = mix(uGlassColor * 0.80, wallSrgb * 0.62, 0.30);
 
-  float sillM = min(max(1.1 * px, 0.06), 0.30 * winH * fhLod);
+  float sillM = max(0.8 * px, 0.04);
+  sillM = min(sillM, 0.16 * winH * fhLod);
   float sillLo = max(winLo.y - sillM / fhLod, 0.0);
   float sillMask = facadeBand(v, sillLo, winLo.y, aaV)
     * step(winLo.x, u) * (1.0 - step(winHi.x, u))
-    * crisp * detail * fineFade;
+    * crisp * detail * sillFade;
   vec3 sillCol = mix(uTrimColor, wallSrgb * 1.06, 0.30);
 
+  // Subtle lighter lintel above the window (only when resolvable).
+  float lintelM = min(max(0.6 * px, 0.03), 0.14 * winH * fhLod);
+  float lintelMask = facadeBand(v, winHi.y, winHi.y + lintelM / fhLod, aaV)
+    * step(winLo.x, u) * (1.0 - step(winHi.x, u))
+    * crisp * detail * frameFade;
+
   vec3 glassNight = mix(glass, uNightDarkColor, night * 0.78);
-  float contrast = mix(0.82, 0.92, lodFade);
+  float contrast = mix(0.88, 0.95, lodFade);
   outWall = mix(outWall, glassNight, win * contrast);
   outWall = mix(outWall, frameCol, frameMask * 0.70);
   outWall = mix(outWall, sillCol, sillMask * 0.65);
+  outWall = mix(outWall, uTrimColor * 0.86, lintelMask * 0.30);
 
   if (ribbon) {
     float mullW = max(1.2 * px, 0.02) / bayLod;
@@ -382,7 +402,7 @@ vec3 facadeUpperFloors(
     );
     float floorPick = 1.0 - step(0.5, mod(row, 2.0));
     float band = facadeBand(v, bandLo, bandHi, aaV) * bayPick * floorPick * detail;
-    outWall = mix(outWall, outWall * 0.76, band * 0.9);
+    outWall = mix(outWall, outWall * mix(0.76, 0.64, panelity), band * 0.9);
     float railThick = max(1.1 * px, 0.015) / fhLod;
     float rail = facadeBand(v, bandHi - railThick, bandHi, aaV) * bayPick * floorPick * crisp * detail;
     outWall = mix(outWall, uTrimColor * 0.92, rail);
@@ -433,6 +453,9 @@ vec3 facadeGroundFloor(
   float aaM = max(0.4 * px, 0.008);
 
   vec3 outWall = wallSrgb;
+  // The whole ground floor reads as a distinct, slightly darker band under the
+  // upper facade (8-15% darker), even when every other detail is unresolvable.
+  outWall *= mix(0.92, 0.86, clamp(mPerPx * 0.8, 0.0, 1.0));
   float colF = uv.x / bay;
   float col = floor(colF);
   float u = fract(colF);
@@ -525,7 +548,7 @@ vec3 facadeGroundFloor(
     average = mix(average, uGlassColor, 0.22);
   }
   float reveal = facadeBand(uv.y, gh - max(1.5 * px, 0.08), gh, max(0.7 * px, 0.02));
-  average *= 0.92; // ground floors sit in shadow under the facade above
+  average *= 0.88; // ground floors sit in shadow under the facade above
   average = mix(average, uTrimColor * 0.90, reveal * 0.85);
   outWall = mix(average, outWall, groundDetail);
 

@@ -140,11 +140,10 @@ From the generated milestone data:
 - Lighting is one directional sun + hemisphere light, with a 2048² shadow map
   covering only ~1800 m. No global illumination, no AO baking, no reflections,
   no volumetric effects, no bloom (pixel-art palette quantisation is applied in a
-  post-process instead). **As of this milestone the pixel-art post-process makes
-  the scene noticeably darker/desaturated than the clean-3D render** (mean
-  luminance 74.6 vs 114.8 in QA screenshots); a brightness/palette art pass is
-  in progress. The 23:00 night preset is currently too dark to read and has no
-  lit windows yet.
+  post-process instead). The final palette pass brings pixel-art mode close to the
+  clean-3D brightness (mean luminance 105.5 vs 111.4 on the same view). The 23:00
+  night preset is readable but **has no lit windows or street lights yet** —
+  the last known art-polish item (QA defect D4).
 - Tile streaming is progressive: tiles load around the camera and all 16 pilot
   tiles eventually load (QA's capture script waits for 16/16 before shooting).
   A larger area would need unloading/LOD policies that do not exist yet.
@@ -152,10 +151,9 @@ From the generated milestone data:
   geometry, overhangs and overlapping parts can pick a neighbouring building or
   nothing; transparent surfaces are not considered for occlusion.
 - `EngineStats.geometryMB` is now plausible (~24 MB for ~182 k triangles). FPS is
-  a rolling average and includes the pixel-art post-process; the panel only
-  refreshes when React re-renders because the renderer passes the same mutated
-  `EngineStats` object reference every tick (QA defect D12) — the built-in
-  "Refresh stats" button forces an update.
+  a rolling average and includes the pixel-art post-process; the HUD panel copies
+  each stats snapshot before storing it (fixed QA defect D12), so the numbers in
+  the screenshots are live values.
 
 ## 7. Test / QA limitations
 
@@ -163,15 +161,13 @@ From the generated milestone data:
   beauty: image-diff thresholds (1–2 %) only prove that a control affects output.
   The default mode uses software WebGL (SwiftShader; ~1.9 FPS at 182 k triangles),
   which makes the full suite ~10 min; `QA_GPU=1` switches to the real GPU
-  (ANGLE/D3D11) and brings the suite down to ~1.8 min — use it for verification
+  (ANGLE/D3D11) and brings the suite down to ~1–2 min — use it for verification
   runs that include performance numbers.
 - There are no committed golden-image baselines yet: `screenshots/` is git-ignored
-  by design. The milestone PNGs + `screenshots/analysis.json` + `stats.json` are
-  the evidence trail. Visual quality is reviewed manually by reading PNGs.
-- Screenshots currently click the built-in "Refresh stats" button before each shot
-  because the HUD performance panel does not auto-update (defect D12). The PNGs
-  show correct numbers, but that is a documented workaround; the default UI panel
-  is stale until clicked.
+  by design. The final PNGs + `screenshots/analysis.json` + `stats.json` are the
+  evidence trail. Visual quality is reviewed manually by reading PNGs. Only the six
+  canonical capture files are analysed by default (`QA_ANALYZE_ALL=1` includes
+  other agents' PNGs in that folder).
 - The data suite is skipped with a warning when
   `public/data/tiles/manifest.json` is absent; a green run therefore does not
   prove data exists unless the count of executed tests is checked.
@@ -183,6 +179,9 @@ From the generated milestone data:
   annotation; a genuine crash still fails. Mid-test reloads cannot be recovered.
 - Canvas screenshots allow 60 s (not Playwright's default 15 s action timeout)
   because a software-rendered 1600×900 screenshot can take that long at ~2 FPS.
+- The full 12-test suite on the software renderer was not re-run end-to-end after
+  the last fix (it is ~10 min); the clean 12/12 run is the hardware-GPU run, and
+  the previously failing software-mode test was re-verified in isolation.
 - No CI pipeline exists yet; all commands are Windows/PowerShell-local.
 - Typecheck (`tsc --noEmit`) covers `src`, `tests`, `scripts`, both Vite configs,
   but **not** `playwright.config.ts` (tsconfig `include` list); Playwright loads it

@@ -55,7 +55,7 @@ Outputs:
 
 | Path | Content |
 | --- | --- |
-| `data/raw/belarus-latest.osm.pbf` | raw Geofabrik extract (git-ignored) |
+| `data/raw/Minsk.osm.pbf` | raw BBBike Minsk extract (git-ignored) |
 | `data/interim/minsk_raw.geojson` | pilot-area features in WGS84 (git-ignored) |
 | `public/data/tiles/manifest.json` | tile index, counts, attribution |
 | `public/data/tiles/<x>_<y>.json` | per-tile renderer payload (512 m tiles) |
@@ -63,29 +63,42 @@ Outputs:
 | `docs/COVERAGE_REPORT.md` | generated coverage/validity report |
 
 The pilot area and tile size are configured in `scripts/geo_config.py`
-(mirrored in `src/shared/config.ts`).
+(mirrored in `src/shared/config.ts`). The whole pipeline (`data:all`) takes about
+two minutes from scratch and is deterministic: the same PBF produces byte-identical
+tiles.
 
 ## Tests
 
 ```powershell
-pnpm run typecheck      # TypeScript
-pnpm test               # Vitest: geometry, roofs, facades, environment, data validation
-pnpm run test:e2e       # Playwright: real browser, real WebGL
-pnpm run qa:capture     # screenshots + performance stats → screenshots/
+pnpm run typecheck      # TypeScript, strict
+pnpm test               # Vitest: 221 tests — geometry, roofs, facades, environment,
+                        #   tile maths, config sync, real-tile data validation
+pnpm run test:e2e       # Playwright: 12 browser tests (real WebGL)
+$env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)
+pnpm run qa:capture     # 6 canonical screenshots + stats.json + console.log
+node scripts/qa/geometryAudit.ts    # headless geometry audit of all tiles (needs tsx)
 ```
+
+Measured on the reference machine (RTX 3080 Laptop, 16 GB VRAM, Chromium
+ANGLE/D3D11, 1600×900): **60 FPS, 50 draw calls, ~182k triangles,
+640×360 internal pixel-art resolution, 24 MB GPU geometry, 0 console errors**.
+Screenshots are written to `screenshots/` (git-ignored) and a copy of the final
+set is committed under `docs/screenshots/`.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
 | Left-drag / WASD / arrows | Pan |
-| Mouse wheel | Zoom |
+| Mouse wheel | Zoom (cursor-anchored) |
 | `Q` / `E` or right-drag | Rotate camera |
-| Left click | Select building (info panel) |
-| Reset isometric view button | Restore default view |
+| Left click | Select building (info panel with OSM metadata) |
+| Reset isometric view button | Restore the default isometric view |
 
-UI also exposes: pixel-art toggle, facade-detail toggle (debugging), debug
-wireframe, time-of-day slider, live performance stats, data attribution.
+UI also exposes: pixel-art toggle (debug comparison with the clean 3D render),
+facade-detail toggle (debugging), debug wireframe, time-of-day slider (night
+windows light up), live performance stats, and a visible **© OpenStreetMap
+contributors · ODbL 1.0** attribution badge with an expandable data-sources panel.
 
 ## Project layout
 

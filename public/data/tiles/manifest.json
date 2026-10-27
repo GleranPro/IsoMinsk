@@ -35,49 +35,49 @@
    "y": -2,
    "file": "tiles/-2_-2.json",
    "buildings": 35,
-   "bytes": 81932
+   "bytes": 81272
   },
   {
    "x": -2,
    "y": -1,
    "file": "tiles/-2_-1.json",
    "buildings": 61,
-   "bytes": 95579
+   "bytes": 95410
   },
   {
    "x": -2,
    "y": 0,
    "file": "tiles/-2_0.json",
    "buildings": 77,
-   "bytes": 123185
+   "bytes": 122983
   },
   {
    "x": -2,
    "y": 1,
    "file": "tiles/-2_1.json",
    "buildings": 8,
-   "bytes": 47870
+   "bytes": 47666
   },
   {
    "x": -1,
    "y": -2,
    "file": "tiles/-1_-2.json",
    "buildings": 46,
-   "bytes": 84907
+   "bytes": 84738
   },
   {
    "x": -1,
    "y": -1,
    "file": "tiles/-1_-1.json",
    "buildings": 97,
-   "bytes": 163580
+   "bytes": 163016
   },
   {
    "x": -1,
    "y": 0,
    "file": "tiles/-1_0.json",
    "buildings": 93,
-   "bytes": 254518
+   "bytes": 253888
   },
   {
    "x": -1,
@@ -91,21 +91,21 @@
    "y": -2,
    "file": "tiles/0_-2.json",
    "buildings": 23,
-   "bytes": 103879
+   "bytes": 103882
   },
   {
    "x": 0,
    "y": -1,
    "file": "tiles/0_-1.json",
    "buildings": 71,
-   "bytes": 176184
+   "bytes": 175797
   },
   {
    "x": 0,
    "y": 0,
    "file": "tiles/0_0.json",
    "buildings": 29,
-   "bytes": 114440
+   "bytes": 113665
   },
   {
    "x": 0,
@@ -119,28 +119,28 @@
    "y": -2,
    "file": "tiles/1_-2.json",
    "buildings": 27,
-   "bytes": 46621
+   "bytes": 46622
   },
   {
    "x": 1,
    "y": -1,
    "file": "tiles/1_-1.json",
    "buildings": 19,
-   "bytes": 95280
+   "bytes": 95151
   },
   {
    "x": 1,
    "y": 0,
    "file": "tiles/1_0.json",
    "buildings": 9,
-   "bytes": 82897
+   "bytes": 82545
   },
   {
    "x": 1,
    "y": 1,
    "file": "tiles/1_1.json",
    "buildings": 12,
-   "bytes": 48465
+   "bytes": 48080
   }
  ],
  "counts": {
@@ -149,7 +149,7 @@
   "buildingsWithLevels": 366,
   "buildingsWithRoofShape": 305,
   "surfaces": 679,
-  "roads": 3811,
+  "roads": 3790,
   "trees": 3775
  },
  "attribution": [

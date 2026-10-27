@@ -105,7 +105,7 @@ const TILE_LOAD_MARGIN_TILES = 1;
 const DETAIL_WORLD_PER_PIXEL = 1.0;
 const MAX_ADDS_PER_FRAME = 2;
 const TILE_FETCH_TIMEOUT_GUARD_MS = 35_000;
-const BASE_PLANE_SIZE = 16_000;
+const BASE_PLANE_SIZE = 12_000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -130,7 +130,7 @@ export class TileStreamer {
   private readonly root: THREE.Group;
   private readonly basePlane: THREE.Mesh;
   private readonly basePlaneGeometry: THREE.PlaneGeometry;
-  private readonly basePlaneMaterial: THREE.MeshLambertMaterial;
+  private readonly basePlaneMaterial: THREE.Material;
   private readonly diagnostics: string[] = [];
   private readonly maxLoadedTiles: number;
   private readonly demo: boolean;
@@ -169,11 +169,24 @@ export class TileStreamer {
     );
 
     this.basePlaneGeometry = new THREE.PlaneGeometry(BASE_PLANE_SIZE, BASE_PLANE_SIZE);
-    // Matches the tile ground base colour so the far plane reads as the same
-    // city ground continuing past the tile grid, not as a dark void.
-    this.basePlaneMaterial = new THREE.MeshLambertMaterial({
-      color: new THREE.Color(ENV_PALETTE.ground),
-    });
+    // The far ground plane uses the SAME environment material as the tiles so
+    // lighting, shadow floor and fog match exactly (a stock lit/basic material
+    // reads as a darker void or a bright band at the frame edges). A baked
+    // linear vertex colour supplies the base ground tint.
+    const baseGroundColor = new THREE.Color(ENV_PALETTE.ground);
+    const basePositionCount =
+      (this.basePlaneGeometry.getAttribute('position') as THREE.BufferAttribute).count;
+    const baseColors = new Float32Array(basePositionCount * 3);
+    for (let i = 0; i < basePositionCount; i += 1) {
+      baseColors[i * 3] = baseGroundColor.r;
+      baseColors[i * 3 + 1] = baseGroundColor.g;
+      baseColors[i * 3 + 2] = baseGroundColor.b;
+    }
+    this.basePlaneGeometry.setAttribute(
+      'color',
+      new THREE.BufferAttribute(baseColors, 3),
+    );
+    this.basePlaneMaterial = options.environmentMaterial;
     this.basePlane = new THREE.Mesh(this.basePlaneGeometry, this.basePlaneMaterial);
     this.basePlane.rotation.x = -Math.PI / 2;
     this.basePlane.position.y = GROUND_LAYER_Y.base - 0.09;
@@ -295,7 +308,7 @@ export class TileStreamer {
     for (const key of [...this.tiles.keys()]) this.evictTile(key);
     this.root.remove(this.basePlane);
     this.basePlaneGeometry.dispose();
-    this.basePlaneMaterial.dispose();
+    // The base plane shares the tile environment material (owned by the app).
     this.tiles.clear();
     this.tileIndex.clear();
     this.buildingCount = 0;

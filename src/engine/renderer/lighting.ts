@@ -31,7 +31,7 @@ const MIN_SUN_ELEVATION_DEG = 14;
  * deliberate art-direction choice, not a physical claim. The physically-real
  * date can be enabled with `?realsun=1` (see `setUseRealDateSun`).
  */
-const STYLISED_MIN_ELEVATION_DEG = 45;
+const STYLISED_MIN_ELEVATION_DEG = 38;
 const STYLISED_MAX_ELEVATION_DEG = 52;
 const STYLISED_SUN_DATE = new Date(2026, 5, 21);
 /** Lower clamp for the shadow-frustum half extent (metres). */
@@ -140,17 +140,20 @@ export class LightingRig {
     // reads the way the reference art does. Night stays dark; lit windows do
     // the storytelling there.
     const night = THREE.MathUtils.clamp(look.nightFactor, 0, 1);
-    const sunGain = 1 + (1 - night) * 1.0 + night * 0.55;
-    const ambientGain = 1 + (1 - night) * 2.5 + night * 1.15;
-    const fillGain = 1 + (1 - night) * 0.9 + night * 0.4;
+    const sunGain = 1 + (1 - night) * 1.0 + night * 3.2;
+    const ambientGain = 1 + (1 - night) * 2.5 + night * 5.5;
+    const fillGain = 1 + (1 - night) * 0.9 + night * 2.2;
     this.energyGains = { sun: sunGain, ambient: ambientGain, fill: fillGain };
 
     this.sun.color.copy(look.sunColor);
     this.sun.intensity = look.sunIntensity * sunGain;
+    // Full physical shadowing is ~1.0; a value around 0.7 reads as a clearly
+    // visible ~35% darkening while the hemisphere fill keeps shadowed facades
+    // legible (they carry the facade design).
     this.sun.shadow.intensity = THREE.MathUtils.clamp(
-      look.shadowOpacity * (0.62 - 0.15 * night),
+      look.shadowOpacity * (1.3 - 0.25 * night),
       0,
-      1,
+      0.85,
     );
 
     this.ambient.color.copy(look.ambientColor);
@@ -239,7 +242,7 @@ export class LightingRig {
 
     // Normal bias in world units, derived from the shadow-map texel size: big
     // enough to kill acne on sloped roofs, small enough not to detach shadows.
-    this.sun.shadow.normalBias = THREE.MathUtils.clamp(worldPerTexel * 0.9, 0.2, 1.6);
+    this.sun.shadow.normalBias = THREE.MathUtils.clamp(worldPerTexel * 0.6, 0.12, 0.9);
     this.sun.shadow.bias = -0.00015;
 
     this.shadowExtent = extent;

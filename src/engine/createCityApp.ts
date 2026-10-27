@@ -47,13 +47,13 @@ import { BuildingHighlighter } from './picking/highlightOverlay';
 import { PixelArtPipeline, type PixelArtEnvironment } from './postprocess/pixelArtPipeline';
 import { hexToRgb, mixHex } from './postprocess/palette';
 
-const EXPOSURE = 1.25;
+const EXPOSURE = 1.02;
 const STATS_INTERVAL_MS = 500;
 const DEFAULT_PIXEL_ART: PixelArtSettings = {
   enabled: true,
   resolution: 360,
   outline: 0.55,
-  colorLevels: 14,
+  colorLevels: 20,
   dither: 0.35,
 };
 const FOG_NEAR_FACTOR = 0.55;
@@ -309,8 +309,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     fogColor: [0.9, 0.92, 0.94],
     skyColor: [0.9, 0.92, 0.94],
     outlineColor: [0.07, 0.09, 0.11],
-    fogNear: 2000,
-    fogFar: 6000,
+    // Atmospheric fog is done by the scene materials in both render paths;
+    // the post pass must not add a second fog layer.
+    fogNear: 1_000_000_000,
+    fogFar: 2_000_000_000,
     pixelWorld: 1,
     edgeLow: 1,
     edgeHigh: 4,
@@ -325,6 +327,14 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   let maxCasterHeight = 160;
   let shadowDirty = true;
   let highlightId: FeatureId | null = null;
+  /**
+   * Extra frames during which the shadow map is re-rendered unconditionally.
+   * Tiles finish loading asynchronously, so a single `needsUpdate` can be
+   * consumed by a render that happened before the last tile became resident;
+   * keeping the flag alive for a few frames guarantees the final shadow map
+   * includes every caster.
+   */
+  let shadowRefreshFrames = 12;
 
   const highlighter = new BuildingHighlighter(cityRoot);
   let picker: BuildingPicker | null = null;
@@ -352,6 +362,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     onTilesChanged: () => {
       renderer.shadowMap.needsUpdate = true;
       shadowDirty = true;
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
       if (highlightId) applyHighlight(highlightId);
     },
     onManifestLoaded: (manifest: TileManifest) => {
@@ -424,6 +435,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     setFacadeDetail(enabled: boolean) {
       facadeDetail.enabled = Boolean(enabled);
       applyFacadeDetailFlags();
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
     },
     setDebugWireframe(enabled: boolean) {
       const on = Boolean(enabled);
@@ -890,6 +902,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // --- helpers -------------------------------------------------------------
   function markCameraDirty(): void {
     shadowDirty = true;
+    shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
     renderer.shadowMap.needsUpdate = true;
     resizePending = false;
     const sceneRenderHeight = post.getRenderSize().height;
@@ -988,6 +1001,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     });
     updateLookColors();
     shadowDirty = true;
+    shadowRefreshFrames = Math.max(shadowRefreshFrames, 6);
     renderer.shadowMap.needsUpdate = true;
   }
 
@@ -1163,11 +1177,15 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     const sceneRenderHeight = post.getRenderSize().height;
     streamer.update(rig, sceneRenderHeight);
 
-    if (shadowDirty || cameraChanged) {
+    // Keep the shadow map fresh while tiles stream in (new casters) and for a
+    // few frames after any camera/light/tile change.
+    if (streamer.loadedTileCount < streamer.visibleTileCount) shadowDirty = true;
+    if (shadowDirty || cameraChanged || shadowRefreshFrames > 0) {
       const footprint = rig.getVisibleGroundRect(240);
       lighting.updateShadow(footprint, maxCasterHeight);
       renderer.shadowMap.needsUpdate = true;
       shadowDirty = false;
+      shadowRefreshFrames = Math.max(0, shadowRefreshFrames - 1);
     }
 
     updateFacadePixelSize(sceneRenderHeight);

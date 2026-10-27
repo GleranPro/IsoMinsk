@@ -194,10 +194,10 @@ export class IsometricCameraRig {
     );
     camera.lookAt(pose.targetX, 0, pose.targetZ);
 
-    // Tight near/far: the whole city plus tall roofs must fit between them,
-    // and nothing else. This keeps the linear depth buffer precise.
-    const viewExtent =
-      this.sceneRadius + pose.orthoHeight * 2.4 + this.maxHeight * 2 + 200;
+    // Generous far plane so the 16 km ground plane never shows its camera
+    // near/far clipping line across the landscape; the linear ortho depth buffer
+    // keeps enough precision for the post-process edge pass either way.
+    const viewExtent = 6000 + pose.orthoHeight * 4.0;
     camera.near = Math.max(1, distance - viewExtent);
     camera.far = distance + viewExtent;
     camera.updateProjectionMatrix();

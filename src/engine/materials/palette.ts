@@ -17,11 +17,11 @@ export type Hex = string;
 export const ENV_PALETTE = {
   ground: '#7e8674',
   groundDark: '#6b7263',
-  grass: '#7d9a52',
-  grassDark: '#6b8846',
-  park: '#6f9247',
-  forest: '#5a7c42',
-  scrub: '#8a9a68',
+  grass: '#6b9a4a',
+  grassDark: '#5f8f3d',
+  park: '#5f8f3d',
+  forest: '#527d34',
+  scrub: '#8a9f62',
   sand: '#c8b992',
   pitch: '#8f9c7a',
   cemetery: '#7a8a6a',
@@ -31,9 +31,9 @@ export const ENV_PALETTE = {
   commercial: '#96928a',
   construction: '#9c9275',
   unknown: '#7e8674',
-  water: '#6d95ab',
-  waterDeep: '#5f83a0',
-  river: '#6b90a8',
+  water: '#4d7f9e',
+  waterDeep: '#41718f',
+  river: '#447996',
   railway: '#7f776f',
   railBallast: '#8a8175',
 } as const;
@@ -86,44 +86,56 @@ export const ROAD_WIDTH_M: Record<RoadClass, number> = {
 };
 
 /** Tree canopy colours (variation index 0..3). */
-export const TREE_COLORS: Hex[] = ['#4f7340', '#5c8046', '#6b8f4d', '#7a9a55'];
+export const TREE_COLORS: Hex[] = ['#4a7333', '#568039', '#639040', '#719c4b'];
 export const TREE_TRUNK_COLOR: Hex = '#5a4632';
 
-/** Roof colours by shape and archetype-ish family. */
+/**
+ * Roof colours by shape and archetype-ish family.
+ *
+ * Aerial views of Minsk read strongly by roof: terracotta / red-brown pitched
+ * roofs against slate-grey flat roofs. These are deliberately chromatic so that
+ * dither/levels quantisation keeps the distinction (global palette snapping is
+ * off by default).
+ */
 export const ROOF_COLORS = {
-  flat: ['#8a877c', '#7d7b71', '#948f83', '#73736c'],
-  // Muted grey-brown tiles (Minsk centre roofs read warm, not terracotta-bright).
-  sloped: ['#8f6350', '#82584a', '#9a6d56', '#755547'],
-  metal: ['#7b8388', '#6b7378', '#878f94'],
+  flat: ['#7b7f80', '#6e7274', '#828687', '#737778'],
+  sloped: ['#a8613f', '#96553a', '#b4704a', '#8a4f38'],
+  metal: ['#7d8588', '#6f777a', '#8a9295'],
   thatch: ['#a58a5c'],
 } as const;
 
-/** Facade base colours per archetype (pseudo-random pick by building seed). */
+/**
+ * Facade base colours per archetype (pseudo-random pick by building seed).
+ *
+ * Art direction: at a 560 m overview the city must still read as at least four
+ * colour families, so the families are pushed apart in hue while staying a
+ * little desaturated:
+ *   stalin      warm ochre / sand
+ *   khrushchev  pale grey-green with brick-red accents
+ *   panel       light cool concrete (darker joint bands come from the shader)
+ *   modern      glassy teal
+ *   office      neutral cool grey
+ *   historic    ochre / rose plaster
+ *   industrial  olive grey
+ *   small       warm grey
+ *   civic       pale stone
+ */
 export const ARCHETYPE_COLORS: Record<Archetype, Hex[]> = {
-  // Warm plaster / stone — the grand Stalinist ensembles on the avenue.
-  stalin: ['#c4ad8b', '#cdb795', '#bda584', '#c9b394', '#c0b39c', '#b6a381'],
-  // Washed-out warm concrete of the 5-storey Khrushchev blocks.
-  khrushchev: ['#bcb6a6', '#c4bdaa', '#b1aa9b', '#c9c1ae', '#a9a292', '#c6bfae'],
-  // Cool, monotonous Brezhnev panel concrete.
-  panel: ['#aeb2b0', '#b8b8b0', '#a5abac', '#bfbdb2', '#9ba1a3', '#c2bfb5'],
-  // Light glassy modern towers with a hint of blue-grey.
-  modern: ['#c9cbc6', '#b4bfc0', '#a5b8ba', '#cdc9be', '#8ca6aa'],
-  // Neutral commerical/office cladding.
-  office: ['#b2b6b3', '#a5aaad', '#bdbab0', '#9ba3a5', '#c6c0b0'],
-  // Pre-war plaster and brick: warmer, more varied.
-  historic: ['#a5765b', '#ad8467', '#c2b08f', '#a17f66', '#bba17f', '#946e58'],
-  // Industrial sheds: olive-grey.
-  industrial: ['#93948b', '#888a83', '#9d998c', '#82857e'],
-  // Sheds, garages, kiosks.
-  small: ['#a59c8e', '#ada393', '#998f81', '#b3a999'],
-  // Pale stone civic / cultural buildings.
-  civic: ['#cbc2ad', '#c4bcaa', '#d0c8b3', '#bab3a1'],
+  stalin: ['#c39a63', '#cba66f', '#b98f58', '#d0b078', '#c7a166', '#bd955f'],
+  khrushchev: ['#b7bda4', '#c1c7af', '#adb39a', '#a86a52', '#b07a5e', '#b4b9a0'],
+  panel: ['#b2bcbf', '#a6b1b5', '#bfc5c5', '#aab5b9', '#9fabb0', '#b8c0c1'],
+  modern: ['#a7c3c5', '#93b6ba', '#b7cfcd', '#8fb0b3', '#9dbdc0'],
+  office: ['#a9b1b3', '#9ba5a9', '#b7bdbb', '#909ba0', '#b3b8b4'],
+  historic: ['#b98a63', '#c49a76', '#b07a62', '#c9a181', '#b98b76', '#a97a58'],
+  industrial: ['#9a9b8e', '#8f9186', '#a4a496', '#95968a'],
+  small: ['#b0a694', '#a89d8a', '#b8ae9c', '#a1968a'],
+  civic: ['#cbc2ad', '#d2ccbb', '#bdb7a6', '#c6beac'],
 } as const;
 
 /** Window glass colours. */
 export const WINDOW_COLORS = {
-  glass: '#37454c',
-  glassLight: '#586a72',
+  glass: '#2f3b42',
+  glassLight: '#4b5d66',
   nightLit: '#e2bf6e',
   nightLitWarm: '#eed28d',
   nightDark: '#222a30',

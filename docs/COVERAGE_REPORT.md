@@ -6,7 +6,7 @@
 
 - Source: OpenStreetMap
 - Extract: `Minsk.osm.pbf`
-- Extraction date: 2026-10-27T13:21:39Z
+- Extraction date: 2026-10-27T14:27:36Z
 - Attribution: © OpenStreetMap contributors, ODbL 1.0
 - Pilot area: 1600.0 m × 1600.0 m, tile size 512.0 m, projection EPSG:32635
 - Local origin (UTM 35N): [536859.254, 5972786.284]
@@ -62,7 +62,7 @@
 | Metric | Value |
 | --- | --- |
 | Ground surface polygons | 543 |
-| Road/rail/pavement polygons | 3257 |
+| Road/rail/pavement polygons | 3251 |
 | OSM-mapped trees | 216 |
 | Heuristically placed trees | 3559 |
 
@@ -75,24 +75,24 @@
 
 | Tile | Buildings | Surfaces | Roads | Trees | Bytes |
 | --- | --- | --- | --- | --- | --- |
-| -2_-2 | 35 | 48 | 207 | 87 | 81,932 |
-| -2_-1 | 61 | 16 | 211 | 63 | 95,579 |
-| -2_0 | 77 | 29 | 266 | 33 | 123,185 |
-| -2_1 | 8 | 54 | 96 | 87 | 47,870 |
-| -1_-2 | 46 | 20 | 170 | 137 | 84,907 |
-| -1_-1 | 97 | 43 | 418 | 90 | 163,580 |
-| -1_0 | 93 | 113 | 533 | 223 | 254,518 |
+| -2_-2 | 35 | 48 | 205 | 87 | 81,272 |
+| -2_-1 | 61 | 16 | 210 | 63 | 95,410 |
+| -2_0 | 77 | 29 | 265 | 33 | 122,983 |
+| -2_1 | 8 | 54 | 95 | 87 | 47,666 |
+| -1_-2 | 46 | 20 | 169 | 137 | 84,738 |
+| -1_-1 | 97 | 43 | 415 | 90 | 163,016 |
+| -1_0 | 93 | 113 | 531 | 223 | 253,888 |
 | -1_1 | 44 | 52 | 307 | 215 | 121,026 |
-| 0_-2 | 23 | 56 | 228 | 328 | 103,879 |
-| 0_-1 | 71 | 83 | 396 | 339 | 176,184 |
-| 0_0 | 29 | 66 | 327 | 110 | 114,440 |
+| 0_-2 | 23 | 56 | 228 | 328 | 103,882 |
+| 0_-1 | 71 | 83 | 394 | 339 | 175,797 |
+| 0_0 | 29 | 66 | 324 | 110 | 113,665 |
 | 0_1 | 3 | 27 | 143 | 781 | 104,151 |
-| 1_-2 | 27 | 11 | 79 | 136 | 46,621 |
-| 1_-1 | 19 | 22 | 180 | 489 | 95,280 |
-| 1_0 | 9 | 13 | 139 | 498 | 82,897 |
-| 1_1 | 12 | 26 | 111 | 159 | 48,465 |
+| 1_-2 | 27 | 11 | 79 | 136 | 46,622 |
+| 1_-1 | 19 | 22 | 179 | 489 | 95,151 |
+| 1_0 | 9 | 13 | 137 | 498 | 82,545 |
+| 1_1 | 12 | 26 | 109 | 159 | 48,080 |
 
-Total payload: **1704 KiB** across 16 tiles (uncompressed JSON).
+Total payload: **1699 KiB** across 16 tiles (uncompressed JSON).
 
 ## Validation result
 
@@ -105,4 +105,5 @@ Total payload: **1704 KiB** across 16 tiles (uncompressed JSON).
 - Roof shapes are usually inferred from archetype, not tagged in OSM.
 - Architectural archetype classification is heuristic (building tags + distance to Independence Avenue), not authoritative.
 - Trees marked *heuristic* are procedurally placed inside land-use polygons; they do not represent individually surveyed trees.
+- Underground infrastructure is intentionally not drawn: Minsk metro lines (`railway=subway`, 5 ways in the pilot area) and underground roads are skipped, because drawing them as ground surfaces paints black strips across the squares. Surface tram tracks are rendered.
 - Flat terrain: no DEM is used yet. See docs/DATA_SOURCES.md.

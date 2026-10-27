@@ -507,16 +507,11 @@ const pageErrors = [];
 async function captureShot(page, file, note, setup) {
   const setupResult = await setup();
   await settle(page);
-  // Known defect (reported as D12): the HUD performance panel does not refresh
-  // automatically because the renderer reuses one mutable EngineStats object, so
-  // React's setState sees an identical reference and skips re-rendering. Clicking
-  // the built-in "Refresh stats" button makes the HUD show current numbers; the
-  // canonical screenshot should not display stale 4-tile loading numbers.
-  await page
-    .locator('[data-testid="refresh-stats"]')
-    .click({ timeout: 2_000 })
-    .catch(() => {});
-  await settle(page, 350);
+  // D12 (HUD stats frozen because the renderer re-emitted one mutated
+  // EngineStats reference) was fixed in the shell by copying the stats object,
+  // so the panel updates on its own now — no "Refresh stats" click is needed.
+  // If a future regression brings D12 back, the shot metadata below records the
+  // HUD values so stale numbers are visible in stats.json.
   const camera = await readCamera(page);
   const timeOfDay = await readTimeOfDay(page);
   const pixelEffect = await readPixelEffect(page);

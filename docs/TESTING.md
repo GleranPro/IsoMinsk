@@ -1,4 +1,4 @@
-# Testing — Isometric Minsk (Windows / PowerShell)
+# Testing â€” Isometric Minsk (Windows / PowerShell)
 
 Everything here was run on Windows 11 with PowerShell (`pwsh`) on 2026-10-27.
 Commands assume the repository root: `D:\Workk\VoxelMinsk`.
@@ -6,10 +6,10 @@ Commands assume the repository root: `D:\Workk\VoxelMinsk`.
 | Suite | Command | What it covers | Typical time |
 | --- | --- | --- | --- |
 | Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync and real-data validation (221 tests at the milestone) | ~20 s |
-| Data pipeline | `pnpm run data:all` | download → extract → normalize (writes tiles + manifest) → coverage report | several minutes |
+| Data pipeline | `pnpm run data:all` | download â†’ extract â†’ normalize (writes tiles + manifest) â†’ coverage report | several minutes |
 | Geometry audit | `pnpm exec tsx scripts/qa/geometryAudit.ts` | builds building/environment meshes from the real tiles without a browser; writes `screenshots/geometry-audit.json`; exits 1 on any invalid geometry | ~5 s |
 | QA unit only | `pnpm exec vitest run tests/unit/data tests/unit/tile_math.test.ts tests/unit/config_sync.test.ts` | 44 QA-owned tests | ~1 s |
-| E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 12 browser tests against the real app + dev server, hardware WebGL | **~1.8 min** |
+| E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 12 browser tests against the real app + dev server, hardware WebGL | **~1.0–1.8 min** |
 | E2E (default software) | `pnpm exec playwright test` | same tests on SwiftShader (deterministic CI mode) | ~10 min |
 | Screenshots | `$env:QA_GPU='1'; pnpm run qa:capture` | 6 fixed screenshots + `screenshots/stats.json` + `screenshots/console.log` (waits for all 16 tiles) | ~45 s |
 | Screenshot metrics | `node scripts/qa/analyze-screenshots.mjs` | `screenshots/analysis.json` (colour/luminance/near-black/content bbox) | ~5 s |
@@ -40,7 +40,7 @@ If PowerShell blocks activation: `Set-ExecutionPolicy -Scope Process -ExecutionP
 
 Headless WebGL uses ANGLE/SwiftShader (software) by default and is configured in
 `playwright.config.ts`; no GPU is required for tests, but it is slow with the full
-city (~1.9 FPS → ~10 min for the e2e suite). On a machine with a GPU, opt into
+city (~1.9 FPS â†’ ~10 min for the e2e suite). On a machine with a GPU, opt into
 hardware rendering for fast, representative runs:
 
 ```powershell
@@ -99,18 +99,18 @@ pnpm exec vitest watch                           # watch mode
 
 QA-owned tests:
 
-- `tests/unit/tile_math.test.ts` — tile indexing/bounds/round-trips, ring/polygon
+- `tests/unit/tile_math.test.ts` â€” tile indexing/bounds/round-trips, ring/polygon
   area+bounds, world mapping, `tilesInRect`, `emptyTile`.
-- `tests/unit/config_sync.test.ts` — parses `scripts/geo_config.py` and
+- `tests/unit/config_sync.test.ts` â€” parses `scripts/geo_config.py` and
   `src/shared/config.ts` textually and asserts `PILOT_SIZE_M`, `TILE_SIZE_M`,
   `INGEST_MARGIN_M`, centre lat/lon, EPSG codes, height constants, camera
   invariants. **Fails if the Python and TS configs drift.**
-- `tests/unit/data/tiles.test.ts` — validates the *real* generated tiles:
+- `tests/unit/data/tiles.test.ts` â€” validates the *real* generated tiles:
   manifest schema/attribution, tile file existence/bytes/parse, counts, unique
-  building ids, heights 2..400 m, valid rings with ≥ 3 finite points, roads/
+  building ids, heights 2..400 m, valid rings with â‰¥ 3 finite points, roads/
   surfaces/trees geometry, crossing-building ownership, central coverage.
   If `public/data/tiles/manifest.json` is absent the suite is **skipped with a
-  warning** — check the "skipped" count, a skip is not a pass.
+  warning** â€” check the "skipped" count, a skip is not a pass.
 
 Note: `tests/unit/environment/**` and `tests/unit/buildings/**` are owned by
 other modules; they run in the same `pnpm test` invocation.
@@ -133,7 +133,7 @@ pnpm exec tsx scripts/qa/geometryAudit.ts
 
 ```powershell
 pnpm exec playwright test                       # headless SwiftShader, one worker, ~10 min at full city
-$env:QA_GPU='1'; pnpm exec playwright test      # headless REAL GPU (ANGLE/D3D11), ~1.8 min — use this
+$env:QA_GPU='1'; pnpm exec playwright test      # headless REAL GPU (ANGLE/D3D11), ~1.8 min â€” use this
 pnpm exec playwright test --headed              # watch it in a real window
 pnpm exec playwright test --grep "zoom"         # filter by test title
 pnpm exec playwright test tests/e2e/city.spec.ts -g "10\."
@@ -148,12 +148,12 @@ Behaviour:
   itself via `webServer`; if a dev server is **already** running on 5173 it is
   reused (`reuseExistingServer: true`). Never start a second one on that port.
 - `workers: 1`, `retries: 0`, 90 s per test, 60 s allowed for engine readiness,
-  viewport 1600×900. Failure artefacts (screenshot, trace, video off) land in
+  viewport 1600Ã—900. Failure artefacts (screenshot, trace, video off) land in
   `test-results/`; the HTML report lands in `playwright-report/`.
 - `QA_GPU=1` swaps the SwiftShader launch flags for ANGLE/D3D11 hardware flags.
   Without it, the full-city scene runs at ~1.9 FPS in software (measured), which
   makes the suite ~10 min and may hit action timeouts; QA's last clean run
-  (12/12, 1.8 min) used `QA_GPU=1`.
+  (12/12, 1.0 min) used `QA_GPU=1`.
 - Tests fail with explicit messages if `window.__CITY_APP__` is missing, if the
   city never becomes ready, or if a control does not affect the rendered image.
 - Canvas screenshots allow a 60 s timeout (Playwright's default action timeout is
@@ -164,7 +164,7 @@ Behaviour:
 
 The 12 tests: shell + console-error-free load, `window.__CITY_APP__` contract,
 geometry budget (`triangles > 1000`, `buildings > 100`), non-flat canvas,
-pan/zoom/rotate, time-of-day slider, pixel-effect toggle, building pick → info
+pan/zoom/rotate, time-of-day slider, pixel-effect toggle, building pick â†’ info
 panel (OSM id), error-free 5 s interaction, reload.
 
 ### If the whole page fails to boot mid-run
@@ -191,12 +191,12 @@ pnpm run qa:capture
 - Reuses a dev server on `http://127.0.0.1:5173` or starts one and kills it after.
 - Waits for real readiness (`window.__CITY_APP__.ready`) **and for all manifest tiles
   to stream in** (`triangles > 5000` and `loadedTiles == manifest.tiles.length`;
-  currently 16/16), settles ≥ 500 ms, and **fails with exit code 1** (no misleading
+  currently 16/16), settles â‰¥ 500 ms, and **fails with exit code 1** (no misleading
   images) if the app reports a fatal error or the city never finishes streaming.
 - Clicks the built-in "Refresh stats" button before each shot because the HUD stats
   panel does not auto-update yet (QA defect D12); the PNGs then show current
   EngineStats instead of stale loading numbers.
-- Writes `screenshots/01-overview.png` … `06-rotated.png`,
+- Writes `screenshots/01-overview.png` â€¦ `06-rotated.png`,
   `screenshots/stats.json` (EngineStats, WebGL renderer, capture mode, per-shot
   metadata incl. HUD numbers), `screenshots/console.log` (all browser console
   output). On failure it also writes `screenshots/00-failure.png` and a
@@ -223,7 +223,7 @@ node scripts/qa/analyze-screenshots.mjs
 
 `nearBlackShare` is the fraction of sampled pixels with luminance < 8/255. At the
 renderer milestone the canonical day shots are **0.0 %** near-black (the earlier
-intermediate renderer was 38–59 %). The folder may also contain PNGs written by
+intermediate renderer was 38â€“59 %). The folder may also contain PNGs written by
 other agents (`dev-baseline.png`, `measure.png`, `02-closeup.png`, `03-detail.png`,
 `probe-*.png`); the canonical set is exactly the six capture files.
 
@@ -246,10 +246,10 @@ reported paths before treating a failure as yours.
 
 | Symptom | Cause / fix |
 | --- | --- |
-| `Error: Port 5173 is already in use` (strictPort) | A dev server is already running — reuse it, or kill it: `Get-NetTCPConnection -LocalPort 5173 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`. Do not run two servers. |
-| Playwright: `Executable doesn't exist … chromium` | `pnpm exec playwright install chromium`. |
-| E2E: `City app did not report ready`, overlay has "Failed to load city data" | `public/data/tiles/manifest.json` missing → run the data pipeline (§2). |
-| E2E: readiness timeout with `canvasCount: 0` | Vite dev-server reload while files were being saved; re-run the test (see §4). |
+| `Error: Port 5173 is already in use` (strictPort) | A dev server is already running â€” reuse it, or kill it: `Get-NetTCPConnection -LocalPort 5173 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`. Do not run two servers. |
+| Playwright: `Executable doesn't exist â€¦ chromium` | `pnpm exec playwright install chromium`. |
+| E2E: `City app did not report ready`, overlay has "Failed to load city data" | `public/data/tiles/manifest.json` missing â†’ run the data pipeline (Â§2). |
+| E2E: readiness timeout with `canvasCount: 0` | Vite dev-server reload while files were being saved; re-run the test (see Â§4). |
 | E2E suite takes ~10 min / tests time out on screenshots | You are on the default software renderer (~1.9 FPS at full city). Use `$env:QA_GPU='1'` for hardware WebGL. |
 | HUD "Frames" panel in screenshots shows old numbers | Known defect D12: the panel does not auto-refresh (renderer reuses one `EngineStats` object; React skips identical references). Click "Refresh stats" or wait for the fix. `capture.mjs` clicks it before each shot. |
 | Day screenshots look dark | Known transient art issue D13 (pixel-art brightness/palette pass in progress); compare with `05-clean-3d.png`, which shows the intended full-brightness render. |
@@ -258,7 +258,7 @@ reported paths before treating a failure as yours.
 | `QA_GPU=1` shows SwiftShader anyway | The machine has no usable GPU in the session; check `WEBGL_debug_renderer_info` in the app console, or fall back to the default mode. |
 | `node scripts/qa/capture.mjs` hangs at startup | It may be building Vite's dependency cache; first run can take ~20 s. Use `QA_BASE_URL` to attach to an already-warm server. |
 | Data tests report skips | Tiles not generated. Skips are printed with a warning on stderr. |
-| Vitest fails on `ringArea` sign | Known contract mismatch (`docs/LIMITATIONS.md` §5) — the doc says positive = CCW, implementation is opposite. |
+| Vitest fails on `ringArea` sign | Known contract mismatch (`docs/LIMITATIONS.md` Â§5) â€” the doc says positive = CCW, implementation is opposite. |
 | `pnpm` warns `The "pnpm" field in package.json is no longer read` | Pre-existing workspace warning, harmless. |
 
 ---
@@ -278,7 +278,7 @@ node scripts/qa/analyze-screenshots.mjs
 ```
 
 On Linux CI the same Playwright config works; the `webServer.command` uses
-`pnpm exec vite …` which is portable. CI machines usually have no GPU, so they
-run the default SwiftShader mode (slow: budget ~10–15 min for the e2e step, or
+`pnpm exec vite â€¦` which is portable. CI machines usually have no GPU, so they
+run the default SwiftShader mode (slow: budget ~10â€“15 min for the e2e step, or
 split tests). `QA_GPU=1` is intended for local/hardware runners. Upload
 `screenshots/`, `test-results/` and `playwright-report/` as artefacts.

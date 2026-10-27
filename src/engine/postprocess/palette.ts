@@ -99,17 +99,26 @@ export const PIXEL_PALETTE: Hex[] = [
   '#c19b78',
   '#a98a6a',
   '#b98c6d',
-  // pitched-roof browns
-  '#7c5c48',
-  '#8f6b52',
-  // park / forest greens
-  '#4f6b3d',
-  '#648244',
-  '#78964f',
-  '#8fa866',
-  // water
-  '#5b8299',
+  // pitched roofs: terracotta / red-brown (the Minsk aerial signature)
+  '#a8613f',
+  '#96553a',
+  '#b4704a',
+  // flat roofs: slate grey
+  '#7b7f80',
+  '#6e7274',
+  // park / forest greens (rich, clearly green next to warm facades)
+  '#527d34',
+  '#5f8f3d',
+  '#6b9a4a',
+  '#86a45c',
+  // water (blue-teal)
+  '#41718f',
+  '#4d7f9e',
   '#7496a8',
+  // modern glass teal, brick-red accents, historic rose plaster
+  '#8fb0b3',
+  '#a86a52',
+  '#b07a62',
   // warm lit windows (night)
   '#e2bf6e',
   '#eed28d',
