@@ -30,6 +30,7 @@ import type {
   PixelArtSettings,
 } from '../shared/appApi';
 import type { FeatureId, TileManifest } from '../shared/types';
+import { ISO_CAMERA } from '../shared/config';
 import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
@@ -46,17 +47,19 @@ import { BuildingHighlighter } from './picking/highlightOverlay';
 import { PixelArtPipeline, type PixelArtEnvironment } from './postprocess/pixelArtPipeline';
 import { hexToRgb, mixHex } from './postprocess/palette';
 
-const EXPOSURE = 1.0;
+const EXPOSURE = 1.25;
 const STATS_INTERVAL_MS = 500;
 const DEFAULT_PIXEL_ART: PixelArtSettings = {
   enabled: true,
   resolution: 360,
-  outline: 0.62,
+  outline: 0.55,
   colorLevels: 14,
   dither: 0.35,
 };
 const FOG_NEAR_FACTOR = 0.55;
 const FOG_FAR_FACTOR = 2.1;
+/** Reference camera distance the palette fog presets were authored for. */
+const FOG_REFERENCE_DISTANCE = 3000;
 
 interface DebugGlobals {
   ready: boolean;
@@ -108,6 +111,52 @@ function createZeroStats(): EngineStats {
   };
 }
 
+interface PixelSummary {
+  samples: number;
+  minLuminance: number;
+  maxLuminance: number;
+  meanLuminance: number;
+  uniqueColors: number;
+  center: [number, number, number, number] | null;
+}
+
+/** Summarise a pixel buffer in-page (never ship raw megabytes to the QA shell). */
+function summarisePixels(
+  data: Uint8Array | null,
+  width: number,
+  height: number,
+): PixelSummary | null {
+  if (!data) return null;
+  const colors = new Set<number>();
+  let min = 255;
+  let max = 0;
+  let sum = 0;
+  let samples = 0;
+  for (let i = 0; i + 3 < data.length; i += 4 * 11) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    if (luminance < min) min = luminance;
+    if (luminance > max) max = luminance;
+    sum += luminance;
+    colors.add((r << 16) | (g << 8) | b);
+    samples += 1;
+  }
+  const centerIndex = (((height >> 1) * width + (width >> 1)) | 0) * 4;
+  return {
+    samples,
+    minLuminance: Math.round(min * 10) / 10,
+    maxLuminance: Math.round(max * 10) / 10,
+    meanLuminance: samples > 0 ? Math.round((sum / samples) * 10) / 10 : 0,
+    uniqueColors: colors.size,
+    center:
+      data.length > centerIndex + 3
+        ? [data[centerIndex], data[centerIndex + 1], data[centerIndex + 2], data[centerIndex + 3]]
+        : null,
+  };
+}
+
 /** Handle returned when WebGL2 is unavailable: keeps React alive, reports once. */
 function createUnavailableHandle(container: HTMLElement, message: string): CityAppHandle {
   const notice = document.createElement('div');
@@ -152,6 +201,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       : new URLSearchParams();
   const demoMode = params.get('demo') === '1';
   const noLimit = params.get('nolimit') === '1';
+  const shadowParam = Number.parseInt(params.get('shadow') ?? '', 10);
+  const resolutionParam = Number.parseInt(params.get('res') ?? '', 10);
 
   const errors: string[] = [];
   const diagnostics: string[] = [];
@@ -213,8 +264,14 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const environment = createEnvironmentMaterialSet();
 
   // --- lights --------------------------------------------------------------
-  const maxShadowMapSize = renderer.capabilities.maxTextureSize >= 8192 ? 4096 : 2048;
-  const lighting = new LightingRig(scene, maxShadowMapSize);
+  const defaultShadowSize = renderer.capabilities.maxTextureSize >= 4096 ? 2048 : 1024;
+  const shadowSize =
+    Number.isFinite(shadowParam) && shadowParam >= 256
+      ? Math.min(shadowParam, renderer.capabilities.maxTextureSize)
+      : defaultShadowSize;
+  const lighting = new LightingRig(scene, shadowSize);
+  // Stylised summer-solstice sun by default; `?realsun=1` restores today's date.
+  if (params.get('realsun') === '1') lighting.setUseRealDateSun(true);
   let look = lighting.state.look;
   let timeHours = 13;
 
@@ -225,12 +282,28 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     heightCss: host.height,
   });
 
+  /**
+   * Default isometric framing: the whole pilot district, centred on its centre
+   * (local metres). Recomputed from `manifest.pilotBounds` when the manifest
+   * arrives and when the viewport aspect changes.
+   */
+  const defaultView = {
+    orthoHeight: ISO_CAMERA.orthoHeight as number,
+    targetLocalX: 0,
+    targetLocalY: 0,
+  };
+  let defaultFitBounds: [number, number, number, number] | null = null;
+
   // --- pixel-art pipeline --------------------------------------------------
   const pixelArt: PixelArtSettings = { ...DEFAULT_PIXEL_ART };
   if (params.get('pixel') === '0') pixelArt.enabled = false;
   if (params.get('pixel') === '1') pixelArt.enabled = true;
+  if (Number.isFinite(resolutionParam) && resolutionParam > 0) {
+    pixelArt.resolution = Math.round(clamp(resolutionParam, 120, 720));
+  }
   const post = new PixelArtPipeline(renderer, pixelArt);
   post.setSize(host.width, host.height, pixelArt);
+  post.setEffectEnabled(pixelArt.enabled);
 
   const postEnvironment: PixelArtEnvironment = {
     fogColor: [0.9, 0.92, 0.94],
@@ -300,6 +373,13 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   let rafId = 0;
   let resizePending = true;
   let frameErrors = 0;
+  const debugOverrides = {
+    exposure: null as number | null,
+    paletteMix: null as number | null,
+    facadePaletteMix: null as number | null,
+    outline: null as number | null,
+    toneMode: null as number | null,
+  };
 
   const handle: CityAppHandle = {
     start() {
@@ -315,7 +395,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     },
     dispose,
     resetCamera() {
-      rig.reset();
+      rig.reset(defaultView.orthoHeight, defaultView.targetLocalX, defaultView.targetLocalY);
       markCameraDirty();
     },
     getCameraSettings: () => rig.getSettings(),
@@ -333,6 +413,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       Object.assign(pixelArt, clampPixelArt(settings, pixelArt));
       post.setSettings(pixelArt);
       post.setSize(host.width, host.height, pixelArt);
+      post.setEffectEnabled(pixelArt.enabled);
       applyPixelArtFlags();
     },
     getPixelArt: () => ({ ...pixelArt }),
@@ -356,6 +437,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     setPixelEffectEnabled(enabled: boolean) {
       pixelArt.enabled = Boolean(enabled);
       post.setSize(host.width, host.height, pixelArt);
+      post.setEffectEnabled(pixelArt.enabled);
       applyPixelArtFlags();
     },
     isPixelEffectEnabled: () => pixelArt.enabled,
@@ -394,12 +476,423 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     (window as unknown as { __CITY_STATS__?: EngineStats }).__CITY_STATS__ = stats;
   }
 
+  // --- debug surface (X-ray for the QA harness) ----------------------------
+  const debugApi = {
+    camera: () => {
+      const camera = rig.camera;
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      return {
+        position: camera.position.toArray(),
+        direction: direction.toArray(),
+        lookTarget: rig.getTargetWorld().toArray(),
+        left: camera.left,
+        right: camera.right,
+        top: camera.top,
+        bottom: camera.bottom,
+        near: camera.near,
+        far: camera.far,
+        projectionMatrix: camera.projectionMatrix.elements.slice(),
+        matrixWorld: camera.matrixWorld.elements.slice(),
+        cameraDistance: rig.getCameraDistanceValue(),
+        settings: rig.getSettings(),
+      };
+    },
+    gl: () => {
+      const gl = renderer.getContext();
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        version: String(gl.getParameter(gl.VERSION)),
+        renderer: debugInfo
+          ? String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL))
+          : 'unknown',
+        maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE) as number,
+        contextLost: gl.isContextLost(),
+      };
+    },
+    target: () => ({
+      ...post.getRenderSize(),
+      enabled: pixelArt.enabled,
+      framebufferStatus: post.checkTargetFramebufferStatus(),
+      cssWidth: host!.width,
+      cssHeight: host!.height,
+    }),
+    scene: () => {
+      const camera = rig.camera;
+      camera.updateMatrixWorld();
+      const frustum = new THREE.Frustum();
+      const matrix = new THREE.Matrix4().multiplyMatrices(
+        camera.projectionMatrix,
+        camera.matrixWorldInverse,
+      );
+      frustum.setFromProjectionMatrix(matrix);
+      const tiles = [...streamer.loadedTiles()].map((tile) => {
+        const sphere = tile.buildingMesh?.geometry.boundingSphere ?? null;
+        return {
+          key: tile.key,
+          meshes: tile.group.children.length,
+          triangles: tile.triangles,
+          center: sphere ? sphere.center.toArray() : null,
+          radius: sphere ? Math.round(sphere.radius * 10) / 10 : 0,
+          visibleInMainCamera: sphere ? frustum.intersectsSphere(sphere) : false,
+        };
+      });
+      return {
+        sceneChildren: scene.children.length,
+        cityChildren: cityRoot.children.length,
+        visibleTilesLoaded: streamer.visibleTileCount,
+        loadedTiles: streamer.loadedTileCount,
+        buildings: streamer.loadedBuildingCount,
+        tiles: tiles.slice(0, 32),
+      };
+    },
+    rendererInfo: () => ({
+      drawCalls: renderer.info.render.calls,
+      triangles: renderer.info.render.triangles,
+      points: renderer.info.render.points,
+      lines: renderer.info.render.lines,
+      geometries: renderer.info.memory.geometries,
+      textures: renderer.info.memory.textures,
+      programs: renderer.info.programs?.length ?? 0,
+    }),
+    /** Render one frame into the low-res scene target and summarise it. */
+    sceneTargetPixels: () => {
+      post.renderSceneToTarget(scene, rig.camera);
+      const size = post.getRenderSize();
+      return {
+        size,
+        summary: summarisePixels(post.readTargetPixels(0, 0, size.width, size.height), size.width, size.height),
+      };
+    },
+    /** Render one frame directly to the canvas and summarise the readback. */
+    canvasPixels: () => {
+      post.renderDirect(scene, rig.camera);
+      const width = host!.width;
+      const height = host!.height;
+      const readWidth = Math.min(width, 256);
+      const readHeight = Math.min(height, 256);
+      return {
+        size: { width, height },
+        readRegion: { width: readWidth, height: readHeight },
+        summary: summarisePixels(
+          post.readCanvasPixels(
+            Math.max(0, (width - readWidth) >> 1),
+            Math.max(0, (height - readHeight) >> 1),
+            readWidth,
+            readHeight,
+          ),
+          readWidth,
+          readHeight,
+        ),
+      };
+    },
+    forceFrame: () => {
+      resizePending = true;
+      tick(1 / 60, performance.now());
+      return true;
+    },
+    pipelineSettings: () => ({ ...pixelArt }),
+    diagnostics: () => [...diagnostics],
+    // Raw handles for in-page inspection (not serialisable; use inside evaluate).
+    three: () => THREE,
+    sceneObject: () => scene,
+    cameraObject: () => rig.camera,
+    rendererObject: () => renderer,
+    cityRootObject: () => cityRoot,
+    targetObject: () => post.targetHandle,
+    lightsObject: () => lighting,
+    /** Grid samples (RGB) from the low-res scene target. */
+    sampleTargetGrid: (cols = 6, rows = 4) => {
+      post.renderSceneToTarget(scene, rig.camera);
+      const size = post.getRenderSize();
+      const pixels = post.readTargetPixels(0, 0, size.width, size.height);
+      if (!pixels) return null;
+      const grid: number[][] = [];
+      for (let row = 0; row < rows; row += 1) {
+        for (let col = 0; col < cols; col += 1) {
+          const x = Math.min(size.width - 1, Math.floor(((col + 0.5) / cols) * size.width));
+          const y = Math.min(size.height - 1, Math.floor(((row + 0.5) / rows) * size.height));
+          const index = (y * size.width + x) * 4;
+          grid.push([pixels[index], pixels[index + 1], pixels[index + 2]]);
+        }
+      }
+      return { size, grid };
+    },
+    setPostUniform: (name: string, value: number | number[]) => {
+      post.setUniformValue(name, value);
+      return { name, value };
+    },
+    setDebugView: (mode: number) => {
+      post.setDebugView(mode);
+      return mode;
+    },
+    uniformNames: () => post.getUniformNames(),
+    uniformValues: () => post.getUniformValues(),
+    targetInfo: () => post.getTargetInfo(),
+    /** Numeric luminance stats for direct vs post-processed full frames. */
+    frameStats: () => {
+      const statsOf = (pixels: Uint8Array | null): Record<string, number> | null => {
+        if (!pixels) return null;
+        let sum = 0;
+        let count = 0;
+        let min = 255;
+        let max = 0;
+        let under10 = 0;
+        let under20 = 0;
+        let under32 = 0;
+        let bright = 0;
+        const unique = new Set<number>();
+        for (let i = 0; i + 2 < pixels.length; i += 4) {
+          const r = pixels[i];
+          const g = pixels[i + 1];
+          const b = pixels[i + 2];
+          const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          if (luminance < min) min = luminance;
+          if (luminance > max) max = luminance;
+          if (luminance < 10) under10 += 1;
+          if (luminance < 20) under20 += 1;
+          if (luminance < 32) under32 += 1;
+          if (luminance > 192) bright += 1;
+          sum += luminance;
+          count += 1;
+          if (count % 7 === 1) unique.add((r << 16) | (g << 8) | b);
+        }
+        return {
+          mean: Math.round((sum / Math.max(count, 1)) * 10) / 10,
+          min: Math.round(min * 10) / 10,
+          max: Math.round(max * 10) / 10,
+          count,
+          under10: Math.round((under10 / Math.max(count, 1)) * 1000) / 10,
+          under20: Math.round((under20 / Math.max(count, 1)) * 1000) / 10,
+          under32: Math.round((under32 / Math.max(count, 1)) * 1000) / 10,
+          bright,
+          uniqueColors: unique.size,
+        };
+      };
+      post.renderDirect(scene, rig.camera);
+      const direct = statsOf(post.readCanvasPixels(0, 0, host!.width, host!.height));
+      post.render(scene, rig.camera);
+      const postStats = statsOf(post.readCanvasPixels(0, 0, host!.width, host!.height));
+      const targetSize = post.getRenderSize();
+      post.renderSceneToTarget(scene, rig.camera);
+      const targetPixels = post.readTargetPixels(0, 0, targetSize.width, targetSize.height);
+      const target = statsOf(targetPixels);
+      return { direct, post: postStats, target };
+    },
+    setExposure: (exposure: number) => {
+      debugOverrides.exposure = exposure;
+      return exposure;
+    },
+    setOverrides: (partial: Record<string, number | null>) => {
+      for (const [key, value] of Object.entries(partial)) {
+        if (key in debugOverrides) {
+          (debugOverrides as unknown as Record<string, number | null>)[key] = value;
+        }
+      }
+      return { ...debugOverrides };
+    },
+    /** 0 = neutral tonemapping, 1 = linear/clamp (both render paths). */
+    setToneMode: (mode: number) => {
+      renderer.toneMapping = mode > 0.5 ? THREE.LinearToneMapping : THREE.NeutralToneMapping;
+      post.setToneMode(mode);
+      return mode;
+    },
+    setAmbientScale: (scale: number) => {
+      lighting.ambient.intensity = lighting.state.look.ambientIntensity * scale;
+      lighting.fill.intensity = lighting.ambient.intensity * 0.3;
+      return lighting.ambient.intensity;
+    },
+    /** Artistic sun elevation override in degrees (null restores real solar). */
+    setSunElevation: (degrees: number | null) => {
+      lighting.setSunElevationOverride(degrees);
+      look = lighting.state.look;
+      return lighting.state.elevation;
+    },
+    renderPostNow: () => {
+      post.render(scene, rig.camera);
+      return true;
+    },
+    renderDirectNow: () => {
+      post.renderDirect(scene, rig.camera);
+      return true;
+    },
+    /** Set a light intensity multiplier relative to the palette preset. */
+    setLightScale: (scale: number) => {
+      lighting.sun.intensity = lighting.state.look.sunIntensity * scale;
+      return lighting.sun.intensity;
+    },
+    /** Render a full post-processed frame and sample the canvas output grid. */
+    renderPostAndSampleGrid: (cols = 4, rows = 3) => {
+      post.render(scene, rig.camera);
+      const width = host!.width;
+      const height = host!.height;
+      const pixels = post.readCanvasPixels(0, 0, width, height);
+      if (!pixels) return null;
+      const grid: number[][] = [];
+      for (let row = 0; row < rows; row += 1) {
+        for (let col = 0; col < cols; col += 1) {
+          const x = Math.min(width - 1, Math.floor(((col + 0.5) / cols) * width));
+          const y = Math.min(height - 1, Math.floor(((row + 0.5) / rows) * height));
+          const index = (y * width + x) * 4;
+          grid.push([pixels[index], pixels[index + 1], pixels[index + 2]]);
+        }
+      }
+      return { size: { width, height }, grid };
+    },
+    /** Compare the post-processed frame against the direct render numerically. */
+    comparePostVsDirect: (cols = 4, rows = 3) => {
+      const targetSize = post.getRenderSize();
+      post.renderSceneToTarget(scene, rig.camera);
+      const scenePixels = post.readTargetPixels(0, 0, targetSize.width, targetSize.height);
+      if (!scenePixels) return { error: 'no target pixels' };
+      const sample = (pixels: Uint8Array, width: number, height: number) => {
+        const values: number[][] = [];
+        for (let row = 0; row < rows; row += 1) {
+          for (let col = 0; col < cols; col += 1) {
+            const x = Math.min(width - 1, Math.floor(((col + 0.5) / cols) * width));
+            const y = Math.min(height - 1, Math.floor(((row + 0.5) / rows) * height));
+            const index = (y * width + x) * 4;
+            values.push([pixels[index], pixels[index + 1], pixels[index + 2]]);
+          }
+        }
+        return values;
+      };
+      const linear = sample(scenePixels, targetSize.width, targetSize.height);
+      // Expected post output, reproducing the GLSL path on the CPU.
+      const neutral = (value: number): number => {
+        const x = Math.min(value, 0.999);
+        let offset = 0.04;
+        if (x < 0.08) offset = x - 6.25 * x * x;
+        const shifted = Math.max(value - offset, 0);
+        return Math.min(Math.max(shifted, 0), 1);
+      };
+      const toSrgb = (value: number): number => {
+        const c = Math.min(Math.max(value, 0), 1);
+        return c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+      };
+      const expected = linear.map((rgb) =>
+        rgb.map((channel) => Math.round(toSrgb(neutral(channel / 255)) * 255)),
+      );
+      post.render(scene, rig.camera);
+      const canvasPixels = post.readCanvasPixels(0, 0, host!.width, host!.height);
+      const actual = canvasPixels
+        ? sample(canvasPixels, host!.width, host!.height)
+        : null;
+      return { targetSize, linear, expected, actual };
+    },
+    sampleCanvasGrid: (cols = 6, rows = 4) => {
+      post.renderDirect(scene, rig.camera);
+      const width = host!.width;
+      const height = host!.height;
+      const pixels = post.readCanvasPixels(0, 0, width, height);
+      if (!pixels) return null;
+      const grid: number[][] = [];
+      for (let row = 0; row < rows; row += 1) {
+        for (let col = 0; col < cols; col += 1) {
+          const x = Math.min(width - 1, Math.floor(((col + 0.5) / cols) * width));
+          const y = Math.min(height - 1, Math.floor(((row + 0.5) / rows) * height));
+          const index = (y * width + x) * 4;
+          grid.push([pixels[index], pixels[index + 1], pixels[index + 2]]);
+        }
+      }
+      return { size: { width, height }, grid };
+    },
+    tileDebug: () => {
+      const entry = streamer.loadedTiles().next().value as
+        | { key: string; buildingMesh: THREE.Mesh | null; environmentMesh: THREE.Mesh | null }
+        | undefined;
+      if (!entry) return { error: 'no tiles loaded' };
+      const describe = (mesh: THREE.Mesh | null) => {
+        if (!mesh) return null;
+        const geometry = mesh.geometry;
+        const position = geometry.getAttribute('position');
+        let min = [Infinity, Infinity, Infinity];
+        let max = [-Infinity, -Infinity, -Infinity];
+        const array = (position as THREE.BufferAttribute | undefined)?.array;
+        if (array) {
+          for (let i = 0; i + 2 < array.length; i += 3) {
+            for (let c = 0; c < 3; c += 1) {
+              const value = array[i + c];
+              if (!Number.isFinite(value)) continue;
+              if (value < min[c]) min[c] = value;
+              if (value > max[c]) max[c] = value;
+            }
+          }
+        }
+        return {
+          materialType: mesh.material instanceof THREE.Material ? mesh.material.type : 'array',
+          materialName: mesh.material instanceof THREE.Material ? mesh.material.name : '',
+          materialVisible: mesh.material instanceof THREE.Material ? mesh.material.visible : null,
+          visible: mesh.visible,
+          frustumCulled: mesh.frustumCulled,
+          positionCount: position ? position.count : 0,
+          indexCount: geometry.getIndex() ? geometry.getIndex()!.count : 0,
+          drawRange: { ...geometry.drawRange },
+          groups: geometry.groups.length,
+          bounds: { min, max },
+          matrixWorld: mesh.matrixWorld.elements.slice(),
+          boundingSphere: geometry.boundingSphere
+            ? {
+                center: geometry.boundingSphere.center.toArray(),
+                radius: geometry.boundingSphere.radius,
+              }
+            : null,
+          attributes: Object.keys(geometry.attributes),
+        };
+      };
+      return { key: entry.key, building: describe(entry.buildingMesh), environment: describe(entry.environmentMesh) };
+    },
+    materialDebug: () => ({
+      background: background.getHexString(THREE.SRGBColorSpace),
+      backgroundLinear: background.toArray(),
+      fog: { near: fog.near, far: fog.far, color: fog.color.getHexString(THREE.SRGBColorSpace) },
+      sun: {
+        intensity: lighting.sun.intensity,
+        color: lighting.sun.color.getHexString(THREE.SRGBColorSpace),
+        position: lighting.sun.position.toArray(),
+        elevationDeg: lighting.getSunElevationDeg(),
+        stylisedSummerSun: !lighting.getUseRealDateSun(),
+        shadowIntensity: lighting.sun.shadow.intensity,
+        shadowMapSize: lighting.sun.shadow.mapSize.toArray(),
+        shadowCast: lighting.sun.castShadow,
+      },
+      ambient: {
+        intensity: lighting.ambient.intensity,
+        color: lighting.ambient.color.getHexString(THREE.SRGBColorSpace),
+        groundColor: lighting.ambient.groundColor.getHexString(THREE.SRGBColorSpace),
+      },
+      exposure: renderer.toneMappingExposure,
+      toneMapping: renderer.toneMapping,
+      post: {
+        fogNear: fog.near,
+        fogFar: fog.far,
+        edgeLow: postEnvironment.edgeLow,
+        edgeHigh: postEnvironment.edgeHigh,
+        pixelWorld: postEnvironment.pixelWorld,
+        outline: pixelArt.outline,
+        vignette: 0.1,
+        effectEnabled: pixelArt.enabled,
+        target: post.getRenderSize(),
+      },
+      shadow: {
+        extentMetres: lighting.getShadowExtent(),
+        texelMetres: lighting.getMaxShadowTexel(),
+        intensity: lighting.sun.shadow.intensity,
+      },
+      energyGains: lighting.getEnergyGains(),
+      defaultView: { ...defaultView },
+    }),
+  };
+  if (typeof window !== 'undefined') {
+    (window as unknown as { __CITY_DEBUG__?: unknown }).__CITY_DEBUG__ = debugApi;
+  }
+
   // --- helpers -------------------------------------------------------------
   function markCameraDirty(): void {
     shadowDirty = true;
     renderer.shadowMap.needsUpdate = true;
     resizePending = false;
-    const sceneRenderHeight = pixelArt.enabled ? post.getRenderSize().height : host!.height;
+    const sceneRenderHeight = post.getRenderSize().height;
     updateFacadePixelSize(sceneRenderHeight);
   }
 
@@ -409,10 +902,55 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     const [minX, minY, maxX, maxY] = bounds;
     // local metres -> world: X unchanged, Z = -localY.
     rig.setBounds({ minX, maxX, minZ: -maxY, maxZ: -minY });
+
+    const manifestWithPilot = manifest as TileManifest & {
+      pilotBounds?: [number, number, number, number];
+    };
+    const pilot = manifestWithPilot.pilotBounds;
+    const fitBounds: [number, number, number, number] =
+      Array.isArray(pilot) && pilot.length === 4
+        ? [pilot[0], pilot[1], pilot[2], pilot[3]]
+        : [minX, minY, maxX, maxY];
+    defaultFitBounds = fitBounds;
+    refreshDefaultView();
+    // Initial framing: fit the whole district (manifest arrives before the user
+    // can interact in practice).
+    rig.reset(defaultView.orthoHeight, defaultView.targetLocalX, defaultView.targetLocalY);
+
     if (manifest.counts && typeof manifest.counts.buildings === 'number') {
-      recordDiagnostic(`manifest: ${manifest.tiles.length} tiles, ${manifest.counts.buildings} buildings`);
+      recordDiagnostic(
+        `manifest: ${manifest.tiles.length} tiles, ${manifest.counts.buildings} buildings; default view ${Math.round(defaultView.orthoHeight)} m`,
+      );
     }
     markCameraDirty();
+  }
+
+  /** Fit the isometric view so `defaultFitBounds` (local metres) fits on screen. */
+  function refreshDefaultView(): void {
+    if (!defaultFitBounds) return;
+    const [minX, minY, maxX, maxY] = defaultFitBounds;
+    const centreX = (minX + maxX) / 2;
+    const centreY = (minY + maxY) / 2;
+    defaultView.targetLocalX = centreX;
+    defaultView.targetLocalY = centreY;
+
+    const halfX = Math.abs(maxX - minX) / 2;
+    const halfY = Math.abs(maxY - minY) / 2;
+    const azimuth = ISO_CAMERA.azimuth;
+    const sinAzimuth = Math.abs(Math.sin(azimuth));
+    const cosAzimuth = Math.abs(Math.cos(azimuth));
+    const aspect = host!.width / Math.max(1, host!.height);
+    const sinElevation = Math.sin(ISO_CAMERA.elevation);
+    // Screen-x extent of the district = projection on the camera right axis;
+    // screen-y extent = ground depth along the up-screen ground axis * sin(elev).
+    const halfScreenX = halfX * cosAzimuth + halfY * sinAzimuth;
+    const halfGroundDepth = halfX * sinAzimuth + halfY * cosAzimuth;
+    const fitHeight = Math.max(halfScreenX / Math.max(aspect, 0.2), halfGroundDepth * sinElevation);
+    defaultView.orthoHeight = clamp(
+      Math.max(fitHeight * 1.01, ISO_CAMERA.orthoHeight),
+      ISO_CAMERA.minOrthoHeight,
+      ISO_CAMERA.maxOrthoHeight,
+    );
   }
 
   function applyHighlight(id: FeatureId | null): void {
@@ -458,7 +996,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     const skyUnit = rgbUnit(look.skyHex);
     postEnvironment.fogColor = fogUnit;
     postEnvironment.skyColor = skyUnit;
-    const ink = mixHex('#121821', '#05070b', clamp(look.nightFactor, 0, 1));
+    const ink = mixHex('#1b232c', '#070a0e', clamp(look.nightFactor, 0, 1));
     postEnvironment.outlineColor = rgbUnit(ink);
   }
 
@@ -470,7 +1008,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     const paletteMix = 0;
     updateFacadeMaterialSafe(facadeNear, { paletteMix });
     updateFacadeMaterialSafe(facadeFar, { paletteMix });
-    const sceneRenderHeight = pixelArt.enabled ? post.getRenderSize().height : host!.height;
+    const sceneRenderHeight = post.getRenderSize().height;
     updateFacadePixelSize(sceneRenderHeight);
     shadowDirty = true;
   }
@@ -490,24 +1028,22 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
   function currentFogRange(): { near: number; far: number } {
     const camDistance = rig.getCameraDistanceValue();
-    const height = rig.getOrthoHeight();
+    const offset = camDistance - FOG_REFERENCE_DISTANCE;
     return {
-      near: camDistance + height * FOG_NEAR_FACTOR,
-      far: camDistance + height * FOG_FAR_FACTOR,
+      near: Math.max(60, look.fogNear + offset),
+      far: Math.max(300, look.fogFar + offset),
     };
   }
 
+  /**
+   * Scene materials own the atmospheric fog in both render paths, so the
+   * clean-3D debug view and the pixel-art view agree on the horizon. The post
+   * pass fog is effectively disabled.
+   */
   function updateSceneFog(): void {
     const range = currentFogRange();
-    if (pixelArt.enabled) {
-      // The post pass owns atmospheric fog in pixel mode; keep the material fog
-      // effectively disabled without recompiling shaders when the toggle flips.
-      fog.near = 1_000_000;
-      fog.far = 2_000_000;
-    } else {
-      fog.near = range.near;
-      fog.far = range.far;
-    }
+    fog.near = range.near;
+    fog.far = range.far;
   }
 
   function markReady(): void {
@@ -548,7 +1084,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     resizePending = false;
     rig.setViewport(host!.width, host!.height);
     post.setSize(host!.width, host!.height, pixelArt);
-    const sceneRenderHeight = pixelArt.enabled ? post.getRenderSize().height : host!.height;
+    post.setEffectEnabled(pixelArt.enabled);
+    refreshDefaultView();
+    const sceneRenderHeight = post.getRenderSize().height;
     updateFacadePixelSize(sceneRenderHeight);
     renderer.shadowMap.needsUpdate = true;
     shadowDirty = true;
@@ -560,9 +1098,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     if (frames.count === 1) frames.frameMsAvg = elapsed;
     if (elapsed >= STATS_INTERVAL_MS) {
       const fps = (frames.count * 1000) / Math.max(elapsed, 1);
-      const renderSize = pixelArt.enabled
-        ? post.getRenderSize()
-        : { width: host!.width, height: host!.height };
+      const renderSize = post.getRenderSize();
       stats.fps = Math.round(fps * 10) / 10;
       stats.frameMs = Math.round((elapsed / Math.max(frames.count, 1)) * 10) / 10;
       stats.drawCalls = renderer.info.render.calls;
@@ -587,6 +1123,32 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
   }
 
+  function applyDebugOverrides(): void {
+    if (debugOverrides.exposure !== null) {
+      renderer.toneMappingExposure = debugOverrides.exposure;
+      post.setUniformValue('uExposure', debugOverrides.exposure);
+    }
+    if (debugOverrides.outline !== null) post.setUniformValue('uOutline', debugOverrides.outline);
+    if (debugOverrides.paletteMix !== null) {
+      post.setUniformValue('uPaletteMix', debugOverrides.paletteMix);
+    }
+    if (debugOverrides.toneMode !== null) {
+      const mode = debugOverrides.toneMode;
+      const tone =
+        mode > 1.5
+          ? THREE.ACESFilmicToneMapping
+          : mode > 0.5
+            ? THREE.LinearToneMapping
+            : THREE.NeutralToneMapping;
+      if (renderer.toneMapping !== tone) renderer.toneMapping = tone;
+      post.setToneMode(mode);
+    }
+    if (debugOverrides.facadePaletteMix !== null) {
+      updateFacadeMaterialSafe(facadeNear, { paletteMix: debugOverrides.facadePaletteMix });
+      updateFacadeMaterialSafe(facadeFar, { paletteMix: debugOverrides.facadePaletteMix });
+    }
+  }
+
   // --- per-frame update ----------------------------------------------------
   function tick(dt: number, now: number): void {
     if (resizePending) applyResize();
@@ -598,7 +1160,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       renderer.shadowMap.needsUpdate = true;
     }
 
-    const sceneRenderHeight = pixelArt.enabled ? post.getRenderSize().height : host!.height;
+    const sceneRenderHeight = post.getRenderSize().height;
     streamer.update(rig, sceneRenderHeight);
 
     if (shadowDirty || cameraChanged) {
@@ -613,21 +1175,29 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
     // Depth range + fog/edge uniforms for the post pass.
     const camera = rig.camera;
-    const fogRange = currentFogRange();
     const sinElevation = Math.max(0.2, Math.sin(rig.getElevation()));
     const pixelWorld = rig.getPixelWorldSize(sceneRenderHeight);
     postEnvironment.pixelWorld = pixelWorld;
-    postEnvironment.edgeLow = pixelWorld * (sinElevation + 0.35);
-    postEnvironment.edgeHigh = postEnvironment.edgeLow + pixelWorld * 1.7;
-    postEnvironment.fogNear = fogRange.near;
-    postEnvironment.fogFar = fogRange.far;
+    // View depth of a ground point changes by pixelWorld / tan(elevation) per
+    // screen pixel along the up-screen ground direction (horizontal movement
+    // does not change view depth at all). The edge detector sums opposite
+    // neighbours (x2) plus four diagonals (x1.4), so a flat road produces a
+    // baseline gradient of 3.4 * pixelWorld / tan(elevation). Thresholds sit
+    // above that baseline so only real silhouettes get outlined.
+    const tanElevation = Math.max(Math.tan(rig.getElevation()), 0.25);
+    const groundDepthStep = pixelWorld / tanElevation;
+    const groundSlopeGradient = groundDepthStep * 3.4;
+    postEnvironment.edgeLow = groundSlopeGradient * 1.25;
+    postEnvironment.edgeHigh = groundSlopeGradient * 2.3;
+    void sinElevation;
     post.updateEnvironment(postEnvironment);
     post.setDepthRange(camera.near, camera.far);
+    applyDebugOverrides();
 
     highlighter.update(now);
 
     renderer.info.reset();
-    post.render(scene, camera, pixelArt.enabled);
+    post.render(scene, camera);
     updateStats(now);
   }
 
@@ -662,7 +1232,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       markCameraDirty();
     },
     onReset: () => {
-      rig.reset();
+      rig.reset(defaultView.orthoHeight, defaultView.targetLocalX, defaultView.targetLocalY);
       markCameraDirty();
     },
     onEscape: () => handle.clearSelection(),
@@ -761,9 +1331,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       const globals = window as unknown as {
         __CITY_APP__?: DebugGlobals;
         __CITY_STATS__?: EngineStats;
+        __CITY_DEBUG__?: unknown;
       };
       if (globals.__CITY_APP__ === debugGlobals) delete globals.__CITY_APP__;
       if (globals.__CITY_STATS__ === stats) delete globals.__CITY_STATS__;
+      if (globals.__CITY_DEBUG__ === debugApi) delete globals.__CITY_DEBUG__;
     }
     selected = null;
     highlightId = null;

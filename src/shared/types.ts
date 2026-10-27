@@ -197,8 +197,10 @@ export interface TileManifest {
   tileSize: number;
   /** Inclusive min / max tile indices. */
   tileRange: { minX: number; minY: number; maxX: number; maxY: number };
-  /** Total local-metre bounds covered by all tiles. */
+  /** Total local-metre bounds covered by the tile grid (streamable extent). */
   bounds: [number, number, number, number];
+  /** Requested pilot/city area inside the tile grid. */
+  pilotBounds?: [number, number, number, number];
   tiles: TileIndexEntry[];
   counts: {
     buildings: number;

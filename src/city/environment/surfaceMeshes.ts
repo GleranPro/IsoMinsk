@@ -132,8 +132,7 @@ function emitSurface(
     stats.degeneratePolygons++;
     return;
   }
-  const key = tier === 'grass' ? 'grass' : 'landuse';
-  const added = sink.addFlatTriangles(triangles, layerY(key, index), surfaceColor(kind));
+  const added = sink.addFlatTriangles(triangles, layerY(tier, index), surfaceColor(kind));
   stats.surfacePolygons++;
   stats.surfaceTriangles += added;
 }

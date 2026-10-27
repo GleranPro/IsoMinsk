@@ -556,13 +556,25 @@ export function steppedDomeSurface(
   };
 }
 
-/**
- * Build an octagonal dome base that fits strictly inside the footprint
- * (minimum-area rectangle inset, corners chamfered). Returns null when the
- * footprint is too non-rectangular for a clean octagon — the caller then falls
- * back to a hull based dome.
- */
-export function domeBaseOctagon(rings: readonly (readonly Point2[])[]): Point2[] | null {
+/** True when every vertex and edge midpoint of `candidate` is inside `rings`. */
+function isStrictlyInside(
+  rings: readonly (readonly Point2[])[],
+  candidate: readonly Point2[],
+): boolean {
+  for (const point of candidate) {
+    if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) return false;
+    if (!pointInPolygon(rings, point[0], point[1])) return false;
+  }
+  for (let i = 0; i < candidate.length; i++) {
+    const a = candidate[i];
+    const b = candidate[(i + 1) % candidate.length];
+    if (!pointInPolygon(rings, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2)) return false;
+  }
+  return true;
+}
+
+/** Octagonal dome base from the minimum-area rectangle (inset + chamfered). */
+function octagonFromRect(rings: readonly (readonly Point2[])[]): Point2[] | null {
   if (!rings.length) return null;
   const rect = minAreaRect(rings[0]);
   if (!rect) return null;
@@ -591,14 +603,49 @@ export function domeBaseOctagon(rings: readonly (readonly Point2[])[]): Point2[]
     rect.cx + ux * u + vx * v,
     rect.cy + uy * u + vy * v,
   ]);
-  for (const p of points) {
-    if (!Number.isFinite(p[0]) || !Number.isFinite(p[1])) return null;
-    if (!pointInPolygon(rings, p[0], p[1])) return null;
+  return isStrictlyInside(rings, points) ? points : null;
+}
+
+/**
+ * Build a convex dome base that fits strictly inside the footprint.
+ *
+ * Preferred: an octagon derived from the minimum-area rectangle (classic
+ * octagonal dome look on rectangular footprints). Otherwise: the convex hull
+ * decimated to at most 8 edges and shrunk towards its centroid until it fits
+ * inside the footprint. Returns null when neither works — the caller then uses
+ * a hull based envelope dome with no skirt.
+ */
+export function domeBasePolygon(rings: readonly (readonly Point2[])[]): Point2[] | null {
+  const octagon = octagonFromRect(rings);
+  if (octagon) return octagon;
+  if (!rings.length) return null;
+  const hull = convexHull(rings[0]);
+  if (hull.length < 4) return null;
+  const maxEdges = 8;
+  const step = Math.max(1, Math.ceil(hull.length / maxEdges));
+  const picked: Point2[] = [];
+  for (let i = 0; i < hull.length; i += step) picked.push(hull[i]);
+  if (picked.length < 3) return null;
+  const centre = polygonCentroid([picked]);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const scale = 0.95 - attempt * 0.08;
+    if (!(scale > 0.4)) break;
+    const candidate: Point2[] = picked.map((p) => [
+      centre[0] + (p[0] - centre[0]) * scale,
+      centre[1] + (p[1] - centre[1]) * scale,
+    ]);
+    if (Math.abs(signedAreaOf(candidate)) < 2) continue;
+    if (isStrictlyInside(rings, candidate)) return candidate;
   }
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i];
-    const b = points[(i + 1) % points.length];
-    if (!pointInPolygon(rings, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2)) return null;
+  return null;
+}
+
+/** Local signed area helper (kept private to avoid an extra import cycle). */
+function signedAreaOf(ring: readonly Point2[]): number {
+  let area = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const j = (i + 1) % ring.length;
+    area += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
   }
-  return points;
+  return area / 2;
 }

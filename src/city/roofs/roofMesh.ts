@@ -36,7 +36,7 @@ import { makeSurface, roofColorFor, type BuildingStyle } from '../buildings/styl
 import { triangulatePolygon, type Triangle2 } from '../buildings/triangulate';
 import {
   clipHalfPlane,
-  domeBaseOctagon,
+  domeBasePolygon,
   gableSurface,
   hipSurface,
   polygonArea2D,
@@ -50,7 +50,9 @@ import {
 /** Below this rise a sloped roof is meshed as a flat roof instead. */
 const MIN_SLOPED_RISE = 0.05;
 /** Minimum vertical rise worth an eave-closing quad (metres). */
-const MIN_EAVE_CLOSING = 0.01;
+const MIN_EAVE_CLOSING = 0.02;
+/** Minimum plan area of an eave closing piece (m²); avoids sliver quads. */
+const MIN_CLOSING_AREA = 1e-3;
 /** Roof facets smaller than this are discarded (numerical noise). */
 const MIN_FACET_AREA = 1e-6;
 /** Upper bound on break parameters per boundary edge for eave closings. */
@@ -91,6 +93,41 @@ function facetNormal(facet: HeightFacet): [number, number, number] {
   return [nx / length, ny / length, nz / length];
 }
 
+/** Minimum area of an emitted roof triangle (m²); drops clipping slivers. */
+const MIN_TRIANGLE_AREA = 1e-4;
+/**
+ * Vertices closer than this are welded before fan triangulation (metres).
+ * Half-plane clipping can leave sub-millimetre duplicate points whose
+ * geometric normal is numerically noisy; at city scale 1 mm is invisible.
+ */
+const POLYGON_WELD = 1e-3;
+
+/**
+ * Remove near-duplicate consecutive points left behind by half-plane clipping.
+ * Without this, clipping can leave 0.1 mm slivers whose geometric normal is
+ * numerically noisy.
+ */
+function weldPolygon(polygon: readonly Point2[]): Point2[] {
+  const out: Point2[] = [];
+  for (const point of polygon) {
+    const last = out.length ? out[out.length - 1] : null;
+    if (last && Math.abs(last[0] - point[0]) < POLYGON_WELD && Math.abs(last[1] - point[1]) < POLYGON_WELD) {
+      continue;
+    }
+    out.push(point);
+  }
+  while (out.length > 2) {
+    const first = out[0];
+    const last = out[out.length - 1];
+    if (Math.abs(first[0] - last[0]) < POLYGON_WELD && Math.abs(first[1] - last[1]) < POLYGON_WELD) {
+      out.pop();
+    } else {
+      break;
+    }
+  }
+  return out;
+}
+
 /** Emit one convex polygon belonging to one planar facet. */
 function emitFacetPolygon(
   sink: MeshSink,
@@ -99,14 +136,15 @@ function emitFacetPolygon(
   normal: readonly [number, number, number],
   surface: SurfaceStyle,
 ): void {
-  if (polygon.length < 3) return;
+  const welded = weldPolygon(polygon);
+  if (welded.length < 3) return;
   const [nx, ny, nz] = normal;
-  const a = polygon[0];
-  for (let i = 1; i + 1 < polygon.length; i++) {
-    const b = polygon[i];
-    const c = polygon[i + 1];
+  const a = welded[0];
+  for (let i = 1; i + 1 < welded.length; i++) {
+    const b = welded[i];
+    const c = welded[i + 1];
     const signed = triangleSignedArea(a, b, c);
-    if (Math.abs(signed) < 1e-9) continue;
+    if (Math.abs(signed) < MIN_TRIANGLE_AREA) continue;
     const ha = facet.hx * a[0] + facet.hy * a[1] + facet.hc;
     const hb = facet.hx * b[0] + facet.hy * b[1] + facet.hc;
     const hc = facet.hx * c[0] + facet.hy * c[1] + facet.hc;
@@ -247,9 +285,18 @@ function addEaveClosings(
         const ay = p0[1] + dy * tA;
         const bx = p0[0] + dx * tB;
         const by = p0[1] + dy * tB;
-        const hA = Math.max(eave, surface.heightAt(ax, ay));
-        const hB = Math.max(eave, surface.heightAt(bx, by));
-        if (Math.max(hA, hB) - eave < MIN_EAVE_CLOSING) continue;
+        const rawA = surface.heightAt(ax, ay);
+        const rawB = surface.heightAt(bx, by);
+        // Snap heights within a millimetre of the eave: this turns the "half
+        // quad" at a gable/shed end into an exact triangle and avoids emitting
+        // zero-area slivers after float32 quantisation.
+        const hA = rawA - eave < 1e-3 ? eave : rawA;
+        const hB = rawB - eave < 1e-3 ? eave : rawB;
+        const rise = Math.max(hA, hB) - eave;
+        if (rise < MIN_EAVE_CLOSING) continue;
+        // Skip tiny closing slivers (sub-cm²) on very detailed footprints: they
+        // are visually irrelevant and quantise badly in float32.
+        if (len * rise < 2 * MIN_CLOSING_AREA) continue;
         const vA = eave - base;
         const vB = hA - base;
         const vC = hB - base;
@@ -363,10 +410,12 @@ function addFlatRoof(
 }
 
 /**
- * Octagonal stepped dome over a flat skirt. Returns false when the footprint
- * does not admit a clean inscribed octagon (caller falls back to a hull dome).
+ * Skirted dome: a stepped dome over a convex base (octagon or decimated hull)
+ * that fits strictly inside the footprint, with a flat skirt cap covering the
+ * rest of the footprint at eave height. Returns false when no suitable base
+ * exists (caller then uses a hull envelope dome with eave closings).
  */
-function addOctagonalDome(
+function addSkirtedDome(
   sink: MeshSink,
   rings: readonly RingInfo[],
   eave: number,
@@ -374,17 +423,17 @@ function addOctagonalDome(
   rise: number,
 ): boolean {
   const polygon: Point2[][] = rings.map((ring) => ring.points);
-  const octagon = domeBaseOctagon(polygon);
-  if (!octagon) return false;
+  const domeBase = domeBasePolygon(polygon);
+  if (!domeBase) return false;
 
   const ringHoleAreas = rings.slice(1).reduce((sum, ring) => sum + ringPointArea(ring), 0);
   const exteriorArea = ringPointArea(rings[0]);
-  const octagonArea = Math.abs(signedArea(octagon));
-  const expectedSkirt = exteriorArea - ringHoleAreas - octagonArea;
-  if (!(octagonArea > 1) || !(expectedSkirt > 0.5)) return false;
+  const baseArea = Math.abs(signedArea(domeBase));
+  const expectedSkirt = exteriorArea - ringHoleAreas - baseArea;
+  if (!(baseArea > 1) || !(expectedSkirt > 0.5)) return false;
 
   const skirt: Ring[] = polygon.slice();
-  skirt.push(octagon);
+  skirt.push(domeBase);
   const skirtTriangles = triangulatePolygon(skirt);
   if (
     skirtTriangles.usedFallback ||
@@ -394,8 +443,8 @@ function addOctagonalDome(
     return false;
   }
 
-  const domeTriangles = triangulatePolygon([octagon]);
-  const surface = steppedDomeSurface(octagon, eave, rise);
+  const domeTriangles = triangulatePolygon([domeBase]);
+  const surface = steppedDomeSurface(domeBase, eave, rise);
   if (!surface || !domeTriangles.triangles.length) return false;
 
   // Everything validated: emit the flat skirt (flat roof family) and the dome.
@@ -466,7 +515,7 @@ export function addRoof(
   }
 
   if (shape === 'dome') {
-    if (addOctagonalDome(sink, rings, eave, style, rise)) return;
+    if (addSkirtedDome(sink, rings, eave, style, rise)) return;
     const hullSurface = steppedDomeSurface(allPoints, eave, rise);
     if (!hullSurface) {
       warn('dome roof could not be built: rendered as a flat roof');

@@ -15,50 +15,56 @@ export type Hex = string;
 
 /** Base environment colours. */
 export const ENV_PALETTE = {
-  ground: '#6d7365',
-  groundDark: '#5c6256',
-  grass: '#67804d',
-  grassDark: '#566d3f',
-  park: '#6d8753',
-  forest: '#4f6b3d',
-  scrub: '#79885e',
-  sand: '#b3a37f',
-  pitch: '#77855f',
-  cemetery: '#647659',
-  plaza: '#9c968a',
-  residential: '#7c7d70',
-  industrial: '#74766c',
-  commercial: '#87847c',
-  construction: '#8b8369',
-  unknown: '#6d7365',
-  water: '#40637c',
-  waterDeep: '#324f63',
-  river: '#42677f',
-  railway: '#6a6259',
-  railBallast: '#7b7367',
+  ground: '#7e8674',
+  groundDark: '#6b7263',
+  grass: '#7d9a52',
+  grassDark: '#6b8846',
+  park: '#6f9247',
+  forest: '#5a7c42',
+  scrub: '#8a9a68',
+  sand: '#c8b992',
+  pitch: '#8f9c7a',
+  cemetery: '#7a8a6a',
+  plaza: '#b0a99b',
+  residential: '#8d8d80',
+  industrial: '#8b8b81',
+  commercial: '#96928a',
+  construction: '#9c9275',
+  unknown: '#7e8674',
+  water: '#6d95ab',
+  waterDeep: '#5f83a0',
+  river: '#6b90a8',
+  railway: '#7f776f',
+  railBallast: '#8a8175',
 } as const;
 
-/** Asphalt and pavement colours by road class. */
+/**
+ * Asphalt and pavement colours by road class.
+ *
+ * Roads stay the darkest large family (they anchor the isometric picture) but
+ * are lifted into the #66..#8a sRGB range: the previous near-#45 values turned
+ * into near-black voids after lighting/tonemapping/quantisation.
+ */
 export const ROAD_PALETTE: Record<RoadClass, Hex> = {
-  motorway: '#41454b',
-  trunk: '#43474d',
-  primary: '#474b51',
-  secondary: '#4a4f55',
-  tertiary: '#4e5359',
-  residential: '#53585e',
-  service: '#5b6066',
-  living_street: '#5e6369',
-  pedestrian: '#8a8478',
-  footway: '#877f74',
-  cycleway: '#787d72',
-  path: '#7b7869',
-  steps: '#878274',
-  track: '#6b675a',
-  unknown: '#50555b',
+  motorway: '#6a6e74',
+  trunk: '#6c7076',
+  primary: '#6e7278',
+  secondary: '#72767c',
+  tertiary: '#767a80',
+  residential: '#7a7e84',
+  service: '#83878c',
+  living_street: '#85898e',
+  pedestrian: '#b3ab9c',
+  footway: '#aca595',
+  cycleway: '#9a9c8d',
+  path: '#a39c8d',
+  steps: '#a39c8d',
+  track: '#8d8778',
+  unknown: '#73777d',
 };
 
 /** Sidewalk / kerb tint used for the road shoulder ring. */
-export const SIDEWALK_COLOR: Hex = '#8a8678';
+export const SIDEWALK_COLOR: Hex = '#a9a293';
 
 /** Effective road width by class in metres (used when OSM has no `width`). */
 export const ROAD_WIDTH_M: Record<RoadClass, number> = {
@@ -86,7 +92,8 @@ export const TREE_TRUNK_COLOR: Hex = '#5a4632';
 /** Roof colours by shape and archetype-ish family. */
 export const ROOF_COLORS = {
   flat: ['#8a877c', '#7d7b71', '#948f83', '#73736c'],
-  sloped: ['#9a6047', '#8a5540', '#a66b4f', '#7c5544'],
+  // Muted grey-brown tiles (Minsk centre roofs read warm, not terracotta-bright).
+  sloped: ['#8f6350', '#82584a', '#9a6d56', '#755547'],
   metal: ['#7b8388', '#6b7378', '#878f94'],
   thatch: ['#a58a5c'],
 } as const;
@@ -241,7 +248,14 @@ function fract(v: number): number {
   return v - Math.floor(v);
 }
 
-/** Time-of-day lighting presets. `hours` is the local solar time. */
+/**
+ * Time-of-day lighting presets. `hours` is the local solar time.
+ *
+ * These are the *relative* light colour/intensity curve of the day; the
+ * renderer owns final exposure (tone mapping / post pass) and may scale these
+ * when raising overall brightness. Do not inflate them to compensate for a dark
+ * post pipeline — adjust palette values or exposure instead.
+ */
 export interface TimeOfDayPreset {
   key: string;
   label: string;

@@ -304,11 +304,11 @@ export class IsometricCameraRig {
     this.apply();
   }
 
-  reset(): void {
+  reset(orthoHeight: number = ISO_CAMERA.orthoHeight, targetLocalX = 0, targetLocalY = 0): void {
     const pose = this.clampPose({
-      targetX: 0,
-      targetZ: 0,
-      orthoHeight: ISO_CAMERA.orthoHeight,
+      targetX: targetLocalX,
+      targetZ: -targetLocalY,
+      orthoHeight,
       azimuth: ISO_CAMERA.azimuth,
       elevation: ISO_CAMERA.elevation,
     });

@@ -157,7 +157,9 @@ describe('roofs — gabled', () => {
         triangle.faceKind === FACE_KIND.wall &&
         triangle.vertices.every((vertex) => vertex.position[1] >= eave - 1e-6),
     );
-    expect(closings).toHaveLength(8); // 2 gable ends * 2 height intervals * 2 triangles
+    // Each gable end is a triangle above the eave, split at the ridge into two
+    // triangles (the degenerate half-quad is dropped).
+    expect(closings).toHaveLength(4);
     const area = closings.reduce((sum, triangle) => sum + triangle.area3D, 0);
     // Two triangles with base 8 and height 3.5.
     expect(area).toBeCloseTo(2 * 0.5 * 8 * 3.5, 2);

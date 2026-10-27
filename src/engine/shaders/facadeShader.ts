@@ -140,24 +140,25 @@ vec3 facadeRoof(vec2 uv, vec3 baseSrgb, float shape, float ridge, float seed, fl
     float rowF = fract(uv.y / course);
     float row = floor(uv.y / course);
     float tone = facadeHash21(vec2(row, seed * 47.0));
-    roof *= mix(1.0, mix(0.94, 1.05, tone), courseFade);
-    roof *= mix(1.0, mix(0.86, 1.0, rowF), courseFade);
+    roof *= mix(1.0, mix(0.96, 1.04, tone), courseFade);
+    roof *= mix(1.0, mix(0.90, 1.0, rowF), courseFade);
     float edge = facadeBand(rowF, 0.0, 0.16, 0.05) * courseFade;
-    roof = mix(roof, roof * 1.12 + 0.012, edge * 0.55);
+    roof = mix(roof, roof * 1.08 + 0.008, edge * 0.5);
   } else {
-    // Flat roof: two-tone patches plus gravel speckle, faded out at distance so
-    // the roof stays a clean colour patch instead of shimmering noise.
+    // Flat roof: very subtle two-tone patches + gravel speckle, faded out at
+    // distance. Kept low-contrast: at close zoom large flat roofs must read as
+    // quiet surfaces, not checkerboards.
     float patchFade = smoothstep(1.4, 3.0, 1.2 / px) * detail;
-    vec2 patchCell = floor(uv / 1.2);
+    vec2 patchCell = floor(uv / 2.0);
     float patchVal = facadeHash21(patchCell + seed * 13.0);
     vec3 detailed = baseSrgb
-      * mix(0.94, 1.05, patchVal)
-      * mix(0.97, 1.03, facadeHash21(floor(uv * 2.5) + seed));
+      * mix(0.975, 1.025, patchVal)
+      * mix(0.99, 1.01, facadeHash21(floor(uv * 2.5) + seed));
     roof = mix(baseSrgb, detailed, patchFade);
     if (dome) {
       float bandFade = smoothstep(1.2, 3.0, 1.0 / px) * detail;
       float bands = 0.5 + 0.5 * sin(uv.y * 2.2 + seed * 6.283);
-      roof *= mix(1.0, mix(0.94, 1.06, bands), bandFade);
+      roof *= mix(1.0, mix(0.975, 1.025, bands), bandFade);
     }
   }
   return roof;
@@ -166,7 +167,10 @@ vec3 facadeRoof(vec2 uv, vec3 baseSrgb, float shape, float ridge, float seed, fl
 // --------------------------------------------------------------------- trim
 
 vec3 facadeTrimShade(vec2 uv, vec3 baseSrgb, float trimK, float seed, float mPerPx) {
-  vec3 trim = baseSrgb * mix(1.0, 1.20, clamp(trimK, 0.0, 1.0));
+  // Strong, light cornice/parapet: trim faces are often sub-pixel at overview
+  // zoom, so they need clear value contrast against the wall to dither in as a
+  // visible cornice line rather than disappearing.
+  vec3 trim = baseSrgb * mix(1.0, 1.47, clamp(trimK, 0.0, 1.0));
   float px = max(mPerPx, 0.0001);
   float textureFade = smoothstep(1.2, 2.6, 0.5 / px);
   trim *= 1.0 + (facadeHash21(floor(uv * 2.0) + seed * 71.0) - 0.5) * 0.05 * textureFade;
@@ -250,6 +254,7 @@ vec3 facadeUpperFloors(
 ) {
   emit = vec3(0.0);
   float night = clamp(uNight, 0.0, 1.0);
+  float px = max(mPerPx, 0.0001);
   float bay = max(presetA.x, 1.2);
   float fh = max(floorHeight, 1.8);
   float gh = max(groundHeight, 0.8);
@@ -262,46 +267,70 @@ vec3 facadeUpperFloors(
   bool pilasters = facadeFlag(flags, 16);
   bool balconies = facadeFlag(flags, 2);
 
-  float aaU = max(0.8 * mPerPx, 0.002) / bay;
-  float aaV = max(0.8 * mPerPx, 0.002) / fh;
+  // --- screen-space LOD ---------------------------------------------------
+  // At the default overview zoom (orthoHeight ~420 m, 320 px tall => ~0.38
+  // px/m) a real 2.8 m floor is barely 1 px. Keep the facade texture at a
+  // minimum pitch of ~2.5 px by merging floors/bays (screen-space LOD, common
+  // pixel-art practice) instead of letting windows alias to noise. At street
+  // zoom (>= ~5 px per floor/bay) the real metrics are used unchanged.
+  float baseMinPx = min(bay / px, fh / px);
+  float lodFade = smoothstep(1.6, 4.5, baseMinPx);
+  float bayLod = mix(max(bay, 2.5 * px), bay, lodFade);
+  float fhLod = mix(max(fh, 2.6 * px), fh, lodFade);
+  float textureFade = smoothstep(1.4, 3.0, baseMinPx);
 
-  float colF = uv.x / bay;
+  float colF = uv.x / bayLod;
   float col = floor(colF);
   float u = fract(colF);
   float yy = max(uv.y - gh, 0.0);
-  float rowF = yy / fh;
+  float rowF = yy / fhLod;
   float row = floor(rowF);
   float v = fract(rowF);
 
-  float bayPx = bay / max(mPerPx, 0.0001);
-  float floorPx = fh / max(mPerPx, 0.0001);
-  float crisp = smoothstep(2.0, 5.5, min(bayPx, floorPx));
+  float bayPx = bayLod / px;
+  float floorPx = fhLod / px;
+  // The LOD above guarantees a >= ~2.5 px pitch, so windows can stay crisp
+  // (hard-edged 1-3 px rectangles) at every zoom; the old cross-fade to a flat
+  // averaged tone was what turned distant facades into speckled mush.
+  float crisp = smoothstep(1.2, 2.3, min(bayPx, floorPx));
 
+  // Windows are enlarged to at least ~1.3 px so each one reads as a pixel.
   float winW = mix(winWRatio, 1.0, ribbon ? 1.0 : 0.0);
-  vec2 winLo = vec2(0.5 - winW * 0.5, sillRatio);
-  vec2 winHi = vec2(0.5 + winW * 0.5, sillRatio + winHRatio);
+  winW = clamp(max(winW, 1.25 * px / bayLod), 0.05, 0.97);
+  float winH = winHRatio;
+  winH = clamp(max(winH, 1.35 * px / fhLod), 0.05, 0.94);
+  float sillR = min(sillRatio, max(1.0 - winH - 0.02, 0.0));
+  vec2 winLo = vec2(0.5 - winW * 0.5, sillR);
+  vec2 winHi = vec2(0.5 + winW * 0.5, sillR + winH);
+
+  float aaU = max(0.35 * px, 0.0015) / bayLod;
+  float aaV = max(0.35 * px, 0.0015) / fhLod;
 
   float winCrisp = facadeRect(vec2(u, v), winLo, winHi, vec2(aaU, aaV));
-  float winAverage = winW * winHRatio;
+  float winAverage = winW * winH;
   float win = mix(winAverage, winCrisp, crisp) * detail;
   if (blank) win = 0.0;
 
   vec3 outWall = wallSrgb;
-  float slab = facadeBand(v, 0.0, 0.045, aaV);
-  outWall *= 1.0 - slab * 0.06 * detail;
-  outWall *= 1.0 + (facadeHash21(vec2(col * 1.7 + seed * 31.0, row * 0.7 + 3.0)) - 0.5) * 0.03 * detail;
+  // Slab / spandrel line: the floor rhythm that survives at every zoom.
+  float slab = facadeBand(v, 0.0, 0.05, aaV);
+  outWall *= 1.0 - slab * mix(0.12, 0.06, textureFade) * detail;
+  outWall *= 1.0 + (facadeHash21(vec2(col * 1.7 + seed * 31.0, row * 0.7 + 3.0)) - 0.5)
+    * 0.03 * detail * textureFade;
 
   if (pilasters && !blank) {
-    float pilasterW = max(0.42, 1.4 * mPerPx);
-    float pilasterMask = facadeBand(min(u, 1.0 - u), 0.0, pilasterW / bay, aaU * 1.6);
+    float pilasterW = max(0.42, 1.3 * px);
+    float pilasterMask = facadeBand(min(u, 1.0 - u), 0.0, pilasterW / bayLod, aaU * 1.6);
     pilasterMask *= (1.0 - win);
-    outWall = mix(outWall, outWall * 1.10 + 0.010, pilasterMask * detail * 0.9);
+    outWall = mix(outWall, outWall * 1.10 + 0.010, pilasterMask * detail * mix(0.55, 0.9, textureFade));
     float cap = facadeBand(v, 0.94, 1.0, aaV) * pilasterMask * detail;
     outWall = mix(outWall, uTrimColor * 0.85, cap * 0.5);
   }
 
-  // Daytime glass, with a warm low-sun reflection in the golden hour.
-  float glassVar = facadeHash21(vec2(col, row) + seed * 7.0);
+  // Daytime glass, with a warm low-sun reflection in the golden hour. Per-window
+  // brightness variation is faded out with distance so a 2 px window grid stays
+  // a clean grid instead of becoming speckle noise.
+  float glassVar = mix(0.5, facadeHash21(vec2(col, row) + seed * 7.0), lodFade);
   vec3 glass = mix(uGlassColor, uGlassLightColor, 0.32 + 0.4 * glassVar);
   glass *= mix(0.85, 1.20, smoothstep(winLo.y, winHi.y, v));
   glass = mix(glass, glass * 1.10 + 0.010, ribbon ? 1.0 : 0.0);
@@ -309,35 +338,42 @@ vec3 facadeUpperFloors(
   float golden = smoothstep(15.5, 18.5, hh) * (1.0 - smoothstep(18.5, 21.5, hh));
   glass = mix(glass, glass * vec3(1.14, 1.0, 0.82), golden * 0.6);
 
-  // Frames and sills: the two cues that keep windows readable at 1-2 pixels.
-  float frameM = max(1.1 * mPerPx, 0.05);
-  vec2 frameSize = vec2(frameM / bay, frameM / fh);
+  // Frames and sills only when the window is large enough to resolve them;
+  // at overview zoom the window itself is the pixel-art cue.
+  float windowPx = min(winW * bayLod, winH * fhLod) / px;
+  float fineFade = smoothstep(1.8, 3.2, windowPx);
+  float frameM = min(max(0.9 * px, 0.04), 0.22 * winW * bayLod);
+  frameM = min(frameM, 0.22 * winH * fhLod);
+  vec2 frameSize = vec2(frameM / bayLod, frameM / fhLod);
   float inner = facadeRect(vec2(u, v), winLo + frameSize, winHi - frameSize, vec2(aaU, aaV));
-  float frameMask = clamp(winCrisp - inner, 0.0, 1.0) * crisp * detail;
+  float frameMask = clamp(winCrisp - inner, 0.0, 1.0) * crisp * detail * fineFade;
   vec3 frameCol = mix(uTrimColor * 0.70, wallSrgb * 0.90, 0.35);
 
-  float sillM = max(1.2 * mPerPx, 0.06);
-  float sillLo = max(winLo.y - sillM / fh, 0.0);
+  float sillM = min(max(1.1 * px, 0.06), 0.30 * winH * fhLod);
+  float sillLo = max(winLo.y - sillM / fhLod, 0.0);
   float sillMask = facadeBand(v, sillLo, winLo.y, aaV)
     * step(winLo.x, u) * (1.0 - step(winHi.x, u))
-    * crisp * detail;
+    * crisp * detail * fineFade;
   vec3 sillCol = mix(uTrimColor, wallSrgb * 1.06, 0.30);
 
   vec3 glassNight = mix(glass, uNightDarkColor, night * 0.78);
-  outWall = mix(outWall, glassNight, win * 0.92);
+  float contrast = mix(0.82, 0.92, lodFade);
+  outWall = mix(outWall, glassNight, win * contrast);
   outWall = mix(outWall, frameCol, frameMask * 0.70);
   outWall = mix(outWall, sillCol, sillMask * 0.65);
 
   if (ribbon) {
-    float mullW = max(1.2 * mPerPx, 0.02) / bay;
+    float mullW = max(1.2 * px, 0.02) / bayLod;
     float mull = facadeBand(min(u, 1.0 - u), 0.0, mullW, aaU) * crisp * detail;
     outWall = mix(outWall, uTrimColor * 0.60, mull * win * 0.9);
   }
 
   // Balcony bands: a dark recess plus a light railing on alternate floors.
+  // Band thickness is clamped to >= ~1.2 px so it never flickers sub-pixel.
   if (balconies && !blank) {
     float bandLo = 0.02;
-    float bandHi = 0.30;
+    float bandThick = clamp(1.2 * px / fhLod, 0.28, 0.46);
+    float bandHi = bandLo + bandThick;
     float panel = step(1.5, float(archetype)) * step(float(archetype), 2.5);
     float bayPick = mix(
       step(facadeHash21(vec2(col + 3.0, seed * 17.0)), 0.35 + 0.55 * clamp(balconyRatio, 0.0, 1.0)),
@@ -347,16 +383,17 @@ vec3 facadeUpperFloors(
     float floorPick = 1.0 - step(0.5, mod(row, 2.0));
     float band = facadeBand(v, bandLo, bandHi, aaV) * bayPick * floorPick * detail;
     outWall = mix(outWall, outWall * 0.76, band * 0.9);
-    float railThick = max(1.2 * mPerPx, 0.015) / fh;
+    float railThick = max(1.1 * px, 0.015) / fhLod;
     float rail = facadeBand(v, bandHi - railThick, bandHi, aaV) * bayPick * floorPick * crisp * detail;
     outWall = mix(outWall, uTrimColor * 0.92, rail);
   }
 
-  // Night: deterministic per-window lighting, some windows stay dark.
+  // Night: deterministic per-window lighting, most windows stay dark (a sparse
+  // hand-placed look reads better than a fully lit office wall).
   if (night > 0.001) {
     float litHash = facadeHash21(vec2(col * 1.31 + seed * 53.0, row * 1.83 + seed * 29.0));
-    float rowBias = 0.70 + 0.60 * facadeHash11(row * 3.7 + seed * 11.0);
-    float lit = step(litHash, night * 0.82 * rowBias);
+    float rowBias = 0.60 + 0.55 * facadeHash11(row * 3.7 + seed * 11.0);
+    float lit = step(litHash, night * 0.52 * rowBias);
     float warm = facadeHash21(vec2(litHash * 71.0, seed * 9.0));
     vec3 litCol = mix(uNightLitColor, uNightWarmColor, warm);
     outWall = mix(outWall, litCol, lit * win * 0.95);
@@ -382,14 +419,18 @@ vec3 facadeGroundFloor(
 ) {
   emit = vec3(0.0);
   float night = clamp(uNight, 0.0, 1.0);
+  float px = max(mPerPx, 0.0001);
   float gh = max(groundHeight, 1.0);
   float bay = max(presetA.x, 1.2);
   float fh = max(floorHeight, 1.8);
   bool shopfront = facadeFlag(flags, 4);
   bool blank = facadeFlag(flags, 64);
+  // 0 at overview zoom (one averaged plinth band + reveal line), 1 when the
+  // ground floor is tall enough on screen for doors and shop windows.
+  float groundDetail = smoothstep(3.2, 6.5, gh / px) * detail;
 
-  float aaU = max(0.8 * mPerPx, 0.002) / bay;
-  float aaM = max(0.8 * mPerPx, 0.008);
+  float aaU = max(0.4 * px, 0.002) / bay;
+  float aaM = max(0.4 * px, 0.008);
 
   vec3 outWall = wallSrgb;
   float colF = uv.x / bay;
@@ -398,9 +439,9 @@ vec3 facadeGroundFloor(
 
   // Plinth band with faint rustication lines.
   float plinthTop = 0.6;
-  float plinth = 1.0 - smoothstep(plinthTop - 0.75 * mPerPx, plinthTop + 0.75 * mPerPx, uv.y);
+  float plinth = 1.0 - smoothstep(plinthTop - 0.75 * px, plinthTop + 0.75 * px, uv.y);
   outWall *= mix(1.0, 0.84, plinth);
-  if (0.32 / max(mPerPx, 0.0001) > 1.4) {
+  if (0.32 / px > 1.4) {
     float rust = facadeBand(fract(uv.y / 0.32), 0.0, 0.06, 0.03) * plinth;
     outWall *= 1.0 - rust * 0.09;
   }
@@ -410,30 +451,27 @@ vec3 facadeGroundFloor(
   float doorOffset = floor(facadeHash11(seed * 3.13 + 0.37) * doorSpan);
   float isDoor = step(mod(col - doorOffset, doorSpan), 0.5);
   float doorH = min(2.3, gh - 0.35);
-  float doorMask = facadeRect(vec2(u, uv.y), vec2(0.39, 0.0), vec2(0.61, doorH), vec2(aaU, aaM)) * isDoor * detail;
+  float doorMask = facadeRect(vec2(u, uv.y), vec2(0.39, 0.0), vec2(0.61, doorH), vec2(aaU, aaM)) * isDoor * groundDetail;
   vec3 doorCol = mix(uNightDarkColor, wallSrgb * 0.32, 0.30);
   outWall = mix(outWall, doorCol, doorMask * 0.95);
-  float doorInner = facadeRect(vec2(u, uv.y), vec2(0.42, 0.0), vec2(0.58, doorH - 0.06), vec2(aaU, aaM)) * isDoor * detail;
+  float doorInner = facadeRect(vec2(u, uv.y), vec2(0.42, 0.0), vec2(0.58, doorH - 0.06), vec2(aaU, aaM)) * isDoor * groundDetail;
   float doorFrame = clamp(doorMask - doorInner, 0.0, 1.0);
   outWall = mix(outWall, uTrimColor * 0.82, doorFrame * 0.6);
 
   if (blank) {
-    float seam = facadeBand(fract(uv.y / max(gh, 2.0)), 0.0, 0.02, 0.02) * detail;
+    float seam = facadeBand(fract(uv.y / max(gh, 2.0)), 0.0, 0.02, 0.02) * groundDetail;
     outWall *= 1.0 - seam * 0.08;
-    return outWall;
-  }
-
-  if (shopfront) {
+  } else if (shopfront) {
     // Shop window: one wide glazed bay with mullions and a sign fascia.
     float shopBottom = 0.55;
     float shopTop = max(gh - 0.65, shopBottom + 0.6);
-    float shopMask = facadeRect(vec2(u, uv.y), vec2(0.04, shopBottom), vec2(0.96, shopTop), vec2(aaU, aaM)) * detail;
+    float shopMask = facadeRect(vec2(u, uv.y), vec2(0.04, shopBottom), vec2(0.96, shopTop), vec2(aaU, aaM)) * groundDetail;
     shopMask *= 1.0 - doorMask;
 
-    float mullPeriod = 1.4;
+    float mullPeriod = max(1.4, 2.0 * px);
     float mullF = fract(uv.x / mullPeriod);
-    float mull = facadeBand(min(mullF, 1.0 - mullF), 0.0, max(1.1 * mPerPx, 0.02) / mullPeriod, 0.02);
-    float transom = facadeBand(uv.y, shopTop - max(1.2 * mPerPx, 0.06), shopTop, aaM);
+    float mull = facadeBand(min(mullF, 1.0 - mullF), 0.0, max(1.1 * px, 0.02) / mullPeriod, 0.02);
+    float transom = facadeBand(uv.y, shopTop - max(1.2 * px, 0.06), shopTop, max(0.7 * px, 0.02));
 
     float interiorVar = facadeHash21(vec2(col * 0.7 + seed * 47.0, 3.1));
     vec3 shopDay = mix(uShopfrontColor, uGlassLightColor, 0.28 + 0.30 * interiorVar);
@@ -443,7 +481,7 @@ vec3 facadeGroundFloor(
     outWall = mix(outWall, shopCol, shopMask * 0.96);
 
     float fasciaTop = min(shopTop + 0.5, gh - 0.04);
-    float fascia = facadeBand(uv.y, shopTop, fasciaTop, aaM) * detail;
+    float fascia = facadeBand(uv.y, shopTop, fasciaTop, aaM) * groundDetail;
     float signVar = facadeHash21(vec2(col, seed * 23.0));
     vec3 fasciaCol = mix(uTrimColor * 0.72, wallSrgb * 0.82, 0.35 + 0.30 * signVar);
     outWall = mix(outWall, fasciaCol, fascia * 0.85);
@@ -457,7 +495,7 @@ vec3 facadeGroundFloor(
     float winW = clamp(presetA.y * 1.02, 0.2, 0.8);
     vec2 gLo = vec2(0.5 - winW * 0.5, sillM);
     vec2 gHi = vec2(0.5 + winW * 0.5, sillM + winH);
-    float gWin = facadeRect(vec2(u, uv.y), gLo, gHi, vec2(aaU, aaM)) * detail;
+    float gWin = facadeRect(vec2(u, uv.y), gLo, gHi, vec2(aaU, aaM)) * groundDetail;
 
     vec3 gGlass = mix(uGlassColor, uGlassLightColor, 0.30);
     vec3 gGlassNight = mix(gGlass, uNightDarkColor, night * 0.78);
@@ -469,8 +507,33 @@ vec3 facadeGroundFloor(
     outWall = mix(outWall, litCol, gWin * lit * 0.9);
     emit += facadeSrgbToLinear(litCol) * gWin * lit * night * 0.45;
 
-    float lintel = facadeBand(uv.y, gHi.y, gHi.y + max(1.2 * mPerPx, 0.06), aaM) * detail;
+    float lintel = facadeBand(uv.y, gHi.y, gHi.y + max(1.2 * px, 0.06), aaM) * groundDetail;
     outWall = mix(outWall, uTrimColor * 0.86, lintel * 0.45);
+  }
+
+  // Far LOD: an averaged ground-floor band with a light reveal at its top edge,
+  // so the building always reads as "shopfront/base + upper floors". The band
+  // contrast is deliberately strong: 1-2 px of ground floor is all that
+  // survives at overview zoom.
+  vec3 average = wallSrgb * mix(1.0, 0.80, plinth);
+  if (blank) {
+    average = wallSrgb * mix(1.0, 0.82, plinth);
+  } else if (shopfront) {
+    vec3 shopAvg = mix(mix(uShopfrontColor, uGlassColor, 0.40), uNightWarmColor, night * 0.45);
+    average = mix(average, shopAvg, 0.72);
+  } else {
+    average = mix(average, uGlassColor, 0.22);
+  }
+  float reveal = facadeBand(uv.y, gh - max(1.5 * px, 0.08), gh, max(0.7 * px, 0.02));
+  average *= 0.92; // ground floors sit in shadow under the facade above
+  average = mix(average, uTrimColor * 0.90, reveal * 0.85);
+  outWall = mix(average, outWall, groundDetail);
+
+  if (night > 0.001 && !blank) {
+    // Keep a faint warm shop band at night even when the detail is too small
+    // to show individual openings.
+    emit += facadeSrgbToLinear(mix(uNightWarmColor, uNightLitColor, 0.3))
+      * night * (1.0 - groundDetail) * (shopfront ? 0.30 : 0.06);
   }
 
   return outWall;
@@ -590,8 +653,21 @@ vec3 facadeAlbedoSrgb;
 vec3 facadeEmissiveSrgb;
 facadeShade(facadeAlbedoSrgb, facadeEmissiveSrgb);
 
-diffuseColor.rgb = facadeSrgbToLinear(clamp(facadeAlbedoSrgb, 0.0, 1.0)) * diffuse.rgb;
+vec3 facadeAlbedoLinear = facadeSrgbToLinear(clamp(facadeAlbedoSrgb, 0.0, 1.0)) * diffuse.rgb;
+diffuseColor.rgb = facadeAlbedoLinear;
 totalEmissiveRadiance += facadeSrgbToLinear(clamp(facadeEmissiveSrgb, 0.0, 3.0));
+
+// Stylised ambient fill: real Lambert lighting leaves unlit facades nearly black
+// at a low winter sun, which destroys window readability. A small albedo-
+// proportional, cool-tinted emissive term keeps shadowed facades readable while
+// staying subtle at night (small cool moonlit fill), so lamp light still dominates.
+float facadeNightAmount = clamp(uNight, 0.0, 1.0);
+vec3 facadeAmbientFill = mix(
+  vec3(0.070, 0.080, 0.105),
+  vec3(0.026, 0.029, 0.036),
+  facadeNightAmount
+);
+totalEmissiveRadiance += facadeAlbedoLinear * facadeAmbientFill;
 `;
 
 /** Injection after output encoding: snap facade pixels to the shared palette. */

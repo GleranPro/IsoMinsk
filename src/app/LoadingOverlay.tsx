@@ -5,8 +5,10 @@ interface LoadingOverlayProps {
 }
 
 export function LoadingOverlay({ visible, progress, error }: LoadingOverlayProps) {
+  // Visible while loading, and always visible when there is an error to report.
+  const hidden = !visible && !error;
   return (
-    <div className={`loading-overlay${visible && !error ? '' : ' hidden'}`} data-testid="loading-overlay">
+    <div className={`loading-overlay${hidden ? ' hidden' : ''}`} data-testid="loading-overlay">
       <div className="loading-title">Isometric Minsk</div>
       <div className="loading-bar">
         <span style={{ width: `${Math.round(Math.min(Math.max(progress, 0), 1) * 100)}%` }} />

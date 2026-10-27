@@ -31,7 +31,8 @@ describe('environment layer heights', () => {
       const key = ENV_LAYER_ORDER[i];
       const next = ENV_LAYER_ORDER[i + 1];
       // Well above the isometric depth resolution (~0.7 mm for near=1/far=12000).
-      expect(ENV_LAYER_Y[next] - maxLayerY(key)).toBeGreaterThanOrEqual(0.002);
+      // Tiny epsilon absorbs decimal-float representation of the constants.
+      expect(ENV_LAYER_Y[next] - maxLayerY(key)).toBeGreaterThanOrEqual(0.002 - 1e-6);
     }
   });
 
@@ -81,22 +82,27 @@ describe('surface tier classification', () => {
   });
 
   it('maps vegetation kinds to the grass layer', () => {
-    for (const kind of ['grass', 'park', 'forest', 'scrub'] as SurfaceKind[]) {
+    for (const kind of ['grass', 'park', 'forest', 'scrub', 'cemetery'] as SurfaceKind[]) {
       expect(surfaceTier(kind)).toBe('grass');
     }
   });
 
-  it('maps man-made landuse kinds to the landuse layer', () => {
+  it('maps specific built features to the feature layer (above parks/landuse)', () => {
+    for (const kind of ['pitch', 'plaza', 'sand'] as SurfaceKind[]) {
+      expect(surfaceTier(kind)).toBe('feature');
+    }
+    // A pitch is usually nested inside a park polygon, so it must sit above it.
+    expect(ENV_LAYER_Y.feature).toBeGreaterThan(ENV_LAYER_Y.grass);
+    expect(ENV_LAYER_Y.feature).toBeLessThan(ENV_LAYER_Y.water);
+  });
+
+  it('maps broad man-made landuse kinds to the landuse layer', () => {
     for (const kind of [
-      'plaza',
       'residential',
       'industrial',
       'commercial',
       'construction',
-      'pitch',
-      'cemetery',
       'railway',
-      'sand',
       'unknown',
     ] as SurfaceKind[]) {
       expect(surfaceTier(kind)).toBe('landuse');

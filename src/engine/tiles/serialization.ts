@@ -175,7 +175,11 @@ function packAttribute(
 export function packGeometry(geometry: THREE.BufferGeometry): WireMesh {
   const attributes: WireAttribute[] = [];
   for (const name of Object.keys(geometry.attributes)) {
-    attributes.push(packAttribute(geometry.attributes[name]));
+    const packed = packAttribute(geometry.attributes[name]);
+    // THREE.BufferAttribute does not know its own name (setAttribute stores it
+    // only in the geometry's map), so the name must always come from the key.
+    packed.name = name;
+    attributes.push(packed);
   }
 
   const indexAttribute = geometry.getIndex();

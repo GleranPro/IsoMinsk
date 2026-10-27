@@ -254,6 +254,8 @@ describe('buildEnvironmentMeshes — full environment', () => {
     // Each semantic layer is actually represented.
     expect(hasFlatHeightInBand(result.ground, ENV_LAYER_Y.landuse, maxLayerY('landuse'))).toBe(true);
     expect(hasFlatHeightInBand(result.ground, ENV_LAYER_Y.grass, maxLayerY('grass'))).toBe(true);
+    // Plaza in the fixture sits above the park/grass layer and below water.
+    expect(hasFlatHeightInBand(result.ground, ENV_LAYER_Y.feature, maxLayerY('feature'))).toBe(true);
     expect(hasFlatHeightInBand(result.ground, ENV_LAYER_Y.water, maxLayerY('water'))).toBe(true);
     expect(hasFlatHeightInBand(result.roads, ENV_LAYER_Y.sidewalk, maxLayerY('sidewalk'))).toBe(true);
     expect(hasFlatHeightInBand(result.roads, ENV_LAYER_Y.railBallast, maxLayerY('railBallast'))).toBe(true);

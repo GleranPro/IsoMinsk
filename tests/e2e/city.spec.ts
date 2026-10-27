@@ -260,7 +260,10 @@ async function canvasClip(page: Page): Promise<CanvasClip> {
 
 async function canvasScreenshot(page: Page): Promise<Buffer> {
   const clip = await canvasClip(page);
-  return page.screenshot({ clip });
+  // Generous timeout: with software WebGL the renderer can take >1 s per frame,
+  // and Playwright's 15 s action timeout is not enough for a screenshot of a
+  // busy 1600x900 canvas on slower machines.
+  return page.screenshot({ clip, timeout: 60_000 });
 }
 
 interface ImageAnalysis {
@@ -401,10 +404,50 @@ async function dragCanvas(page: Page, deltaX: number, deltaY: number, button: 'l
   await page.mouse.up({ button });
 }
 
+/**
+ * Waits until the document has actually executed its JS (React mounted or the
+ * debug globals exist). A dev server that reloads modules mid-save can serve a
+ * document that never boots; that state is indistinguishable from a hard crash
+ * at the page level, so callers should reload once and then fail loudly if it
+ * persists.
+ */
+async function waitForDocumentBoot(page: Page, timeoutMs = 10_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const booted = await page
+      .evaluate(() => ({
+        canvases: document.querySelectorAll('canvas').length,
+        hasCityGlobal: typeof window.__CITY_APP__ !== 'undefined',
+        rootChildren: document.getElementById('root')?.childElementCount ?? 0,
+      }))
+      .catch(() => null);
+    if (booted && (booted.canvases > 0 || booted.hasCityGlobal || booted.rootChildren > 0)) {
+      return true;
+    }
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
 /** Opens the app and waits for the renderer. Returns diagnostics collected from page load. */
 async function openApp(page: Page): Promise<Diagnostics> {
   const diagnostics = watchPage(page);
   await page.goto('/');
+  // Bounded infrastructure retry: if the document never executed (Vite reloaded
+  // modules while another agent saved files), reload once. This cannot mask an
+  // application bug: a real crash still fails on the reload attempt and is
+  // reported with its console/page errors.
+  const booted = await waitForDocumentBoot(page);
+  if (!booted) {
+    console.warn(
+      '[qa] document did not boot within 10 s (likely a dev-server reload while files were being saved) — reloading once',
+    );
+    test.info().annotations.push({
+      type: 'document-boot-retry',
+      description: 'page did not execute JS within 10 s; reloaded once',
+    });
+    await page.reload();
+  }
   await waitForCityReady(page);
   return diagnostics;
 }
@@ -514,9 +557,8 @@ async function findResidentialBuilding(page: Page): Promise<BuildingCandidate> {
 
 test.describe('Isometric Minsk — shell and renderer readiness', () => {
   test('1. app shell loads with a non-zero WebGL canvas and no console/page errors', async ({ page }) => {
-    const diagnostics = watchPage(page);
+    const diagnostics = await openApp(page);
 
-    await page.goto('/');
     await expect(page.locator('h1')).toHaveText(/isometric minsk/i);
 
     const canvas = page.locator('canvas').first();
@@ -526,7 +568,9 @@ test.describe('Isometric Minsk — shell and renderer readiness', () => {
     expect(box.width, 'canvas width').toBeGreaterThan(100);
     expect(box.height, 'canvas height').toBeGreaterThan(100);
 
-    const readySource = await waitForCityReady(page);
+    const readySource = await page.evaluate(() =>
+      window.__CITY_APP__?.ready === true ? ('api' as const) : ('stats' as const),
+    );
     test.info().annotations.push({ type: 'ready-source', description: readySource });
 
     // The loading overlay must disappear once the renderer is ready.
@@ -548,8 +592,7 @@ test.describe('Isometric Minsk — shell and renderer readiness', () => {
   });
 
   test('2. exposes window.__CITY_APP__ = { ready, app, stats } within 60 s', async ({ page }) => {
-    const diagnostics = watchPage(page);
-    await page.goto('/');
+    const diagnostics = await openApp(page);
 
     await page.waitForFunction(() => window.__CITY_APP__?.ready === true, undefined, {
       timeout: READY_TIMEOUT_MS,

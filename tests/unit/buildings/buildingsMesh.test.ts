@@ -32,6 +32,7 @@ import {
   smallKioskBuilding,
   squarePrismBuilding,
   sumAreaXY,
+  syntheticTileBuildings,
   type DecodedTriangle,
 } from '../../fixtures/buildings';
 
@@ -91,14 +92,20 @@ describe('buildBuildingsMesh — geometry contract', () => {
 
   it('emits only finite attribute values', () => {
     const result = buildBuildingsMesh(mixedRoofShapes(), { facadeDetail: true });
+    let nonFinite = 0;
     for (const name of ['position', 'normal', 'aUV', 'aColor', 'aStyle', 'aFace']) {
       const array = result.geometry.getAttribute(name).array as Float32Array;
       for (let i = 0; i < array.length; i++) {
-        expect(Number.isFinite(array[i]), `${name}[${i}] = ${array[i]}`).toBe(true);
+        if (!Number.isFinite(array[i])) nonFinite++;
       }
     }
-    const own = result.geometry.getIndex()?.array as Uint32Array;
-    for (let i = 0; i < own.length; i++) expect(Number.isFinite(own[i])).toBe(true);
+    expect(nonFinite).toBe(0);
+    const index = result.geometry.getIndex()?.array as Uint32Array;
+    let badIndex = 0;
+    for (let i = 0; i < index.length; i++) {
+      if (!Number.isFinite(index[i])) badIndex++;
+    }
+    expect(badIndex).toBe(0);
   });
 
   it('uses unit normals and flat (non-smoothed) shading', () => {
@@ -380,5 +387,31 @@ describe('buildBuildingsMesh — LOD and robustness', () => {
     expect(result.triangleCount).toBeGreaterThan(0);
     const positions = result.geometry.getAttribute('position').array as Float32Array;
     for (let i = 0; i < positions.length; i++) expect(Number.isFinite(positions[i])).toBe(true);
+  });
+});
+
+describe('buildBuildingsMesh — tile budget', () => {
+  it('merges a 300-building synthetic tile into one geometry', () => {
+    const buildings = syntheticTileBuildings(300);
+    const result = buildBuildingsMesh(buildings, { facadeDetail: true });
+    expect(result.triangleCount).toBeGreaterThan(0);
+    // Real central-Minsk buildings average ~30-120 triangles (many OSM
+    // vertices, ground bands, parapets); 60 per building here is generous.
+    expect(result.triangleCount).toBeLessThan(buildings.length * 60);
+    expect(result.geometry.getIndex()).not.toBeNull();
+    const owners = new Set(Array.from(result.triangleOwner));
+    expect(owners.size).toBe(buildings.length);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('builds 300 buildings well within a frame budget (loose CI bound)', () => {
+    const buildings = syntheticTileBuildings(300);
+    buildBuildingsMesh(buildings, { facadeDetail: true }); // warm up
+    const start = performance.now();
+    const result = buildBuildingsMesh(buildings, { facadeDetail: true });
+    const elapsed = performance.now() - start;
+    // CI/shared dev boxes are noisy; on an idle machine this takes ~10-20 ms.
+    expect(elapsed).toBeLessThan(1500);
+    expect(result.triangleCount).toBeGreaterThan(0);
   });
 });

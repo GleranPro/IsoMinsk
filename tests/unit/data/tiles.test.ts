@@ -7,12 +7,13 @@
  * the QA report says so).
  *
  * What is verified:
- *  - manifest schema, projection, tile range/bounds and attribution;
+ *  - manifest schema, projection, tile range/bounds/pilotBounds and attribution;
  *  - every declared tile file exists, parses and agrees with its index entry;
  *  - manifest counts agree with the actual tile payloads;
  *  - buildings: unique ids across ALL tiles (one owning tile per building),
- *    2..400 m heights, non-empty valid rings with >= 3 finite points, sane
- *    volume heights, known archetype / roof shape / height source values;
+ *    plain FeatureId format, 2..400 m heights, non-empty valid rings with
+ *    >= 3 finite points, sane volume heights, known archetype / roof shape /
+ *    height source values, optional `levels` omitted (not null) when unknown;
  *  - roads, surfaces and trees: valid geometry, no NaN, known enum values;
  *  - crossingBuildingIds point at buildings that are owned elsewhere;
  *  - every tile near the pilot centre carries roads or surfaces.
@@ -70,8 +71,6 @@ interface DataAnalysis {
   tileMismatches: string[];
   duplicateBuildingIds: Array<{ id: string; tiles: string[] }>;
   buildingViolations: string[];
-  /** Ids that are not plain `w123`/`r456` (pipeline splits multipolygon parts). */
-  extendedIds: Array<{ id: string; baseId: string; expectedBaseId: string; tile: string }>;
   polygonViolations: string[];
   crossingViolations: string[];
   treeViolations: string[];
@@ -170,7 +169,6 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     tileMismatches: [],
     duplicateBuildingIds: [],
     buildingViolations: [],
-    extendedIds: [],
     polygonViolations: [],
     crossingViolations: [],
     treeViolations: [],
@@ -217,21 +215,11 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       const label = `${tileName}/${building.id}`;
       owners.set(building.id, [...(owners.get(building.id) ?? []), tileName]);
 
-      // FeatureId contract (src/shared/types.ts) is `${osmType[0]}${osmId}`.
-      // The current pipeline additionally emits `${type}${osmId}_${part}` for
-      // parts of split multipolygons; those are tracked separately below and
-      // reported as a contract deviation in docs/QA_REPORT.md.
-      const simpleId = typeof building.id === 'string' && /^[wr][0-9]+$/.test(building.id);
-      const splitId = typeof building.id === 'string' && /^[wr][0-9]+_[0-9]+$/.test(building.id);
-      if (!simpleId && !splitId) {
-        result.buildingViolations.push(`${label}: id does not match /^[wr]\\d+(_\\d+)?$/`);
-      } else if (splitId) {
-        result.extendedIds.push({
-          id: building.id,
-          baseId: building.id.split('_')[0],
-          expectedBaseId: `${building.osmType[0]}${building.osmId}`,
-          tile: tileName,
-        });
+      // FeatureId contract (src/shared/types.ts) is exactly `${osmType[0]}${osmId}`.
+      // Multipolygon parts are merged into one BuildingFeature with multiple
+      // volumes, so no id suffix is allowed.
+      if (typeof building.id !== 'string' || !/^[wr][0-9]+$/.test(building.id)) {
+        result.buildingViolations.push(`${label}: id does not match the plain FeatureId format /^[wr]\\d+$/`);
       }
       if (building.osmType !== 'way' && building.osmType !== 'relation') {
         result.buildingViolations.push(`${label}: unknown osmType ${String(building.osmType)}`);
@@ -252,9 +240,10 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       } else if (height > MAX_BUILDING_HEIGHT_M) {
         result.buildingViolations.push(`${label}: height ${height} m exceeds MAX_BUILDING_HEIGHT_M`);
       }
-      // The Python pipeline serialises absent optional levels as JSON null
-      // (tracked as a schema deviation in docs/QA_REPORT.md); treat null as absent.
-      if (building.levels !== undefined && building.levels !== null) {
+      // `levels?: number` — absent optional values must be omitted, not null.
+      if (building.levels === null) {
+        result.buildingViolations.push(`${label}: levels is null (must be omitted when unknown)`);
+      } else if (building.levels !== undefined) {
         result.counts.buildingsWithLevels += 1;
         if (!Number.isInteger(building.levels) || building.levels < 1 || building.levels > 100) {
           result.buildingViolations.push(`${label}: implausible levels=${String(building.levels)}`);
@@ -449,32 +438,34 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
   it('tile index matches the declared grid and covers it completely', () => {
     const manifest = store.manifest;
     if (!manifest) throw new Error('manifest missing');
-    const { tileRange, bounds, tiles } = manifest;
-    // `manifest.bounds` is the rendered pilot area (PILOT_SIZE_M square around
-    // the projection origin); the tile range additionally covers the ingest
-    // margin. (types.ts describes bounds as "total bounds covered by all tiles",
-    // which the generator does not follow — tracked in docs/QA_REPORT.md.)
-    const pilotHalf = PILOT_SIZE_M / 2;
-    expect(bounds, 'manifest.bounds must be the rendered pilot area').toEqual([
-      -pilotHalf,
-      -pilotHalf,
-      pilotHalf,
-      pilotHalf,
-    ]);
-    expect(tileRange.minX * TILE_SIZE_M, 'tile grid must cover the pilot area west edge').toBeLessThanOrEqual(
-      bounds[0],
-    );
-    expect(tileRange.minY * TILE_SIZE_M, 'tile grid must cover the pilot area south edge').toBeLessThanOrEqual(
-      bounds[1],
-    );
-    expect(
+    const { tileRange, bounds, pilotBounds, tiles } = manifest;
+    // `manifest.bounds` is the full tile-grid extent ("total bounds covered by
+    // all tiles"); `pilotBounds` (when present) is the requested pilot area and
+    // must lie inside it.
+    const expectedBounds = [
+      tileRange.minX * TILE_SIZE_M,
+      tileRange.minY * TILE_SIZE_M,
       (tileRange.maxX + 1) * TILE_SIZE_M,
-      'tile grid must cover the pilot area east edge',
-    ).toBeGreaterThanOrEqual(bounds[2]);
-    expect(
       (tileRange.maxY + 1) * TILE_SIZE_M,
-      'tile grid must cover the pilot area north edge',
-    ).toBeGreaterThanOrEqual(bounds[3]);
+    ];
+    expect(bounds, 'manifest.bounds must equal the tile range extent').toEqual(expectedBounds);
+
+    const pilotHalf = PILOT_SIZE_M / 2;
+    const expectedPilotBounds = [-pilotHalf, -pilotHalf, pilotHalf, pilotHalf];
+    if (pilotBounds !== undefined) {
+      expect(pilotBounds, 'manifest.pilotBounds must be the rendered pilot area').toEqual(expectedPilotBounds);
+      expect(pilotBounds[0], 'pilotBounds must lie inside bounds (west)').toBeGreaterThanOrEqual(bounds[0]);
+      expect(pilotBounds[1], 'pilotBounds must lie inside bounds (south)').toBeGreaterThanOrEqual(bounds[1]);
+      expect(pilotBounds[2], 'pilotBounds must lie inside bounds (east)').toBeLessThanOrEqual(bounds[2]);
+      expect(pilotBounds[3], 'pilotBounds must lie inside bounds (north)').toBeLessThanOrEqual(bounds[3]);
+    } else {
+      // The docs declare pilotBounds optional; when absent the tile bounds must
+      // still cover the pilot area.
+      expect(bounds[0], 'bounds must cover the pilot area (west)').toBeLessThanOrEqual(expectedPilotBounds[0]);
+      expect(bounds[1], 'bounds must cover the pilot area (south)').toBeLessThanOrEqual(expectedPilotBounds[1]);
+      expect(bounds[2], 'bounds must cover the pilot area (east)').toBeGreaterThanOrEqual(expectedPilotBounds[2]);
+      expect(bounds[3], 'bounds must cover the pilot area (north)').toBeGreaterThanOrEqual(expectedPilotBounds[3]);
+    }
 
     const expectedTileCount =
       (tileRange.maxX - tileRange.minX + 1) * (tileRange.maxY - tileRange.minY + 1);
@@ -530,28 +521,19 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
-  it('multipolygon split ids are consistent with their OSM feature', () => {
-    // The pipeline emits `${type}${osmId}_${part}` for parts of split
-    // multipolygons, whereas src/shared/types.ts documents a plain FeatureId.
-    // The deviation itself is reported in docs/QA_REPORT.md; here we only
-    // enforce that every split id still resolves to its own OSM feature.
-    const wrongBase = analysis.extendedIds.filter((entry) => entry.baseId !== entry.expectedBaseId);
+  it('building ids use the plain FeatureId format (multipolygon parts merged)', () => {
+    // src/shared/types.ts: FeatureId = `${osmType[0]}${osmId}`. The pipeline
+    // merges multipolygon parts into one BuildingFeature with multiple volumes,
+    // so no `${id}_${part}` suffixes may remain in the payload.
+    const splitIds = store.tiles.flatMap(({ entry, data }) =>
+      data.buildings
+        .filter((building) => /^[wr][0-9]+_[0-9]+$/.test(building.id))
+        .map((building) => `${entry.x}_${entry.y}/${building.id}`),
+    );
     expect(
-      wrongBase.length,
-      `split ids whose prefix does not match osmType/osmId: ${formatProblems(
-        wrongBase.map((entry) => `${entry.tile}/${entry.id} expected base ${entry.expectedBaseId}`),
-      )}`,
+      splitIds.length,
+      `building ids with a multipolygon part suffix: ${formatProblems(splitIds)}`,
     ).toBe(0);
-    if (analysis.extendedIds.length > 0) {
-      console.warn(
-        `[data tests] ${analysis.extendedIds.length} building id(s) use the multipolygon split suffix ` +
-          `(_<part>), a deviation from the plain FeatureId contract: ` +
-          `${analysis.extendedIds
-            .slice(0, 6)
-            .map((entry) => entry.id)
-            .join(', ')}${analysis.extendedIds.length > 6 ? ', …' : ''}`,
-      );
-    }
   });
 
   it('building records are valid (ids, archetypes, heights 2..400 m, volumes)', () => {

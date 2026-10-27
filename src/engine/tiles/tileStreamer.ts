@@ -99,9 +99,10 @@ const DEFAULT_MAX_LOADED_TILES = 40;
 const MAX_TILES_IN_VIEW = 120;
 const MAX_CONCURRENT_TILE_LOADS = 6;
 const TILE_LOAD_MARGIN_TILES = 1;
-/** A tile must cover at least this many vertical low-res pixels to get the
- * detailed facade material; below it windows are invisible anyway. */
-const NEAR_LOD_PIXELS = 150;
+/** Facade windows are only worth shading when one low-res pixel covers less
+ * than this much ground (world metres per pixel). Above it, the window pattern
+ * would alias into a dark smear, so far tiles use flat, detailed-off walls. */
+const DETAIL_WORLD_PER_PIXEL = 1.0;
 const MAX_ADDS_PER_FRAME = 2;
 const TILE_FETCH_TIMEOUT_GUARD_MS = 35_000;
 const BASE_PLANE_SIZE = 16_000;
@@ -168,13 +169,18 @@ export class TileStreamer {
     );
 
     this.basePlaneGeometry = new THREE.PlaneGeometry(BASE_PLANE_SIZE, BASE_PLANE_SIZE);
+    // Matches the tile ground base colour so the far plane reads as the same
+    // city ground continuing past the tile grid, not as a dark void.
     this.basePlaneMaterial = new THREE.MeshLambertMaterial({
-      color: new THREE.Color(ENV_PALETTE.groundDark),
+      color: new THREE.Color(ENV_PALETTE.ground),
     });
     this.basePlane = new THREE.Mesh(this.basePlaneGeometry, this.basePlaneMaterial);
     this.basePlane.rotation.x = -Math.PI / 2;
     this.basePlane.position.y = GROUND_LAYER_Y.base - 0.09;
-    this.basePlane.receiveShadow = true;
+    // No shadow receiving: the shadow camera only covers the visible footprint,
+    // which would otherwise show its frustum boundary as a diagonal band.
+    this.basePlane.receiveShadow = false;
+    this.basePlane.castShadow = false;
     this.basePlane.frustumCulled = false;
     this.basePlane.name = 'base-ground';
     this.root.add(this.basePlane);
@@ -721,8 +727,8 @@ export class TileStreamer {
 
   private updateLod(renderHeightPx: number, rig: IsometricCameraRig): void {
     const orthoHeight = rig.getOrthoHeight();
-    const projectedPixels = (TILE_SIZE_M / (2 * orthoHeight)) * renderHeightPx;
-    const wantNear = projectedPixels >= NEAR_LOD_PIXELS;
+    const worldPerPixel = (2 * orthoHeight) / Math.max(1, renderHeightPx);
+    const wantNear = worldPerPixel <= DETAIL_WORLD_PER_PIXEL;
     for (const key of this.visibleKeys) {
       const entry = this.tiles.get(key);
       if (!entry || !entry.buildingMesh) continue;

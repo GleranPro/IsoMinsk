@@ -77,6 +77,9 @@ uniform float uEdgeLow;
 uniform float uEdgeHigh;
 uniform vec3 uFogColor;
 uniform vec3 uSkyColor;
+uniform float uDebugView;
+uniform float uToneMode;
+uniform float uEnabled;
 uniform vec3 uPalette[PIXEL_PALETTE_SIZE];
 
 // --- tone mapping (matches three.js NeutralToneMapping) --------------------
@@ -133,22 +136,66 @@ float viewDepthAt(vec2 uv) {
   return uNear + texture2D(tDepth, uv).x * (uFar - uNear);
 }
 
-float edgeStrength(vec2 uv) {
-  vec2 texel = uTexelSize;
+float gxAt(vec2 uv) {
   float centre = viewDepthAt(uv);
-  float gx =
-    abs(viewDepthAt(uv + vec2(texel.x, 0.0)) - centre) +
+  vec2 texel = uTexelSize;
+  return abs(viewDepthAt(uv + vec2(texel.x, 0.0)) - centre) +
     abs(viewDepthAt(uv - vec2(texel.x, 0.0)) - centre);
-  float gy =
-    abs(viewDepthAt(uv + vec2(0.0, texel.y)) - centre) +
+}
+
+float gyAt(vec2 uv) {
+  float centre = viewDepthAt(uv);
+  vec2 texel = uTexelSize;
+  return abs(viewDepthAt(uv + vec2(0.0, texel.y)) - centre) +
     abs(viewDepthAt(uv - vec2(0.0, texel.y)) - centre);
-  float diagonal =
-    abs(viewDepthAt(uv + texel) - centre) +
+}
+
+float diagonalAt(vec2 uv) {
+  float centre = viewDepthAt(uv);
+  vec2 texel = uTexelSize;
+  return abs(viewDepthAt(uv + texel) - centre) +
     abs(viewDepthAt(uv - texel) - centre) +
     abs(viewDepthAt(uv + vec2(texel.x, -texel.y)) - centre) +
     abs(viewDepthAt(uv + vec2(-texel.x, texel.y)) - centre);
-  float gradient = max(gx, gy) + diagonal * 0.35;
-  return smoothstep(uEdgeLow, uEdgeHigh, gradient);
+}
+
+float edgeGradient(vec2 uv) {
+  return max(gxAt(uv), gyAt(uv)) + diagonalAt(uv) * 0.35;
+}
+
+float edgeStrength(vec2 uv) {
+  return smoothstep(uEdgeLow, uEdgeHigh, edgeGradient(uv));
+}
+
+// --- ACES filmic (three.js implementation) --------------------------------
+vec3 RRTAndODTFit(vec3 v) {
+  vec3 a = v * (v + 0.0245786) - 0.000090537;
+  vec3 b = (0.983729 * v + 0.4329510) * v + 0.238081;
+  return a / b;
+}
+
+vec3 acesFilmicToneMapping(vec3 color) {
+  const mat3 ACESInputMat = mat3(
+    vec3(0.59719, 0.07600, 0.02840),
+    vec3(0.35458, 0.90834, 0.13383),
+    vec3(0.04823, 0.01566, 0.83777)
+  );
+  const mat3 ACESOutputMat = mat3(
+    vec3(1.60475, -0.10208, -0.00327),
+    vec3(-0.53108, 1.10813, -0.07276),
+    vec3(-0.07367, -0.00605, 1.07602)
+  );
+  color *= uExposure / 0.6;
+  color = ACESInputMat * color;
+  color = RRTAndODTFit(color);
+  color = ACESOutputMat * color;
+  return clamp(color, 0.0, 1.0);
+}
+
+vec3 applyToneMapping(vec3 color) {
+  if (uToneMode > 1.5) return acesFilmicToneMapping(color);
+  if (uToneMode > 0.5) return clamp(color * uExposure, 0.0, 1.0);
+  return neutralToneMapping(color);
 }
 
 void main() {
@@ -156,6 +203,47 @@ void main() {
   float depth = texture2D(tDepth, vUv).x;
   float viewDist = uNear + depth * (uFar - uNear);
   bool isSky = depth > 0.99999;
+
+  if (uDebugView > 0.5) {
+    if (uDebugView < 1.5) {
+      gl_FragColor = vec4(vec3(fract(viewDist * 0.0025)), 1.0);
+    } else if (uDebugView < 2.5) {
+      gl_FragColor = vec4(vec3(edgeStrength(vUv)), 1.0);
+    } else if (uDebugView < 3.5) {
+      gl_FragColor = vec4(linearToSrgb(linearColor), 1.0);
+    } else if (uDebugView < 4.5) {
+      gl_FragColor = vec4(vec3(depth), 1.0);
+    } else if (uDebugView < 5.5) {
+      gl_FragColor = vec4(vec3(viewDist / 10000.0), 1.0);
+    } else if (uDebugView < 6.5) {
+      gl_FragColor = vec4(linearToSrgb(applyToneMapping(linearColor)), 1.0);
+    } else if (uDebugView < 7.5) {
+      gl_FragColor = vec4(vec3(edgeGradient(vUv) / 10.0), 1.0);
+    } else if (uDebugView < 8.5) {
+      gl_FragColor = vec4(vec3(gxAt(vUv) / 10.0), 1.0);
+    } else if (uDebugView < 9.5) {
+      gl_FragColor = vec4(vec3(gyAt(vUv) / 10.0), 1.0);
+    } else if (uDebugView < 10.5) {
+      gl_FragColor = vec4(vec3(diagonalAt(vUv) / 10.0), 1.0);
+    } else {
+      gl_FragColor = vec4(uTexelSize * 1000.0, 0.5, 1.0);
+    }
+    return;
+  }
+
+  // Clean full-resolution 3D view (pixel-art effect disabled): tone mapping
+  // only, no outlines / quantisation / vignette.
+  if (uEnabled < 0.5) {
+    gl_FragColor = vec4(linearToSrgb(applyToneMapping(linearColor)), 1.0);
+    return;
+  }
+
+  // Sky: keep the background clear colour, tone mapped but unquantised and
+  // un-outlined, so the horizon converges to the same tone as fogged geometry.
+  if (isSky) {
+    gl_FragColor = vec4(linearToSrgb(applyToneMapping(linearColor)), 1.0);
+    return;
+  }
 
   // Subtle vignette in linear light (so the palette quantisation below still
   // produces flat posterised regions).
@@ -165,15 +253,12 @@ void main() {
 
   float edge = edgeStrength(vUv);
 
-  vec3 color = neutralToneMapping(linearColor);
-  color = linearToSrgb(color);
+  vec3 color = linearToSrgb(applyToneMapping(linearColor));
 
   float fog = smoothstep(uFogNear, uFogFar, viewDist);
   color = mix(color, uFogColor, fog);
 
-  if (isSky) {
-    color = uSkyColor;
-  } else if (uPaletteMix > 0.0) {
+  if (uPaletteMix > 0.0) {
     float dither = (bayer4(gl_FragCoord.xy) - 0.5) * uDither * 0.16;
     vec3 candidate = clamp(color + dither, 0.0, 1.0);
     color = mix(candidate, nearestPalette(candidate), uPaletteMix);
@@ -203,6 +288,7 @@ export class PixelArtPipeline {
   private renderHeight = 1;
   private cssWidth = 1;
   private cssHeight = 1;
+  private effectEnabled = true;
   private disposed = false;
 
   constructor(renderer: THREE.WebGLRenderer, settings: PixelArtSettings) {
@@ -240,7 +326,7 @@ export class PixelArtPipeline {
       uLevels: { value: 0 },
       uPaletteMix: { value: 1 },
       uDither: { value: settings.dither },
-      uVignette: { value: 0.16 },
+      uVignette: { value: 0.1 },
       uFogNear: { value: 2000 },
       uFogFar: { value: 6000 },
       uPixelWorld: { value: 1 },
@@ -248,6 +334,9 @@ export class PixelArtPipeline {
       uEdgeHigh: { value: 4 },
       uFogColor: { value: new THREE.Vector3(0.9, 0.92, 0.94) },
       uSkyColor: { value: new THREE.Vector3(0.9, 0.92, 0.94) },
+      uDebugView: { value: 0 },
+      uToneMode: { value: 2 },
+      uEnabled: { value: 1 },
       uPalette: { value: palette },
     };
 
@@ -271,28 +360,61 @@ export class PixelArtPipeline {
     return { width: this.renderWidth, height: this.renderHeight };
   }
 
+  get targetHandle(): THREE.WebGLRenderTarget {
+    return this.target;
+  }
+
+  /** Debug: render the scene into the low-resolution target only. */
+  renderSceneToTarget(scene: THREE.Scene, camera: THREE.Camera): void {
+    this.renderer.setRenderTarget(this.target);
+    this.renderer.render(scene, camera);
+    this.renderer.setRenderTarget(null);
+  }
+
   get cssSize(): { width: number; height: number } {
     return { width: this.cssWidth, height: this.cssHeight };
   }
 
   /**
-   * Recompute the low-resolution target size from the CSS canvas size and the
-   * requested vertical resolution.
+   * Recompute the render-target size. When the pixel-art effect is enabled the
+   * target is the low internal resolution; when disabled it is the full canvas
+   * size so the "clean 3D" debug view is genuinely full resolution.
    */
   setSize(cssWidth: number, cssHeight: number, settings?: Partial<PixelArtSettings>): void {
     if (settings) Object.assign(this.settings, settings);
     this.cssWidth = Math.max(1, Math.floor(cssWidth));
     this.cssHeight = Math.max(1, Math.floor(cssHeight));
+    this.applyTargetSize();
+  }
+
+  /** Toggle the pixel-art stage (target resolution + shader branch). */
+  setEffectEnabled(enabled: boolean): void {
+    this.effectEnabled = Boolean(enabled);
+    this.uniforms.uEnabled.value = this.effectEnabled ? 1 : 0;
+    this.applyTargetSize();
+  }
+
+  private applyTargetSize(): void {
     const aspect = this.cssWidth / this.cssHeight;
-    const vertical = Math.round(
-      Math.max(120, Math.min(this.settings.resolution, 1080)),
-    );
-    const width = Math.max(160, Math.round(vertical * aspect));
+    let width: number;
+    let height: number;
+    if (this.effectEnabled) {
+      const vertical = Math.round(Math.max(120, Math.min(this.settings.resolution, 1080)));
+      width = Math.max(160, Math.round(vertical * aspect));
+      height = vertical;
+    } else {
+      width = this.cssWidth;
+      height = this.cssHeight;
+    }
+    if (width === this.renderWidth && height === this.renderHeight) {
+      this.updateSettingsUniforms();
+      return;
+    }
     this.renderWidth = width;
-    this.renderHeight = vertical;
-    this.target.setSize(width, vertical);
+    this.renderHeight = height;
+    this.target.setSize(width, height);
     this.target.texture.needsUpdate = true;
-    (this.uniforms.uTexelSize.value as THREE.Vector2).set(1 / width, 1 / vertical);
+    (this.uniforms.uTexelSize.value as THREE.Vector2).set(1 / width, 1 / height);
     this.updateSettingsUniforms();
   }
 
@@ -328,14 +450,129 @@ export class PixelArtPipeline {
     this.uniforms.uFar.value = far;
   }
 
-  render(scene: THREE.Scene, camera: THREE.Camera, enabled: boolean): void {
+  /** Render the scene straight to the canvas (debug path), bypassing the post pass. */
+  renderDirect(scene: THREE.Scene, camera: THREE.Camera): void {
     if (this.disposed) return;
-    const renderer = this.renderer;
-    if (!enabled) {
-      renderer.setRenderTarget(null);
-      renderer.render(scene, camera);
+    this.renderer.setRenderTarget(null);
+    this.renderer.render(scene, camera);
+  }
+
+  /** Debug: framebuffer completeness of the low-resolution scene target. */
+  checkTargetFramebufferStatus(): number {
+    const gl = this.renderer.getContext();
+    const previous = this.renderer.getRenderTarget();
+    this.renderer.setRenderTarget(this.target);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    this.renderer.setRenderTarget(previous);
+    return status;
+  }
+
+  /** Debug: read back pixels from the low-resolution scene target. */
+  readTargetPixels(x: number, y: number, width: number, height: number): Uint8Array | null {
+    const clampedWidth = Math.max(1, Math.min(width, this.renderWidth));
+    const clampedHeight = Math.max(1, Math.min(height, this.renderHeight));
+    const buffer = new Uint8Array(clampedWidth * clampedHeight * 4);
+    try {
+      this.renderer.readRenderTargetPixels(
+        this.target,
+        Math.max(0, Math.min(x, this.renderWidth - clampedWidth)),
+        Math.max(0, Math.min(y, this.renderHeight - clampedHeight)),
+        clampedWidth,
+        clampedHeight,
+        buffer,
+      );
+      return buffer;
+    } catch (error) {
+      console.warn('[city] readRenderTargetPixels failed', error);
+      return null;
+    }
+  }
+
+  /** Debug: set one of the post uniforms by name (numbers / vec3 arrays). */
+  setUniformValue(name: string, value: number | number[]): void {
+    const uniform = this.uniforms[name];
+    if (!uniform) return;
+    if (Array.isArray(value) && uniform.value instanceof THREE.Vector3) {
+      uniform.value.set(value[0] ?? 0, value[1] ?? 0, value[2] ?? 0);
       return;
     }
+    uniform.value = value;
+  }
+
+  getUniformNames(): string[] {
+    return Object.keys(this.uniforms);
+  }
+
+  /** Debug: low-resolution target + depth texture configuration. */
+  getTargetInfo(): Record<string, unknown> {
+    return {
+      width: this.renderWidth,
+      height: this.renderHeight,
+      texture: {
+        type: this.target.texture.type,
+        format: this.target.texture.format,
+        colorSpace: this.target.texture.colorSpace,
+        minFilter: this.target.texture.minFilter,
+        magFilter: this.target.texture.magFilter,
+      },
+      depthTexture: {
+        type: this.depthTexture.type,
+        format: this.depthTexture.format,
+        image: { ...this.depthTexture.image },
+        minFilter: this.depthTexture.minFilter,
+        magFilter: this.depthTexture.magFilter,
+        compareFunction: this.depthTexture.compareFunction,
+      },
+      sameDepthTexture: this.target.depthTexture === this.depthTexture,
+      framebufferStatus: this.checkTargetFramebufferStatus(),
+    };
+  }
+
+  /** Debug: snapshot of the numeric post uniforms. */
+  getUniformValues(): Record<string, unknown> {
+    const values: Record<string, unknown> = {};
+    for (const [name, uniform] of Object.entries(this.uniforms)) {
+      const value = uniform.value;
+      if (typeof value === 'number') values[name] = value;
+      else if (value instanceof THREE.Vector2) values[name] = value.toArray();
+      else if (value instanceof THREE.Vector3) values[name] = value.toArray();
+    }
+    return values;
+  }
+
+  /** Debug: switch the fragment shader to a diagnostic visualisation. */
+  setDebugView(mode: number): void {
+    this.uniforms.uDebugView.value = mode;
+  }
+
+  /** Choose tone mapping for the post pass: 0 = neutral, 1 = linear/clamp. */
+  setToneMode(mode: number): void {
+    this.uniforms.uToneMode.value = mode;
+    this.uniforms.uExposure.value = this.uniforms.uExposure.value;
+  }
+
+  /** Debug: read back pixels from the default framebuffer (after rendering). */
+  readCanvasPixels(x: number, y: number, width: number, height: number): Uint8Array | null {
+    const gl = this.renderer.getContext();
+    const buffer = new Uint8Array(width * height * 4);
+    try {
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
+      return buffer;
+    } catch (error) {
+      console.warn('[city] gl.readPixels failed', error);
+      return null;
+    }
+  }
+
+  /**
+   * Render one frame. The scene always goes through the post pass (the tone
+   * mapping/look must be identical in both modes); when the pixel-art effect is
+   * disabled the target is full resolution and the shader takes the clean
+   * branch (no outlines, quantisation or vignette).
+   */
+  render(scene: THREE.Scene, camera: THREE.Camera): void {
+    if (this.disposed) return;
+    const renderer = this.renderer;
     renderer.setRenderTarget(this.target);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);

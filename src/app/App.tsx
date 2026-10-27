@@ -63,12 +63,15 @@ export function App() {
         setUi((prev) => ({ ...prev, orthoHeight: camera.orthoHeight, azimuth: camera.azimuth }));
       },
       onStats: (next) => {
-        setStats(next);
+        // The engine mutates one stats object and re-emits the same reference;
+        // React bails out on identical references, so copy before storing.
+        const snapshot = { ...next };
+        setStats(snapshot);
         const exposed = (window as unknown as Record<string, unknown>).__CITY_APP__ as
           | Record<string, unknown>
           | undefined;
-        if (exposed) exposed.stats = next;
-        (window as unknown as Record<string, unknown>).__CITY_STATS__ = next;
+        if (exposed) exposed.stats = snapshot;
+        (window as unknown as Record<string, unknown>).__CITY_STATS__ = snapshot;
       },
       onSelection: (next) => setSelection(next),
       onLoadingChange: (isLoading, value) => {
@@ -78,8 +81,14 @@ export function App() {
       onError: (message) => setError(message),
     });
     appRef.current = app;
-    // Debug/testing handle: Playwright and the Lead's QA depend on this.
+    // Debug/testing handle: Playwright and the Lead's QA depend on this. The
+    // engine may already have published its own debug surface on the same
+    // global — merge instead of overwriting it.
+    const existing = (window as unknown as Record<string, unknown>).__CITY_APP__ as
+      | Record<string, unknown>
+      | undefined;
     (window as unknown as Record<string, unknown>).__CITY_APP__ = {
+      ...(existing ?? {}),
       ready: false,
       app,
       stats: null,

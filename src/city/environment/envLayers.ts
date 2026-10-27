@@ -8,8 +8,12 @@
  * no railway layer (it is read-only for this module).
  *
  * Ordering (strictly increasing):
- *   base < landuse < grass < water < sidewalk < railBallast < kerb < road
- *        < markings < railTrack
+ *   base < landuse < grass < feature < water < sidewalk < railBallast
+ *        < kerb < road < markings < railTrack
+ *
+ * `feature` is a local layer for specific built features (sports pitches,
+ * plazas, sand) that frequently sit *inside* a broader park/landuse polygon in
+ * OSM, and therefore must draw above it to stay visible.
  *
  * Coplanar *overlapping* polygons in the same category would still shimmer, so
  * every category also gets a small deterministic per-polygon offset ("jitter")
@@ -38,6 +42,7 @@ export const ENV_LAYER_Y = {
   base: GROUND_LAYER_Y.base,
   landuse: GROUND_LAYER_Y.landuse,
   grass: GROUND_LAYER_Y.grass,
+  feature: 0.0365,
   water: GROUND_LAYER_Y.water,
   sidewalk: GROUND_LAYER_Y.sidewalk,
   railBallast: 0.06,
@@ -54,6 +59,7 @@ export const ENV_LAYER_ORDER: readonly EnvLayerKey[] = [
   'base',
   'landuse',
   'grass',
+  'feature',
   'water',
   'sidewalk',
   'railBallast',
@@ -71,7 +77,8 @@ export const ENV_LAYER_ORDER: readonly EnvLayerKey[] = [
 export const ENV_LAYER_JITTER_LEVELS: Record<EnvLayerKey, number> = {
   base: 1,
   landuse: 5,
-  grass: 5,
+  grass: 4,
+  feature: 2,
   water: 4,
   sidewalk: 4,
   railBallast: 2,
@@ -98,7 +105,7 @@ export function maxLayerY(key: EnvLayerKey): number {
 export const BRIDGE_RAISE_M = 2.5;
 
 /** Ground category of a landcover polygon. */
-export type SurfaceTier = 'landuse' | 'grass' | 'water';
+export type SurfaceTier = 'landuse' | 'grass' | 'feature' | 'water';
 
 /** Classify a landcover polygon into its rendering tier. */
 export function surfaceTier(kind: SurfaceKind | undefined): SurfaceTier {
@@ -110,7 +117,14 @@ export function surfaceTier(kind: SurfaceKind | undefined): SurfaceTier {
     case 'park':
     case 'forest':
     case 'scrub':
+    case 'cemetery':
       return 'grass';
+    case 'pitch':
+    case 'plaza':
+    case 'sand':
+      // Specific features often drawn inside a park/landuse polygon in OSM:
+      // they need to sit above it to remain visible.
+      return 'feature';
     default:
       return 'landuse';
   }

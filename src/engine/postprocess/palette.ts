@@ -43,52 +43,73 @@ export interface LinearRgb {
 /**
  * The canonical pixel-art palette.
  *
- * Sized to stay readable at a 320-420 px tall internal resolution: a handful of
- * dark silhouette tones, two asphalt greys, a cool concrete ramp for panel /
- * Khrushchev blocks, a warm plaster ramp for Stalinist / historic buildings,
- * roof browns, trim stone, park greens, river blues, warm lamp light and dark
- * window glass. Every hue is slightly desaturated so that shadows and
- * silhouettes read before saturation does.
+ * Sized to stay readable at a 320-420 px tall internal resolution and weighted
+ * toward *light* values: a sunlit city needs bright pavement, trim and beige
+ * plaster entries, otherwise the global quantisation pulls every mid-tone down
+ * into mud. The ramp is:
+ *   - two near-black silhouette/shadow tones,
+ *   - a lifted asphalt ramp (roads stay the darkest large surfaces but must not
+ *     quantise to black),
+ *   - pavement / concrete greys up to warm off-white (panel and office blocks),
+ *   - a beige plaster range for Stalinist/civic facades (the Minsk signature),
+ *   - muted historic plaster, roof browns, park greens, river blues,
+ *   - warm window light and dark glass for the night palette.
  *
- * Ordering is grouped by material family: keep related shades adjacent so
- * ordered-quantisation / ramp helpers can exploit it.
+ * Ordering is grouped by material family so ramp/quantisation helpers can use
+ * neighbouring shades. Keep entries unique: the post pass maps each palette
+ * colour to itself.
  */
 export const PIXEL_PALETTE: Hex[] = [
   // deep shadow / silhouette
-  '#191d23',
-  '#242b33',
-  // cool shade (panel walls, asphalt in shadow)
-  '#39434b',
-  '#4d5860',
-  // asphalt / pavement
-  '#5b636b',
-  '#6d757c',
-  // concrete / panel ramps (cool, monotonous)
-  '#848c8e',
-  '#989e9e',
-  '#adb2af',
-  '#c1c5bf',
-  // light trim stone / cornices
-  '#d6cfbf',
-  '#ece6d6',
+  '#1b1f26',
+  '#272f37',
+  // asphalt ramp (darkest large surfaces, but not black)
+  '#4a5058',
+  '#565c64',
+  '#62686e',
+  '#6c7076',
+  // pavement / kerb greys
+  '#7a8284',
+  '#8d9392',
+  '#a0a5a1',
+  '#a8a294',
+  // olive ground / courtyard mid-tones
+  '#6f7767',
+  '#7e8674',
+  // light concrete / panel / office cladding
+  '#b5bab5',
+  '#c6c9c2',
+  '#d5d6cd',
+  // light trim stone / cornices / lit plaster
+  '#e8e2d2',
+  '#ddd5c2',
+  '#f1ece0',
+  // warm beige plaster (Stalinist ensembles, civic): the Minsk signature range.
+  // Kept warm (r > g > b) so sunlit facades snap to sand/ochre, not to the
+  // near-white trim entries above.
+  '#bfa885',
+  '#cbb894',
+  '#d8c7a8',
+  '#e2d4b8',
   // warm plaster ramp (Stalinist ensembles, civic)
-  '#ab9070',
-  '#bfa585',
-  '#d3ba99',
-  '#e3cfae',
+  '#b5ab93',
+  '#c9bfa6',
+  '#d8cfb9',
   // historic plaster / brick
-  '#a1775c',
-  '#bc9477',
+  '#c19b78',
+  '#a98a6a',
+  '#b98c6d',
   // pitched-roof browns
-  '#6b4c3d',
-  '#8a634b',
+  '#7c5c48',
+  '#8f6b52',
   // park / forest greens
   '#4f6b3d',
-  '#64814a',
-  '#7e9857',
+  '#648244',
+  '#78964f',
+  '#8fa866',
   // water
-  '#40637c',
-  '#587e96',
+  '#5b8299',
+  '#7496a8',
   // warm lit windows (night)
   '#e2bf6e',
   '#eed28d',

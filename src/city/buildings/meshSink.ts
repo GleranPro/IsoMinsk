@@ -61,8 +61,16 @@ export class MeshSink {
   private vertexCount = 0;
   private triangleCount = 0;
 
-  /** Number of triangles rejected because of non-finite input. */
+  /** Number of triangles rejected as degenerate or non-finite. */
   skippedTriangles = 0;
+
+  /** First rejected triangle's raw inputs, for diagnostics. */
+  firstNonFinite: number[] | null = null;
+
+  private recordNonFinite(values: number[], count: number): void {
+    this.skippedTriangles += count;
+    if (!this.firstNonFinite) this.firstNonFinite = values.slice();
+  }
 
   private minX = Infinity;
   private minY = Infinity;
@@ -185,7 +193,7 @@ export class MeshSink {
     surface: SurfaceStyle,
   ): void {
     if (!(Number.isFinite(ax + ay + az + bx + by + bz + cx + cy + cz) && Number.isFinite(nx + ny + nz + ua + va + ub + vb + uc + vc))) {
-      this.skippedTriangles++;
+      this.recordNonFinite([ax, ay, az, bx, by, bz, cx, cy, cz, nx, ny, nz, ua, va, ub, vb, uc, vc], 1);
       return;
     }
     this.ensureVertices(3);
@@ -236,7 +244,13 @@ export class MeshSink {
     const finitePositions = Number.isFinite(ax + ay + az + bx + by + bz + cx + cy + cz + dx + dy + dz);
     const finiteUvs = Number.isFinite(ua + va + ub + vb + uc + vc + ud + vd);
     if (!finitePositions || !finiteUvs || !Number.isFinite(nx + ny + nz)) {
-      this.skippedTriangles += 2;
+      this.recordNonFinite(
+        [
+          ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz,
+          ua, va, ub, vb, uc, vc, ud, vd, nx, ny, nz,
+        ],
+        2,
+      );
       return;
     }
     // Cross products of (b-a)x(c-a) and (c-a)x(d-a), compared against the
@@ -260,11 +274,17 @@ export class MeshSink {
     const cross2z = acx * ady - acy * adx;
     const cross1Sq = cross1x * cross1x + cross1y * cross1y + cross1z * cross1z;
     const cross2Sq = cross2x * cross2x + cross2y * cross2y + cross2z * cross2z;
-    const DEGENERATE = 1e-16;
+    const DEGENERATE = 1e-8; // squared cross length => triangle area < 1e-4 m²
     const keep1 = cross1Sq > DEGENERATE;
     const keep2 = cross2Sq > DEGENERATE;
     if (!keep1 && !keep2) {
-      this.skippedTriangles += 2;
+      this.recordNonFinite(
+        [
+          ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz,
+          ua, va, ub, vb, uc, vc, ud, vd, nx, ny, nz,
+        ],
+        2,
+      );
       return;
     }
     const useFirst = keep1 && (!keep2 || cross1Sq >= cross2Sq);
@@ -304,10 +324,74 @@ export class MeshSink {
     }
   }
 
-  /** Build the merged BufferGeometry from zero-copy subarray views. */
+  /**
+   * Build the merged BufferGeometry from zero-copy subarray views.
+   *
+   * A final quality pass drops degenerate / near-degenerate triangles: they
+   * are invisible, but their float32 geometric normal is numerically noisy and
+   * would break the explicit flat-normal contract. A triangle is kept only when
+   * its area is at least 5e-5 * (longest edge)², which keeps the normal well
+   * conditioned (≤ ~0.001 rad quantisation error).
+   */
   finish(): MeshSinkResult {
     const vertexCount = this.vertexCount;
-    const triangleCount = this.triangleCount;
+    const indices = this.indices;
+    const owners = this.owners;
+    const positions = this.positions;
+    let triangleCount = this.triangleCount;
+    let write = 0;
+    const AREA_RATIO = 1e-4; // |cross| = 2*area must exceed ratio * longestEdge²
+    // Positions are stored as float32; their quantisation error grows with the
+    // absolute coordinate magnitude. Very thin triangles would get a noisy
+    // geometric normal from those quantised positions, so require the area to
+    // dominate the quantisation noise (see the comment above).
+    const QUANTISATION_K = 250;
+    const FLOAT32_REL_EPS = 1.1920929e-7;
+    for (let read = 0; read < triangleCount; read++) {
+      const i0 = indices[read * 3];
+      const i1 = indices[read * 3 + 1];
+      const i2 = indices[read * 3 + 2];
+      const ax = positions[i0 * 3];
+      const ay = positions[i0 * 3 + 1];
+      const az = positions[i0 * 3 + 2];
+      const bx = positions[i1 * 3];
+      const by = positions[i1 * 3 + 1];
+      const bz = positions[i1 * 3 + 2];
+      const cx = positions[i2 * 3];
+      const cy = positions[i2 * 3 + 1];
+      const cz = positions[i2 * 3 + 2];
+      const abx = bx - ax;
+      const aby = by - ay;
+      const abz = bz - az;
+      const acx = cx - ax;
+      const acy = cy - ay;
+      const acz = cz - az;
+      const crossX = aby * acz - abz * acy;
+      const crossY = abz * acx - abx * acz;
+      const crossZ = abx * acy - aby * acx;
+      const crossSq = crossX * crossX + crossY * crossY + crossZ * crossZ;
+      const bcx = cx - bx;
+      const bcy = cy - by;
+      const bcz = cz - bz;
+      const longestSq = Math.max(
+        abx * abx + aby * aby + abz * abz,
+        acx * acx + acy * acy + acz * acz,
+        bcx * bcx + bcy * bcy + bcz * bcz,
+      );
+      const limit = Math.max(
+        AREA_RATIO * longestSq,
+        2 * QUANTISATION_K * FLOAT32_REL_EPS * Math.max(Math.abs(ax), Math.abs(ay), Math.abs(az), Math.abs(bx), Math.abs(by), Math.abs(bz), Math.abs(cx), Math.abs(cy), Math.abs(cz)) * Math.sqrt(longestSq),
+      );
+      if (!(crossSq > limit * limit)) continue;
+      if (write !== read) {
+        indices[write * 3] = i0;
+        indices[write * 3 + 1] = i1;
+        indices[write * 3 + 2] = i2;
+        owners[write] = owners[read];
+      }
+      write++;
+    }
+    triangleCount = write;
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(

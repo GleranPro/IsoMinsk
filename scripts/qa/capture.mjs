@@ -38,13 +38,23 @@ const READY_TIMEOUT_MS = Number(process.env.QA_READY_TIMEOUT_MS || 90_000);
 const VIEWPORT = { width: 1600, height: 900 };
 
 /** Chromium flags for deterministic software WebGL2 (see playwright.config.ts). */
-const CHROMIUM_ARGS = [
+const SWIFTSHADER_ARGS = [
   '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist',
   '--use-gl=angle',
   '--use-angle=swiftshader',
   '--disable-gpu-sandbox',
 ];
+
+/**
+ * Hardware GPU in headless Chromium (opt-in: `$env:QA_GPU='1'`). Verified to
+ * expose ANGLE/D3D11 (RTX 3080) instead of SwiftShader, which is required for
+ * meaningful FPS numbers and fast captures. Default remains SwiftShader so the
+ * script also works on CI machines without a GPU.
+ */
+const GPU_ARGS = ['--use-gl=angle', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu'];
+const USE_GPU = process.env.QA_GPU === '1';
+const CHROMIUM_ARGS = USE_GPU ? GPU_ARGS : SWIFTSHADER_ARGS;
 
 // --------------------------------------------------------------------------
 // dev server management
@@ -203,26 +213,58 @@ async function waitForRendererReady(page) {
 }
 
 /**
- * After readiness, insists that actual city geometry is on screen. The renderer
- * can be "ready" while no tile mesh was created; screenshots of an empty scene
- * are worthless for QA, so treat that as a failure. The threshold (> 5000
- * triangles) is a deliberately low sanity floor, not the e2e geometry budget.
+ * After readiness, insists that the FULL city is on screen: > 5000 triangles AND
+ * every tile from the manifest loaded (streaming is progressive, so an early
+ * screenshot would only show the central tiles). Falls back to "stats stable for
+ * 2 s" when the manifest cannot be read.
  */
 async function waitForRenderedGeometry(page) {
-  const deadline = Date.now() + 60_000;
+  const deadline = Date.now() + 90_000;
   let stats = null;
+  let lastSignature = '';
+  let stableSince = 0;
   while (Date.now() < deadline) {
     stats = await readStats(page);
     if (stats && stats.loadedTiles > 0 && stats.triangles > 5000) {
-      console.log(
-        `[geometry] ${stats.triangles} triangles, ${stats.buildings} buildings, ${stats.loadedTiles} tiles loaded`,
-      );
-      if (stats.buildings <= 100) {
-        console.warn(
-          `[warn] only ${stats.buildings} buildings reported (e2e expects > 100) — continuing, but this is suspicious`,
+      const expectedTiles = await page
+        .evaluate(async () => {
+          try {
+            const response = await fetch('/data/tiles/manifest.json');
+            if (!response.ok) return 0;
+            const manifest = await response.json();
+            return Array.isArray(manifest.tiles) ? manifest.tiles.length : 0;
+          } catch {
+            return 0;
+          }
+        })
+        .catch(() => 0);
+      if (expectedTiles > 0 && stats.loadedTiles >= expectedTiles) {
+        console.log(
+          `[geometry] ${stats.triangles} triangles, ${stats.buildings} buildings, ` +
+            `${stats.loadedTiles}/${expectedTiles} tiles loaded`,
         );
+        if (stats.buildings <= 100) {
+          console.warn(
+            `[warn] only ${stats.buildings} buildings reported (e2e expects > 100) — continuing, but this is suspicious`,
+          );
+        }
+        return stats;
       }
-      return stats;
+      if (expectedTiles === 0) {
+        const signature = `${stats.loadedTiles}/${Math.round(stats.triangles / 1000)}`;
+        if (signature === lastSignature) {
+          if (Date.now() - stableSince > 2000) {
+            console.log(
+              `[geometry] ${stats.triangles} triangles, ${stats.buildings} buildings, ` +
+                `${stats.loadedTiles} tiles loaded (manifest unavailable; stats stable)`,
+            );
+            return stats;
+          }
+        } else {
+          lastSignature = signature;
+          stableSince = Date.now();
+        }
+      }
     }
     const rendererError = await readRendererError(page);
     if (rendererError) {
@@ -231,8 +273,8 @@ async function waitForRenderedGeometry(page) {
     await sleep(500);
   }
   throw new Error(
-    `The city never rendered > 5000 triangles within 60 s (last stats=${JSON.stringify(stats)}). ` +
-      'Screenshots of an empty/degenerate scene would be misleading, so capture aborted.',
+    `The city never finished streaming within 90 s (last stats=${JSON.stringify(stats)}). ` +
+      'Screenshots of a partially loaded city would be misleading, so capture aborted.',
   );
 }
 
@@ -276,6 +318,19 @@ async function readStats(page) {
     } catch {
       return null;
     }
+  });
+}
+
+/** Identifies the actual WebGL renderer (SwiftShader vs hardware GPU). */
+async function readWebglRenderer(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    const gl = canvas?.getContext('webgl2');
+    if (!gl) return 'no-webgl2-context';
+    const debug = gl.getExtension('WEBGL_debug_renderer_info');
+    return debug
+      ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER);
   });
 }
 
@@ -452,12 +507,35 @@ const pageErrors = [];
 async function captureShot(page, file, note, setup) {
   const setupResult = await setup();
   await settle(page);
+  // Known defect (reported as D12): the HUD performance panel does not refresh
+  // automatically because the renderer reuses one mutable EngineStats object, so
+  // React's setState sees an identical reference and skips re-rendering. Clicking
+  // the built-in "Refresh stats" button makes the HUD show current numbers; the
+  // canonical screenshot should not display stale 4-tile loading numbers.
+  await page
+    .locator('[data-testid="refresh-stats"]')
+    .click({ timeout: 2_000 })
+    .catch(() => {});
+  await settle(page, 350);
   const camera = await readCamera(page);
   const timeOfDay = await readTimeOfDay(page);
   const pixelEffect = await readPixelEffect(page);
+  const hudStats = await page
+    .evaluate(() => {
+      const text = (selector) => document.querySelector(selector)?.textContent?.trim() ?? null;
+      return {
+        fps: text('[data-testid="stat-fps"]'),
+        triangles: text('[data-testid="stat-triangles"]'),
+        tiles: text('[data-testid="stat-tiles"]'),
+        buildings: text('[data-testid="stat-buildings"]'),
+      };
+    })
+    .catch(() => null);
   await page.screenshot({ path: path.join(SHOTS_DIR, file), fullPage: false });
-  shotMeta.push({ file, note, camera, timeOfDay, pixelEffect, setup: setupResult ?? 'ok' });
-  console.log(`[shot] ${file}  camera=${JSON.stringify(camera)} tod=${timeOfDay} pixel=${pixelEffect}`);
+  shotMeta.push({ file, note, camera, timeOfDay, pixelEffect, hudStats, setup: setupResult ?? 'ok' });
+  console.log(
+    `[shot] ${file}  camera=${JSON.stringify(camera)} tod=${timeOfDay} pixel=${pixelEffect} hud=${JSON.stringify(hudStats)}`,
+  );
 }
 
 async function run() {
@@ -520,6 +598,12 @@ async function run() {
 
     const appApiAvailable = await page.evaluate(
       () => typeof window.__CITY_APP__?.app?.getCameraSettings === 'function',
+    );
+    const webglRenderer = await readWebglRenderer(page);
+    console.log(
+      `[gpu] WebGL renderer: ${webglRenderer} (capture mode: ${
+        USE_GPU ? 'hardware GPU (QA_GPU=1)' : 'SwiftShader software'
+      })`,
     );
     if (!appApiAvailable) {
       console.warn(
@@ -638,6 +722,8 @@ async function run() {
       viewport: VIEWPORT,
       readyStatus,
       appApiExposed: appApiAvailable,
+      captureMode: USE_GPU ? 'hardware-gpu' : 'swiftshader-software',
+      webglRenderer,
       statsSource: appApiAvailable ? 'window.__CITY_APP__.stats / getStats()' : 'window.__CITY_STATS__',
       engineStats,
       rendererError,

@@ -967,7 +967,7 @@ def main() -> int:
             "osmId": osm_id,
             "name": tags.get("name") or tags.get("name:ru") or tags.get("name:en") or "",
             "archetype": archetype,
-            "levels": levels,
+            **({"levels": levels} if levels is not None else {}),
             "height": round(overall, 2),
             "roofShape": roof_shape,
             "volumes": volumes,
@@ -975,6 +975,32 @@ def main() -> int:
             "address": address,
             "roofShapeExplicit": roof_explicit,
         })
+
+    # --- merge polygons that belong to the same OSM feature -----------------
+    # make_valid / multipolygon assembly can split one OSM building into several
+    # polygons. They must stay ONE BuildingFeature with multiple volumes so that
+    # the id is the stable OSM id (contract: FeatureId = "<w|r><osm id>").
+    merged_buildings: list[dict] = []
+    merged_index: dict[tuple[str, int], int] = {}
+    for candidate in buildings:
+        key = (candidate["osmType"], candidate["osmId"])
+        existing_index = merged_index.get(key)
+        if existing_index is None:
+            merged_index[key] = len(merged_buildings)
+            merged_buildings.append(candidate)
+            continue
+        existing = merged_buildings[existing_index]
+        existing["volumes"].extend(candidate["volumes"])
+        existing["height"] = max(existing["height"], candidate["height"])
+        if len(candidate["tags"]) > len(existing["tags"]):
+            existing["tags"] = candidate["tags"]
+        if len(candidate.get("name") or "") > len(existing.get("name") or ""):
+            existing["name"] = candidate["name"]
+        if candidate.get("levels") and not existing.get("levels"):
+            existing["levels"] = candidate["levels"]
+    split_polygons_merged = len(buildings) - len(merged_buildings)
+    buildings = merged_buildings
+    stats["split_polygons_merged"] = split_polygons_merged
 
     # --- de-duplicate exact double-mapped buildings ------------------------
     # OSM occasionally contains the same building twice (e.g. a way and a
@@ -1305,7 +1331,15 @@ def main() -> int:
         "centerLatLon": [PILOT_CENTER_LAT, PILOT_CENTER_LON],
         "tileSize": tile_size,
         "tileRange": {"minX": min_tx, "minY": min_ty, "maxX": max_tx, "maxY": max_ty},
-        "bounds": [-half, -half, half, half],
+        # bounds = full extent covered by the tile grid (what the renderer can
+        # stream); pilotBounds = the requested pilot area inside it.
+        "bounds": [
+            min_tx * tile_size,
+            min_ty * tile_size,
+            (max_tx + 1) * tile_size,
+            (max_ty + 1) * tile_size,
+        ],
+        "pilotBounds": [-half, -half, half, half],
         "tiles": manifest_tiles,
         "counts": {
             "buildings": len(buildings),

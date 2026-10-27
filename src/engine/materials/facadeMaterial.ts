@@ -252,12 +252,19 @@ export function disposeFacadeMaterial(material: THREE.Material): void {
  * also read the project's `aColor` attribute and multiplied the same colour a
  * second time, which crushed roads/water to black — do not reintroduce a patch
  * here without also dropping one of the colour attributes on the mesh side.)
+ *
+ * A very small constant `emissive` acts as a stylised ambient floor: with the
+ * low winter sun most streets and courtyards are in building shadow, and real
+ * Lambert lighting + tone mapping would crush them to near-black. The lift is
+ * additive (not a second colour multiply) and preserves the vertex-colour hue
+ * variation, so roads, pavements and grass stay distinguishable in shadow.
  */
 export function createEnvironmentMaterial(): THREE.Material {
   const material = new THREE.MeshLambertMaterial({
     vertexColors: true,
     flatShading: true,
     fog: true,
+    emissive: new THREE.Color().setRGB(0.020, 0.022, 0.027),
   });
   material.name = 'IsometricMinskEnvironment';
   return material;

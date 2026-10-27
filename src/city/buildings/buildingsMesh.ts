@@ -24,8 +24,11 @@
  *
  * Deterministic: colours / window rhythms derive from `seedFromId(building.id)`.
  *
- * Triangles are flat-shaded: every triangle carries one explicit normal; wall
- * quads share their normal between the two triangles but not vertices.
+ * Triangles are flat-shaded: every triangle carries one explicit per-vertex
+ * normal. Wall quads are emitted as indexed quads (4 shared vertices, two
+ * triangles from the same corner) with the same flat normal on all vertices;
+ * roof facets use the analytic facet normal. computeVertexNormals() is never
+ * called.
  */
 
 import type { BufferGeometry } from 'three';
@@ -40,7 +43,7 @@ import {
   type BuildingStyle,
   type Vec4,
 } from './style';
-import { addVolumeWalls, boundaryRings, STREET_LEVEL_EPS } from './walls';
+import { addVolumeWalls, boundaryRings, STREET_LEVEL_EPS, type RingInfo } from './walls';
 
 export interface BuildingMeshOptions {
   /** Emit facade attributes (aUV/aStyle/aFace) — always written, but decorative
@@ -140,10 +143,15 @@ export function buildBuildingsMesh(
           volume.minHeight > STREET_LEVEL_EPS ? withNoGroundBand(style) : style;
 
         const uStart = uCursor;
+        const skippedBefore = sink.skippedTriangles;
         uCursor = addVolumeWalls(sink, volume, rings, volumeStyle, uCursor);
         addRoof(sink, volume, rings, volumeStyle, uStart, (message) => {
           warnings.push(`${label}: ${message}`);
         });
+        const skipped = sink.skippedTriangles - skippedBefore;
+        if (skipped > 0) {
+          warnings.push(`${label}: ${skipped} degenerate/non-finite triangle(s) skipped`);
+        }
       } catch (error) {
         warnings.push(`${label}: ${describe(error)}`);
       }
@@ -152,7 +160,7 @@ export function buildBuildingsMesh(
 
   const finished = sink.finish();
   if (sink.skippedTriangles > 0) {
-    warnings.push(`${sink.skippedTriangles} triangle(s) skipped due to non-finite coordinates`);
+    warnings.push(`${sink.skippedTriangles} degenerate/non-finite triangle(s) skipped`);
   }
 
   return {

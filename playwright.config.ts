@@ -29,13 +29,30 @@ const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://127.0.0.1:${DEV_SERVER_PORT}`;
 
 /** Shared Chromium flags: deterministic software WebGL2 in headless mode. */
-const CHROMIUM_ARGS = [
+const SWIFTSHADER_ARGS = [
   '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist',
   '--use-gl=angle',
   '--use-angle=swiftshader',
   '--disable-gpu-sandbox',
 ];
+
+/**
+ * Hardware GPU in headless Chromium (opt-in via QA_GPU=1).
+ * Playwright's default headless mode uses SwiftShader; forcing ANGLE/D3D11 makes
+ * headless use the real GPU (verified: RTX 3080 / D3D11 on this machine). Use it
+ * for realistic FPS numbers and much faster e2e runs; keep the default for CI
+ * determinism and machines without a GPU.
+ */
+const GPU_ARGS = [
+  '--use-gl=angle',
+  '--use-angle=d3d11',
+  '--ignore-gpu-blocklist',
+  '--enable-gpu',
+];
+
+const USE_GPU = process.env.QA_GPU === '1';
+const CHROMIUM_ARGS = USE_GPU ? GPU_ARGS : SWIFTSHADER_ARGS;
 
 export default defineConfig({
   testDir: 'tests/e2e',
