@@ -68,6 +68,8 @@ export const ARCHETYPE_ID: Record<Archetype, number> = {
   industrial: 6,
   small: 7,
   civic: 8,
+  palace: 9,
+  stadium: 10,
 };
 
 export const ARCHETYPE_BY_ID: Archetype[] = [
@@ -80,6 +82,8 @@ export const ARCHETYPE_BY_ID: Archetype[] = [
   'industrial',
   'small',
   'civic',
+  'palace',
+  'stadium',
 ];
 
 /** Integer ids for roof shapes, used as aFace.w on roof faces. */

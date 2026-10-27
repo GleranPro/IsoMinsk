@@ -36,6 +36,14 @@ import { FACE_KIND } from '../../shared/geometry';
 import type { BuildingFeature, BuildingVolume, FeatureId } from '../../shared/types';
 import { addRoof } from '../roofs/roofMesh';
 import { MeshSink } from './meshSink';
+import { addPalaceAccents } from './palaceAccents';
+import {
+  addStadiumBowl,
+  grandstandVolume,
+  isGrandstandBuilding,
+  isStadiumBuilding,
+  planStadiumBowl,
+} from './stadium';
 import {
   sanitiseDetailScale,
   styleForBuilding,
@@ -114,6 +122,22 @@ export function buildBuildingsMesh(
       continue;
     }
 
+    // Arena bowl special case: never extrude a stadium footprint as a slab.
+    if (isStadiumBuilding(building)) {
+      const plan = planStadiumBowl(building);
+      if (plan) {
+        try {
+          addStadiumBowl(sink, plan, style);
+        } catch (error) {
+          warnings.push(`${id}: stadium bowl failed (${describe(error)})`);
+        }
+        continue;
+      }
+      warnings.push(`${id}: stadium bowl plan unavailable; rendered as extruded volumes`);
+    }
+    const grandstand = isGrandstandBuilding(building);
+    const palace = building.archetype === 'palace' || building.tags?.building === 'palace';
+
     // aUV.u is continuous across the volumes of one building so window bays
     // line up where a building:part meets the base volume.
     let uCursor = 0;
@@ -139,15 +163,23 @@ export function buildBuildingsMesh(
         }
 
         // Elevated parts must not get a ground-floor plinth at 10 m up.
-        const volumeStyle =
+        const baseStyle =
           volume.minHeight > STREET_LEVEL_EPS ? withNoGroundBand(style) : style;
+
+        // Grandstands: low blank-walled stands with a sloped (skillion) top.
+        const meshed = grandstand
+          ? grandstandVolume(volume, baseStyle)
+          : { volume, style: baseStyle };
+        const meshedVolume = meshed.volume;
+        const volumeStyle = meshed.style;
 
         const uStart = uCursor;
         const skippedBefore = sink.skippedTriangles;
-        uCursor = addVolumeWalls(sink, volume, rings, volumeStyle, uCursor);
-        addRoof(sink, volume, rings, volumeStyle, uStart, (message) => {
+        uCursor = addVolumeWalls(sink, meshedVolume, rings, volumeStyle, uCursor);
+        addRoof(sink, meshedVolume, rings, volumeStyle, uStart, (message) => {
           warnings.push(`${label}: ${message}`);
         });
+        if (palace) addPalaceAccents(sink, meshedVolume, rings, volumeStyle);
         const skipped = sink.skippedTriangles - skippedBefore;
         if (skipped > 0) {
           warnings.push(`${label}: ${skipped} degenerate/non-finite triangle(s) skipped`);

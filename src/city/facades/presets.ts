@@ -206,6 +206,44 @@ export const FACADE_PRESETS: Record<Archetype, FacadePreset> = {
     roofColorFamily: 'flat',
     colors: ARCHETYPE_COLORS.civic,
   },
+  // Monumental civic ensembles (Palace of the Republic): long, low, very wide
+  // block; a colonnade-like pilaster rhythm with two tall windows per bay, a
+  // tall glazed loggia ground floor and a strong double-line cornice/attic.
+  // floorHeight ~5 m, ground floor ~7 m, 7 m bays between pilasters.
+  palace: {
+    archetype: 'palace',
+    id: ARCHETYPE_ID.palace,
+    floorHeight: 5.0,
+    groundFloorHeight: 7.0,
+    bayWidth: 7.0,
+    // Fraction of one half-bay (windows come in pairs between pilasters).
+    windowWidthRatio: 0.55,
+    windowHeightRatio: 0.66,
+    sillRatio: 0.22,
+    flags: F.monument | F.pilasters | F.cornice | F.shopfront | F.attic,
+    corniceHeight: 1.4,
+    balconyRatio: 0,
+    roofColorFamily: 'flat',
+    colors: ARCHETYPE_COLORS.palace,
+  },
+  // Sports arenas / grandstands: blank concrete bowl walls with only a sparse
+  // horizontal glazing band. The geometry builder emits STYLE_FLAG.blank for
+  // stadium stands, so this is mostly a fallback/material identity preset.
+  stadium: {
+    archetype: 'stadium',
+    id: ARCHETYPE_ID.stadium,
+    floorHeight: 6.0,
+    groundFloorHeight: 6.0,
+    bayWidth: 8.0,
+    windowWidthRatio: 0.9,
+    windowHeightRatio: 0.2,
+    sillRatio: 0.6,
+    flags: F.blank | F.ribbon,
+    corniceHeight: 0.6,
+    balconyRatio: 0,
+    roofColorFamily: 'flat',
+    colors: ARCHETYPE_COLORS.stadium,
+  },
 };
 
 export function presetFor(archetype: Archetype): FacadePreset {

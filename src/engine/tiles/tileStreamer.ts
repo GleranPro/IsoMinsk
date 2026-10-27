@@ -64,6 +64,16 @@ export interface TileStreamerOptions {
   demo?: boolean;
   nolimit?: boolean;
   maxLoadedTiles?: number;
+  /** Override the manifest URL (dataset selection lives in src/shared/config.ts). */
+  manifestUrl?: string;
+  /** Override the tile payload base URL. */
+  dataBaseUrl?: string;
+  /** Ready after this many (nearest) visible tiles instead of all of them. */
+  initialTileTarget?: number;
+  /** Keep the ground plate visible to cover tiles skipped by the resident budget. */
+  keepBasePlate?: boolean;
+  /** Number of tile-build workers (2 for the central dataset, 3-4 for the city). */
+  workerCount?: number;
   onError?: (message: string) => void;
   onWarning?: (message: string) => void;
   onLoadingChange?: (loading: boolean, progress: number) => void;
@@ -97,6 +107,10 @@ interface DesiredTile {
 
 const DEFAULT_MAX_LOADED_TILES = 40;
 const MAX_TILES_IN_VIEW = 120;
+/** View/zoom distance below which the cached visible set is reused instead of
+ * rebuilding it: recomputing 400-tile candidates every frame causes GC churn. */
+const DESIRED_RECOMPUTE_TARGET_STEP_TILES = 0.2;
+const DESIRED_RECOMPUTE_ZOOM_RATIO = 0.06;
 const MAX_CONCURRENT_TILE_LOADS = 6;
 const TILE_LOAD_MARGIN_TILES = 1;
 /** Facade windows are only worth shading when one low-res pixel covers less
@@ -106,6 +120,21 @@ const DETAIL_WORLD_PER_PIXEL = 1.0;
 const MAX_ADDS_PER_FRAME = 2;
 const TILE_FETCH_TIMEOUT_GUARD_MS = 35_000;
 const BASE_PLANE_SIZE = 12_000;
+
+/** Ground plate geometry with a baked linear vertex colour for the env material. */
+function createGroundPlaneGeometry(width: number, depth: number): THREE.PlaneGeometry {
+  const geometry = new THREE.PlaneGeometry(width, depth);
+  const baseGroundColor = new THREE.Color(ENV_PALETTE.ground);
+  const positionCount = (geometry.getAttribute('position') as THREE.BufferAttribute).count;
+  const colors = new Float32Array(positionCount * 3);
+  for (let i = 0; i < positionCount; i += 1) {
+    colors[i * 3] = baseGroundColor.r;
+    colors[i * 3 + 1] = baseGroundColor.g;
+    colors[i * 3 + 2] = baseGroundColor.b;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -129,12 +158,22 @@ export class TileStreamer {
   private readonly pool: TileWorkerPool;
   private readonly root: THREE.Group;
   private readonly basePlane: THREE.Mesh;
-  private readonly basePlaneGeometry: THREE.PlaneGeometry;
+  private basePlaneGeometry: THREE.PlaneGeometry;
   private readonly basePlaneMaterial: THREE.Material;
   private readonly diagnostics: string[] = [];
   private readonly maxLoadedTiles: number;
   private readonly demo: boolean;
   private readonly nolimit: boolean;
+  private readonly manifestUrl: string;
+  private readonly dataBaseUrl: string;
+  private readonly initialTileTarget: number;
+  private readonly keepBasePlate: boolean;
+  /** Tile grid size is owned by the manifest (512 m central, 1024 m city). */
+  private tileSize: number = TILE_SIZE_M;
+  private desiredDirty = true;
+  private lastDesiredTargetX = Number.NaN;
+  private lastDesiredTargetZ = Number.NaN;
+  private lastDesiredOrthoHeight = Number.NaN;
 
   private inlineMode = false;
   private inlineRunning = false;
@@ -168,26 +207,16 @@ export class TileStreamer {
       4,
       options.maxLoadedTiles ?? (this.nolimit ? 400 : DEFAULT_MAX_LOADED_TILES),
     );
-
-    this.basePlaneGeometry = new THREE.PlaneGeometry(BASE_PLANE_SIZE, BASE_PLANE_SIZE);
-    // The far ground plane uses the SAME environment material as the tiles so
-    // lighting, shadow floor and fog match exactly (a stock lit/basic material
-    // reads as a darker void or a bright band at the frame edges). A baked
-    // linear vertex colour supplies the base ground tint.
-    const baseGroundColor = new THREE.Color(ENV_PALETTE.ground);
-    const basePositionCount =
-      (this.basePlaneGeometry.getAttribute('position') as THREE.BufferAttribute).count;
-    const baseColors = new Float32Array(basePositionCount * 3);
-    for (let i = 0; i < basePositionCount; i += 1) {
-      baseColors[i * 3] = baseGroundColor.r;
-      baseColors[i * 3 + 1] = baseGroundColor.g;
-      baseColors[i * 3 + 2] = baseGroundColor.b;
-    }
-    this.basePlaneGeometry.setAttribute(
-      'color',
-      new THREE.BufferAttribute(baseColors, 3),
+    this.manifestUrl = options.manifestUrl ?? TILE_MANIFEST_URL;
+    this.dataBaseUrl = options.dataBaseUrl ?? DATA_BASE_URL;
+    this.initialTileTarget = Math.max(
+      1,
+      options.initialTileTarget ?? Number.MAX_SAFE_INTEGER,
     );
+    this.keepBasePlate = Boolean(options.keepBasePlate);
+
     this.basePlaneMaterial = options.environmentMaterial;
+    this.basePlaneGeometry = createGroundPlaneGeometry(BASE_PLANE_SIZE, BASE_PLANE_SIZE);
     this.basePlane = new THREE.Mesh(this.basePlaneGeometry, this.basePlaneMaterial);
     this.basePlane.rotation.x = -Math.PI / 2;
     this.basePlane.position.y = GROUND_LAYER_Y.base - 0.09;
@@ -200,7 +229,7 @@ export class TileStreamer {
     this.root.add(this.basePlane);
 
     this.pool = new TileWorkerPool({
-      size: 2,
+      size: Math.max(1, Math.min(options.workerCount ?? 2, 4)),
       onFatal: (reason) => {
         this.diagnostics.push(`worker pool unavailable: ${reason}`);
         this.inlineMode = true;
@@ -247,8 +276,8 @@ export class TileStreamer {
     let lastError: unknown = new Error('manifest not fetched');
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const response = await fetch(TILE_MANIFEST_URL, { cache: 'no-cache' });
-        if (!response.ok) throw new Error(`HTTP ${response.status} for ${TILE_MANIFEST_URL}`);
+        const response = await fetch(this.manifestUrl, { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status} for ${this.manifestUrl}`);
         const manifest = (await response.json()) as TileManifest;
         if (!manifest || !Array.isArray(manifest.tiles) || manifest.tiles.length === 0) {
           throw new Error('manifest is missing a non-empty tiles array');
@@ -264,16 +293,45 @@ export class TileStreamer {
 
   private installManifest(manifest: TileManifest): void {
     this.manifest = manifest;
+    // The manifest owns the tile grid size (512 m central, 1024 m city).
+    this.tileSize =
+      typeof manifest.tileSize === 'number' && manifest.tileSize > 0
+        ? manifest.tileSize
+        : TILE_SIZE_M;
     this.tileIndex.clear();
     for (const entry of manifest.tiles) {
       if (!entry || typeof entry.x !== 'number' || typeof entry.y !== 'number') continue;
       this.tileIndex.set(tileKey(entry.x, entry.y), entry);
     }
-    // The far backdrop plate caused a straight-edged band at the horizon; the
-    // city is styled as a floating isometric diorama instead. Keep the plate
-    // only as the "no data" fallback.
-    this.basePlane.visible = false;
+
+    if (this.keepBasePlate) {
+      // City overview: the resident budget intentionally skips the furthest
+      // visible tiles (nearest-first policy), so the plate fills those holes
+      // with matching ground colour instead of showing sky. Sized to the data
+      // bounds plus two tiles so its edge sits far outside the framed city.
+      this.rebuildBasePlate(manifest.bounds, this.tileSize * 2);
+    } else {
+      // Central dataset: a clean floating diorama, plate only as the no-data
+      // fallback (it used to show as a straight-edged band at the horizon).
+      this.basePlane.visible = false;
+    }
+    this.desiredDirty = true;
     this.options.onManifestLoaded?.(manifest);
+  }
+
+  private rebuildBasePlate(
+    bounds: [number, number, number, number],
+    margin: number,
+  ): void {
+    const width = Math.max(1000, Math.abs(bounds[2] - bounds[0]) + margin * 2);
+    const depth = Math.max(1000, Math.abs(bounds[3] - bounds[1]) + margin * 2);
+    this.basePlane.geometry = createGroundPlaneGeometry(width, depth);
+    this.basePlaneGeometry.dispose();
+    this.basePlaneGeometry = this.basePlane.geometry as THREE.PlaneGeometry;
+    const centreX = (bounds[0] + bounds[2]) * 0.5;
+    const centreY = (bounds[1] + bounds[3]) * 0.5;
+    this.basePlane.position.set(centreX, GROUND_LAYER_Y.base - 0.09, -centreY);
+    this.basePlane.visible = true;
   }
 
   private async loadDemo(): Promise<void> {
@@ -330,12 +388,31 @@ export class TileStreamer {
 
     const worldPerPixel = rig.getPixelWorldSize(renderHeightPx);
     const target = rig.getTargetWorld();
+    const orthoHeight = rig.getOrthoHeight();
     this.lastTargetX = target.x;
     this.lastTargetZ = target.z;
-    this.lastOrthoHeight = rig.getOrthoHeight();
+    this.lastOrthoHeight = orthoHeight;
     this.lastRenderHeight = renderHeightPx;
 
-    this.computeDesired(rig, target);
+    // Rebuild the visible set only when the camera moved/zoomed enough to change
+    // it: at city scale the candidate list is several hundred tiles and the
+    // per-frame cost would otherwise dominate.
+    const targetStep = this.tileSize * DESIRED_RECOMPUTE_TARGET_STEP_TILES;
+    const moved =
+      !Number.isFinite(this.lastDesiredTargetX) ||
+      Math.abs(target.x - this.lastDesiredTargetX) > targetStep ||
+      Math.abs(target.z - this.lastDesiredTargetZ) > targetStep;
+    const zoomed =
+      !Number.isFinite(this.lastDesiredOrthoHeight) ||
+      Math.abs(Math.log(orthoHeight / this.lastDesiredOrthoHeight)) >
+        DESIRED_RECOMPUTE_ZOOM_RATIO;
+    if (this.desiredDirty || moved || zoomed) {
+      this.computeDesired(rig, target);
+      this.desiredDirty = false;
+      this.lastDesiredTargetX = target.x;
+      this.lastDesiredTargetZ = target.z;
+      this.lastDesiredOrthoHeight = orthoHeight;
+    }
     this.beginInitialPhaseIfNeeded();
     this.touchAndEvict();
     this.requestMissingTiles();
@@ -365,19 +442,19 @@ export class TileStreamer {
       const maxLocalX = footprint.maxX;
       const minLocalY = -footprint.maxZ;
       const maxLocalY = -footprint.minZ;
-      const margin = TILE_SIZE_M * TILE_LOAD_MARGIN_TILES;
+      const margin = this.tileSize * TILE_LOAD_MARGIN_TILES;
       const addresses = tilesInRect(
         minLocalX - margin,
         minLocalY - margin,
         maxLocalX + margin,
         maxLocalY + margin,
-        TILE_SIZE_M,
+        this.tileSize,
       );
       for (const address of addresses) {
         const key = tileKey(address.x, address.y);
         const entry = this.tileIndex.get(key);
         if (!entry) continue;
-        const [bx0, by0, bx1, by1] = tileBounds(address.x, address.y, TILE_SIZE_M);
+        const [bx0, by0, bx1, by1] = tileBounds(address.x, address.y, this.tileSize);
         const centreX = (bx0 + bx1) * 0.5;
         const centreZ = -(by0 + by1) * 0.5;
         const distance = Math.hypot(centreX - target.x, centreZ - target.z);
@@ -388,7 +465,7 @@ export class TileStreamer {
         const entry = this.tileIndex.get(key);
         if (!entry) continue;
         if (candidates.some((candidate) => tileKey(candidate.x, candidate.y) === key)) continue;
-        const [bx0, by0, bx1, by1] = tileBounds(entry.x, entry.y, TILE_SIZE_M);
+        const [bx0, by0, bx1, by1] = tileBounds(entry.x, entry.y, this.tileSize);
         const distance = Math.hypot(
           (bx0 + bx1) * 0.5 - target.x,
           -(by0 + by1) * 0.5 - target.z,
@@ -398,7 +475,12 @@ export class TileStreamer {
     }
 
     candidates.sort((a, b) => a.distance - b.distance);
-    if (candidates.length > MAX_TILES_IN_VIEW) candidates = candidates.slice(0, MAX_TILES_IN_VIEW);
+    // Deterministic streaming budget: keep the nearest `maxLoadedTiles` tiles.
+    // At the city overview the visible set is ~400 tiles; the remaining ones are
+    // simply not resident and show the ground plate, while zooming into a
+    // district shrinks the visible set below the budget and restores full detail.
+    const viewCap = Math.max(MAX_TILES_IN_VIEW, this.maxLoadedTiles);
+    if (candidates.length > viewCap) candidates = candidates.slice(0, viewCap);
     if (candidates.length > this.maxLoadedTiles) {
       candidates = candidates.slice(0, this.maxLoadedTiles);
     }
@@ -413,8 +495,11 @@ export class TileStreamer {
   private beginInitialPhaseIfNeeded(): void {
     if (this.initialKeys) return;
     const keys = this.desired.map((entry) => entry.key);
-    this.initialKeys = new Set(keys);
-    this.initialTarget = keys.length;
+    // Ready after the nearest `initialTileTarget` tiles (48 at city scale) so the
+    // first render is quick; the remaining visible tiles stream in afterwards.
+    const eligible = Math.max(1, Math.min(keys.length, this.initialTileTarget));
+    this.initialKeys = new Set(keys.slice(0, eligible));
+    this.initialTarget = eligible;
     // The initial phase always finishes even if some tiles fail.
     if (this.initialTarget === 0) {
       this.initialTarget = 1;
@@ -458,7 +543,11 @@ export class TileStreamer {
   /** Preload the tiles around a local-metre point (used by loadAreaAround). */
   ensureArea(localX: number, localY: number, radiusTiles = 1): void {
     if (this.disposed || !this.manifest) return;
-    const address = { x: Math.floor(localX / TILE_SIZE_M), y: Math.floor(localY / TILE_SIZE_M) };
+    this.desiredDirty = true;
+    const address = {
+      x: Math.floor(localX / this.tileSize),
+      y: Math.floor(localY / this.tileSize),
+    };
     for (let dy = -radiusTiles; dy <= radiusTiles; dy += 1) {
       for (let dx = -radiusTiles; dx <= radiusTiles; dx += 1) {
         const key = tileKey(address.x + dx, address.y + dy);
@@ -496,9 +585,9 @@ export class TileStreamer {
     if (entry.file) {
       if (/^https?:/i.test(entry.file)) return entry.file;
       if (entry.file.startsWith('/')) return entry.file;
-      return `${DATA_BASE_URL}/${entry.file}`;
+      return `${this.dataBaseUrl}/${entry.file}`;
     }
-    return `${DATA_BASE_URL}/tiles/${tileKey(entry.x, entry.y)}.json`;
+    return `${this.dataBaseUrl}/tiles/${tileKey(entry.x, entry.y)}.json`;
   }
 
   private async attemptLoad(task: InflightTask): Promise<void> {
@@ -814,6 +903,31 @@ export class TileStreamer {
 
   get loadedTileCount(): number {
     return this.tiles.size;
+  }
+
+  /** Tile grid size in metres, owned by the manifest (512 central / 1024 city). */
+  get tileSizeM(): number {
+    return this.tileSize;
+  }
+
+  get residentBudget(): number {
+    return this.maxLoadedTiles;
+  }
+
+  get desiredTileCount(): number {
+    return this.desired.length;
+  }
+
+  get manifestUrlUsed(): string {
+    return this.manifestUrl;
+  }
+
+  get dataBaseUrlUsed(): string {
+    return this.dataBaseUrl;
+  }
+
+  get usesGroundPlate(): boolean {
+    return this.keepBasePlate;
   }
 
   get visibleTileCount(): number {

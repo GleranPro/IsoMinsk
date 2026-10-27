@@ -43,7 +43,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pyproj import Transformer  # noqa: E402
-from shapely import make_valid  # noqa: E402
+from shapely import STRtree, make_valid  # noqa: E402
 from shapely.geometry import (  # noqa: E402
     GeometryCollection,
     LineString,
@@ -289,7 +289,17 @@ class ArchetypeClassifier:
         floors = known_floors or 1
 
         if building in CIVIC_BUILDINGS or tags.get("amenity") in CIVIC_BUILDINGS:
+            # Monumental civic ensembles (Palace of the Republic, Bolshoi,
+            # concert halls) get a dedicated colonnade-based facade preset
+            # instead of the generic civic window grid.
+            name = (tags.get("name") or "").lower()
+            monumental_names = ("дворец", "палац", "palace", "театр", "тэатр", "theatre", "филармони")
+            monumental_use = tags.get("amenity") in {"arts_centre", "theatre", "concert_hall", "townhall", "parliament"}
+            if polygon.area >= 6000 and (monumental_use or any(part in name for part in monumental_names)):
+                return "palace"
             return "civic"
+        if building in {"stadium", "grandstand", "sports_hall"} or tags.get("leisure") == "stadium":
+            return "stadium"
         if building in SMALL_BUILDINGS or tags.get("building") in {"garages"}:
             return "small"
         if building in INDUSTRIAL_BUILDINGS or tags.get("man_made") in {"silo", "storage_tank"}:
@@ -1125,23 +1135,7 @@ def main() -> int:
           f"(metro skipped: {stats['subway_skipped']}, "
           f"underground rail skipped: {stats['rail_tunnels_skipped']})")
 
-    # --- water from waterways (rivers without polygon areas) --------------
-    water_polys: list[dict] = []
-    for entry, line in waterways:
-        tags = entry["tags"]
-        if tags.get("waterway") in {"river", "canal", "stream"}:
-            width = parse_number(tags.get("width"))
-            if width is None:
-                width = 24.0 if tags["waterway"] == "river" else (12.0 if tags["waterway"] == "canal" else 5.0)
-            for poly in buffer_line(line, max(4.0, width)):
-                water_polys.append({
-                    "kind": "river" if tags.get("waterway") == "river" else "water",
-                    "polygon": poly_to_rings(poly),
-                    "name": tags.get("name", ""),
-                })
-    stats["water_polygons"] = len(water_polys)
-
-    # --- ground surface list ----------------------------------------------
+    # --- ground surface list (mapped polygon land cover, incl. water areas) ---
     surface_features: list[dict] = []
     for entry in surfaces:
         kind = surface_kind_from_tags(entry["tags"])
@@ -1153,8 +1147,48 @@ def main() -> int:
                 "polygon": ring_set,
                 "name": entry["name"] or "",
             })
+
+    # --- narrow streams from centre lines -----------------------------------
+    # Wide water must come from mapped AREAS (natural=water, waterway=riverbank,
+    # landuse=reservoir, multipolygons). Buffering a river CENTRE LINE into a
+    # 20+ m band synthesises water where OSM only has an axis — that painted a
+    # diagonal "flood" across Yanka Kupala park. Centre lines are used only for
+    # genuinely narrow streams, and never where an area already covers them.
+    water_polys: list[dict] = []
+    existing_water = [
+        Polygon(feature["polygon"][0], [Polygon(ring).exterior.coords for ring in feature["polygon"][1:]])
+        for feature in surface_features
+        if feature["kind"] in {"water", "river"}
+    ]
+    existing_water = [geom for geom in existing_water if not geom.is_empty]
+    water_tree = STRtree(existing_water) if existing_water else None
+    for entry, line in waterways:
+        tags = entry["tags"]
+        kind = tags.get("waterway")
+        if kind not in {"stream", "ditch", "drain"}:
+            # rivers and canals must be areas; skip their centre lines entirely
+            stats["waterway_lines_skipped"] += 1
+            continue
+        explicit_width = parse_number(tags.get("width"))
+        width = min(6.0, explicit_width) if explicit_width else 3.5
+        buffered = buffer_line(line, width)
+        for poly in buffered:
+            if poly.area < 10:
+                continue
+            if water_tree is not None and water_tree.query(poly).size > 0:
+                if any(geom.intersects(poly) for geom in (existing_water[i] for i in water_tree.query(poly))):
+                    # already represented by a mapped water area
+                    continue
+            water_polys.append({
+                "kind": "water",
+                "polygon": poly_to_rings(poly),
+                **({"name": tags["name"]} if tags.get("name") else {}),
+            })
+    stats["water_polygons"] = len(water_polys)
     surface_features.extend(water_polys)
     stats["surfaces"] = len(surface_features)
+    print(f"Water: {stats['water_polygons']} line-derived stream polygons "
+          f"({stats['waterway_lines_skipped']} river/canal lines skipped — areas only)")
     print(f"Ground surfaces: {len(surface_features):,}")
 
     # --- trees ------------------------------------------------------------
@@ -1188,45 +1222,136 @@ def main() -> int:
 
     # deterministic vegetation in suitable land-use polygons
     rng = random.Random(20261027)
+
+    # --- exclusion masks ---------------------------------------------------
+    # Trees must never stand inside buildings, on roads/pavements, on rail
+    # tracks, in water, on pitches/plazas/construction sites. An STRtree keeps
+    # the point tests cheap even for the whole city.
+    exclude_geoms: list[Polygon] = []
+    for building in buildings:
+        for volume in building["volumes"]:
+            footprint = volume["footprint"]
+            try:
+                poly = Polygon(footprint[0], [Polygon(ring).exterior.coords for ring in footprint[1:]])
+            except Exception:
+                continue
+            if not poly.is_empty:
+                exclude_geoms.append(poly)
+    for road in road_polys:
+        try:
+            poly = Polygon(road["polygon"][0], [Polygon(ring).exterior.coords for ring in road["polygon"][1:]])
+        except Exception:
+            continue
+        if not poly.is_empty:
+            exclude_geoms.append(poly)
+    for surface in surface_features:
+        if surface["kind"] in {"water", "river", "pitch", "plaza", "construction", "railway", "sand"}:
+            try:
+                poly = Polygon(surface["polygon"][0], [Polygon(ring).exterior.coords for ring in surface["polygon"][1:]])
+            except Exception:
+                continue
+            if not poly.is_empty:
+                exclude_geoms.append(poly)
+    exclusion_tree = STRtree(exclude_geoms) if exclude_geoms else None
+
+    def vegetation_blocked(x: float, y: float, margin: float = 2.5) -> bool:
+        if exclusion_tree is None:
+            return False
+        point = Point(x, y)
+        for index in exclusion_tree.query(point, predicate="dwithin", distance=margin):
+            return True
+        return False
+
+    # Mapped OSM trees are authoritative unless they land on a hard surface
+    # (bad mapping) — those are dropped instead of being drawn inside a wall.
+    mapped_kept = 0
+    mapped_dropped = 0
+    for tree in trees:
+        if vegetation_blocked(tree["x"], tree["y"], 1.5):
+            mapped_dropped += 1
+            continue
+        mapped_kept += 1
+    trees = [tree for tree in trees if not vegetation_blocked(tree["x"], tree["y"], 1.5)] if mapped_dropped else trees
+    print(f"Mapped trees: {mapped_kept:,} kept, {mapped_dropped:,} dropped (inside buildings/roads/water)")
+
+    # Density per land-use class (one tree per N square metres) and the minimum
+    # polygon area that justifies vegetation at all.
+    TREE_DENSITY = {"forest": 55.0, "park": 125.0, "scrub": 180.0, "grass": 650.0}
+    MIN_POLY_AREA = {"forest": 180.0, "park": 220.0, "scrub": 260.0, "grass": 900.0}
+    TREE_HEIGHT = {
+        "forest": (9.0, 17.0),
+        "park": (6.5, 13.5),
+        "scrub": (4.0, 9.0),
+        "grass": (5.5, 11.0),
+    }
+    MAX_TOTAL_TREES = 90000
     placed = 0
-    park_polys = [f for f in surface_features if f["kind"] in {"park", "forest", "grass", "scrub"}]
-    for surface in park_polys:
-        poly = Polygon(surface["polygon"][0], [Polygon(ring).exterior.coords for ring in surface["polygon"][1:]])
+    skipped_narrow = 0
+    for surface in surface_features:
+        kind = surface["kind"]
+        if kind not in TREE_DENSITY:
+            continue
+        try:
+            poly = Polygon(surface["polygon"][0], [Polygon(ring).exterior.coords for ring in surface["polygon"][1:]])
+        except Exception:
+            continue
         if not poly.is_valid:
             poly = repair(poly)
             if poly is None:
                 continue
-        polys = iter_polygons(poly)
-        for piece in polys:
-            minx, miny, maxx, maxy = piece.bounds
-            step = 13.0
-            if piece.area < 60:
+        for piece in iter_polygons(poly):
+            if piece.area < MIN_POLY_AREA[kind]:
                 continue
-            x = minx
-            while x < maxx:
-                y = miny
-                while y < maxy:
-                    jx = x + rng.uniform(-4.0, 4.0)
-                    jy = y + rng.uniform(-4.0, 4.0)
-                    if piece.contains(Point(jx, jy)):
-                        seed = rng.random()
-                        height = 6.5 + seed * 7.5
-                        trees.append({
-                            "x": round(jx, 2),
-                            "y": round(jy, 2),
-                            "height": round(height, 2),
-                            "radius": round(height * 0.34, 2),
-                            "variation": round(seed, 3),
-                            "mapped": False,
-                        })
-                        placed += 1
-                    y += step
-                x += step
-        if placed > 6000:
+            # reject narrow strips: road medians, verges, river banks
+            rect = piece.minimum_rotated_rectangle
+            if rect.geom_type == "Polygon" and len(rect.exterior.coords) >= 5:
+                sides = [
+                    math.dist(rect.exterior.coords[i], rect.exterior.coords[i + 1])
+                    for i in range(4)
+                ]
+                if min(sides) < 7.0:
+                    skipped_narrow += 1
+                    continue
+            minx, miny, maxx, maxy = piece.bounds
+            target = int(piece.area / TREE_DENSITY[kind])
+            if target <= 0:
+                continue
+            placed_here = 0
+            attempts = 0
+            max_attempts = target * 14 + 20
+            low, high = TREE_HEIGHT[kind]
+            while placed_here < target and attempts < max_attempts:
+                attempts += 1
+                x = rng.uniform(minx, maxx)
+                y = rng.uniform(miny, maxy)
+                if not piece.contains(Point(x, y)):
+                    continue
+                if vegetation_blocked(x, y, 3.0):
+                    continue
+                seed = rng.random()
+                height = low + seed * (high - low)
+                trees.append({
+                    "x": round(x, 2),
+                    "y": round(y, 2),
+                    "height": round(height, 2),
+                    "radius": round(height * (0.26 + 0.12 * seed), 2),
+                    "variation": round(seed, 3),
+                    "mapped": False,
+                })
+                placed += 1
+                placed_here += 1
+                if len(trees) >= MAX_TOTAL_TREES:
+                    break
+            if len(trees) >= MAX_TOTAL_TREES:
+                break
+        if len(trees) >= MAX_TOTAL_TREES:
             break
     stats["trees_mapped"] = sum(1 for tree in trees if tree["mapped"])
     stats["trees_heuristic"] = sum(1 for tree in trees if not tree["mapped"])
-    print(f"Trees: {len(trees):,} ({stats['trees_mapped']:,} mapped, {stats['trees_heuristic']:,} heuristic)")
+    stats["trees_narrow_skipped"] = skipped_narrow
+    print(f"Trees: {len(trees):,} ({stats['trees_mapped']:,} mapped, "
+          f"{stats['trees_heuristic']:,} heuristic, {skipped_narrow:,} narrow strips skipped, "
+          f"{len(exclude_geoms):,} exclusion polygons)")
 
     # --- tile assignment --------------------------------------------------
     min_tx = math.floor(-half / tile_size)

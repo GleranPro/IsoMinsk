@@ -35,112 +35,112 @@
    "y": -2,
    "file": "tiles/-2_-2.json",
    "buildings": 35,
-   "bytes": 81272
+   "bytes": 75868
   },
   {
    "x": -2,
    "y": -1,
    "file": "tiles/-2_-1.json",
    "buildings": 61,
-   "bytes": 95410
+   "bytes": 96894
   },
   {
    "x": -2,
    "y": 0,
    "file": "tiles/-2_0.json",
    "buildings": 77,
-   "bytes": 122983
+   "bytes": 120222
   },
   {
    "x": -2,
    "y": 1,
    "file": "tiles/-2_1.json",
    "buildings": 8,
-   "bytes": 47666
+   "bytes": 41398
   },
   {
    "x": -1,
    "y": -2,
    "file": "tiles/-1_-2.json",
    "buildings": 46,
-   "bytes": 84738
+   "bytes": 78390
   },
   {
    "x": -1,
    "y": -1,
    "file": "tiles/-1_-1.json",
    "buildings": 97,
-   "bytes": 163016
+   "bytes": 155721
   },
   {
    "x": -1,
    "y": 0,
    "file": "tiles/-1_0.json",
    "buildings": 93,
-   "bytes": 253888
+   "bytes": 241237
   },
   {
    "x": -1,
    "y": 1,
    "file": "tiles/-1_1.json",
    "buildings": 44,
-   "bytes": 121026
+   "bytes": 124203
   },
   {
    "x": 0,
    "y": -2,
    "file": "tiles/0_-2.json",
    "buildings": 23,
-   "bytes": 103882
+   "bytes": 91568
   },
   {
    "x": 0,
    "y": -1,
    "file": "tiles/0_-1.json",
    "buildings": 71,
-   "bytes": 175797
+   "bytes": 196069
   },
   {
    "x": 0,
    "y": 0,
    "file": "tiles/0_0.json",
    "buildings": 29,
-   "bytes": 113665
+   "bytes": 118427
   },
   {
    "x": 0,
    "y": 1,
    "file": "tiles/0_1.json",
    "buildings": 3,
-   "bytes": 104151
+   "bytes": 175270
   },
   {
    "x": 1,
    "y": -2,
    "file": "tiles/1_-2.json",
    "buildings": 27,
-   "bytes": 46622
+   "bytes": 46163
   },
   {
    "x": 1,
    "y": -1,
    "file": "tiles/1_-1.json",
    "buildings": 19,
-   "bytes": 95151
+   "bytes": 136782
   },
   {
    "x": 1,
    "y": 0,
    "file": "tiles/1_0.json",
    "buildings": 9,
-   "bytes": 82545
+   "bytes": 198426
   },
   {
    "x": 1,
    "y": 1,
    "file": "tiles/1_1.json",
    "buildings": 12,
-   "bytes": 48080
+   "bytes": 47227
   }
  ],
  "counts": {
@@ -148,9 +148,9 @@
   "buildingsWithExplicitHeight": 69,
   "buildingsWithLevels": 366,
   "buildingsWithRoofShape": 305,
-  "surfaces": 679,
+  "surfaces": 671,
   "roads": 3790,
-  "trees": 3775
+  "trees": 6235
  },
  "attribution": [
   {

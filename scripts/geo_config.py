@@ -36,6 +36,12 @@ INGEST_MARGIN_M = 320.0
 # Tile grid
 TILE_SIZE_M = 512.0
 
+# City-scale dataset (browser: `?dataset=city`). 12 x 12 km covers the central
+# belt of Minsk — all inner districts and most of the architectural variety —
+# while keeping the generated payload streamable. Raise CITY_SIZE_M for more.
+CITY_SIZE_M = 12000.0
+CITY_TILE_SIZE_M = 1024.0
+
 # --- Coordinate systems -----------------------------------------------------
 EPSG_WGS84 = 4326
 EPSG_UTM35N = 32635
@@ -55,6 +61,25 @@ def ingest_bbox() -> tuple[float, float, float, float]:
         PILOT_CENTER_LAT + dlat,
         PILOT_CENTER_LON + dlon,
     )
+
+
+def city_bbox() -> tuple[float, float, float, float]:
+    """Ingestion window for the city dataset (CITY_SIZE_M + margin)."""
+    half = (CITY_SIZE_M / 2.0) + INGEST_MARGIN_M
+    dlat = half / _M_PER_DEG_LAT
+    dlon = half / _M_PER_DEG_LON
+    return (
+        PILOT_CENTER_LAT - dlat,
+        PILOT_CENTER_LON - dlon,
+        PILOT_CENTER_LAT + dlat,
+        PILOT_CENTER_LON + dlon,
+    )
+
+
+def area_bbox(area: str) -> tuple[float, float, float, float]:
+    """Ingestion window for 'pilot' (default) or 'city'."""
+    return city_bbox() if area == "city" else ingest_bbox()
+
 
 
 # --- Rendering / quality defaults ------------------------------------------

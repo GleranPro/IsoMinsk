@@ -22,9 +22,17 @@
  */
 
 import { PIXEL_PALETTE_SIZE } from '../postprocess/palette';
+import { ARCHETYPE_BY_ID } from '../../shared/geometry';
 
 /** Compile-time size of the `uPalette` uniform array (mirrors PIXEL_PALETTE). */
 export const FACADE_PALETTE_SIZE = PIXEL_PALETTE_SIZE;
+
+/**
+ * Compile-time number of archetype entries in the `uPresetA/B` uniform arrays.
+ * Follows the shared ARCHETYPE_BY_ID contract so adding an archetype there only
+ * requires a preset + palette entry, never a shader edit.
+ */
+export const FACADE_ARCHETYPE_COUNT = ARCHETYPE_BY_ID.length;
 
 /** Program cache key for facade materials (identical GLSL for all instances). */
 export const FACADE_PROGRAM_CACHE_KEY = 'isometric-minsk-facade-v1';
@@ -62,7 +70,7 @@ vFacadeFace = aFace;
 
 export const FACADE_FRAGMENT_DECLARATIONS = /* glsl */ `
 #define FACADE_PALETTE_SIZE ${FACADE_PALETTE_SIZE}
-#define FACADE_ARCHETYPE_COUNT 9
+#define FACADE_ARCHETYPE_COUNT ${FACADE_ARCHETYPE_COUNT}
 
 uniform float uNight;
 uniform float uDetailScale;
@@ -166,7 +174,7 @@ vec3 facadeRoof(vec2 uv, vec3 baseSrgb, float shape, float ridge, float seed, fl
 
 // --------------------------------------------------------------------- trim
 
-vec3 facadeTrimShade(vec2 uv, vec3 baseSrgb, float trimK, float seed, float mPerPx) {
+vec3 facadeTrimShade(vec2 uv, vec3 baseSrgb, float trimK, float seed, float mPerPx, int archetype) {
   // Strong, light cornice/parapet: trim faces are often sub-pixel at overview
   // zoom, so they need clear value contrast against the wall to dither in as a
   // visible cornice line rather than disappearing.
@@ -177,6 +185,18 @@ vec3 facadeTrimShade(vec2 uv, vec3 baseSrgb, float trimK, float seed, float mPer
   if (0.18 / px > 1.4) {
     float groove = facadeBand(fract(uv.y / 0.18), 0.0, 0.10, 0.03);
     trim *= 1.0 - groove * 0.10;
+  }
+  // Palace of the Republic: a strong double-line cornice/attic. The trim band is
+  // corniceHeight (~1.4 m) tall, so two ~0.7 m courses read as double lines at
+  // close/medium zoom and dither into a bright cap at overview zoom.
+  float palaceity = step(8.5, float(archetype)) * step(float(archetype), 9.5);
+  if (palaceity > 0.5) {
+    float course = 0.7;
+    float f = fract(uv.y / course);
+    float line = facadeBand(f, 0.0, 0.22, 0.05);
+    trim = mix(trim, trim * 1.22 + 0.018, line * 0.85);
+    float shadowLine = facadeBand(f, 0.30, 0.42, 0.05);
+    trim *= 1.0 - shadowLine * 0.20;
   }
   return trim;
 }
@@ -282,6 +302,10 @@ vec3 facadeUpperFloors(
   float textureFade = smoothstep(1.4, 3.0, baseMinPx);
   float panelity = step(1.5, float(archetype)) * step(float(archetype), 2.5);
   float modernity = step(2.5, float(archetype)) * step(float(archetype), 3.5);
+  // Palace of the Republic (id 9): colonnade rhythm, paired tall windows.
+  float palaceity = step(8.5, float(archetype)) * step(float(archetype), 9.5);
+  // Stadium (id 10): blank concrete bowl with a sparse horizontal glazing band.
+  float stadiumity = step(9.5, float(archetype)) * step(float(archetype), 10.5);
 
   float colF = uv.x / bayLod;
   float col = floor(colF);
@@ -290,6 +314,14 @@ vec3 facadeUpperFloors(
   float rowF = yy / fhLod;
   float row = floor(rowF);
   float v = fract(rowF);
+
+  // Palace bays between pilasters hold a symmetric pair of tall windows, so the
+  // window lattice uses a half-bay pitch while pilasters/balconies stay on the
+  // full bay pitch.
+  float winPitch = mix(bayLod, bayLod * 0.5, palaceity);
+  float colWinF = uv.x / winPitch;
+  float colWin = floor(colWinF);
+  float uWin = fract(colWinF);
 
   float bayPx = bayLod / px;
   float floorPx = fhLod / px;
@@ -301,7 +333,7 @@ vec3 facadeUpperFloors(
   // Windows are enlarged to at least ~1.6 px so each one stays a readable dark
   // pixel against a light wall even after the low-res frame is upscaled.
   float winW = mix(winWRatio, 1.0, ribbon ? 1.0 : 0.0);
-  winW = clamp(max(winW, 1.60 * px / bayLod), 0.05, 0.97);
+  winW = clamp(max(winW, 1.60 * px / winPitch), 0.05, 0.97);
   float winH = winHRatio;
   winH = clamp(max(winH, 1.70 * px / fhLod), 0.05, 0.94);
   float sillR = min(sillRatio, max(1.0 - winH - 0.02, 0.0));
@@ -310,11 +342,18 @@ vec3 facadeUpperFloors(
 
   float aaU = max(0.35 * px, 0.0015) / bayLod;
   float aaV = max(0.35 * px, 0.0015) / fhLod;
+  float aaWin = max(0.35 * px, 0.0015) / winPitch;
 
-  float winCrisp = facadeRect(vec2(u, v), winLo, winHi, vec2(aaU, aaV));
+  float winCrisp = facadeRect(vec2(uWin, v), winLo, winHi, vec2(aaWin, aaV));
   float winAverage = winW * winH;
   float win = mix(winAverage, winCrisp, crisp) * detail;
   if (blank) win = 0.0;
+  // Stadium: replace punched windows with one continuous clerestory glazing band
+  // per stand level (the geometry builder tags stadium walls as blank).
+  if (stadiumity > 0.5) {
+    float band = facadeRect(vec2(uWin, v), vec2(0.03, 0.58), vec2(0.97, 0.74), vec2(aaWin, aaV));
+    win = band * detail;
+  }
 
   vec3 outWall = wallSrgb;
   // Slab / spandrel line: the floor rhythm. Panel blocks get a stronger, darker
@@ -324,20 +363,28 @@ vec3 facadeUpperFloors(
   outWall *= 1.0 - slab * slabStrength * detail;
   outWall *= 1.0 + (facadeHash21(vec2(col * 1.7 + seed * 31.0, row * 0.7 + 3.0)) - 0.5)
     * 0.03 * detail * textureFade;
+  // Stadium concrete: faint horizontal formwork joints instead of window rows.
+  if (stadiumity > 0.5) {
+    float joint = facadeBand(fract(uv.y / 2.4), 0.0, 0.03, 0.02) * 0.10 * detail;
+    outWall *= 1.0 - joint;
+  }
 
   if (pilasters && !blank) {
-    float pilasterW = max(0.42, 1.3 * px);
+    // Palace of the Republic: a full-height colonnade — wider, lighter stone
+    // pilaster strips at every bay edge, with a capital line per storey.
+    float pilasterW = mix(max(0.42, 1.3 * px), max(1.15, 2.0 * px), palaceity);
     float pilasterMask = facadeBand(min(u, 1.0 - u), 0.0, pilasterW / bayLod, aaU * 1.6);
     pilasterMask *= (1.0 - win);
-    outWall = mix(outWall, outWall * 1.10 + 0.010, pilasterMask * detail * mix(0.55, 0.9, textureFade));
+    vec3 pilasterCol = mix(outWall * 1.10 + 0.010, mix(uTrimColor * 0.94, outWall * 1.05, 0.25), palaceity);
+    outWall = mix(outWall, pilasterCol, pilasterMask * detail * mix(0.55, 0.9, textureFade));
     float cap = facadeBand(v, 0.94, 1.0, aaV) * pilasterMask * detail;
-    outWall = mix(outWall, uTrimColor * 0.85, cap * 0.5);
+    outWall = mix(outWall, uTrimColor * 0.85, cap * mix(0.5, 0.8, palaceity));
   }
 
   // Daytime glass, with a warm low-sun reflection in the golden hour. Modern
   // towers get a glassy teal cast; per-window brightness variation is faded out
   // with distance so a 2 px window grid stays a clean grid instead of speckle.
-  float glassVar = mix(0.5, facadeHash21(vec2(col, row) + seed * 7.0), lodFade);
+  float glassVar = mix(0.5, facadeHash21(vec2(colWin, row) + seed * 7.0), lodFade);
   vec3 glass = mix(uGlassColor, uGlassLightColor, 0.32 + 0.4 * glassVar);
   glass *= mix(0.85, 1.20, smoothstep(winLo.y, winHi.y, v));
   glass = mix(glass, glass * 1.10 + 0.010, ribbon ? 1.0 : 0.0);
@@ -350,14 +397,14 @@ vec3 facadeUpperFloors(
   // distances a light frame + sill can turn a dark window into a white block.
   // Frames stay dark and only appear when the window is large enough; the light
   // sill line is the only bright accent and appears once the window is >= ~2.5 px.
-  float windowPx = min(winW * bayLod, winH * fhLod) / px;
-  float frameFade = smoothstep(3.2, 5.5, windowPx);
-  float sillFade = smoothstep(2.4, 4.0, windowPx);
+  float windowPx = min(winW * winPitch, winH * fhLod) / px;
+  float frameFade = smoothstep(3.2, 5.5, windowPx) * (1.0 - stadiumity);
+  float sillFade = smoothstep(2.4, 4.0, windowPx) * (1.0 - stadiumity);
   float frameM = max(0.45 * px, 0.03);
-  frameM = min(frameM, 0.13 * winW * bayLod);
+  frameM = min(frameM, 0.13 * winW * winPitch);
   frameM = min(frameM, 0.13 * winH * fhLod);
-  vec2 frameSize = vec2(frameM / bayLod, frameM / fhLod);
-  float inner = facadeRect(vec2(u, v), winLo + frameSize, winHi - frameSize, vec2(aaU, aaV));
+  vec2 frameSize = vec2(frameM / winPitch, frameM / fhLod);
+  float inner = facadeRect(vec2(uWin, v), winLo + frameSize, winHi - frameSize, vec2(aaWin, aaV));
   float frameMask = clamp(winCrisp - inner, 0.0, 1.0) * crisp * detail * frameFade;
   vec3 frameCol = mix(uGlassColor * 0.80, wallSrgb * 0.62, 0.30);
 
@@ -365,14 +412,14 @@ vec3 facadeUpperFloors(
   sillM = min(sillM, 0.16 * winH * fhLod);
   float sillLo = max(winLo.y - sillM / fhLod, 0.0);
   float sillMask = facadeBand(v, sillLo, winLo.y, aaV)
-    * step(winLo.x, u) * (1.0 - step(winHi.x, u))
+    * step(winLo.x, uWin) * (1.0 - step(winHi.x, uWin))
     * crisp * detail * sillFade;
   vec3 sillCol = mix(uTrimColor, wallSrgb * 1.06, 0.30);
 
   // Subtle lighter lintel above the window (only when resolvable).
   float lintelM = min(max(0.6 * px, 0.03), 0.14 * winH * fhLod);
   float lintelMask = facadeBand(v, winHi.y, winHi.y + lintelM / fhLod, aaV)
-    * step(winLo.x, u) * (1.0 - step(winHi.x, u))
+    * step(winLo.x, uWin) * (1.0 - step(winHi.x, uWin))
     * crisp * detail * frameFade;
 
   vec3 glassNight = mix(glass, uNightDarkColor, night * 0.78);
@@ -411,7 +458,7 @@ vec3 facadeUpperFloors(
   // Night: deterministic per-window lighting, most windows stay dark (a sparse
   // hand-placed look reads better than a fully lit office wall).
   if (night > 0.001) {
-    float litHash = facadeHash21(vec2(col * 1.31 + seed * 53.0, row * 1.83 + seed * 29.0));
+    float litHash = facadeHash21(vec2(colWin * 1.31 + seed * 53.0, row * 1.83 + seed * 29.0));
     float rowBias = 0.60 + 0.55 * facadeHash11(row * 3.7 + seed * 11.0);
     float lit = step(litHash, night * 0.52 * rowBias);
     float warm = facadeHash21(vec2(litHash * 71.0, seed * 9.0));
@@ -433,6 +480,7 @@ vec3 facadeGroundFloor(
   float floorHeight,
   float seed,
   int flags,
+  int archetype,
   float mPerPx,
   float detail,
   out vec3 emit
@@ -445,6 +493,8 @@ vec3 facadeGroundFloor(
   float fh = max(floorHeight, 1.8);
   bool shopfront = facadeFlag(flags, 4);
   bool blank = facadeFlag(flags, 64);
+  // Palace of the Republic: tall glazed loggia between stone columns.
+  float palaceity = step(8.5, float(archetype)) * step(float(archetype), 9.5);
   // 0 at overview zoom (one averaged plinth band + reveal line), 1 when the
   // ground floor is tall enough on screen for doors and shop windows.
   float groundDetail = smoothstep(3.2, 6.5, gh / px) * detail;
@@ -484,6 +534,36 @@ vec3 facadeGroundFloor(
   if (blank) {
     float seam = facadeBand(fract(uv.y / max(gh, 2.0)), 0.0, 0.02, 0.02) * groundDetail;
     outWall *= 1.0 - seam * 0.08;
+  } else if (palaceity > 0.5) {
+    // Palace loggia: a tall dark glazed wall recessed between the pilaster
+    // columns, with stone columns/entablature and a regular entrance rhythm.
+    float glassBottom = 0.9;
+    float glassTop = max(gh - 1.2, glassBottom + 1.5);
+    float glassMask = facadeRect(vec2(u, uv.y), vec2(0.02, glassBottom), vec2(0.98, glassTop), vec2(aaU, aaM));
+    float colW = max(0.9, 1.8 * px);
+    float columnMask = facadeBand(min(u, 1.0 - u), 0.0, (colW * 0.5) / bay, aaU * 1.2);
+    glassMask *= 1.0 - columnMask;
+
+    float cellVar = facadeHash21(vec2(col * 0.7 + seed * 47.0, 5.1));
+    vec3 loggiaGlass = mix(uShopfrontColor, uGlassColor, 0.35);
+    loggiaGlass = mix(loggiaGlass, uGlassLightColor, 0.12 + 0.10 * cellVar);
+    loggiaGlass = mix(loggiaGlass, uNightWarmColor, night * 0.35);
+    outWall = mix(outWall, loggiaGlass, glassMask * groundDetail * 0.95);
+
+    // Vertical stone columns at every bay edge + a heavy entablature over the
+    // glazing (both stay visible when the band is only 2-3 px tall).
+    vec3 columnCol = mix(uTrimColor * 0.92, wallSrgb * 1.05, 0.25);
+    outWall = mix(outWall, columnCol, columnMask * detail);
+    float entab = facadeBand(uv.y, glassTop, min(glassTop + max(0.6, 1.4 * px), gh - 0.04), aaM);
+    outWall = mix(outWall, uTrimColor * 0.88, entab * 0.9 * detail);
+
+    // Entrance doors centred in alternating bays.
+    float doorBay = step(0.5, fract(seed * 7.0 + col * 0.5));
+    float doorMask = facadeRect(vec2(u, uv.y), vec2(0.43, 0.0), vec2(0.57, 2.8), vec2(aaU, aaM));
+    doorMask *= groundDetail * doorBay;
+    outWall = mix(outWall, mix(uNightDarkColor, wallSrgb * 0.30, 0.30), doorMask * 0.92);
+
+    emit += facadeSrgbToLinear(mix(uNightWarmColor, uNightLitColor, 0.4)) * glassMask * night * 0.30;
   } else if (shopfront) {
     // Shop window: one wide glazed bay with mullions and a sign fascia.
     float shopBottom = 0.55;
@@ -541,6 +621,10 @@ vec3 facadeGroundFloor(
   vec3 average = wallSrgb * mix(1.0, 0.80, plinth);
   if (blank) {
     average = wallSrgb * mix(1.0, 0.82, plinth);
+  } else if (palaceity > 0.5) {
+    // Palace: averaged dark loggia + light column/entablature mix.
+    vec3 loggiaAvg = mix(mix(uShopfrontColor, uGlassColor, 0.35), uNightWarmColor, night * 0.35);
+    average = mix(average, mix(loggiaAvg, uTrimColor * 0.82, 0.28), 0.78);
   } else if (shopfront) {
     vec3 shopAvg = mix(mix(uShopfrontColor, uGlassColor, 0.40), uNightWarmColor, night * 0.45);
     average = mix(average, shopAvg, 0.72);
@@ -568,7 +652,7 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
   outAlbedo = vec3(0.5, 0.5, 0.5);
   outEmissive = vec3(0.0);
 
-  float archetypeF = clamp(vFacadeStyle.x, 0.0, 8.0);
+  float archetypeF = clamp(vFacadeStyle.x, 0.0, float(FACADE_ARCHETYPE_COUNT - 1));
   int archetype = int(archetypeF + 0.5);
   vec4 presetA = uPresetA[archetype];
   vec4 presetB = uPresetB[archetype];
@@ -611,7 +695,7 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
     return;
   }
   if (faceKind > 2.5 && faceKind < 3.5) {
-    outAlbedo = facadeTrimShade(uv, baseSrgb, trimK, seed, mPerPx);
+    outAlbedo = facadeTrimShade(uv, baseSrgb, trimK, seed, mPerPx, archetype);
     return;
   }
   if (faceKind > 3.5 && faceKind < 4.5) {
@@ -631,7 +715,7 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
   );
   vec3 ground = facadeGroundFloor(
     uv, baseSrgb, groundHeight, presetA, floorHeight,
-    seed, flags, mPerPx, detail, groundEmit
+    seed, flags, archetype, mPerPx, detail, groundEmit
   );
 
   float groundBlend;

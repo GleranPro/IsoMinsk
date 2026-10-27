@@ -15,9 +15,19 @@ __pycache__/
 *.pyc
 .DS_Store
 
+# City-scale generated dataset (large, regenerated locally with `pnpm run data:city`).
+# The committed default dataset lives in public/data/tiles/.
+public/data/city-tiles/
+data/interim/city_*.geojson
+data/interim/city_*.json
+data/processed/coverage_city.json
+data/processed/city_area_normalized.json
+
 # agent scratch / local verification artifacts (not part of the deliverable)
 .facade-check/
 shot.mjs
 probe.mjs
 tmp_*.ts
+tmp_*.mjs
+tmp_*.py
 .agent-scratch/

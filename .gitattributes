@@ -1,0 +1,6 @@
+# Normalise line endings so the repository is stable on Windows + CI.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pbf binary
+*.zip binary

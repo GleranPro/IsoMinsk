@@ -85,6 +85,8 @@ export class IsometricCameraRig {
   private heightCss = 1;
   private sceneRadius = 1700;
   private maxHeight = 160;
+  /** Per-dataset upper zoom-out limit (set from the fitted city overview). */
+  private maxOrthoHeightLimit: number = ISO_CAMERA.maxOrthoHeight;
   private dirty = true;
   private animating = false;
 
@@ -265,7 +267,7 @@ export class IsometricCameraRig {
     pose.orthoHeight = clamp(
       pose.orthoHeight,
       ISO_CAMERA.minOrthoHeight,
-      ISO_CAMERA.maxOrthoHeight,
+      this.maxOrthoHeightLimit,
     );
     pose.elevation = clamp(pose.elevation, MIN_ELEVATION, MAX_ELEVATION);
     pose.azimuth = normalizeAngle(pose.azimuth);
@@ -355,6 +357,26 @@ export class IsometricCameraRig {
     return this.pose.orthoHeight;
   }
 
+  /**
+   * Per-dataset zoom-out limit. The central dataset keeps the shared default
+   * (2600 m); the whole-city dataset raises it to the fitted overview * 1.35 so
+   * the full city can be framed without a separate camera code path.
+   */
+  setMaxOrthoHeight(maxOrthoHeight: number): void {
+    if (!Number.isFinite(maxOrthoHeight)) return;
+    this.maxOrthoHeightLimit = Math.max(
+      ISO_CAMERA.maxOrthoHeight,
+      Math.min(maxOrthoHeight, 60_000),
+    );
+    this.goal.orthoHeight = Math.min(this.goal.orthoHeight, this.maxOrthoHeightLimit);
+    this.pose.orthoHeight = Math.min(this.pose.orthoHeight, this.maxOrthoHeightLimit);
+    this.apply();
+  }
+
+  getMaxOrthoHeight(): number {
+    return this.maxOrthoHeightLimit;
+  }
+
   getElevation(): number {
     return this.pose.elevation;
   }
@@ -437,7 +459,7 @@ export class IsometricCameraRig {
     const newHeight = clamp(
       goalHeight * factor,
       ISO_CAMERA.minOrthoHeight,
-      ISO_CAMERA.maxOrthoHeight,
+      this.maxOrthoHeightLimit,
     );
     const appliedFactor = newHeight / Math.max(goalHeight, 1e-6);
     const anchor = this.groundPointAtNdc(ndcX, ndcY, this.tmpPoint);

@@ -30,7 +30,12 @@ import type {
   PixelArtSettings,
 } from '../shared/appApi';
 import type { FeatureId, TileManifest } from '../shared/types';
-import { ISO_CAMERA } from '../shared/config';
+import {
+  ISO_CAMERA,
+  resolveDataBaseUrl,
+  resolveDatasetName,
+  resolveManifestUrl,
+} from '../shared/config';
 import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
@@ -65,6 +70,8 @@ interface DebugGlobals {
   ready: boolean;
   app: CityAppHandle;
   stats: EngineStats;
+  /** Active dataset: 'central' | 'city' (see ?dataset=city). */
+  dataset: string;
   errors: string[];
   diagnostics: string[];
 }
@@ -203,6 +210,29 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const noLimit = params.get('nolimit') === '1';
   const shadowParam = Number.parseInt(params.get('shadow') ?? '', 10);
   const resolutionParam = Number.parseInt(params.get('res') ?? '', 10);
+
+  // --- dataset selection (single source of truth: src/shared/config.ts) ----
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const dataset = resolveDatasetName(search);
+  const dataBaseUrl = resolveDataBaseUrl(search);
+  const manifestUrl = resolveManifestUrl(search);
+  /**
+   * Dataset runtime budgets. Central keeps the original 40-tile resident bubble
+   * (all 16 tiles are usually resident). At city scale the fitted overview sees
+   * ~400 tiles: we deterministically keep the nearest 200 resident (the rest
+   * show the ground plate) and become ready after the nearest 48 so the first
+   * render is quick; zooming into a district shrinks the visible set below the
+   * budget and restores full detail.
+   */
+  const datasetConfig =
+    dataset === 'city'
+      ? { maxLoadedTiles: 200, initialTileTarget: 48, keepBasePlate: true, workerCount: 3 }
+      : {
+          maxLoadedTiles: 40,
+          initialTileTarget: Number.MAX_SAFE_INTEGER,
+          keepBasePlate: false,
+          workerCount: 2,
+        };
 
   const errors: string[] = [];
   const diagnostics: string[] = [];
@@ -349,6 +379,12 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     facadeMaterialFar: facadeFar,
     demo: demoMode,
     nolimit: noLimit,
+    manifestUrl,
+    dataBaseUrl,
+    maxLoadedTiles: datasetConfig.maxLoadedTiles,
+    initialTileTarget: datasetConfig.initialTileTarget,
+    keepBasePlate: datasetConfig.keepBasePlate,
+    workerCount: datasetConfig.workerCount,
     onError: recordError,
     onWarning: recordDiagnostic,
     onLoadingChange: (loading, progress) => {
@@ -480,6 +516,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     ready: false,
     app: handle,
     stats,
+    dataset,
     errors,
     diagnostics,
   };
@@ -854,6 +891,23 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       };
       return { key: entry.key, building: describe(entry.buildingMesh), environment: describe(entry.environmentMesh) };
     },
+    /** Dataset + streaming/zoom state (city dataset acceptance checks). */
+    datasetInfo: () => ({
+      dataset,
+      dataBaseUrl,
+      manifestUrl,
+      tileSize: streamer.tileSizeM,
+      residentBudget: streamer.residentBudget,
+      desiredTiles: streamer.desiredTileCount,
+      loadedTiles: streamer.loadedTileCount,
+      visibleTiles: streamer.visibleTileCount,
+      keepBasePlate: streamer.usesGroundPlate,
+      maxOrthoHeight: rig.getMaxOrthoHeight(),
+      defaultView: { ...defaultView },
+      shadowCasting: lighting.isShadowCasting(),
+      fog: { near: fog.near, far: fog.far },
+      pixelArt: post.getRenderSize(),
+    }),
     materialDebug: () => ({
       background: background.getHexString(THREE.SRGBColorSpace),
       backgroundLinear: background.toArray(),
@@ -892,7 +946,13 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         intensity: lighting.sun.shadow.intensity,
       },
       energyGains: lighting.getEnergyGains(),
+      shadowCasting: lighting.isShadowCasting(),
       defaultView: { ...defaultView },
+      zoomLimits: {
+        minOrthoHeight: ISO_CAMERA.minOrthoHeight,
+        maxOrthoHeight: rig.getMaxOrthoHeight(),
+      },
+      dataset,
     }),
   };
   if (typeof window !== 'undefined') {
@@ -939,14 +999,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   }
 
   /** Fit the isometric view so `defaultFitBounds` (local metres) fits on screen. */
-  function refreshDefaultView(): void {
-    if (!defaultFitBounds) return;
+  /** Ortho half-height that fits `defaultFitBounds` with a 1% margin. */
+  function computeFitOrthoHeight(): number {
+    if (!defaultFitBounds) return ISO_CAMERA.orthoHeight;
     const [minX, minY, maxX, maxY] = defaultFitBounds;
-    const centreX = (minX + maxX) / 2;
-    const centreY = (minY + maxY) / 2;
-    defaultView.targetLocalX = centreX;
-    defaultView.targetLocalY = centreY;
-
     const halfX = Math.abs(maxX - minX) / 2;
     const halfY = Math.abs(maxY - minY) / 2;
     const azimuth = ISO_CAMERA.azimuth;
@@ -958,11 +1014,27 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     // screen-y extent = ground depth along the up-screen ground axis * sin(elev).
     const halfScreenX = halfX * cosAzimuth + halfY * sinAzimuth;
     const halfGroundDepth = halfX * sinAzimuth + halfY * cosAzimuth;
-    const fitHeight = Math.max(halfScreenX / Math.max(aspect, 0.2), halfGroundDepth * sinElevation);
+    const fitHeight = Math.max(
+      halfScreenX / Math.max(aspect, 0.2),
+      halfGroundDepth * sinElevation,
+    );
+    return Math.max(fitHeight * 1.01, ISO_CAMERA.orthoHeight);
+  }
+
+  function refreshDefaultView(): void {
+    if (!defaultFitBounds) return;
+    const [minX, minY, maxX, maxY] = defaultFitBounds;
+    defaultView.targetLocalX = (minX + maxX) / 2;
+    defaultView.targetLocalY = (minY + maxY) / 2;
+
+    // Dataset-aware zoom-out limit: the central dataset keeps the shared 2600 m
+    // cap; the whole-city dataset can zoom out to its fitted overview * 1.35.
+    const fitHeight = computeFitOrthoHeight();
+    rig.setMaxOrthoHeight(Math.max(ISO_CAMERA.maxOrthoHeight, fitHeight * 1.35));
     defaultView.orthoHeight = clamp(
-      Math.max(fitHeight * 1.01, ISO_CAMERA.orthoHeight),
+      fitHeight,
       ISO_CAMERA.minOrthoHeight,
-      ISO_CAMERA.maxOrthoHeight,
+      rig.getMaxOrthoHeight(),
     );
   }
 
@@ -1048,10 +1120,14 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
   function currentFogRange(): { near: number; far: number } {
     const camDistance = rig.getCameraDistanceValue();
-    const offset = camDistance - FOG_REFERENCE_DISTANCE;
+    // Scale the preset fog distances with the visible extent: at the central
+    // default view (660 m) this is byte-identical to the old preset offsets, at
+    // the ~9.6 km city overview the haze grows with the view instead of fogging
+    // the whole city out.
+    const viewScale = Math.max(1, rig.getOrthoHeight() / 660);
     return {
-      near: Math.max(60, look.fogNear + offset),
-      far: Math.max(300, look.fogFar + offset),
+      near: Math.max(60, camDistance + (look.fogNear - FOG_REFERENCE_DISTANCE) * viewScale),
+      far: Math.max(300, camDistance + (look.fogFar - FOG_REFERENCE_DISTANCE) * viewScale),
     };
   }
 
@@ -1188,7 +1264,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     if (streamer.loadedTileCount < streamer.visibleTileCount) shadowDirty = true;
     if (shadowDirty || cameraChanged || shadowRefreshFrames > 0) {
       const footprint = rig.getVisibleGroundRect(240);
-      lighting.updateShadow(footprint, maxCasterHeight);
+      lighting.updateShadow(footprint, maxCasterHeight, rig.getOrthoHeight());
       renderer.shadowMap.needsUpdate = true;
       shadowDirty = false;
       shadowRefreshFrames = Math.max(0, shadowRefreshFrames - 1);

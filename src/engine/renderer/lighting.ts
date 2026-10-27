@@ -48,8 +48,16 @@ const STYLISED_SUN_DATE = new Date(2026, 5, 21);
 const STYLISED_AZIMUTH_OFFSET_DEG = -140;
 /** Lower clamp for the shadow-frustum half extent (metres). */
 const MIN_SHADOW_EXTENT = 260;
-/** Upper clamp: the overview must cover the whole diamond-shaped district. */
+/** Upper clamp for the central-district shadow frustum (metres). */
 const MAX_SHADOW_EXTENT = 2400;
+/**
+ * Above this ortho half-height (city-wide overview) the visible footprint is far
+ * larger than a crisp 2048² shadow map can cover; rendering it would either show
+ * the shadow-frustum boundary as a hard band or produce sub-texel shadows. The
+ * sun keeps its light but stops casting; shadows come back when zooming into a
+ * district (city dataset) or are always on for the central dataset.
+ */
+const SHADOW_MAX_ORTHO_HEIGHT = 5000;
 
 export interface LightState {
   hours: number;
@@ -77,6 +85,7 @@ export class LightingRig {
   private elevationOverrideDeg: number | null = null;
   private energyGains = { sun: 1, ambient: 1, fill: 1 };
   private useRealDateSun = false;
+  private shadowEnabled = true;
 
   constructor(scene: THREE.Scene, shadowMapSize = 4096) {
     this.scene = scene;
@@ -201,7 +210,19 @@ export class LightingRig {
   updateShadow(
     footprint: { minX: number; maxX: number; minZ: number; maxZ: number },
     maxHeight = 140,
+    orthoHeight = 0,
   ): void {
+    const wantsCasting = orthoHeight <= SHADOW_MAX_ORTHO_HEIGHT;
+    if (this.sun.castShadow !== wantsCasting) {
+      this.sun.castShadow = wantsCasting;
+      this.shadowEnabled = wantsCasting;
+    } else {
+      this.shadowEnabled = wantsCasting;
+    }
+    if (!wantsCasting) {
+      this.lastShadowKey = '';
+      return;
+    }
     const direction = this.state.direction;
     const elevation = Math.max(this.state.elevation, (MIN_SUN_ELEVATION_DEG * Math.PI) / 180);
     const tanElevation = Math.max(Math.tan(elevation), 0.18);
@@ -210,10 +231,14 @@ export class LightingRig {
     const halfDepth = Math.max((footprint.maxZ - footprint.minZ) * 0.5, 30);
     const footprintHalfDiagonal = Math.hypot(halfWidth, halfDepth);
     const shadowReach = Math.min(maxHeight / tanElevation, 420);
+    // Near the central district the frustum cap keeps shadows crisp; when zoomed
+    // into the city dataset the cap scales with the view so the visible footprint
+    // stays covered (never a hard boundary inside the frame).
+    const maxExtent = Math.max(MAX_SHADOW_EXTENT, orthoHeight * 1.9);
     const extent = THREE.MathUtils.clamp(
       footprintHalfDiagonal + shadowReach * 0.85 + 30,
       MIN_SHADOW_EXTENT,
-      MAX_SHADOW_EXTENT,
+      Math.min(maxExtent, 12_000),
     );
 
     const centerX = (footprint.minX + footprint.maxX) * 0.5;
@@ -289,6 +314,11 @@ export class LightingRig {
 
   getShadowExtent(): number {
     return this.shadowExtent;
+  }
+
+  /** False while the city-wide overview exceeds the shadow-map coverage limit. */
+  isShadowCasting(): boolean {
+    return this.shadowEnabled;
   }
 
   /** Art-direction energy multipliers applied to the palette preset values. */

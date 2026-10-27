@@ -45,7 +45,9 @@ export type Archetype =
   | 'historic' // pre-war low-rise
   | 'industrial' // industrial sheds, depots
   | 'small' // garages, kiosks, outbuildings
-  | 'civic'; // public / cultural / religious buildings
+  | 'civic' // public / cultural / religious buildings
+  | 'palace' // monumental civic ensembles (colonnades, loggias)
+  | 'stadium'; // sports arenas and grandstands (bowl geometry, no windows)
 
 export type RoofShape =
   | 'flat'

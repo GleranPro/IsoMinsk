@@ -331,6 +331,71 @@ export function syntheticTileBuildings(count = 300): BuildingFeature[] {
 }
 
 // ---------------------------------------------------------------------------
+// Stadium / grandstand / palace fixtures (Milestone B follow-up)
+// ---------------------------------------------------------------------------
+
+/** CCW ellipse ring in local metres (used to fake an arena outline). */
+export function ellipseRing(
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  count: number,
+): Ring {
+  const ring: Ring = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    ring.push([cx + rx * Math.cos(angle), cy + ry * Math.sin(angle)]);
+  }
+  return ring;
+}
+
+/**
+ * OSM relation r8414582 (Dynamo Stadium, Minsk): oval arena 206x136 m with two
+ * volumes (outer arena 23,106 m² and an inner detail volume 9,605 m²).
+ */
+export function stadiumBuilding(options: MakeBuildingOptions = {}): BuildingFeature {
+  const outer = ellipseRing(103, 68, 103, 68, 44);
+  const inner = ellipseRing(103, 68, 103 * 0.645, 68 * 0.645, 40);
+  const building = makeBuilding(
+    [
+      makeVolume([outer], 0, 16.8, 'flat', 0),
+      makeVolume([inner], 0, 16.8, 'flat', 0),
+    ],
+    { id: 'r8414582', archetype: 'stadium', roofShape: 'flat', ...options },
+  );
+  building.osmType = 'relation';
+  building.osmId = 8414582;
+  building.tags = { building: 'stadium', 'building:levels': '4' };
+  return building;
+}
+
+/** `building=grandstand` stand: long rectangular rake, blank concrete walls. */
+export function grandstandBuilding(options: MakeBuildingOptions = {}): BuildingFeature {
+  const building = makeBuilding(
+    [makeVolume([rectRing(0, 0, 40, 12)], 0, 10, 'flat', 0)],
+    { id: 'w9500', archetype: 'civic', roofShape: 'flat', ...options },
+  );
+  building.tags = { building: 'grandstand' };
+  return building;
+}
+
+/** The Palace of the Republic (w25327560): a big flat-roofed civic block. */
+export function palaceBuilding(options: MakeBuildingOptions = {}): BuildingFeature {
+  return makeBuilding(
+    [makeVolume([rectRing(0, 0, 30, 20)], 0, 22, 'flat', 0)],
+    {
+      id: 'w25327560',
+      archetype: 'palace',
+      levels: 4,
+      name: 'Palace of the Republic',
+      roofShape: 'flat',
+      ...options,
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Geometry inspection
 // ---------------------------------------------------------------------------
 

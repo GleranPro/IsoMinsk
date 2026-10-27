@@ -26,7 +26,8 @@ const ARCHETYPES = ARCHETYPE_BY_ID;
 
 describe('FACADE_PRESETS', () => {
   it('covers every archetype exactly once with the matching id', () => {
-    expect(ARCHETYPES.length).toBe(9);
+    expect(ARCHETYPES.length).toBeGreaterThanOrEqual(9);
+    expect(ARCHETYPES.length).toBe(Object.keys(ARCHETYPE_ID).length);
     expect(Object.keys(FACADE_PRESETS).sort()).toEqual([...ARCHETYPES].sort());
     for (const archetype of ARCHETYPES) {
       const preset = FACADE_PRESETS[archetype];
@@ -42,8 +43,9 @@ describe('FACADE_PRESETS', () => {
       // the archetype would no longer be a plausible Minsk building.
       expect(preset.floorHeight).toBeGreaterThanOrEqual(2.2);
       expect(preset.floorHeight).toBeLessThanOrEqual(6);
+      // Ground floors can be taller for monumentals (Palace loggia ~7 m).
       expect(preset.groundFloorHeight).toBeGreaterThanOrEqual(2.2);
-      expect(preset.groundFloorHeight).toBeLessThanOrEqual(6);
+      expect(preset.groundFloorHeight).toBeLessThanOrEqual(8);
       expect(preset.bayWidth).toBeGreaterThan(1);
       expect(preset.bayWidth).toBeLessThanOrEqual(9);
     }
@@ -92,12 +94,51 @@ describe('FACADE_PRESETS', () => {
   });
 
   it('marks the shopfront archetypes consistently', () => {
-    for (const archetype of ['stalin', 'modern', 'office'] as Archetype[]) {
+    for (const archetype of ['stalin', 'modern', 'office', 'palace'] as Archetype[]) {
       expect(styleFlagsFor(archetype) & STYLE_FLAG.shopfront).not.toBe(0);
     }
     for (const archetype of ['khrushchev', 'panel', 'historic', 'small'] as Archetype[]) {
       expect(styleFlagsFor(archetype) & STYLE_FLAG.shopfront).toBe(0);
     }
+  });
+
+  it('has a monumental palace preset (id 9) with colonnade flags', () => {
+    const palace = FACADE_PRESETS.palace;
+    expect(palace).toBeDefined();
+    expect(ARCHETYPE_ID.palace).toBe(9);
+    expect(palace.id).toBe(9);
+    // Palace of the Republic: long low monumental block, colonnade + loggia.
+    expect(palace.floorHeight).toBeGreaterThanOrEqual(4.5);
+    expect(palace.floorHeight).toBeLessThanOrEqual(5.5);
+    expect(palace.groundFloorHeight).toBeGreaterThanOrEqual(6);
+    expect(palace.groundFloorHeight).toBeLessThanOrEqual(8);
+    expect(palace.bayWidth).toBeGreaterThanOrEqual(6);
+    expect(palace.bayWidth).toBeLessThanOrEqual(8);
+    for (const bit of [
+      STYLE_FLAG.monument,
+      STYLE_FLAG.pilasters,
+      STYLE_FLAG.cornice,
+      STYLE_FLAG.shopfront,
+      STYLE_FLAG.attic,
+    ]) {
+      expect(palace.flags & bit, `palace missing flag ${bit}`).not.toBe(0);
+    }
+    expect(palace.corniceHeight).toBeGreaterThanOrEqual(1.2);
+    expect(palace.roofColorFamily).toBe('flat');
+    expect(palace.colors.length).toBeGreaterThanOrEqual(3);
+    expect(styleFlagsFor('palace')).toBe(palace.flags);
+  });
+
+  it('has a stadium preset (id 10) with blank concrete walls', () => {
+    const stadium = FACADE_PRESETS.stadium;
+    expect(stadium).toBeDefined();
+    expect(ARCHETYPE_ID.stadium).toBe(10);
+    expect(stadium.id).toBe(10);
+    expect(stadium.flags & STYLE_FLAG.blank).not.toBe(0);
+    expect(stadium.flags & STYLE_FLAG.ribbon).not.toBe(0);
+    expect(stadium.roofColorFamily).toBe('flat');
+    expect(stadium.colors.length).toBeGreaterThanOrEqual(3);
+    expect(styleFlagsFor('stadium')).toBe(stadium.flags);
   });
 });
 

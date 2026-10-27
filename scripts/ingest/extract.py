@@ -34,7 +34,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import osmium  # noqa: E402
 
-from geo_config import EPSG_UTM35N, EPSG_WGS84, PILOT_CENTER_LAT, PILOT_CENTER_LON, ingest_bbox  # noqa: E402
+from geo_config import (  # noqa: E402
+    EPSG_UTM35N,
+    EPSG_WGS84,
+    PILOT_CENTER_LAT,
+    PILOT_CENTER_LON,
+    area_bbox,
+    ingest_bbox,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -46,18 +53,29 @@ DEFAULT_PBF_CANDIDATES = [
 ]
 
 # --- geometry window --------------------------------------------------------
-# The extraction window is the pilot area padded so that roads and rivers
+# The extraction window is the requested area padded so that roads and rivers
 # crossing the boundary still have complete geometry (clipped during
-# normalisation).
-BBOX = ingest_bbox()
+# normalisation). `configure_window('pilot' | 'city')` sets it before the passes.
 PAD_LAT = 0.012
 PAD_LON = 0.020
+
+_BBOX = ingest_bbox()
 MIN_LAT, MIN_LON, MAX_LAT, MAX_LON = (
-    BBOX[0] - PAD_LAT,
-    BBOX[1] - PAD_LON,
-    BBOX[2] + PAD_LAT,
-    BBOX[3] + PAD_LON,
+    _BBOX[0] - PAD_LAT,
+    _BBOX[1] - PAD_LON,
+    _BBOX[2] + PAD_LAT,
+    _BBOX[3] + PAD_LON,
 )
+
+
+def configure_window(area: str) -> None:
+    """Set the extraction window for 'pilot' (default) or 'city'."""
+    global _BBOX, MIN_LAT, MIN_LON, MAX_LAT, MAX_LON
+    _BBOX = area_bbox(area)
+    MIN_LAT = _BBOX[0] - PAD_LAT
+    MIN_LON = _BBOX[1] - PAD_LON
+    MAX_LAT = _BBOX[2] + PAD_LAT
+    MAX_LON = _BBOX[3] + PAD_LON
 
 
 def inside_window(lat: float, lon: float) -> bool:
