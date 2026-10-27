@@ -1,0 +1,320 @@
+/**
+ * Wire format between the tile worker and the main thread.
+ *
+ * Tile JSON parsing and all geometry generation happen in a Web Worker so that
+ * the frame loop never blocks. `THREE.BufferGeometry` objects cannot cross the
+ * worker boundary, so geometry is flattened into plain typed-array buffers
+ * (transferred, not copied, when possible) and rebuilt on the main thread with
+ * no further allocation beyond the BufferAttribute wrappers.
+ *
+ * Building meshes keep every custom facade attribute so the facade shader can
+ * consume them exactly as documented in src/shared/geometry.ts.
+ * Environment meshes are merged per tile into one geometry with the canonical
+ * `position` / `normal` / `color` attributes.
+ */
+
+import * as THREE from 'three';
+import type { BuildingFeature, FeatureId } from '../../shared/types';
+
+export type TypedArrayName =
+  | 'Float32Array'
+  | 'Float64Array'
+  | 'Uint32Array'
+  | 'Uint16Array'
+  | 'Uint8Array'
+  | 'Int32Array'
+  | 'Int16Array'
+  | 'Int8Array';
+
+export type TypedArray =
+  | Float32Array
+  | Float64Array
+  | Uint32Array
+  | Uint16Array
+  | Uint8Array
+  | Int32Array
+  | Int16Array
+  | Int8Array;
+
+type TypedArrayConstructor = {
+  new (length: number): TypedArray;
+  new (buffer: ArrayBufferLike): TypedArray;
+  name: string;
+};
+
+const TYPED_ARRAY_CONSTRUCTORS: Record<TypedArrayName, TypedArrayConstructor> = {
+  Float32Array: Float32Array as unknown as TypedArrayConstructor,
+  Float64Array: Float64Array as unknown as TypedArrayConstructor,
+  Uint32Array: Uint32Array as unknown as TypedArrayConstructor,
+  Uint16Array: Uint16Array as unknown as TypedArrayConstructor,
+  Uint8Array: Uint8Array as unknown as TypedArrayConstructor,
+  Int32Array: Int32Array as unknown as TypedArrayConstructor,
+  Int16Array: Int16Array as unknown as TypedArrayConstructor,
+  Int8Array: Int8Array as unknown as TypedArrayConstructor,
+};
+
+function resolveTypedArrayName(name: string): TypedArrayName {
+  return (name in TYPED_ARRAY_CONSTRUCTORS ? name : 'Float32Array') as TypedArrayName;
+}
+
+export interface WireAttribute {
+  name: string;
+  arrayType: TypedArrayName;
+  itemSize: number;
+  normalized: boolean;
+  /** Owned ArrayBuffer, transferable. */
+  data: ArrayBuffer;
+}
+
+export interface WireMesh {
+  attributes: WireAttribute[];
+  index: WireAttribute | null;
+  /** [cx, cy, cz, radius] */
+  boundingSphere: [number, number, number, number] | null;
+  /** [minX, minY, minZ, maxX, maxY, maxZ] */
+  boundingBox: [number, number, number, number, number, number] | null;
+  triangleCount: number;
+  /** Approximate byte size of all buffers, for the stats panel. */
+  bytes: number;
+}
+
+export interface TileWirePayload {
+  key: string;
+  x: number;
+  y: number;
+  bounds: [number, number, number, number];
+  buildings: BuildingFeature[];
+  buildingGeometry: WireMesh | null;
+  /** One index per triangle into `buildingIds`. */
+  triangleOwner: ArrayBuffer | null;
+  triangleOwnerLength: number;
+  buildingIds: FeatureId[];
+  environment: WireMesh | null;
+  trees: WireMesh | null;
+  triangleCount: number;
+  bytes: number;
+  /** Worker-side timings, milliseconds. */
+  fetchMs: number;
+  buildMs: number;
+  /** Non-fatal geometry-builder warning, surfaced in diagnostics only. */
+  buildWarning?: string;
+}
+
+// ---------------------------------------------------------------------------
+// packing (worker side)
+// ---------------------------------------------------------------------------
+
+function readAttributeComponent(
+  attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+  index: number,
+  component: number,
+): number {
+  const withComponent = attribute as unknown as {
+    getComponent?: (i: number, c: number) => number;
+    getX?: (i: number) => number;
+    getY?: (i: number) => number;
+    getZ?: (i: number) => number;
+    getW?: (i: number) => number;
+  };
+  if (typeof withComponent.getComponent === 'function') {
+    return withComponent.getComponent(index, component);
+  }
+  switch (component) {
+    case 0:
+      return withComponent.getX?.(index) ?? 0;
+    case 1:
+      return withComponent.getY?.(index) ?? 0;
+    case 2:
+      return withComponent.getZ?.(index) ?? 0;
+    default:
+      return withComponent.getW?.(index) ?? 0;
+  }
+}
+
+function packAttribute(
+  attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+): WireAttribute {
+  const itemSize = attribute.itemSize;
+  const count = attribute.count;
+  const interleaved =
+    (attribute as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute === true;
+  let data: ArrayBuffer;
+  let arrayType: TypedArrayName;
+
+  if (!interleaved) {
+    const source = (attribute as THREE.BufferAttribute).array as unknown as TypedArray;
+    const constructorName = (source as unknown as { constructor?: { name?: string } }).constructor
+      ?.name;
+    arrayType = resolveTypedArrayName(constructorName ?? 'Float32Array');
+    const Ctor = TYPED_ARRAY_CONSTRUCTORS[arrayType];
+    const copy = new Ctor(source.length);
+    copy.set(source as never);
+    data = copy.buffer as ArrayBuffer;
+  } else {
+    // Interleaved attributes are de-interleaved into a plain Float32 buffer.
+    arrayType = 'Float32Array';
+    const copy = new Float32Array(count * itemSize);
+    for (let i = 0; i < count; i += 1) {
+      const base = i * itemSize;
+      for (let c = 0; c < itemSize; c += 1) {
+        copy[base + c] = readAttributeComponent(attribute, i, c);
+      }
+    }
+    data = copy.buffer as ArrayBuffer;
+  }
+
+  return {
+    name: attribute.name || '',
+    arrayType,
+    itemSize,
+    normalized: Boolean(attribute.normalized),
+    data,
+  };
+}
+
+export function packGeometry(geometry: THREE.BufferGeometry): WireMesh {
+  const attributes: WireAttribute[] = [];
+  for (const name of Object.keys(geometry.attributes)) {
+    attributes.push(packAttribute(geometry.attributes[name]));
+  }
+
+  const indexAttribute = geometry.getIndex();
+  const index = indexAttribute ? packAttribute(indexAttribute) : null;
+
+  if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+
+  const sphere = geometry.boundingSphere;
+  const box = geometry.boundingBox;
+  const position = geometry.getAttribute('position');
+  const triangleCount = indexAttribute
+    ? indexAttribute.count / 3
+    : position
+      ? position.count / 3
+      : 0;
+
+  const bytes = attributes.reduce((sum, attribute) => sum + attribute.data.byteLength, 0)
+    + (index ? index.data.byteLength : 0);
+
+  return {
+    attributes,
+    index,
+    boundingSphere: sphere ? [sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius] : null,
+    boundingBox: box
+      ? [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z]
+      : null,
+    triangleCount,
+    bytes,
+  };
+}
+
+/** Copy a Uint32Array into an exact-sized transferable buffer. */
+export function packUint32Array(source: Uint32Array): ArrayBuffer {
+  const copy = new Uint32Array(source.length);
+  copy.set(source);
+  return copy.buffer as ArrayBuffer;
+}
+
+// ---------------------------------------------------------------------------
+// unpacking (main thread)
+// ---------------------------------------------------------------------------
+
+export function unpackGeometry(mesh: WireMesh): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  for (const attribute of mesh.attributes) {
+    if (!attribute.name) continue;
+    const Ctor = TYPED_ARRAY_CONSTRUCTORS[resolveTypedArrayName(attribute.arrayType)];
+    const array = new Ctor(attribute.data);
+    geometry.setAttribute(
+      attribute.name,
+      new THREE.BufferAttribute(array, attribute.itemSize, attribute.normalized),
+    );
+  }
+  if (mesh.index) {
+    const Ctor = TYPED_ARRAY_CONSTRUCTORS[resolveTypedArrayName(mesh.index.arrayType)];
+    geometry.setIndex(new THREE.BufferAttribute(new Ctor(mesh.index.data), 1));
+  }
+  if (mesh.boundingSphere) {
+    const [cx, cy, cz, radius] = mesh.boundingSphere;
+    geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy, cz), radius);
+  } else {
+    geometry.computeBoundingSphere();
+  }
+  if (mesh.boundingBox) {
+    const [minX, minY, minZ, maxX, maxY, maxZ] = mesh.boundingBox;
+    geometry.boundingBox = new THREE.Box3(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ));
+  } else {
+    geometry.computeBoundingBox();
+  }
+  return geometry;
+}
+
+export function wireMeshBytes(mesh: WireMesh | null): number {
+  return mesh ? mesh.bytes : 0;
+}
+
+// ---------------------------------------------------------------------------
+// worker message protocol
+// ---------------------------------------------------------------------------
+
+export interface TileWorkerLoadRequest {
+  type: 'load';
+  id: number;
+  key: string;
+  url: string;
+  facadeDetail: boolean;
+  trees: boolean;
+}
+
+export interface TileWorkerCancelRequest {
+  type: 'cancel';
+  id: number;
+}
+
+export type TileWorkerRequest = TileWorkerLoadRequest | TileWorkerCancelRequest;
+
+export interface TileWorkerResultMessage {
+  type: 'result';
+  id: number;
+  payload: TileWirePayload;
+}
+
+export interface TileWorkerErrorMessage {
+  type: 'error';
+  id: number;
+  message: string;
+}
+
+export interface TileWorkerCancelledMessage {
+  type: 'cancelled';
+  id: number;
+}
+
+export type TileWorkerResponse =
+  | TileWorkerResultMessage
+  | TileWorkerErrorMessage
+  | TileWorkerCancelledMessage;
+
+/** Every transferable buffer referenced by a payload (for postMessage). */
+export function collectTransferables(payload: TileWirePayload): ArrayBuffer[] {
+  const buffers: ArrayBuffer[] = [];
+  const addMesh = (mesh: WireMesh | null) => {
+    if (!mesh) return;
+    for (const attribute of mesh.attributes) buffers.push(attribute.data);
+    if (mesh.index) buffers.push(mesh.index.data);
+  };
+  addMesh(payload.buildingGeometry);
+  addMesh(payload.environment);
+  addMesh(payload.trees);
+  if (payload.triangleOwner) buffers.push(payload.triangleOwner);
+  return buffers;
+}
+
+export function payloadBytes(payload: TileWirePayload): number {
+  return (
+    wireMeshBytes(payload.buildingGeometry) +
+    wireMeshBytes(payload.environment) +
+    wireMeshBytes(payload.trees) +
+    (payload.triangleOwner ? payload.triangleOwner.byteLength : 0)
+  );
+}

@@ -1,0 +1,163 @@
+{
+ "version": "0.1.0",
+ "generatedAt": "2026-10-27",
+ "epsg": 32635,
+ "originUtm": [
+  536859.254,
+  5972786.284
+ ],
+ "centerLatLon": [
+  53.9022,
+  27.561
+ ],
+ "tileSize": 512.0,
+ "tileRange": {
+  "minX": -2,
+  "minY": -2,
+  "maxX": 1,
+  "maxY": 1
+ },
+ "bounds": [
+  -800.0,
+  -800.0,
+  800.0,
+  800.0
+ ],
+ "tiles": [
+  {
+   "x": -2,
+   "y": -2,
+   "file": "tiles/-2_-2.json",
+   "buildings": 36,
+   "bytes": 82574
+  },
+  {
+   "x": -2,
+   "y": -1,
+   "file": "tiles/-2_-1.json",
+   "buildings": 61,
+   "bytes": 95831
+  },
+  {
+   "x": -2,
+   "y": 0,
+   "file": "tiles/-2_0.json",
+   "buildings": 77,
+   "bytes": 123647
+  },
+  {
+   "x": -2,
+   "y": 1,
+   "file": "tiles/-2_1.json",
+   "buildings": 8,
+   "bytes": 47954
+  },
+  {
+   "x": -1,
+   "y": -2,
+   "file": "tiles/-1_-2.json",
+   "buildings": 49,
+   "bytes": 87092
+  },
+  {
+   "x": -1,
+   "y": -1,
+   "file": "tiles/-1_-1.json",
+   "buildings": 97,
+   "bytes": 164028
+  },
+  {
+   "x": -1,
+   "y": 0,
+   "file": "tiles/-1_0.json",
+   "buildings": 96,
+   "bytes": 256771
+  },
+  {
+   "x": -1,
+   "y": 1,
+   "file": "tiles/-1_1.json",
+   "buildings": 44,
+   "bytes": 121250
+  },
+  {
+   "x": 0,
+   "y": -2,
+   "file": "tiles/0_-2.json",
+   "buildings": 24,
+   "bytes": 104601
+  },
+  {
+   "x": 0,
+   "y": -1,
+   "file": "tiles/0_-1.json",
+   "buildings": 76,
+   "bytes": 178903
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "file": "tiles/0_0.json",
+   "buildings": 30,
+   "bytes": 114901
+  },
+  {
+   "x": 0,
+   "y": 1,
+   "file": "tiles/0_1.json",
+   "buildings": 3,
+   "bytes": 104193
+  },
+  {
+   "x": 1,
+   "y": -2,
+   "file": "tiles/1_-2.json",
+   "buildings": 27,
+   "bytes": 46831
+  },
+  {
+   "x": 1,
+   "y": -1,
+   "file": "tiles/1_-1.json",
+   "buildings": 20,
+   "bytes": 95727
+  },
+  {
+   "x": 1,
+   "y": 0,
+   "file": "tiles/1_0.json",
+   "buildings": 10,
+   "bytes": 83478
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "file": "tiles/1_1.json",
+   "buildings": 12,
+   "bytes": 48593
+  }
+ ],
+ "counts": {
+  "buildings": 670,
+  "buildingsWithExplicitHeight": 71,
+  "buildingsWithLevels": 372,
+  "buildingsWithRoofShape": 315,
+  "surfaces": 679,
+  "roads": 3811,
+  "trees": 3775
+ },
+ "attribution": [
+  {
+   "name": "OpenStreetMap",
+   "url": "https://www.openstreetmap.org/copyright",
+   "licence": "ODbL 1.0",
+   "note": "Buildings, roads, landuse, trees. © OpenStreetMap contributors"
+  },
+  {
+   "name": "Geofabrik",
+   "url": "https://download.geofabrik.de/europe/belarus.html",
+   "licence": "ODbL 1.0",
+   "note": "OSM extract Minsk.osm.pbf"
+  }
+ ]
+}

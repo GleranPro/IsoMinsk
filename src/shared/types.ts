@@ -1,0 +1,238 @@
+/**
+ * Isometric Minsk — shared data schemas.
+ *
+ * These types are the contract between the offline Python pipeline
+ * (data/processed -> public/data/tiles) and the browser renderer.
+ *
+ * COORDINATE CONVENTION (identical everywhere in the app):
+ *   All geometry is stored as LOCAL METRES in the UTM 35N plane, translated by
+ *   the city origin: local = utm - originUtm.
+ *
+ *   When converted to Three.js world space:
+ *      worldX =  localX
+ *      worldY =  heightAboveGroundMetres
+ *      worldZ = -localY     (north is -Z, so "up the screen" is north at azimuth 0)
+ *
+ *   Rings are arrays of [x, y] pairs in local metres. The first ring of a
+ *   polygon is the exterior ring, any further rings are holes.
+ *   Ring winding is normalised by the pipeline: exterior rings are
+ *   counter-clockwise in local metres.
+ */
+
+/** A closed linear ring in local metres, without a duplicated closing vertex. */
+export type Ring = [number, number][];
+
+/** A polygon: exterior ring + optional holes. */
+export type Polygon = Ring[];
+
+/** Stable feature id: `${osmType[0]}${osmId}` e.g. "w123456", "r98765". */
+export type FeatureId = string;
+
+export type OsmType = 'way' | 'relation';
+
+export type HeightSource = 'osm_height' | 'osm_levels' | 'heuristic' | 'default';
+
+/**
+ * Architectural archetype drives facade style, materials and window rhythm.
+ * Classification prefers explicit OSM metadata, then neighborhood heuristics.
+ */
+export type Archetype =
+  | 'stalin' // Soviet neoclassical / Stalinist along the avenue
+  | 'khrushchev' // 5-storey low-rise panel/brick blocks
+  | 'panel' // Brezhnev-era 9-12 storey panel blocks
+  | 'modern' // modern apartment towers
+  | 'office' // office and commercial
+  | 'historic' // pre-war low-rise
+  | 'industrial' // industrial sheds, depots
+  | 'small' // garages, kiosks, outbuildings
+  | 'civic'; // public / cultural / religious buildings
+
+export type RoofShape =
+  | 'flat'
+  | 'gabled'
+  | 'hipped'
+  | 'pyramidal'
+  | 'skillion'
+  | 'dome'
+  | 'complex';
+
+/** One volume of a building (OSM `building:part` or the whole footprint). */
+export interface BuildingVolume {
+  /** Polygon in local metres (exterior ring first). */
+  footprint: Polygon;
+  /** Absolute bottom elevation of the volume, metres. */
+  minHeight: number;
+  /** Absolute top elevation (eave level) of the volume, metres. */
+  height: number;
+  roofShape: RoofShape;
+  /** Vertical rise of the roof above `height`, metres. 0 for flat roofs. */
+  roofHeight: number;
+  /** Direction of the ridge (radians, CCW from +X) for gabled/skillion roofs. */
+  roofDirection?: number;
+  /** Provenance of the height value. */
+  heightSource: HeightSource;
+  /** True when this volume comes from an explicit OSM building:part. */
+  isPart?: boolean;
+}
+
+/** A building, as rendered: one or more non-overlapping volumes. */
+export interface BuildingFeature {
+  id: FeatureId;
+  osmType: OsmType;
+  osmId: number;
+  /** Human readable name when tagged. */
+  name?: string;
+  archetype: Archetype;
+  /** Number of above-ground floors, when known. */
+  levels?: number;
+  /** Total height in metres (top of the main volume). */
+  height: number;
+  /** Dominant roof shape across volumes. */
+  roofShape: RoofShape;
+  /** Volumes to render; already de-overlapped by the offline pipeline. */
+  volumes: BuildingVolume[];
+  /** Filtered OSM tags that are useful for the info panel. */
+  tags: Record<string, string>;
+  /** Optional short description used by the info panel. */
+  address?: string;
+}
+
+/** Road class, drives width and surface colour. */
+export type RoadClass =
+  | 'motorway'
+  | 'trunk'
+  | 'primary'
+  | 'secondary'
+  | 'tertiary'
+  | 'residential'
+  | 'service'
+  | 'living_street'
+  | 'pedestrian'
+  | 'footway'
+  | 'cycleway'
+  | 'path'
+  | 'steps'
+  | 'track'
+  | 'unknown';
+
+export interface RoadPolygon {
+  kind: 'road' | 'footway' | 'rail';
+  class: RoadClass;
+  /** Polygon of the buffered centreline in local metres. */
+  polygon: Polygon;
+  /** Width used to buffer the centreline, metres. */
+  width: number;
+  bridge?: boolean;
+  tunnel?: boolean;
+  /** Optional name for debugging. */
+  name?: string;
+}
+
+export type SurfaceKind =
+  | 'grass'
+  | 'park'
+  | 'forest'
+  | 'scrub'
+  | 'water'
+  | 'river'
+  | 'sand'
+  | 'pitch'
+  | 'cemetery'
+  | 'railway'
+  | 'plaza'
+  | 'residential'
+  | 'industrial'
+  | 'commercial'
+  | 'construction'
+  | 'unknown';
+
+export interface SurfacePolygon {
+  kind: SurfaceKind;
+  polygon: Polygon;
+  name?: string;
+}
+
+/** A deterministic tree instance. */
+export interface TreeInstance {
+  /** Local metres. */
+  x: number;
+  y: number;
+  /** Trunk height, metres. */
+  height: number;
+  /** Crown radius, metres. */
+  radius: number;
+  /** 0..1 deterministic variation for colour / shape. */
+  variation: number;
+  /** Explicitly mapped OSM tree (true) or heuristically placed (false). */
+  mapped: boolean;
+}
+
+/** Everything needed to render one tile. */
+export interface TileData {
+  tileX: number;
+  tileY: number;
+  /** Tile bounds in local metres: [minX, minY, maxX, maxY]. */
+  bounds: [number, number, number, number];
+  buildings: BuildingFeature[];
+  surfaces: SurfacePolygon[];
+  roads: RoadPolygon[];
+  trees: TreeInstance[];
+  /**
+   * Building ids whose footprint crosses this tile but which are owned by
+   * another tile. Renderers use this for spatial indexing only; the geometry
+   * itself lives in the owning tile so it is never rendered twice.
+   */
+  crossingBuildingIds?: FeatureId[];
+}
+
+export interface TileManifest {
+  version: string;
+  generatedAt: string;
+  /** Projection used for local coordinates. */
+  epsg: number;
+  /** UTM 35N easting/northing that maps to local (0, 0). */
+  originUtm: [number, number];
+  /** Pilot centre used to derive originUtm. */
+  centerLatLon: [number, number];
+  tileSize: number;
+  /** Inclusive min / max tile indices. */
+  tileRange: { minX: number; minY: number; maxX: number; maxY: number };
+  /** Total local-metre bounds covered by all tiles. */
+  bounds: [number, number, number, number];
+  tiles: TileIndexEntry[];
+  counts: {
+    buildings: number;
+    buildingsWithExplicitHeight: number;
+    buildingsWithLevels: number;
+    buildingsWithRoofShape: number;
+    surfaces: number;
+    roads: number;
+    trees: number;
+  };
+  /** Provenance and licence information, shown in the attribution panel. */
+  attribution: AttributionEntry[];
+}
+
+export interface TileIndexEntry {
+  x: number;
+  y: number;
+  /** Path relative to the data base URL, e.g. "tiles/3_4.json". */
+  file: string;
+  /** Number of buildings owned by this tile. */
+  buildings: number;
+  /** Uncompressed byte size of the tile JSON. */
+  bytes: number;
+}
+
+export interface AttributionEntry {
+  name: string;
+  url: string;
+  licence: string;
+  note?: string;
+}
+
+/** Tile coordinates -> local metre bounds. */
+export interface TileAddress {
+  x: number;
+  y: number;
+}

@@ -1,0 +1,118 @@
+# Isometric Minsk
+
+Interactive isometric **pixel-art 3D map of central Minsk**, generated from real
+OpenStreetMap geometry: real buildings with walls, roofs and procedural facades;
+real avenues, squares, parks and the Svislach embankment; an orthographic
+isometric camera you can pan, zoom and rotate; and a real pixel-art rendering
+pipeline (low-resolution rasterisation → outline/quantise → nearest-neighbour
+upscale).
+
+Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsaw-izo/).
+
+**Status:** vertical slice of the October Square / Independence Avenue area
+(1.6 × 1.6 km, 512 m tiles), fully generated offline, streamed and rendered in
+the browser. See `docs/PROGRESS.md` for milestone status and
+`docs/LIMITATIONS.md` for what is inferred vs. surveyed.
+
+---
+
+## Quick start (Windows 11 / PowerShell)
+
+Requirements: **Node.js 24+**, **pnpm 10+**, **Python 3.11+** (only needed to
+regenerate the data; the generated tiles are committed).
+
+```powershell
+cd D:\Workk\VoxelMinsk
+
+# 1. Install JavaScript dependencies
+pnpm install
+
+# 2. Start the app (data is already generated in public/data)
+pnpm dev
+#    → open http://127.0.0.1:5173
+```
+
+The app needs no backend: it is a static Vite site plus JSON tiles.
+
+## Regenerating the city data (optional)
+
+The offline pipeline downloads the OSM extract for Belarus, extracts the pilot
+area, normalises/projects/infers heights and writes the tile payloads.
+
+```powershell
+# once: python environment with the geospatial stack
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt
+
+# download Geofabrik OSM extract (~350 MB, cached)
+pnpm run data:download
+
+# extract → normalise → validate (≈2-5 min total)
+pnpm run data:all
+```
+
+Outputs:
+
+| Path | Content |
+| --- | --- |
+| `data/raw/belarus-latest.osm.pbf` | raw Geofabrik extract (git-ignored) |
+| `data/interim/minsk_raw.geojson` | pilot-area features in WGS84 (git-ignored) |
+| `public/data/tiles/manifest.json` | tile index, counts, attribution |
+| `public/data/tiles/<x>_<y>.json` | per-tile renderer payload (512 m tiles) |
+| `data/processed/coverage.json` | coverage + provenance statistics |
+| `docs/COVERAGE_REPORT.md` | generated coverage/validity report |
+
+The pilot area and tile size are configured in `scripts/geo_config.py`
+(mirrored in `src/shared/config.ts`).
+
+## Tests
+
+```powershell
+pnpm run typecheck      # TypeScript
+pnpm test               # Vitest: geometry, roofs, facades, environment, data validation
+pnpm run test:e2e       # Playwright: real browser, real WebGL
+pnpm run qa:capture     # screenshots + performance stats → screenshots/
+```
+
+## Controls
+
+| Input | Action |
+| --- | --- |
+| Left-drag / WASD / arrows | Pan |
+| Mouse wheel | Zoom |
+| `Q` / `E` or right-drag | Rotate camera |
+| Left click | Select building (info panel) |
+| Reset isometric view button | Restore default view |
+
+UI also exposes: pixel-art toggle, facade-detail toggle (debugging), debug
+wireframe, time-of-day slider, live performance stats, data attribution.
+
+## Project layout
+
+```
+src/
+  app/        React shell: panels, controls, loading indicator (no scene objects)
+  engine/     Three.js: camera, renderer, tile streaming, materials, shaders,
+              postprocessing, picking — implements CityAppHandle
+  city/       procedural city geometry: buildings, roofs, facades, roads,
+              environment (pure functions → BufferGeometry)
+  shared/     schemas, constants, coordinate/tile maths, app↔engine API
+scripts/      offline pipeline: ingest, normalize, tiles, validation, QA
+public/data/  generated tiles (static hosting)
+tests/        unit (Vitest), integration, e2e (Playwright)
+docs/         architecture, data sources, progress, limitations, QA report
+```
+
+See `docs/ARCHITECTURE.md` for the coordinate conventions, tile payload schema,
+renderer pipeline and module ownership.
+
+## Data sources & licensing
+
+* **© OpenStreetMap contributors**, data licensed under
+  [ODbL 1.0](https://opendatacommons.org/licenses/odbl/). The app displays
+  attribution; derived tile data keeps the same licence obligations
+  (see `docs/DATA_SOURCES.md`).
+* Extract provided by [Geofabrik](https://download.geofabrik.de/europe/belarus.html).
+
+Restricted datasets (e.g. GlobalBuildingAtlas non-commercial height data) are
+**not** integrated; see `docs/DATA_SOURCES.md`.

@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.venv/
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+test-results/
+playwright-report/
+screenshots/
+*.log
+__pycache__/
+*.pyc
+.DS_Store
+
+# agent scratch / local verification artifacts (not part of the deliverable)
+.facade-check/
+shot.mjs
+probe.mjs
+tmp_*.ts
+.agent-scratch/
