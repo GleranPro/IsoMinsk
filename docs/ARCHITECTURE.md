@@ -6,29 +6,40 @@ pipeline and the browser renderer, plus the module ownership map.
 
 ## 1. Data flow
 
+Two datasets are produced from the same OSM extract (BBBike Minsk, with the
+Geofabrik Belarus extract as the fallback for larger areas):
+
+| Dataset | Extent | Tiles | Purpose | Committed |
+| --- | --- | --- | --- | --- |
+| `pilot` (default) | 1.6 × 1.6 km | 16 × 512 m | vertical slice, immediate `pnpm dev` | yes (~1.9 MiB) |
+| `city` | 12 × 12 km | 144 × 1024 m | whole inner-city belt, `?dataset=city` | no — generated with `pnpm run data:city` (~59 MiB) |
+
 ```
-Geofabrik OSM extract (Belarus, .osm.pbf)
-        │  scripts/ingest/extract.py           pyosmium, C++ node-location index
+BBBike Minsk .osm.pbf
+        │  scripts/ingest/extract.py --area pilot|city   pyosmium, C++ node index
         ▼
-data/interim/minsk_raw.geojson               WGS84 lon/lat + OSM tags + tree nodes
-        │  scripts/normalize/normalize.py     pyproj + shapely
+data/interim/{minsk,city}_raw.geojson          WGS84 lon/lat + OSM tags + tree nodes
+        │  scripts/normalize/normalize.py --area pilot|city   pyproj + shapely
         ▼
-data/processed/city_normalized.json          validation / coverage source of truth
-data/processed/coverage.json                 coverage + provenance report input
-        │  (same script) projection → local metres → height/roof/archetype inference
+data/processed/{city_normalized,coverage}.json  validation / coverage source of truth
+        │  projection → local metres → height/roof/archetype inference → tiling
         ▼
-public/data/tiles/<x>_<y>.json              512 m tiles, renderer payload
-public/data/tiles/manifest.json             tile index, counts, attribution
-        │  scripts/validation/coverage_report.py
+public/data/tiles/<x>_<y>.json                 512 m tiles (pilot, committed)
+public/data/city-tiles/tiles/<x>_<y>.json      1024 m tiles (city, git-ignored)
+<dataset>/manifest.json                        tile index, tileSize, bounds, counts
+        │  scripts/validation/coverage_report.py --area pilot|city
         ▼
-docs/COVERAGE_REPORT.md                      coverage + validity report
-        │  browser: src/engine/tiles (TileManager)
+docs/COVERAGE_REPORT{,_CITY}.md                coverage + validity reports
+        │  browser: src/engine/tiles (tile streamer, manifest.tileSize is authoritative)
         ▼
 Three.js scene → pixel-art postprocessing → canvas
 ```
 
 The renderer never touches raw geospatial data. The pipeline is deterministic:
-same PBF + same scripts ⇒ same tiles.
+same PBF + same scripts ⇒ same tiles. The dataset is selected by the URL
+(`?dataset=city`) through `resolveDatasetName` / `resolveManifestUrl` in
+`src/shared/config.ts`; the streamer reads `tileSize`, `tileRange`, `bounds` and
+`pilotBounds` from the manifest and never hardcodes a grid.
 
 ## 2. Coordinate systems
 

@@ -466,6 +466,12 @@ export class TileStreamer {
     this.touchAndEvict();
     this.requestMissingTiles();
     this.processPayloadQueue();
+    // City dataset: the ground plate covers the parts of the city that are not
+    // resident yet; hide it as soon as the full visible set is loaded so the
+    // finished overview is a clean floating diorama (no plate ring/corners).
+    if (this.keepBasePlate) {
+      this.basePlane.visible = this.tiles.size < this.desired.length;
+    }
     this.updateLod(renderHeightPx, rig);
     this.updateLoadingProgress();
     if (this.tilesChangedPending) {

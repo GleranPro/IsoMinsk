@@ -963,6 +963,29 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       }
       return matches.slice(0, 60);
     },
+    /** QA helper: loaded buildings of one archetype with local positions. */
+    archetypeSamples: (archetype: string, limit = 120) => {
+      const samples: Array<{ id: string; name: string; localX: number; localY: number; height: number }> = [];
+      for (const tile of streamer.loadedTiles()) {
+        for (const feature of tile.buildings.values()) {
+          if (feature.archetype !== archetype) continue;
+          const ring = feature.volumes[0]?.footprint[0];
+          if (!ring || ring.length === 0) continue;
+          let sx = 0;
+          let sy = 0;
+          for (const [x, y] of ring) { sx += x; sy += y; }
+          samples.push({
+            id: feature.id,
+            name: feature.name ?? '',
+            localX: sx / ring.length,
+            localY: sy / ring.length,
+            height: feature.height,
+          });
+          if (samples.length >= limit) return samples;
+        }
+      }
+      return samples;
+    },
     /** QA helper: first loaded building of an archetype and its local position. */
     archetypeSample: (archetype: string) => {
       for (const tile of streamer.loadedTiles()) {

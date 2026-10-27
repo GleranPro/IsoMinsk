@@ -44,32 +44,48 @@ golden hour, clean 3D debug).
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ❌ not started | design in `docs/ARCHITECTURE.md` §7; streaming/LRU already in place for a larger tile range |
 
-## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop, 1600×900)
+## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop)
 
-* Scene: 654 buildings, 16 tiles resident, 181 011 triangles, 49 draw calls,
-  60 FPS (vsync-limited), 640×360 internal pixel-art resolution, 24.1 MB GPU
-  geometry, 0 console/page errors.
-* Day overview: mean luminance 108/255, 0 % near-black, 2 000–3 700 distinct
-  colours (palette-quantised by design).
-* Night (22:30): mean luminance 39/255, sparse warm lit windows across the
-  district, roofs and streets readable.
-* Data payload: 16 tiles, 1699 KiB raw JSON / ~406 KiB gzipped (23.8 %).
-* Tests: 224/224 unit (Vitest), 12/12 browser e2e (Playwright, hardware GPU),
-  18/18 Lead integration checks (controls, picking, streaming, brightness,
-  night contrast, no console errors), `tsc --noEmit` clean.
-* Data coverage: 10.6 % explicit `height`, 56 % derived from `building:levels`,
-  33.5 % heuristic; 46.6 % explicit `roof:shape`.
+**Central pilot dataset** (1600×900):
+* 654 buildings, 16 tiles resident, 368 411 triangles (data grew after the
+  vegetation/water/stadium fixes), 81 draw calls, 60 FPS, 640×360 internal
+  pixel-art resolution, ~26 MB GPU geometry, 0 console/page errors.
+
+**City dataset** (12 × 12 km, 1900×1000):
+* Full overview with **all 144 tiles resident: 424 draw calls, 4 025 546
+  triangles, 31 779 buildings, 542 MB GPU geometry, 60 FPS**; app ready in
+  8.6 s warm / 23.9 s cold. The ground plate hides itself once the resident set
+  covers the view, so the finished overview is a clean floating diamond.
+* District (orthoHeight 1400): 60 FPS, 95 draws, 902 670 triangles, 49 visible
+  tiles. Close-up (orthoHeight 80): 60 FPS, 12 draws, 200 870 triangles, shadows
+  enabled. Shadows auto-disable above 3.2 km orthoHeight (a 2048² map across a
+  10 km footprint would show its edge).
+* Payload: 144 × 1024 m tiles, 58.7 MiB JSON uncompressed (git-ignored; generated
+  locally with `pnpm run data:city`).
+
+**General**
+* Day overview: mean luminance 108/255, 0 % near-black. Night (22:30): mean
+  39/255 with sparse warm lit windows.
+* Tests: **237/237 unit** (Vitest), **12/12 browser e2e** (Playwright, hardware
+  GPU), 18/18 Lead integration checks, `tsc --noEmit` clean, `vite build` ✓.
+* Data coverage (pilot): 10.6 % explicit `height`, 56 % from `building:levels`,
+  33.5 % heuristic; 46.6 % explicit `roof:shape`. City belt: 1.9 % / 37.7 % /
+  60.4 %, reflecting sparser tagging outside the centre.
+* Archetype spread in the city belt: small 20 240, historic 3 917, panel 2 166,
+  Khrushchev 1 650, office 1 684, civic 991, industrial 817, Stalin 431,
+  modern 80, palace 5, stadium 18.
 
 ## Open issues / known limitations (all documented)
 
 | # | Issue | Severity | Notes |
 | --- | --- | --- | --- |
-| 1 | Roof-shape mix is ~68 % pitched (heuristic for pre-war low-rise) | low | plausible for this part of the centre; heuristic provenance is recorded per volume |
-| 2 | Payload is uncompressed JSON | low | gzip gives 406 KiB; binary/Brotli encoding is the next scalability step |
-| 3 | Some trees are procedurally placed inside mapped parks | low | `TreeInstance.mapped` distinguishes surveyed from inferred; UI/docs say so |
-| 4 | Underground objects (metro, passages) are not rendered | low | deliberate: they painted black strips on squares in an early build |
-| 5 | Flat terrain (no DEM) | low | terrain-height provider is the extension point; see `docs/DATA_SOURCES.md` |
-| 6 | Global palette LUT is debug-only; final colour comes from materials + dither/levels | low | intentional art decision |
+| 1 | Roof-shape mix is heuristic outside tagged buildings (~68 % pitched in the centre, similar in the city) | medium | `heightSource`/`roofShapeExplicit` provenance is recorded per volume; a statistical roof model per district is the next quality step |
+| 2 | Palace/landmark trim bands (plinth/cornice/attic, 0.35 m overhang) read as a dashed 1-px outline at far zoom | cosmetic | visible on the Palace of the Republic roof edge; reduce overhang or merge into the roof face if it bothers |
+| 3 | Payload is uncompressed JSON (58.7 MiB for the city belt) | low | gzip ≈ 24 %; binary + Brotli encoding is the next scalability step |
+| 4 | Some vegetation is procedurally placed (140 000 instances city-wide) | low | `TreeInstance.mapped` distinguishes surveyed from inferred; UI/docs say so |
+| 5 | Underground objects (metro, passages) are not rendered | low | deliberate: they painted black strips on squares in an early build |
+| 6 | Flat terrain (no DEM) | low | terrain-height provider is the extension point; see `docs/DATA_SOURCES.md` |
+| 7 | Landmark facades are still generic presets (no per-building modelling except the palace archetype) | medium | a landmark kit (20–40 curated buildings) is the highest-value next investment |
 
 ## Multi-agent execution
 
