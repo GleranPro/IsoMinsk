@@ -57,7 +57,7 @@ const MAX_SHADOW_EXTENT = 2400;
  * sun keeps its light but stops casting; shadows come back when zooming into a
  * district (city dataset) or are always on for the central dataset.
  */
-const SHADOW_MAX_ORTHO_HEIGHT = 5000;
+const SHADOW_MAX_ORTHO_HEIGHT = 3200;
 
 export interface LightState {
   hours: number;

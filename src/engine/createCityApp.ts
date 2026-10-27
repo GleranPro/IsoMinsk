@@ -210,6 +210,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const noLimit = params.get('nolimit') === '1';
   const shadowParam = Number.parseInt(params.get('shadow') ?? '', 10);
   const resolutionParam = Number.parseInt(params.get('res') ?? '', 10);
+  // QA-only resident budget override (?budget=400) for city-scale captures.
+  const budgetParam = Number.parseInt(params.get('budget') ?? '', 10);
+  const budgetOverride =
+    Number.isFinite(budgetParam) && budgetParam >= 4 ? Math.min(budgetParam, 800) : null;
 
   // --- dataset selection (single source of truth: src/shared/config.ts) ----
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -224,14 +228,49 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
    * render is quick; zooming into a district shrinks the visible set below the
    * budget and restores full detail.
    */
-  const datasetConfig =
-    dataset === 'city'
-      ? { maxLoadedTiles: 200, initialTileTarget: 48, keepBasePlate: true, workerCount: 3 }
+  const datasetConfig = noLimit
+    ? {
+        // ?nolimit=1 keeps loading every manifest tile regardless of the budget
+        // (used by QA/screenshots); the LRU still evicts beyond this cap.
+        maxLoadedTiles: budgetOverride ?? 800,
+        initialBudget: budgetOverride ?? 800,
+        initialTileTarget: dataset === 'city' ? 48 : Number.MAX_SAFE_INTEGER,
+        keepBasePlate: dataset === 'city',
+        workerCount: 3,
+        tileLayout: dataset === 'city' ? ('nested' as const) : ('flat' as const),
+        idleTopUpAfterMs: 0,
+        topUpStepTiles: 0,
+        maxTopUpGeometryMB: 0,
+      }
+    : dataset === 'city'
+      ? {
+          // The real city dataset is 144 tiles (12 x 12 km at 1024 m), which all
+          // fit under this budget, so the fitted overview always completes to the
+          // full city (~600 MB geometry worst case on a 16 GB card). The
+          // initial/hard + idle top-up split is kept for future, denser city
+          // datasets: set initialBudget < maxLoadedTiles and the visible budget
+          // grows after the camera idles (memory-guarded), while the hard cap also
+          // bounds LRU eviction.
+          maxLoadedTiles: budgetOverride ?? 400,
+          initialBudget: budgetOverride ?? 400,
+          initialTileTarget: 48,
+          keepBasePlate: true,
+          workerCount: 3,
+          tileLayout: 'nested' as const,
+          idleTopUpAfterMs: 2000,
+          topUpStepTiles: 48,
+          maxTopUpGeometryMB: 700,
+        }
       : {
-          maxLoadedTiles: 40,
+          maxLoadedTiles: budgetOverride ?? 40,
+          initialBudget: budgetOverride ?? 40,
           initialTileTarget: Number.MAX_SAFE_INTEGER,
           keepBasePlate: false,
           workerCount: 2,
+          tileLayout: 'flat' as const,
+          idleTopUpAfterMs: 0,
+          topUpStepTiles: 0,
+          maxTopUpGeometryMB: 0,
         };
 
   const errors: string[] = [];
@@ -385,6 +424,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     initialTileTarget: datasetConfig.initialTileTarget,
     keepBasePlate: datasetConfig.keepBasePlate,
     workerCount: datasetConfig.workerCount,
+    initialBudget: datasetConfig.initialBudget,
+    idleTopUpAfterMs: datasetConfig.idleTopUpAfterMs,
+    topUpStepTiles: datasetConfig.topUpStepTiles,
+    maxTopUpGeometryMB: datasetConfig.maxTopUpGeometryMB,
+    tileLayout: datasetConfig.tileLayout,
     onError: recordError,
     onWarning: recordDiagnostic,
     onLoadingChange: (loading, progress) => {
@@ -891,6 +935,56 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       };
       return { key: entry.key, building: describe(entry.buildingMesh), environment: describe(entry.environmentMesh) };
     },
+    /**
+     * QA helper: find loaded buildings whose name/tags contain `query` and
+     * return their local-metre footprint centroids (for canonical screenshots).
+     */
+    buildingSearch: (query: string) => {
+      const needle = query.toLowerCase();
+      const matches: Array<{ id: string; name: string; archetype: string; localX: number; localY: number }> = [];
+      for (const tile of streamer.loadedTiles()) {
+        for (const feature of tile.buildings.values()) {
+          const name = feature.name ?? feature.tags?.name ?? '';
+          const haystack = `${name} ${feature.tags?.building ?? ''} ${feature.tags?.['building:use'] ?? ''}`.toLowerCase();
+          if (!haystack.includes(needle)) continue;
+          const ring = feature.volumes[0]?.footprint[0];
+          if (!ring || ring.length === 0) continue;
+          let sx = 0;
+          let sy = 0;
+          for (const [x, y] of ring) { sx += x; sy += y; }
+          matches.push({
+            id: feature.id,
+            name,
+            archetype: feature.archetype,
+            localX: sx / ring.length,
+            localY: sy / ring.length,
+          });
+        }
+      }
+      return matches.slice(0, 60);
+    },
+    /** QA helper: first loaded building of an archetype and its local position. */
+    archetypeSample: (archetype: string) => {
+      for (const tile of streamer.loadedTiles()) {
+        for (const feature of tile.buildings.values()) {
+          if (feature.archetype !== archetype) continue;
+          const ring = feature.volumes[0]?.footprint[0];
+          if (!ring || ring.length === 0) continue;
+          let sx = 0;
+          let sy = 0;
+          for (const [x, y] of ring) { sx += x; sy += y; }
+          return {
+            id: feature.id,
+            name: feature.name ?? '',
+            archetype: feature.archetype,
+            localX: sx / ring.length,
+            localY: sy / ring.length,
+            height: feature.height,
+          };
+        }
+      }
+      return null;
+    },
     /** Dataset + streaming/zoom state (city dataset acceptance checks). */
     datasetInfo: () => ({
       dataset,
@@ -898,6 +992,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       manifestUrl,
       tileSize: streamer.tileSizeM,
       residentBudget: streamer.residentBudget,
+      visibleBudget: streamer.visibleBudget,
+      hardBudget: streamer.hardBudget,
+      topUpStoppedByMemory: streamer.topUpStoppedByMemory,
+      tileLayout: streamer.tileLayoutUsed,
       desiredTiles: streamer.desiredTileCount,
       loadedTiles: streamer.loadedTileCount,
       visibleTiles: streamer.visibleTileCount,

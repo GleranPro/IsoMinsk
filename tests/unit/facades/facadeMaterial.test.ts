@@ -22,6 +22,7 @@ import {
   type FacadeUniformSet,
 } from '../../../src/engine/materials/facadeMaterial';
 import {
+  FACADE_ARCHETYPE_COUNT,
   FACADE_FLOAT_UNIFORMS,
   FACADE_FRAGMENT_GLSL,
   FACADE_PALETTE_SIZE,
@@ -30,7 +31,7 @@ import {
   patchFacadeFragmentShader,
   patchFacadeVertexShader,
 } from '../../../src/engine/shaders/facadeShader';
-import { ARCHETYPE_BY_ID } from '../../../src/shared/geometry';
+import { ARCHETYPE_BY_ID, ARCHETYPE_ID } from '../../../src/shared/geometry';
 import { FACADE_PRESETS } from '../../../src/city/facades/presets';
 import { PIXEL_PALETTE, PIXEL_PALETTE_SIZE, hexToRgbUnit } from '../../../src/engine/postprocess/palette';
 
@@ -102,6 +103,28 @@ describe('facade GLSL source', () => {
     expect(FACADE_FRAGMENT_GLSL).toContain('uNight');
     expect(FACADE_FRAGMENT_GLSL).toContain('uPixelSize');
     expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_PALETTE_SIZE');
+  });
+
+  it('keeps the archetype uniform arrays in sync with the shared contract', () => {
+    // Adding an archetype to src/shared/geometry.ts must only require a preset +
+    // palette entry, never a shader constant edit.
+    expect(FACADE_ARCHETYPE_COUNT).toBe(ARCHETYPE_BY_ID.length);
+    expect(FACADE_FRAGMENT_GLSL).toContain(`#define FACADE_ARCHETYPE_COUNT ${ARCHETYPE_BY_ID.length}`);
+    expect(FACADE_FRAGMENT_GLSL).toContain('uniform vec4 uPresetA[FACADE_ARCHETYPE_COUNT];');
+    expect(ARCHETYPE_ID.palace).toBe(9);
+    expect(ARCHETYPE_ID.stadium).toBe(10);
+  });
+
+  it('implements the palace colonnade/loggia look and the stadium fallback', () => {
+    // Palace (id 9): paired tall windows between pilasters, loggia ground floor,
+    // double-line cornice/attic.
+    expect(FACADE_FRAGMENT_GLSL).toContain('palaceity');
+    expect(FACADE_FRAGMENT_GLSL).toContain('winPitch');
+    expect(FACADE_FRAGMENT_GLSL).toContain('loggia');
+    expect(FACADE_FRAGMENT_GLSL).toContain('double-line');
+    // Stadium (id 10): blank concrete plus one clerestory glazing band.
+    expect(FACADE_FRAGMENT_GLSL).toContain('stadiumity');
+    expect(FACADE_FRAGMENT_GLSL).toContain('clerestory');
   });
 
   it('does not use GLSL reserved words as identifiers', () => {

@@ -58,9 +58,9 @@ export function resolveManifestUrl(search?: string): string {
   return `${resolveDataBaseUrl(search)}/manifest.json`;
 }
 
-/** Full URL of a tile file for the selected dataset. */
+/** Full URL of a tile file for the selected dataset (`file` is a manifest entry). */
 export function resolveTileUrl(file: string, search?: string): string {
-  return `${resolveDataBaseUrl(search)}/${file.replace(/^tiles\//, 'tiles/')}`;
+  return `${resolveDataBaseUrl(search)}/${file.replace(/^tiles\//, '')}`;
 }
 
 /** Rendering defaults. */

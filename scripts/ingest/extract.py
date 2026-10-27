@@ -345,25 +345,34 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     default_pbf = next((p for p in DEFAULT_PBF_CANDIDATES if p.exists()), DEFAULT_PBF_CANDIDATES[0])
     parser.add_argument("--pbf", default=str(default_pbf))
-    parser.add_argument("--out", default=str(ROOT / "data/interim/minsk_raw.geojson"))
-    parser.add_argument("--trees-out", default=str(ROOT / "data/interim/minsk_trees.json"))
+    parser.add_argument("--area", choices=["pilot", "city"], default="pilot",
+                        help="pilot (1.6 km central area) or city (12 km belt)")
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--trees-out", default=None)
     args = parser.parse_args()
 
+    configure_window(args.area)
+    out = Path(args.out) if args.out else ROOT / (
+        "data/interim/city_raw.geojson" if args.area == "city" else "data/interim/minsk_raw.geojson"
+    )
+    trees_out = Path(args.trees_out) if args.trees_out else ROOT / (
+        "data/interim/city_trees.json" if args.area == "city" else "data/interim/minsk_trees.json"
+    )
+
     pbf = Path(args.pbf)
-    out = Path(args.out)
-    trees_out = Path(args.trees_out)
     if not pbf.exists():
         print(f"ERROR: PBF not found: {pbf}\nRun: npm run data:download", file=sys.stderr)
         return 1
     out.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"PBF: {pbf} ({pbf.stat().st_size / 1e6:.1f} MB)")
+    print(f"Area: {args.area}")
     print(f"Window (lat_min, lon_min, lat_max, lon_max): "
           f"{MIN_LAT:.6f}, {MIN_LON:.6f}, {MAX_LAT:.6f}, {MAX_LON:.6f}")
 
     t0 = time.time()
 
-    # pass A — relations
+    # pass A вЂ” relations
     rc = RelationCollector()
     fp = osmium.FileProcessor(str(pbf)).with_filter(
         osmium.filter.EntityFilter(osmium.osm.RELATION)
@@ -373,7 +382,7 @@ def main() -> int:
     print(f"[pass A] relevant relations: {len(rc.relations):,} "
           f"({len(rc.needed_ways):,} member ways) in {time.time() - t0:.1f}s")
 
-    # pass B — ways + relation member geometries
+    # pass B вЂ” ways + relation member geometries
     t1 = time.time()
     wc = WayCollector(rc.needed_ways)
     fp = (
@@ -389,7 +398,7 @@ def main() -> int:
           f"{len(relation_features):,} relation polygons "
           f"(missing node locations: {wc.missing_locations:,}) in {time.time() - t1:.1f}s")
 
-    # pass C — trees
+    # pass C вЂ” trees
     t2 = time.time()
     tc = TreeCollector()
     fp = osmium.FileProcessor(str(pbf)).with_filter(
@@ -420,12 +429,13 @@ def main() -> int:
             "pbf": pbf.name,
             "pbf_size": pbf.stat().st_size,
             "extracted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "bbox": list(BBOX),
+            "bbox": list(_BBOX),
+            "area": args.area,
             "window": [MIN_LAT, MIN_LON, MAX_LAT, MAX_LON],
             "center": [PILOT_CENTER_LAT, PILOT_CENTER_LON],
             "epsg": EPSG_UTM35N,
             "source_srs": EPSG_WGS84,
-            "attribution": "© OpenStreetMap contributors, ODbL 1.0",
+            "attribution": "(c) OpenStreetMap contributors, ODbL 1.0",
             "counts": counts,
         },
         "features": kept,

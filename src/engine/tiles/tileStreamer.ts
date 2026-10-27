@@ -74,6 +74,16 @@ export interface TileStreamerOptions {
   keepBasePlate?: boolean;
   /** Number of tile-build workers (2 for the central dataset, 3-4 for the city). */
   workerCount?: number;
+  /** Visible/resident budget before the idle top-up (default: maxLoadedTiles). */
+  initialBudget?: number;
+  /** After this many ms of camera idle the visible budget grows by one step. */
+  idleTopUpAfterMs?: number;
+  /** Tiles added to the visible budget per idle top-up step. */
+  topUpStepTiles?: number;
+  /** Stop the idle top-up once geometryMB reaches this value (0 = no cap). */
+  maxTopUpGeometryMB?: number;
+  /** Manifest tile URL layout preference ('flat' central, 'nested' city). */
+  tileLayout?: 'flat' | 'nested' | 'auto';
   onError?: (message: string) => void;
   onWarning?: (message: string) => void;
   onLoadingChange?: (loading: boolean, progress: number) => void;
@@ -87,6 +97,9 @@ interface InflightTask {
   x: number;
   y: number;
   url: string;
+  /** Second URL candidate (`<base>/x_y.json` vs `<base>/tiles/x_y.json`). */
+  alternateUrl: string | null;
+  usedAlternate: boolean;
   attempts: number;
   cancelled: boolean;
   requestId: number | null;
@@ -168,6 +181,19 @@ export class TileStreamer {
   private readonly dataBaseUrl: string;
   private readonly initialTileTarget: number;
   private readonly keepBasePlate: boolean;
+  private readonly initialBudget: number;
+  private readonly idleTopUpAfterMs: number;
+  private readonly topUpStepTiles: number;
+  private readonly maxTopUpGeometryMB: number;
+  private readonly tileLayout: 'flat' | 'nested' | 'auto';
+  private desiredBudget: number;
+  private lastCameraMotionAt = 0;
+  private readyAt = 0;
+  private lastTopUpAt = 0;
+  private topUpStopped = false;
+  private previousTargetX = Number.NaN;
+  private previousTargetZ = Number.NaN;
+  private previousOrthoHeight = Number.NaN;
   /** Tile grid size is owned by the manifest (512 m central, 1024 m city). */
   private tileSize: number = TILE_SIZE_M;
   private desiredDirty = true;
@@ -214,6 +240,15 @@ export class TileStreamer {
       options.initialTileTarget ?? Number.MAX_SAFE_INTEGER,
     );
     this.keepBasePlate = Boolean(options.keepBasePlate);
+    this.initialBudget = Math.max(
+      4,
+      Math.min(options.initialBudget ?? this.maxLoadedTiles, this.maxLoadedTiles),
+    );
+    this.desiredBudget = this.initialBudget;
+    this.idleTopUpAfterMs = Math.max(0, options.idleTopUpAfterMs ?? 0);
+    this.topUpStepTiles = Math.max(1, options.topUpStepTiles ?? 32);
+    this.maxTopUpGeometryMB = Math.max(0, options.maxTopUpGeometryMB ?? 0);
+    this.tileLayout = options.tileLayout ?? 'auto';
 
     this.basePlaneMaterial = options.environmentMaterial;
     this.basePlaneGeometry = createGroundPlaneGeometry(BASE_PLANE_SIZE, BASE_PLANE_SIZE);
@@ -413,6 +448,20 @@ export class TileStreamer {
       this.lastDesiredTargetZ = target.z;
       this.lastDesiredOrthoHeight = orthoHeight;
     }
+    // Track true camera motion (damping counts) so the idle top-up only runs
+    // once the view has actually settled.
+    if (
+      !Number.isFinite(this.previousTargetX) ||
+      target.x !== this.previousTargetX ||
+      target.z !== this.previousTargetZ ||
+      orthoHeight !== this.previousOrthoHeight
+    ) {
+      this.previousTargetX = target.x;
+      this.previousTargetZ = target.z;
+      this.previousOrthoHeight = orthoHeight;
+      this.lastCameraMotionAt = performance.now();
+    }
+    this.maybeTopUpIdle(performance.now());
     this.beginInitialPhaseIfNeeded();
     this.touchAndEvict();
     this.requestMissingTiles();
@@ -475,14 +524,17 @@ export class TileStreamer {
     }
 
     candidates.sort((a, b) => a.distance - b.distance);
-    // Deterministic streaming budget: keep the nearest `maxLoadedTiles` tiles.
-    // At the city overview the visible set is ~400 tiles; the remaining ones are
-    // simply not resident and show the ground plate, while zooming into a
-    // district shrinks the visible set below the budget and restores full detail.
+    // Deterministic streaming budget: keep the nearest `desiredBudget` tiles.
+    // The budget starts at `initialBudget` (fast first render) and, once the
+    // camera has been idle for `idleTopUpAfterMs`, grows in steps towards the
+    // hard `maxLoadedTiles` cap (which is also the LRU eviction limit). This
+    // gives a quick nearest-first city centre and a complete city a moment later
+    // without ever loading 100% of a 400-tile visible set synchronously.
     const viewCap = Math.max(MAX_TILES_IN_VIEW, this.maxLoadedTiles);
     if (candidates.length > viewCap) candidates = candidates.slice(0, viewCap);
-    if (candidates.length > this.maxLoadedTiles) {
-      candidates = candidates.slice(0, this.maxLoadedTiles);
+    const budget = Math.min(this.desiredBudget, this.maxLoadedTiles);
+    if (candidates.length > budget) {
+      candidates = candidates.slice(0, budget);
     }
     this.desired = candidates.map((candidate) => ({
       entry: candidate.entry,
@@ -490,6 +542,34 @@ export class TileStreamer {
       distance: candidate.distance,
     }));
     this.visibleKeys = new Set(this.desired.map((entry) => entry.key));
+  }
+
+  /** Idle top-up: grow the visible budget towards the hard cap after the camera
+   * settles (and stop if the geometry memory guard is reached). */
+  private maybeTopUpIdle(now: number): void {
+    if (this.topUpStopped) return;
+    if (this.desiredBudget >= this.maxLoadedTiles) return;
+    if (!this.readyNotified || this.idleTopUpAfterMs <= 0) return;
+    if (now - Math.max(this.lastCameraMotionAt, this.readyAt) < this.idleTopUpAfterMs) {
+      return;
+    }
+    // Only start upgrading once the current budget is actually resident.
+    const residentTarget = Math.min(this.desiredBudget, this.desired.length);
+    if (this.tiles.size < residentTarget) return;
+    if (now - this.lastTopUpAt < 1200) return;
+    if (this.maxTopUpGeometryMB > 0 && this.geometryMB >= this.maxTopUpGeometryMB) {
+      this.topUpStopped = true;
+      this.diagnostics.push(
+        `idle top-up stopped at ${this.geometryMB.toFixed(0)} MB geometry (cap ${this.maxTopUpGeometryMB} MB)`,
+      );
+      return;
+    }
+    this.lastTopUpAt = now;
+    this.desiredBudget = Math.min(
+      this.maxLoadedTiles,
+      this.desiredBudget + this.topUpStepTiles,
+    );
+    this.desiredDirty = true;
   }
 
   private beginInitialPhaseIfNeeded(): void {
@@ -566,12 +646,14 @@ export class TileStreamer {
   // -------------------------------------------------------------------------
 
   private startRequest(entry: TileIndexEntry, key: string): void {
-    const url = this.tileUrl(entry);
+    const urls = this.tileUrlCandidates(entry);
     const task: InflightTask = {
       key,
       x: entry.x,
       y: entry.y,
-      url,
+      url: urls[0],
+      alternateUrl: urls[1] ?? null,
+      usedAlternate: false,
       attempts: 0,
       cancelled: false,
       requestId: null,
@@ -581,13 +663,33 @@ export class TileStreamer {
     void this.attemptLoad(task);
   }
 
-  private tileUrl(entry: TileIndexEntry): string {
-    if (entry.file) {
-      if (/^https?:/i.test(entry.file)) return entry.file;
-      if (entry.file.startsWith('/')) return entry.file;
-      return `${this.dataBaseUrl}/${entry.file}`;
+  /**
+   * Candidate payload URLs for a manifest entry. The manifest stores the path
+   * relative to the data root ("tiles/3_4.json"); the dataset resolver gives the
+   * dataset base ("/data/tiles" or "/data/city-tiles"). Depending on how a
+   * dataset is laid out the file can live directly under the base or in a nested
+   * `tiles/` directory, so both are tried (the second only on failure).
+   */
+  private tileUrlCandidates(entry: TileIndexEntry): string[] {
+    const direct = (file: string): string => {
+      if (/^https?:/i.test(file)) return file;
+      if (file.startsWith('/')) return file;
+      return `${this.dataBaseUrl}/${file}`;
+    };
+    const fallbackName = `${tileKey(entry.x, entry.y)}.json`;
+    if (!entry.file) {
+      return [direct(fallbackName)];
     }
-    return `${this.dataBaseUrl}/tiles/${tileKey(entry.x, entry.y)}.json`;
+    const stripped = entry.file.replace(/^tiles\//, '');
+    const flat = direct(stripped);
+    const nested = direct(entry.file);
+    const order =
+      this.tileLayout === 'nested'
+        ? [nested, flat]
+        : this.tileLayout === 'flat'
+          ? [flat, nested]
+          : [flat, nested];
+    return [...new Set(order)];
   }
 
   private async attemptLoad(task: InflightTask): Promise<void> {
@@ -616,6 +718,19 @@ export class TileStreamer {
     } catch (error) {
       if (this.disposed || task.cancelled) {
         this.finishTask(task);
+        return;
+      }
+      // Try the alternate layout first (flat file vs nested tiles/ directory).
+      if (!task.usedAlternate && task.alternateUrl) {
+        task.usedAlternate = true;
+        const previous = task.url;
+        task.url = task.alternateUrl;
+        task.alternateUrl = previous;
+        task.retryTimer = setTimeout(() => {
+          task.retryTimer = null;
+          if (this.disposed || task.cancelled) return;
+          void this.attemptLoad(task);
+        }, 150);
         return;
       }
       task.attempts += 1;
@@ -888,6 +1003,7 @@ export class TileStreamer {
   private notifyReady(reason: string): void {
     if (this.readyNotified) return;
     this.readyNotified = true;
+    this.readyAt = performance.now();
     if (this.readyWatchdog) {
       clearTimeout(this.readyWatchdog);
       this.readyWatchdog = null;
@@ -916,6 +1032,22 @@ export class TileStreamer {
 
   get desiredTileCount(): number {
     return this.desired.length;
+  }
+
+  get visibleBudget(): number {
+    return this.desiredBudget;
+  }
+
+  get hardBudget(): number {
+    return this.maxLoadedTiles;
+  }
+
+  get topUpStoppedByMemory(): boolean {
+    return this.topUpStopped;
+  }
+
+  get tileLayoutUsed(): 'flat' | 'nested' | 'auto' {
+    return this.tileLayout;
   }
 
   get manifestUrlUsed(): string {

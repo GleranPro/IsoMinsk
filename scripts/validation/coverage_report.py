@@ -32,7 +32,6 @@ ROOT = Path(__file__).resolve().parents[2]
 TILES_DIR = ROOT / "public/data/tiles"
 COVERAGE_JSON = ROOT / "data/processed/coverage.json"
 REPORT_MD = ROOT / "docs/COVERAGE_REPORT.md"
-
 errors: list[str] = []
 warnings: list[str] = []
 
@@ -73,10 +72,22 @@ def check_ring(ring, context: str) -> bool:
 
 
 def main() -> int:
+    global TILES_DIR, COVERAGE_JSON, REPORT_MD
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--area", choices=["pilot", "city"], default="pilot",
+                        help="validate the central dataset or the city-scale one")
+    args = parser.parse_args()
+    if args.area == "city":
+        TILES_DIR = ROOT / "public/data/city-tiles"
+        COVERAGE_JSON = ROOT / "data/processed/coverage_city.json"
+        REPORT_MD = ROOT / "docs/COVERAGE_REPORT_CITY.md"
+
     manifest_path = TILES_DIR / "manifest.json"
     if not manifest_path.exists():
         print(f"ERROR: {manifest_path} not found. Run the data pipeline first:\n"
-              f"  npm run data:all", file=sys.stderr)
+              f"  npm run data:all   (or: npm run data:city)", file=sys.stderr)
         return 1
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 

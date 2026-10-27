@@ -97,6 +97,10 @@ const ARCHETYPES = new Set([
   'industrial',
   'small',
   'civic',
+  // Added with the stadium/palace geometry work (src/shared/types.ts):
+  // monumental civic ensembles (palace) and sports arenas (stadium).
+  'palace',
+  'stadium',
 ]);
 const ROOF_SHAPES = new Set(['flat', 'gabled', 'hipped', 'pyramidal', 'skillion', 'dome', 'complex']);
 const HEIGHT_SOURCES = new Set(['osm_height', 'osm_levels', 'heuristic', 'default']);

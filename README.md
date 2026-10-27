@@ -34,9 +34,26 @@ pnpm dev
 
 The app needs no backend: it is a static Vite site plus JSON tiles.
 
-## Regenerating the city data (optional)
+## Two datasets: the pilot district and the whole city belt
 
-The offline pipeline downloads the OSM extract for Belarus, extracts the pilot
+The repository ships a **1.6 × 1.6 km central district** (16 × 512 m tiles,
+~2 MiB) so the app runs immediately after `pnpm install`.
+
+A **12 × 12 km city dataset** (144 × 1024 m tiles, ~59 MiB, 31 779 buildings
+including panel/historic/industrial/stadium/palace archetypes across all inner
+districts) can be generated locally from the same OSM extract — it is
+git-ignored because of its size:
+
+```powershell
+pnpm run data:city        # extract + normalise + validate, ~6 min, no new downloads
+```
+
+Then open **http://127.0.0.1:5173/?dataset=city** — the engine fits the camera
+to the city bounds, streams tiles nearest-first and keeps a bounded resident set.
+
+## Regenerating the pilot data (optional)
+
+The offline pipeline downloads the OSM extract for Minsk, extracts the pilot
 area, normalises/projects/infers heights and writes the tile payloads.
 
 ```powershell
@@ -44,10 +61,10 @@ area, normalises/projects/infers heights and writes the tile payloads.
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt
 
-# download Geofabrik OSM extract (~350 MB, cached)
+# download the BBBike Minsk OSM extract (~35 MB, cached; -Full for Geofabrik Belarus)
 pnpm run data:download
 
-# extract → normalise → validate (≈2-5 min total)
+# extract → normalise → validate (≈1 min total)
 pnpm run data:all
 ```
 

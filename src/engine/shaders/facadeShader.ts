@@ -194,9 +194,9 @@ vec3 facadeTrimShade(vec2 uv, vec3 baseSrgb, float trimK, float seed, float mPer
     float course = 0.7;
     float f = fract(uv.y / course);
     float line = facadeBand(f, 0.0, 0.22, 0.05);
-    trim = mix(trim, trim * 1.22 + 0.018, line * 0.85);
+    trim = mix(trim, trim * 1.32 + 0.022, line * 0.9);
     float shadowLine = facadeBand(f, 0.30, 0.42, 0.05);
-    trim *= 1.0 - shadowLine * 0.20;
+    trim *= 1.0 - shadowLine * 0.28;
   }
   return trim;
 }
@@ -699,6 +699,18 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
     return;
   }
   if (faceKind > 3.5 && faceKind < 4.5) {
+    // Palace of the Republic: the geometry builder emits the glazed ground floor
+    // as FACE_KIND.glass because the palace preset carries the shopfront flag.
+    // Route it through the ground treatment so it gets the loggia + columns.
+    if (archetype == 9) {
+      vec3 palaceGroundEmit;
+      outAlbedo = facadeGroundFloor(
+        uv, baseSrgb, groundHeight, presetA, floorHeight,
+        seed, flags, archetype, mPerPx, detail, palaceGroundEmit
+      );
+      outEmissive = palaceGroundEmit;
+      return;
+    }
     vec3 emit;
     outAlbedo = facadeGlazing(uv, baseSrgb, groundHeight, seed, mPerPx, detail, emit);
     outEmissive = emit;

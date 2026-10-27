@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createCityApp } from '../engine/createCityApp';
 import type { BuildingSelection, CityAppHandle, EngineStats } from '../shared/appApi';
 import type { TileManifest } from '../shared/types';
+import { resolveDatasetName, resolveManifestUrl } from '../shared/config';
 import { InfoPanel } from './InfoPanel';
 import { ControlPanel } from './ControlPanel';
 import { AttributionPanel } from './AttributionPanel';
@@ -94,7 +95,7 @@ export function App() {
       stats: null,
     };
     app.start();
-    fetch('/data/tiles/manifest.json')
+    fetch(resolveManifestUrl())
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => setManifest(data as TileManifest | null))
       .catch(() => setManifest(null));
@@ -138,11 +139,14 @@ export function App() {
 
       <header className="hud hud-topleft">
         <h1>Isometric Minsk</h1>
-        <p className="subtitle">pixel-art 3D map · central district · OSM data</p>
+        <p className="subtitle">
+          pixel-art 3D map · {resolveDatasetName() === 'city' ? 'city of Minsk' : 'central district'} · OSM data
+        </p>
         {manifest && (
           <p className="data-note">
             {(manifest.counts.buildings ?? 0).toLocaleString()} buildings ·{' '}
-            {manifest.tiles.length} tiles
+            {manifest.tiles.length} tiles · {manifest.tileSize} m grid
+            {resolveDatasetName() === 'city' ? ' · whole city' : ''}
           </p>
         )}
       </header>

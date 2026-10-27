@@ -130,8 +130,8 @@ export const ARCHETYPE_COLORS: Record<Archetype, Hex[]> = {
   industrial: ['#9a9b8e', '#8f9186', '#a4a496', '#95968a'],
   small: ['#b0a694', '#a89d8a', '#b8ae9c', '#a1968a'],
   civic: ['#cbc2ad', '#d2ccbb', '#bdb7a6', '#c6beac'],
-  // Monumental civic ensembles: desaturated warm stone (beige / grey).
-  palace: ['#c9bda3', '#d0c5ac', '#c2b69c', '#cbbfa6', '#c6baa0', '#c4b9a0'],
+  // Monumental civic ensembles: desaturated warm sandstone (beige / grey).
+  palace: ['#c9b490', '#d2c09e', '#c0aa86', '#ccb996', '#c6b18d', '#c3ae8a'],
   // Stadium / arena concrete.
   stadium: ['#9a9e9e', '#8f9393', '#a4a7a6', '#969a99'],
 } as const;

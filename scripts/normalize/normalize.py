@@ -56,6 +56,8 @@ from shapely.geometry import (  # noqa: E402
 from shapely.ops import polygonize, unary_union  # noqa: E402
 
 from geo_config import (  # noqa: E402
+    CITY_SIZE_M,
+    CITY_TILE_SIZE_M,
     DEFAULT_FLOOR_HEIGHT_M,
     EPSG_UTM35N,
     EPSG_WGS84,
@@ -288,6 +290,8 @@ class ArchetypeClassifier:
             known_floors = max(1, round(height / DEFAULT_FLOOR_HEIGHT_M))
         floors = known_floors or 1
 
+        if building in {"stadium", "grandstand", "sports_hall"} or tags.get("leisure") == "stadium":
+            return "stadium"
         if building in CIVIC_BUILDINGS or tags.get("amenity") in CIVIC_BUILDINGS:
             # Monumental civic ensembles (Palace of the Republic, Bolshoi,
             # concert halls) get a dedicated colonnade-based facade preset
@@ -298,8 +302,6 @@ class ArchetypeClassifier:
             if polygon.area >= 6000 and (monumental_use or any(part in name for part in monumental_names)):
                 return "palace"
             return "civic"
-        if building in {"stadium", "grandstand", "sports_hall"} or tags.get("leisure") == "stadium":
-            return "stadium"
         if building in SMALL_BUILDINGS or tags.get("building") in {"garages"}:
             return "small"
         if building in INDUSTRIAL_BUILDINGS or tags.get("man_made") in {"silo", "storage_tank"}:
@@ -666,27 +668,50 @@ def surface_kind_from_tags(tags: dict[str, str]) -> str:  # noqa: F811
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--raw", default=str(RAW))
-    parser.add_argument("--trees-raw", default=str(TREES_RAW))
-    parser.add_argument("--out", default=str(OUT_DIR / "city_normalized.json"))
-    parser.add_argument("--tiles-dir", default=str(TILES_DIR))
-    parser.add_argument("--tile-size", type=float, default=TILE_SIZE_M)
-    parser.add_argument("--pilot-size", type=float, default=PILOT_SIZE_M)
+    parser.add_argument("--area", choices=["pilot", "city"], default="pilot",
+                        help="pilot (1.6 km central area) or city (12 km belt)")
+    parser.add_argument("--raw", default=None)
+    parser.add_argument("--trees-raw", default=None)
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--tiles-dir", default=None)
+    parser.add_argument("--tile-size", type=float, default=None)
+    parser.add_argument("--pilot-size", type=float, default=None)
     args = parser.parse_args()
 
-    raw_path = Path(args.raw)
+    is_city = args.area == "city"
+    raw_path = Path(args.raw) if args.raw else ROOT / (
+        "data/interim/city_raw.geojson" if is_city else "data/interim/minsk_raw.geojson"
+    )
+    trees_raw_path = Path(args.trees_raw) if args.trees_raw else ROOT / (
+        "data/interim/city_trees.json" if is_city else "data/interim/minsk_trees.json"
+    )
+    out_path = Path(args.out) if args.out else OUT_DIR / (
+        "city_area_normalized.json" if is_city else "city_normalized.json"
+    )
+    coverage_path = OUT_DIR / ("coverage_city.json" if is_city else "coverage.json")
+    tiles_dir = (
+        Path(args.tiles_dir) if args.tiles_dir
+        else (TILES_DIR.parent / "city-tiles" if is_city else TILES_DIR)
+    )
+    tile_size = args.tile_size if args.tile_size else (CITY_TILE_SIZE_M if is_city else TILE_SIZE_M)
+    pilot_size = args.pilot_size if args.pilot_size else (CITY_SIZE_M if is_city else PILOT_SIZE_M)
+    # city has ~40x the green area; cap the tree payload deterministically
+    max_total_trees = 140000 if is_city else 90000
+
     if not raw_path.exists():
-        print(f"ERROR: raw data not found: {raw_path}\nRun: python scripts/ingest/extract.py", file=sys.stderr)
+        print(f"ERROR: raw data not found: {raw_path}\n"
+              f"Run: python scripts/ingest/extract.py --area {args.area}", file=sys.stderr)
         return 1
     t_start = time.time()
     with raw_path.open(encoding="utf-8") as fh:
         raw = json.load(fh)
     features = raw["features"]
-    print(f"Loaded {len(features):,} raw features from {raw_path.name}")
+    print(f"Loaded {len(features):,} raw features from {raw_path.name} (area: {args.area})")
 
-    tile_size = args.tile_size
-    half = args.pilot_size / 2.0
+    half = pilot_size / 2.0
     pilot_rect = box(-half, -half, half, half)
+    print(f"Area: {pilot_size / 1000:.1f} x {pilot_size / 1000:.1f} km, "
+          f"tile size {tile_size:.0f} m, output {tiles_dir}")
 
     stats = Counter()
     warnings: list[str] = []
@@ -856,10 +881,11 @@ def main() -> int:
         roof_height = roof_height_for(tags, roof_shape, polygon, height)
         if roof_height <= 0:
             roof_shape = "flat"
-        wall_top = max(2.0, height - roof_height)
-
         roof_direction = parse_roof_direction(tags)
         min_height = parse_min_height(tags)
+        # The eave must stay above the bottom of the volume; a large inferred
+        # roof on a building with min_height would otherwise invert the volume.
+        wall_top = max(2.0, height - roof_height, min_height + 0.5)
 
         volumes: list[dict] = []
         parts = part_groups.get(index, [])
@@ -1191,12 +1217,61 @@ def main() -> int:
           f"({stats['waterway_lines_skipped']} river/canal lines skipped — areas only)")
     print(f"Ground surfaces: {len(surface_features):,}")
 
+    # Footways that are mostly inside a water area are either bridge decks (those
+    # carry bridge=yes and are raised by the renderer) or mapping noise. Drawing
+    # them at the sidewalk layer paints light lines across the river/lake, so
+    # unpaved footways that are >50 % over water are dropped.
+    water_areas = [
+        Polygon(feature["polygon"][0], [Polygon(ring).exterior.coords for ring in feature["polygon"][1:]])
+        for feature in surface_features
+        if feature["kind"] in {"water", "river"}
+    ]
+    water_areas = [geom for geom in water_areas if not geom.is_empty]
+    if water_areas:
+        water_area_tree = STRtree(water_areas)
+        kept_roads: list[dict] = []
+        dropped_paths = 0
+        for road in road_polys:
+            if road["kind"] == "footway" and not road.get("bridge"):
+                try:
+                    path_poly = Polygon(
+                        road["polygon"][0],
+                        [Polygon(ring).exterior.coords for ring in road["polygon"][1:]],
+                    )
+                except Exception:
+                    kept_roads.append(road)
+                    continue
+                if not path_poly.is_empty and path_poly.area > 0:
+                    if not path_poly.is_valid:
+                        path_poly = repair(path_poly)
+                        if path_poly is None:
+                            kept_roads.append(road)
+                            continue
+                    candidates = water_area_tree.query(path_poly)
+                    if candidates.size:
+                        covered = 0.0
+                        for index in candidates:
+                            try:
+                                piece = water_areas[int(index)].intersection(path_poly)
+                                if not piece.is_empty:
+                                    covered += piece.area
+                            except Exception:
+                                continue
+                        if covered > path_poly.area * 0.5:
+                            dropped_paths += 1
+                            continue
+            kept_roads.append(road)
+        road_polys = kept_roads
+        stats["footways_over_water_dropped"] = dropped_paths
+        if dropped_paths:
+            print(f"Dropped {dropped_paths} unpaved footways that were mostly over water")
+
     # --- trees ------------------------------------------------------------
     import random
 
     trees: list[dict] = []
-    if Path(args.trees_raw).exists():
-        with Path(args.trees_raw).open(encoding="utf-8") as fh:
+    if trees_raw_path.exists():
+        with trees_raw_path.open(encoding="utf-8") as fh:
             tree_doc = json.load(fh)
         for tree in tree_doc.get("trees", []):
             x, y = to_local(tree["lon"], tree["lat"])
@@ -1284,7 +1359,7 @@ def main() -> int:
         "scrub": (4.0, 9.0),
         "grass": (5.5, 11.0),
     }
-    MAX_TOTAL_TREES = 90000
+    MAX_TOTAL_TREES = max_total_trees
     placed = 0
     skipped_narrow = 0
     for surface in surface_features:
@@ -1439,7 +1514,6 @@ def main() -> int:
             tiles[owner]["trees"].append(tree)
 
     # --- write tiles ------------------------------------------------------
-    tiles_dir = Path(args.tiles_dir)
     tiles_dir.mkdir(parents=True, exist_ok=True)
     for stale in tiles_dir.glob("*.json"):
         stale.unlink()
@@ -1517,7 +1591,7 @@ def main() -> int:
         "generatedAt": manifest["generatedAt"],
         "source": raw["meta"],
         "area": {
-            "pilotSizeM": args.pilot_size,
+            "pilotSizeM": pilot_size,
             "tileSizeM": tile_size,
             "boundsLocal": [-half, -half, half, half],
             "originUtm": manifest["originUtm"],
@@ -1562,10 +1636,9 @@ def main() -> int:
         "warnings": warnings,
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    coverage_path = OUT_DIR / "coverage.json"
     coverage_path.write_text(json.dumps(coverage, ensure_ascii=False, indent=1), encoding="utf-8")
     # Full normalised city payload (debug/validation; not served to the browser)
-    Path(args.out).write_text(
+    out_path.write_text(
         json.dumps(
             {
                 "meta": manifest,
