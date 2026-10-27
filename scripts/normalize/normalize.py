@@ -1069,6 +1069,12 @@ def main() -> int:
         duplicates_dropped += 1
     buildings = deduped
     stats["duplicate_buildings_dropped"] = duplicates_dropped
+    if os.environ.get("NORMALIZE_DEBUG_ID"):
+        target = os.environ["NORMALIZE_DEBUG_ID"]
+        found = [b for b in buildings if b["id"] == target]
+        print(f"[debug] {target}: {len(found)} building records after merge/dedupe")
+        for record in found[:2]:
+            print(f"[debug]   archetype={record['archetype']} h={record['height']} volumes={len(record['volumes'])}")
 
     stats["buildings"] = len(buildings)
     print(f"Buildings: {len(buildings):,} (duplicates dropped: {duplicates_dropped}) "
