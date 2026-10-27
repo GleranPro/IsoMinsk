@@ -141,7 +141,7 @@ export class LightingRig {
     // the storytelling there.
     const night = THREE.MathUtils.clamp(look.nightFactor, 0, 1);
     const sunGain = 1 + (1 - night) * 1.0 + night * 3.2;
-    const ambientGain = 1 + (1 - night) * 2.5 + night * 5.5;
+    const ambientGain = 1 + (1 - night) * 2.0 + night * 5.5;
     const fillGain = 1 + (1 - night) * 0.9 + night * 2.2;
     this.energyGains = { sun: sunGain, ambient: ambientGain, fill: fillGain };
 
@@ -151,7 +151,7 @@ export class LightingRig {
     // visible ~35% darkening while the hemisphere fill keeps shadowed facades
     // legible (they carry the facade design).
     this.sun.shadow.intensity = THREE.MathUtils.clamp(
-      look.shadowOpacity * (1.3 - 0.25 * night),
+      look.shadowOpacity * (1.55 - 0.3 * night),
       0,
       0.85,
     );
