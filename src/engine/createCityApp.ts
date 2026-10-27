@@ -1000,6 +1000,12 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       timeHours,
     });
     updateLookColors();
+    streamer.setNightFactor(look.nightFactor);
+    // Night exposure lift: ACES compresses the low-key night palette, so give
+    // the lit windows enough headroom to read without washing out the darkness.
+    const nightExposure = EXPOSURE * (1 + look.nightFactor * 0.22);
+    postEnvironment.exposure = nightExposure;
+    renderer.toneMappingExposure = nightExposure;
     shadowDirty = true;
     shadowRefreshFrames = Math.max(shadowRefreshFrames, 6);
     renderer.shadowMap.needsUpdate = true;

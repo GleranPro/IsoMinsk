@@ -31,9 +31,21 @@ const MIN_SUN_ELEVATION_DEG = 14;
  * deliberate art-direction choice, not a physical claim. The physically-real
  * date can be enabled with `?realsun=1` (see `setUseRealDateSun`).
  */
-const STYLISED_MIN_ELEVATION_DEG = 38;
-const STYLISED_MAX_ELEVATION_DEG = 52;
+const STYLISED_MIN_ELEVATION_DEG = 40;
+const STYLISED_MAX_ELEVATION_DEG = 45;
 const STYLISED_SUN_DATE = new Date(2026, 5, 21);
+/**
+ * ART DIRECTION — readable shadow direction.
+ *
+ * A physcially-placed due-south sun throws building shadows north, i.e. away
+ * from the default isometric camera, so the overview reads flat. The stylised
+ * sun therefore rotates the solar azimuth by -140° (≈ north-east at 13:00),
+ * which makes shadows fall toward the lower-left of the screen — the classic
+ * isometric-game convention — while still lighting the east-facing facades the
+ * camera sees. Long shadows at dawn/golden hour come from the 40-45° elevation
+ * clamp (instead of the real 20-25°) so the ground stays bright.
+ */
+const STYLISED_AZIMUTH_OFFSET_DEG = -140;
 /** Lower clamp for the shadow-frustum half extent (metres). */
 const MIN_SHADOW_EXTENT = 260;
 /** Upper clamp: the overview must cover the whole diamond-shaped district. */
@@ -129,8 +141,12 @@ export class LightingRig {
       );
     }
     const elevation = (elevationDeg * Math.PI) / 180;
+    const azimuthFromNorth =
+      this.useRealDateSun || this.elevationOverrideDeg !== null
+        ? solar.azimuth
+        : ((solar.azimuth * 180) / Math.PI + STYLISED_AZIMUTH_OFFSET_DEG) * (Math.PI / 180);
     const direction = new THREE.Vector3(
-      ...sunDirectionFromAngles(solar.azimuth, elevationDeg),
+      ...sunDirectionFromAngles(azimuthFromNorth, elevationDeg),
     ).normalize();
 
     // --- art-direction energy gains ---------------------------------------
@@ -140,8 +156,8 @@ export class LightingRig {
     // reads the way the reference art does. Night stays dark; lit windows do
     // the storytelling there.
     const night = THREE.MathUtils.clamp(look.nightFactor, 0, 1);
-    const sunGain = 1 + (1 - night) * 1.0 + night * 3.2;
-    const ambientGain = 1 + (1 - night) * 2.0 + night * 5.5;
+    const sunGain = 1 + (1 - night) * 1.0 + night * 3.6;
+    const ambientGain = 1 + (1 - night) * 2.0 + night * 6.4;
     const fillGain = 1 + (1 - night) * 0.9 + night * 2.2;
     this.energyGains = { sun: sunGain, ambient: ambientGain, fill: fillGain };
 

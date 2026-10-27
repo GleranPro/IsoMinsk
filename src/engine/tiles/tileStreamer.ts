@@ -157,6 +157,7 @@ export class TileStreamer {
 
   private buildingCount = 0;
   private geometryBytes = 0;
+  private nightFactor = 0;
 
   constructor(options: TileStreamerOptions) {
     this.options = options;
@@ -268,6 +269,10 @@ export class TileStreamer {
       if (!entry || typeof entry.x !== 'number' || typeof entry.y !== 'number') continue;
       this.tileIndex.set(tileKey(entry.x, entry.y), entry);
     }
+    // The far backdrop plate caused a straight-edged band at the horizon; the
+    // city is styled as a floating isometric diorama instead. Keep the plate
+    // only as the "no data" fallback.
+    this.basePlane.visible = false;
     this.options.onManifestLoaded?.(manifest);
   }
 
@@ -738,10 +743,18 @@ export class TileStreamer {
     this.tilesChangedPending = true;
   }
 
+  /** 0..1 night factor: at night we keep window detail on even for far tiles so
+   * the overview shows warm lit-window dots instead of flat silhouettes. */
+  setNightFactor(nightFactor: number): void {
+    this.nightFactor = Number.isFinite(nightFactor)
+      ? Math.max(0, Math.min(1, nightFactor))
+      : 0;
+  }
+
   private updateLod(renderHeightPx: number, rig: IsometricCameraRig): void {
     const orthoHeight = rig.getOrthoHeight();
     const worldPerPixel = (2 * orthoHeight) / Math.max(1, renderHeightPx);
-    const wantNear = worldPerPixel <= DETAIL_WORLD_PER_PIXEL;
+    const wantNear = worldPerPixel <= DETAIL_WORLD_PER_PIXEL || this.nightFactor > 0.35;
     for (const key of this.visibleKeys) {
       const entry = this.tiles.get(key);
       if (!entry || !entry.buildingMesh) continue;
