@@ -11,7 +11,7 @@ real OpenStreetMap geometry.** Two datasets are supported:
 * **central pilot (committed, default)** — 1.6 × 1.6 km around October /
   Independence Square, 16 × 512 m tiles, ~1.9 MiB; and
 * **city belt (generated locally, `?dataset=city`)** — 12 × 12 km, 144 × 1024 m
-  tiles, 31 782 buildings, ~58.7 MiB, all inner districts (`pnpm run data:city`).
+  tiles, 31 782 buildings, ~60 MB, all inner districts (`pnpm run data:city`).
 
 The renderer streams tiles nearest-first with a bounded resident set, fits the
 camera to the dataset bounds, and draws real buildings with walls, roofs and
@@ -19,9 +19,14 @@ procedural facades, avenues, pavements, tram rails, parks, the Svislach river,
 deterministic vegetation, cast shadows, day/night lighting and building
 selection with OSM metadata.
 
+**Curated landmarks** (`landmark` field in the data, dedicated geometry modules):
+«Ворота Минска» (clock/emblem towers), Национальная библиотека (rhombicuboctahedron
+"diamond" on its terraced podium), Монумент Победы obelisk on Victory Square and
+the Red Church (brick neo-gothic, twin spires). See `docs/DATA_SOURCES.md` §7 for
+the hand-reviewed OSM fixes behind them.
+
 Acceptance screenshots: `docs/screenshots/` (overview, close-up, detail, night,
-golden hour, clean 3D debug, City Gate landmark: `11-city-gates.png` and
-`12-city-gates-square.png`).
+golden hour, clean 3D debug, landmark shots `11`–`18`).
 
 ### Defect-fix round (after first visual review)
 
@@ -45,7 +50,7 @@ golden hour, clean 3D debug, City Gate landmark: `11-city-gates.png` and
 | E — Streets and environment | ✅ | roads/pavements/kerbs/markings/tram rails/bridges, parks, water banding, deterministic trees; ≤10.7k env tris/tile; 67 unit tests |
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 782 buildings, 4.03 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
-| Landmark kit (curated) | 🟡 started | Minsk Gate ensemble fully modelled (clock/emblem medallions, parapet, turrets); the remaining landmarks still use archetype presets |
+| Landmark kit (curated) | 🟡 4 of 7+ landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
 
 ## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop)
 
@@ -55,7 +60,7 @@ golden hour, clean 3D debug, City Gate landmark: `11-city-gates.png` and
   resolution, ~26.1 MB GPU geometry, 0 console/page errors.
 
 **City dataset** (12 × 12 km, 1900×1000):
-* Full overview with **all 144 tiles resident: 424 draw calls, 4 026 682
+* Full overview with **all 144 tiles resident: 424 draw calls, 4 025 650
   triangles, 31 782 buildings, 542 MB GPU geometry, 60 FPS**; app ready in
   8.6 s warm / 23.9 s cold. The ground plate hides itself once the resident set
   covers the view, so the finished overview is a clean floating diamond.
@@ -63,22 +68,27 @@ golden hour, clean 3D debug, City Gate landmark: `11-city-gates.png` and
   tiles. Close-up (orthoHeight 80): 60 FPS, 12 draws, 200 870 triangles, shadows
   enabled. Shadows auto-disable above 3.2 km orthoHeight (a 2048² map across a
   10 km footprint would show its edge).
-* Payload: 144 × 1024 m tiles, 58.7 MiB JSON uncompressed (git-ignored; generated
+* Payload: 144 × 1024 m tiles, ~60 MB (58 737 KiB) JSON uncompressed (git-ignored; generated
   locally with `pnpm run data:city`).
-* Landmark check (Minsk Gate, orthoHeight 150–1400): clock face and gold emblem
-  medallion readable on the two towers, 0 console/page errors.
+* Landmark checks (city dataset, 0 console/page errors): Minsk Gate — clock face
+  and gold emblem medallion readable on the two towers; National Library —
+  faceted diamond + glazed podium skirt; Victory obelisk — stepped pedestal,
+  bronze bands, gold star and eternal flame; Red Church — brick twin-tower
+  facade with slate spires and gold crosses. The four curated landmarks total
+  ~2 600 triangles (gate crown ~516, library 1 779, church 690, obelisk 120) and
+  replace the generic extrusions (net −1 032 triangles city-wide).
 
 **General**
 * Day overview: mean luminance 108/255, 0 % near-black. Night (22:30): mean
   39/255 with sparse warm lit windows.
-* Tests: **253/253 unit** (Vitest, 16 files), **12/12 browser e2e** (Playwright,
+* Tests: **289/289 unit** (Vitest, 18 files), **12/12 browser e2e** (Playwright,
   software SwiftShader), `tsc --noEmit` clean, `vite build` ✓; pilot captured on
   hardware GPU (RTX 3080, ANGLE/D3D11) at 60 FPS with 0 console errors.
 * Data coverage (pilot): 8.7 % explicit `height`, 56 % from `building:levels`,
   35.3 % heuristic; 46.6 % explicit `roof:shape`. City belt: 1.7 % / 37.8 % /
   60.5 %, reflecting sparser tagging outside the centre.
-* Archetype spread in the city belt: small 20 247, historic 3 904, panel 2 166,
-  Khrushchev 1 652, office 1 684, civic 991, industrial 817, Stalin 437,
+* Archetype spread in the city belt: small 20 247, historic 3 903, panel 2 166,
+  Khrushchev 1 652, office 1 684, civic 992, industrial 817, Stalin 437,
   modern 80, palace 5, stadium 18.
 
 ## Open issues / known limitations (all documented)
@@ -87,11 +97,11 @@ golden hour, clean 3D debug, City Gate landmark: `11-city-gates.png` and
 | --- | --- | --- | --- |
 | 1 | Roof-shape mix is heuristic outside tagged buildings (~68 % pitched in the centre, similar in the city) | medium | `heightSource`/`roofShapeExplicit` provenance is recorded per volume; a statistical roof model per district is the next quality step |
 | 2 | Palace/landmark trim bands (plinth/cornice/attic, 0.35 m overhang) read as a dashed 1-px outline at far zoom | cosmetic | visible on the Palace of the Republic roof edge; reduce overhang or merge into the roof face if it bothers |
-| 3 | Payload is uncompressed JSON (58.7 MiB for the city belt) | low | gzip ≈ 24 %; binary + Brotli encoding is the next scalability step |
+| 3 | Payload is uncompressed JSON (~60 MB for the city belt) | low | gzip ≈ 24 %; binary + Brotli encoding is the next scalability step |
 | 4 | Some vegetation is procedurally placed (140 000 instances city-wide) | low | `TreeInstance.mapped` distinguishes surveyed from inferred; UI/docs say so |
 | 5 | Underground objects (metro, passages) are not rendered | low | deliberate: they painted black strips on squares in an early build |
 | 6 | Flat terrain (no DEM) | low | terrain-height provider is the extension point; see `docs/DATA_SOURCES.md` |
-| 7 | Landmark facades are generic presets except the Minsk Gate and the palace archetype | medium | the curated landmark kit has started (`src/city/buildings/cityGate.ts`); Red Church, Bolshoi Theatre, railway station and Minsk-Arena are the next candidates (same pattern: data flag + dedicated geometry module) |
+| 7 | Landmark geometry is curated for 4 of the iconic buildings only | medium | done: Minsk Gate, National Library, Victory obelisk, Red Church. Next candidates (same pattern: data flag + dedicated module in `src/city/buildings/landmarks.ts`): Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral |
 
 ## Multi-agent execution
 

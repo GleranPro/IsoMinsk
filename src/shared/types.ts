@@ -57,7 +57,10 @@ export type Archetype =
  * superstructures (spires, clock dials, emblems) that OSM does not describe.
  */
 export type LandmarkId =
-  | 'minsk-gate'; // Ворота Минска ensemble: two 11-storey towers (clock + emblem crowns)
+  | 'minsk-gate' // Ворота Минска ensemble: two 11-storey towers (clock + emblem crowns)
+  | 'national-library' // Национальная библиотека: rhombicuboctahedron "diamond" on a podium
+  | 'victory-obelisk' // Монумент Победы on Victory Square: granite obelisk + gold star
+  | 'red-church'; // Костёл Св. Симеона и Елены: red-brick neo-gothic church, twin spires
 
 export type RoofShape =
   | 'flat'
@@ -109,9 +112,17 @@ export interface BuildingFeature {
   address?: string;
   /**
    * Curated landmark id (data-pipeline assigned). When present the renderer may
-   * add landmark-specific procedural geometry on top of the regular volumes.
+   * add landmark-specific procedural geometry instead of the generic extrusion.
    */
   landmark?: LandmarkId;
+  /**
+   * Original OSM building outline in local metres (exterior ring first).
+   *
+   * Only emitted for curated landmarks: the generic per-tile de-overlap can cut
+   * the base footprint into pieces around `building:part` volumes, so landmark
+   * geometry needs the untrimmed outline to rebuild the real massing.
+   */
+  outline?: Polygon;
 }
 
 /** Road class, drives width and surface colour. */

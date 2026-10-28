@@ -2,16 +2,16 @@
 
 > **Revision addendum — 2026-10-28 (post-landmark round).** The report body below
 > documents the 2026-10-27 16:30 QA round. Since then the data pipeline gained
-> curated landmark fixes (Minsk Gate) and stricter duplicate detection, the pilot
-> tiles were regenerated and a new unit suite was added. Re-verified on this
-> revision: `pnpm test` → **253/253 passed** (16 files); `pnpm test:e2e` →
-> **12/12 passed** (software SwiftShader, 4.5 min); `tsc --noEmit` clean;
-> `data:validate` pilot + city → **VALIDATION PASSED**; `qa:capture` (hardware
-> GPU) → 6/6 shots, 16/16 tiles, 60 FPS, 0 console errors. City belt now holds
-> **31 782 buildings** (144 tiles) and the Minsk Gate renders as a curated
-> landmark (`docs/screenshots/11-city-gates.png`,
-> `docs/screenshots/12-city-gates-square.png`). Everything else in this report
-> remains the historical 2026-10-27 record.
+> curated landmark fixes (Minsk Gate, National Library, Victory obelisk, Red
+> Church) and stricter duplicate detection, the pilot tiles were regenerated and
+> two new unit suites were added. Re-verified on this revision: `pnpm test` →
+> **289/289 passed** (18 files); `pnpm test:e2e` → **12/12 passed** (software
+> SwiftShader, 5 min); `tsc --noEmit` clean; `data:validate` pilot + city →
+> **VALIDATION PASSED**; full-city capture (hardware GPU) → 144/144 tiles,
+> **4 025 650 triangles / 424 draws / 60 FPS**, 0 console errors. City belt holds
+> **31 782 buildings** and the four curated landmarks render
+> (`docs/screenshots/11`–`18`). Everything else in this report remains the
+> historical 2026-10-27 record.
 
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**
 **Author:** QA & Integration agent (qa-dev)

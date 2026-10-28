@@ -686,6 +686,34 @@ LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
         "landmark": "minsk-gate",
         "archetype": "stalin",
     },
+    # Национальная библиотека Беларусі ("алмаз"). OSM maps the stylobate as one
+    # 89-point footprint and the rhombicuboctahedron shell as many
+    # building:part polygons (some with heights that make no sense as volumes).
+    # The renderer rebuilds the podium + diamond from the curated `outline`
+    # (src/city/buildings/nationalLibrary.ts); `height` is the real 71.6 m top.
+    ("way", 25319604): {
+        "landmark": "national-library",
+        "archetype": "civic",
+        "height": 71.6,
+    },
+    # Монумент Победы (Victory Square obelisk): mapped as a 16x16 m "building"
+    # with a bogus height=4 plus pedestal/pyramidion parts. The real monument is
+    # ~38 m tall including the gold star; the renderer rebuilds it from the
+    # footprint (src/city/buildings/victoryObelisk.ts).
+    ("way", 346312699): {
+        "landmark": "victory-obelisk",
+        "archetype": "civic",
+        "height": 38.2,
+    },
+    # Костёл Св. Сымона і Св. Алены ("Чырвоны касцёл" / Red Church). The church
+    # way carries detailed building:parts (nave 25 m gabled, towers to 50 m); the
+    # renderer rebuilds the brick neo-gothic massing, twin spires and crosses
+    # (src/city/buildings/redChurch.ts).
+    ("way", 100418249): {
+        "landmark": "red-church",
+        "archetype": "civic",
+        "height": 50.0,
+    },
 }
 
 # Broken OSM mappings around the Minsk Gate: two `building=residential` ways with
@@ -1055,6 +1083,10 @@ def main() -> int:
             "address": address,
             "roofShapeExplicit": roof_explicit,
             **({"landmark": landmark_override["landmark"]} if landmark_override else {}),
+            # Curated landmarks keep the untrimmed OSM footprint: the generic
+            # de-overlap cuts the base into pieces around building:parts, which
+            # landmark geometry cannot use to rebuild the real massing.
+            **({"outline": poly_to_rings(polygon)} if landmark_override else {}),
         })
 
     # --- merge polygons that belong to the same OSM feature -----------------
@@ -1144,6 +1176,13 @@ def main() -> int:
     buildings = deduped
     stats["duplicate_buildings_dropped"] = duplicates_dropped
     stats["dedupe_near_misses_kept"] = near_misses_kept
+
+    # Curated landmark heights override the inferred / OSM-part maximum so the
+    # info panel and LOD distances see the real measured top elevation.
+    for record in buildings:
+        override = LANDMARK_OVERRIDES.get((record["osmType"], record["osmId"]))
+        if override and override.get("height") is not None:
+            record["height"] = float(override["height"])
 
     stats["buildings"] = len(buildings)
     print(f"Buildings: {len(buildings):,} (duplicates dropped: {duplicates_dropped}, "
@@ -1699,7 +1738,7 @@ def main() -> int:
         },
         "curation": {
             "landmarkOverrides": [
-                {"id": f"{osm_type[0]}{osm_id}", "landmark": override.get("landmark")}
+                {"id": f"{osm_type[0]}{osm_id}", **override}
                 for (osm_type, osm_id), override in LANDMARK_OVERRIDES.items()
             ],
             "duplicateAggregatesSkipped": [

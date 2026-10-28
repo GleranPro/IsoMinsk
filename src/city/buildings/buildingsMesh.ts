@@ -36,6 +36,7 @@ import { FACE_KIND } from '../../shared/geometry';
 import type { BuildingFeature, BuildingVolume, FeatureId } from '../../shared/types';
 import { addRoof } from '../roofs/roofMesh';
 import { addCityGateCrown, isCityGateBuilding } from './cityGate';
+import { addCuratedLandmark } from './landmarks';
 import { MeshSink } from './meshSink';
 import { addPalaceAccents } from './palaceAccents';
 import {
@@ -120,6 +121,14 @@ export function buildBuildingsMesh(
       : [];
     if (!volumes.length) {
       warnings.push(`${id}: building has no volumes`);
+      continue;
+    }
+
+    // Curated landmarks (diamond library, obelisk, church) replace the whole
+    // generic extrusion: their massing cannot be described by lofted volumes.
+    if (
+      addCuratedLandmark(sink, building, style, (message) => warnings.push(`${id}: ${message}`))
+    ) {
       continue;
     }
 

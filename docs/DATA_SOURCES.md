@@ -94,9 +94,10 @@ Buildings/height: GlobalBuildingAtlas © Zhu et al. (2025), CC BY-NC 4.0 — non
 
 ## 7. Curated landmark corrections (manual review)
 
-The pipeline is procedural end-to-end, but three OSM features around the Minsk
-Gate needed hand review before the geometry could be rendered truthfully. Every
-override lives in `scripts/normalize/normalize.py` (`LANDMARK_OVERRIDES`,
+The pipeline is procedural end-to-end, but four landmarks needed hand review
+before the geometry could be rendered truthfully: the Minsk Gate, the National
+Library, the Victory Square obelisk and the Red Church. Every override lives in
+`scripts/normalize/normalize.py` (`LANDMARK_OVERRIDES`,
 `CURATED_DUPLICATE_IDS`) and is echoed into `data/processed/coverage_city.json`
 under `curation`, so the curation is auditable rather than silent.
 
@@ -105,8 +106,17 @@ under `curation`, so the curation is auditable rather than silent.
 | `relation/9383682` «Вароты Мінска» | Malformed multipolygon: four member rings (two 7-storey tower blocks and their 11-storey `building:part` tiers) flattened into one invalid polygon with two outer rings; no `height`/`building:levels` tags | Curated `landmark = "minsk-gate"` + `archetype = "stalin"`. The volumes (two 24.5 m base blocks, two 38.5 m tower tiers) still come from the OSM `building:part` polygons; only the metadata is overridden. The renderer adds the flat parapet, clock/emblem medallions and corner turrets (`src/city/buildings/cityGate.ts`) |
 | `way/602639195` | `building=residential` with `height=0.01`; its single ring traces the gate tower + Bobruiskaya 15 + Ulyanovskaya 34 at once | Aggregate record skipped. Those three buildings are mapped separately and were previously being deleted by the duplicate detector — now they render |
 | `way/602639199` | Same defect pattern; one ring traces the other gate tower + Bobruiskaya 13 + Leningradskaya 7 | Aggregate record skipped; the separately mapped buildings render |
+| `way/25319604` Нацыянальная бібліятэка Беларусі | The stylobate is one 89-point footprint and the rhombicuboctahedron shell is split into many `building:part` polygons (some with unusable heights); no single volume describes the real massing | Curated `landmark = "national-library"`, `height = 71.6 m`. The renderer rebuilds the terraced podium from the curated `outline` (the untrimmed OSM footprint, now emitted for landmarks) and generates the true rhombicuboctahedron (edge 24.67 m, 11.0–70.7 m) — `src/city/buildings/nationalLibrary.ts` |
+| `way/346312699` Манумент Победы | The obelisk is mapped as a 16×16 m "building" with a bogus `height=4` plus pedestal/pyramidion parts; the real monument is ~38 m tall | Curated `landmark = "victory-obelisk"`, `height = 38.2 m`; geometry rebuilt from the footprint and the OSM part heights (`src/city/buildings/victoryObelisk.ts`) |
+| `way/100418249` Касцёл Св. Сымона і Св. Алены | Detailed `building:part`s (nave 25 m gabled, towers to 50 m) but no way to render the brick neo-gothic massing, twin spires and crosses | Curated `landmark = "red-church"`, `height = 50.0 m`; geometry rebuilt from the outline + tower part positions (`src/city/buildings/redChurch.ts`) |
 
-Related general fixes made in the same revision:
+Curated landmarks also receive an extra `outline` field (the untrimmed original
+OSM footprint), because the generic per-tile de-overlap cuts the base footprint
+into pieces around `building:part` volumes. The renderer replaces the whole
+generic extrusion for these features (`src/city/buildings/landmarks.ts`
+registry); non-landmark buildings are untouched.
+
+Related general fixes made in the same revisions:
 
 - Explicit `height` values below `MIN_PLAUSIBLE_HEIGHT_M = 2.5 m` are treated as
   missing data (a door is taller than 1 m). This removes the `height=0.01`

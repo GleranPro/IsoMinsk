@@ -76,16 +76,21 @@ From the generated milestone data:
   `stadium` is inside the current extent.
 - Floor counts and floor heights are nominal (`DEFAULT_FLOOR_HEIGHT_M = 3.0 m`),
   not surveyed; the same building can be 5 %–20 % off in reality.
-- **Landmark geometry is curated, not generic.** Only the Minsk Gate ensemble
-  (`relation/9383682`, flagged `landmark: "minsk-gate"` in the data) has
-  dedicated geometry: flat parapet, clock/emblem medallions and corner turrets
-  (`src/city/buildings/cityGate.ts`). Its tower tiers, base blocks and heights
-  still come from OSM `building:part` polygons, but the medallions, parapet and
-  turret details are approximations — the clock face is a 12-gon disc with two
-  gold hands at a fixed 10:10 pose, not a working clock. All other landmarks
-  (Red Church, Bolshoi Theatre, railway station, Minsk-Arena, …) still use the
-  generic archetype presets. Three OSM features needed hand-reviewed metadata
-  overrides; they are listed in `docs/DATA_SOURCES.md` §7.
+- **Landmark geometry is curated, not generic.** Four landmarks have dedicated
+  geometry, flagged in the data as `landmark`: the Minsk Gate
+  (`minsk-gate`: flat parapet, clock/emblem medallions, corner turrets), the
+  National Library (`national-library`: terraced podium rebuilt from the OSM
+  outline + a true rhombicuboctahedron with a 24.67 m edge, 11.0–70.7 m), the
+  Victory Square obelisk (`victory-obelisk`: stepped pedestal, tapering shaft,
+  gold star) and the Red Church (`red-church`: brick nave, twin towers with
+  spires and gold crosses). Their massing is derived from real OSM footprints /
+  `building:part` positions, but all decorative details are procedural
+  approximations: the gate clock is a fixed 10:10 disc, the library curtain wall
+  is colour bands + mullion rims rather than 16×22 glazing panels per face, and
+  the church ornament is simplified. All remaining landmarks (Bolshoi Theatre,
+  railway station, Minsk-Arena, Holy Spirit Cathedral, …) still use the generic
+  archetype presets. Six OSM features needed hand-reviewed metadata overrides;
+  they are listed in `docs/DATA_SOURCES.md` §7.
 - There is no terrain elevation: every building sits on the local y = 0 plane.
   Minsk is hilly in places; slopes are not represented, so stair-step buildings
   and river banks are flattened.

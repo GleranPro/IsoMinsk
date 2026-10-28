@@ -72,6 +72,13 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
   so the renderer can extrude each volume blindly). Every volume carries
   `footprint` (rings), `minHeight`, `height` (eave), `roofShape`, `roofHeight`,
   optional `roofDirection` and the `heightSource` provenance.
+* **Curated landmarks** — four buildings carry a `landmark` id
+  (`minsk-gate`, `national-library`, `victory-obelisk`, `red-church`) plus the
+  untrimmed original OSM footprint in `outline` (see `docs/DATA_SOURCES.md` §7).
+  `src/city/buildings/landmarks.ts` routes them to dedicated geometry modules
+  that replace the generic extrusion (rhombicuboctahedron, obelisk, church
+  massing); the Minsk Gate crown is additive and stays in `cityGate.ts`. All
+  other buildings use the generic volume builder.
 * `surfaces` — parks, grass, forests, water, plazas (already clipped to the tile).
 * `roads` — buffered road/pavement/rail polygons (already clipped to the tile).
 * `trees` — deterministic tree instances, `mapped` = real OSM node.
