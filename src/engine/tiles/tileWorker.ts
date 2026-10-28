@@ -38,8 +38,11 @@ async function handleLoad(request: Extract<TileWorkerRequest, { type: 'load' }>)
   try {
     const response = await fetch(request.url, {
       signal: controller.signal,
-      // Tiles are immutable per build; let the browser cache aggressively.
-      cache: 'force-cache',
+      // Tile payloads change whenever the dataset is regenerated (same URL!),
+      // so always revalidate with the server instead of trusting the HTTP cache.
+      // A 304 keeps the fast path; stale geometry after a data update is much
+      // worse than a conditional request per tile.
+      cache: 'no-cache',
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} while fetching ${request.url}`);

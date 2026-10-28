@@ -95,7 +95,7 @@ export function App() {
       stats: null,
     };
     app.start();
-    fetch(resolveManifestUrl())
+    fetch(resolveManifestUrl(), { cache: 'no-cache' })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => setManifest(data as TileManifest | null))
       .catch(() => setManifest(null));

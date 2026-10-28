@@ -778,7 +778,7 @@ export class TileStreamer {
           continue;
         }
         try {
-          const response = await fetch(job.task.url, { cache: 'force-cache' });
+          const response = await fetch(job.task.url, { cache: 'no-cache' });
           if (!response.ok) throw new Error(`HTTP ${response.status} for ${job.task.url}`);
           const data = (await response.json()) as TileData;
           // Yield once so the loading indicator can paint before the

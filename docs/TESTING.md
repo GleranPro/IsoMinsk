@@ -13,6 +13,7 @@ Commands assume the repository root: `D:\Workk\VoxelMinsk`.
 | E2E (default software) | `pnpm exec playwright test` | same tests on SwiftShader (deterministic CI mode) | ~10 min |
 | Screenshots | `$env:QA_GPU='1'; pnpm run qa:capture` | 6 fixed screenshots + `screenshots/stats.json` + `screenshots/console.log` (waits for all 16 tiles) | ~45 s |
 | Screenshot metrics | `node scripts/qa/analyze-screenshots.mjs` | `screenshots/analysis.json` (colour / luminance / near-black share / content bbox) for the canonical 6 | ~5 s |
+| Tile cache freshness | `node scripts/qa/cache-check.mjs` | proves a changed tile payload is revalidated on reload instead of served stale from the HTTP cache (mutates + restores `city-tiles/-1_-2.json`; needs `?dataset=city`) | ~40 s |
 | Typecheck | `pnpm run typecheck` | `tsc --noEmit` over `src`, `tests`, `scripts` | ~10 s |
 
 ---

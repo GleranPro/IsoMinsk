@@ -115,6 +115,11 @@ Key properties:
 
 * **One merged mesh per category per tile** — a tile with 400 buildings is a
   couple of draw calls, never 400.
+* **Tile payloads are revalidated on every load** (`cache: 'no-cache'` for the
+  manifest and every tile fetch). Tile URLs are stable while their content
+  changes whenever the data pipeline is re-run, so a page refresh must never
+  reuse a stale payload from the browser HTTP cache; unchanged tiles still cost
+  only a `304 Not Modified`. `scripts/qa/cache-check.mjs` guards this.
 * **Facades are procedural**: no textures, no per-window meshes. Window rhythm
   comes from vertex attributes (`aUV`, `aStyle`, `aFace`) interpreted in the
   fragment shader, which also gets `uNight` and `uDetailScale` for night

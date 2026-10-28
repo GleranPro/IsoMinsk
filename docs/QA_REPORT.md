@@ -12,7 +12,7 @@
 > **31 778 buildings** and the four curated landmarks render
 > (`docs/screenshots/11`–`18`). A later data revision also fixed multipolygon
 > relation assembly (the flooded Yanka Kupala park and the missing river islands,
-> `docs/screenshots/19`–`20`). Everything else in this report remains the
+> `docs/screenshots/19`–`20`). A stale-cache bug was also fixed: tile payloads used to be fetched with `cache: 'force-cache'`, so after a dataset regeneration the map kept the old geometry even on refresh (manifest updated, tiles did not); tiles are now revalidated (`no-cache`, guarded by `scripts/qa/cache-check.mjs`). Everything else in this report remains the
 > historical 2026-10-27 record.
 
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**
