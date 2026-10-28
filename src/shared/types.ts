@@ -60,7 +60,8 @@ export type LandmarkId =
   | 'minsk-gate' // Ворота Минска ensemble: two 11-storey towers (clock + emblem crowns)
   | 'national-library' // Национальная библиотека: rhombicuboctahedron "diamond" on a podium
   | 'victory-obelisk' // Монумент Победы on Victory Square: granite obelisk + gold star
-  | 'red-church'; // Костёл Св. Симеона и Елены: red-brick neo-gothic church, twin spires
+  | 'red-church' // Костёл Св. Симеона и Елены: red-brick neo-gothic church, twin spires
+  | 'tv-tower'; // Телебашня на ул. Коммунистической: 176 m lattice TV/radio mast
 
 export type RoofShape =
   | 'flat'

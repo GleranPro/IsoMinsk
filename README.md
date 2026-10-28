@@ -41,9 +41,10 @@ The repository ships a **1.6 × 1.6 km central district** (16 × 512 m tiles,
 
 A **12 × 12 km city dataset** (144 × 1024 m tiles, ~60 MB, 31 783 buildings
 including panel/historic/industrial/stadium/palace archetypes across all inner
-districts, plus four curated landmarks: Minsk Gate clock/emblem towers, National
-Library diamond, Victory Square obelisk and the Red Church) can be generated
-locally from the same OSM extract — it is git-ignored because of its size:
+districts, plus five curated landmarks: Minsk Gate clock/emblem towers, National
+Library diamond, Victory Square obelisk, the Red Church and the TV tower) can be
+generated locally from the same OSM extract — it is git-ignored because of its
+size:
 
 ```powershell
 pnpm run data:city        # extract + normalise + validate, ~6 min, no new downloads
@@ -89,7 +90,7 @@ tiles.
 
 ```powershell
 pnpm run typecheck      # TypeScript, strict
-pnpm test               # Vitest: 308 tests — geometry, roofs, facades, environment,
+pnpm test               # Vitest: 321 tests — geometry, roofs, facades, environment,
                         #   tile maths, config sync, curated landmarks, real-tile data
 pnpm run test:e2e       # Playwright: 12 browser tests (real WebGL)
 $env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)

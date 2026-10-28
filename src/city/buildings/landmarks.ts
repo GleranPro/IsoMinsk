@@ -15,6 +15,7 @@ import type { MeshSink } from './meshSink';
 import { addNationalLibrary, isNationalLibraryBuilding } from './nationalLibrary';
 import { addRedChurch, isRedChurchBuilding } from './redChurch';
 import type { BuildingStyle } from './style';
+import { addTvTower, isTvTowerBuilding } from './tvTower';
 import { addVictoryObelisk, isVictoryObeliskBuilding } from './victoryObelisk';
 
 export interface CuratedLandmarkRoute {
@@ -47,6 +48,11 @@ export const CURATED_LANDMARKS: readonly CuratedLandmarkRoute[] = [
     id: 'red-church',
     matches: isRedChurchBuilding,
     build: (sink, building, style, warn) => addRedChurch(sink, building, style, warn),
+  },
+  {
+    id: 'tv-tower',
+    matches: isTvTowerBuilding,
+    build: (sink, building, style, warn) => addTvTower(sink, building, style, warn),
   },
 ];
 

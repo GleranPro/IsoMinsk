@@ -21,9 +21,10 @@ selection with OSM metadata.
 
 **Curated landmarks** (`landmark` field in the data, dedicated geometry modules):
 «Ворота Минска» (clock/emblem towers), Национальная библиотека (rhombicuboctahedron
-"diamond" on its terraced podium), Монумент Победы obelisk on Victory Square and
-the Red Church (brick neo-gothic, twin spires). See `docs/DATA_SOURCES.md` §7 for
-the hand-reviewed OSM fixes behind them.
+"diamond" on its terraced podium), Монумент Победы obelisk on Victory Square, the
+Red Church (brick neo-gothic, twin spires) and the TV tower on Kamunistyčnaja
+street (176 m lattice mast with platform bands and the 160 m octagonal platform).
+See `docs/DATA_SOURCES.md` §7 for the hand-reviewed OSM fixes behind them.
 
 **Park attractions**: both Minsk ferris wheels are rendered as real geometry —
 54 m / Ø51 m / 36 cabins in Gorky Park and 28 m / 18 cabins in Chelyuskintsev
@@ -57,7 +58,7 @@ golden hour, clean 3D debug, landmark shots `11`–`18`).
 | E — Streets and environment | ✅ | roads/pavements/kerbs/markings/tram rails/bridges, parks, water banding, deterministic trees; ≤10.7k env tris/tile; 67 unit tests |
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 783 buildings, 4.01 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
-| Landmark kit (curated) | 🟡 4 of 7+ landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
+| Landmark kit (curated) | 🟡 5 of 7+ landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
 
 ## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop)
 
@@ -68,7 +69,7 @@ golden hour, clean 3D debug, landmark shots `11`–`18`).
   errors. The restored park/forest relations added ~25 k environment triangles.
 
 **City dataset** (12 × 12 km, 1900×1000):
-* Full overview with **all 144 tiles resident: 424 draw calls, 4 007 662
+* Full overview with **all 144 tiles resident: 424 draw calls, 4 010 150
   triangles, 31 783 buildings, 540 MB GPU geometry, 60 FPS**; app ready in
   8.6 s warm / 23.9 s cold. The ground plate hides itself once the resident set
   covers the view, so the finished overview is a clean floating diamond.
@@ -82,9 +83,12 @@ golden hour, clean 3D debug, landmark shots `11`–`18`).
   and gold emblem medallion readable on the two towers; National Library —
   faceted diamond + glazed podium skirt; Victory obelisk — stepped pedestal,
   bronze bands, gold star and eternal flame; Red Church — brick twin-tower
-  facade with slate spires and gold crosses. The four curated landmarks total
-  ~3 100 triangles (gate crown ~516, library 1 779, church 690, obelisk 120) and
-  replace the generic extrusions.
+  facade with slate spires and gold crosses; TV tower — 176 m red/white lattice
+  mast with platform bands, the octagonal 160 m platform, antenna arrays and the
+  red beacon. The five curated landmarks total ~5 600 triangles (TV tower 2 522,
+  library 1 779, church 690, gate crown ~516, obelisk 120) and replace the
+  generic extrusions (`docs/screenshots/25-tv-tower.png`,
+  `docs/screenshots/26-tv-tower-clean.png`).
 * Park attractions: both ferris wheels render as real geometry — Gorky Park
   (54 m, Ø51 m, 36 cabins / 4 open, 1 710 triangles) and Chelyuskintsev Park
   (28 m, 18 cabins, 1 402 triangles), merged with the vegetation geometry;
@@ -101,7 +105,7 @@ golden hour, clean 3D debug, landmark shots `11`–`18`).
 **General**
 * Day overview: mean luminance 108/255, 0 % near-black. Night (22:30): mean
   39/255 with sparse warm lit windows.
-* Tests: **308/308 unit** (Vitest, 19 files), **12/12 browser e2e** (Playwright,
+* Tests: **321/321 unit** (Vitest, 20 files), **12/12 browser e2e** (Playwright,
   software SwiftShader), `tsc --noEmit` clean, `vite build` ✓; pilot captured on
   hardware GPU (RTX 3080, ANGLE/D3D11) at 60 FPS with 0 console errors.
 * Data coverage (pilot): 8.7 % explicit `height`, 56 % from `building:levels`,

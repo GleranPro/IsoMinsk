@@ -5,7 +5,7 @@ Commands assume the repository root: `D:\Workk\VoxelMinsk`.
 
 | Suite | Command | What it covers | Typical time |
 | --- | --- | --- | --- |
-| Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync, real-data validation and the curated landmarks (Minsk Gate, National Library, obelisk, Red Church) (308 tests at the current milestone) | ~30 s |
+| Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync, real-data validation and the curated landmarks (Minsk Gate, National Library, obelisk, Red Church) (321 tests at the current milestone) | ~30 s |
 | Data pipeline | `pnpm run data:all` | download → extract → normalize (writes tiles + manifest) → coverage report | several minutes |
 | Geometry audit | `pnpm exec tsx scripts/qa/geometryAudit.ts` | builds building/environment meshes from the real tiles without a browser; writes `screenshots/geometry-audit.json`; exits 1 on invalid geometry | ~5 s |
 | QA unit only | `pnpm exec vitest run tests/unit/data tests/unit/tile_math.test.ts tests/unit/config_sync.test.ts` | 44 QA-owned tests | ~1 s |

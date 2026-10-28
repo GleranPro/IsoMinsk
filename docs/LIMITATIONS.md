@@ -76,21 +76,24 @@ From the generated milestone data:
   `stadium` is inside the current extent.
 - Floor counts and floor heights are nominal (`DEFAULT_FLOOR_HEIGHT_M = 3.0 m`),
   not surveyed; the same building can be 5 %–20 % off in reality.
-- **Landmark geometry is curated, not generic.** Four landmarks have dedicated
+- **Landmark geometry is curated, not generic.** Five landmarks have dedicated
   geometry, flagged in the data as `landmark`: the Minsk Gate
   (`minsk-gate`: flat parapet, clock/emblem medallions, corner turrets), the
   National Library (`national-library`: terraced podium rebuilt from the OSM
   outline + a true rhombicuboctahedron with a 24.67 m edge, 11.0–70.7 m), the
   Victory Square obelisk (`victory-obelisk`: stepped pedestal, tapering shaft,
-  gold star) and the Red Church (`red-church`: brick nave, twin towers with
-  spires and gold crosses). Their massing is derived from real OSM footprints /
-  `building:part` positions, but all decorative details are procedural
-  approximations: the gate clock is a fixed 10:10 disc, the library curtain wall
-  is colour bands + mullion rims rather than 16×22 glazing panels per face, and
-  the church ornament is simplified. All remaining landmarks (Bolshoi Theatre,
-  railway station, Minsk-Arena, Holy Spirit Cathedral, …) still use the generic
-  archetype presets. Six OSM features needed hand-reviewed metadata overrides;
-  they are listed in `docs/DATA_SOURCES.md` §7.
+  gold star), the Red Church (`red-church`: brick nave, twin towers with
+  spires and gold crosses) and the TV tower (`tv-tower`: 176 m lattice mast
+  with platform bands and the 160 m octagonal platform). Their massing is derived
+  from real OSM footprints / `building:part` positions, but all decorative
+  details are procedural approximations: the gate clock is a fixed 10:10 disc,
+  the library curtain wall is colour bands + mullion rims rather than 16×22
+  glazing panels per face, the church ornament is simplified and the TV mast's
+  truss is a stylised 4-leg lattice rather than the real member-by-member frame.
+  All remaining landmarks (Bolshoi Theatre, railway station, Minsk-Arena, Holy
+  Spirit Cathedral, …) still use the generic archetype presets. Seven OSM
+  features needed hand-reviewed metadata overrides; they are listed in
+  `docs/DATA_SOURCES.md` §7.
 - **Park attractions are curated and static.** Both ferris wheels are real
   geometry (Gorky Park 54 m / Ø51 m / 36 cabins, Chelyuskintsev Park 28 m /
   18 cabins) but they do not rotate — the environment geometry is baked per tile,

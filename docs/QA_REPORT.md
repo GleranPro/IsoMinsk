@@ -3,15 +3,16 @@
 > **Revision addendum — 2026-10-28 (post-landmark round).** The report body below
 > documents the 2026-10-27 16:30 QA round. Since then the data pipeline gained
 > curated landmark fixes (Minsk Gate, National Library, Victory obelisk, Red
-> Church), two ferris wheels, multipolygon/relation repairs and a tile-cache fix;
-> the pilot tiles were regenerated and new unit suites were added. Re-verified on
-> this revision: `pnpm test` → **308/308 passed** (19 files); `pnpm test:e2e` →
+> Church, TV tower), two ferris wheels, multipolygon/relation repairs and a
+> tile-cache fix; the pilot tiles were regenerated and new unit suites were
+> added. Re-verified on this revision: `pnpm test` → **321/321 passed** (20 files); `pnpm test:e2e` →
 > **12/12 passed** (software SwiftShader, 5.4 min); `tsc --noEmit` clean;
 > `vite build` ✓; `data:validate` pilot + city → **VALIDATION PASSED**; geometry
-> audit PASSED; full-city capture (hardware GPU) → 144/144 tiles, **4 007 662
+> audit PASSED; full-city capture (hardware GPU) → 144/144 tiles, **4 010 150
 > triangles / 424 draws / 60 FPS**, 0 console errors; tile-cache revalidation
-> check PASS. City belt holds **31 783 buildings**; the four curated landmarks
-> render (`docs/screenshots/11`–`18`), both ferris wheels render (`22`–`24`), and
+> check PASS. City belt holds **31 783 buildings**; the five curated landmarks
+> render (`docs/screenshots/11`–`18`, `25`–`26`), both ferris wheels render
+> (`22`–`24`), and
 > the relation fixes restored the Svislach river through Yanka Kupala park (`21`)
 > plus the surveyed islands (`19`). A stale-cache bug was also fixed: tile
 > payloads used to be fetched with `cache: 'force-cache'`, so after a dataset

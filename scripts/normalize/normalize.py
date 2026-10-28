@@ -751,6 +751,16 @@ LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
         "archetype": "civic",
         "height": 50.0,
     },
+    # Тэлевежа (Minsk TV / radio tower, vul. Kamunistyčnaja). OSM maps it as a
+    # `building=tower, man_made=tower` with height=176 and a bogus
+    # roof:height=170, which made the generic builder extrude a 168 m white prism
+    # with an 8 m pyramid cap. The real structure is a free-standing lattice mast;
+    # the renderer rebuilds it from the footprint (src/city/buildings/tvTower.ts).
+    ("way", 1158101395): {
+        "landmark": "tv-tower",
+        "archetype": "civic",
+        "height": 176.0,
+    },
 }
 
 # Broken OSM mappings around the Minsk Gate: two `building=residential` ways with
