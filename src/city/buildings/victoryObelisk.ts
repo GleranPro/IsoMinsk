@@ -77,12 +77,20 @@ const BAND_FRACTIONS: readonly number[] = [1 / 3, 2 / 3];
 const BAND_HEIGHT = 0.8;
 /** The relief band stands this far proud of the shaft face. */
 const BAND_OUTSET = 0.16;
-/** Eternal-flame slab distance in front of the base step. */
-const FLAME_GAP = 2.6;
-/** Eternal-flame slab dimensions. */
-const FLAME_SLAB_HALF_U = 2.6;
-const FLAME_SLAB_HALF_V = 2.1;
-const FLAME_SLAB_HEIGHT = 0.4;
+/**
+ * Eternal-flame platform centre relative to the monument centre, local metres.
+ *
+ * Source: OSM way 1308903766 «Вечны агонь» — a 9 x 9 m platform whose polygon
+ * centroid sits this far west/south of the obelisk outline centroid (measured
+ * from the OSM geometry, 24.5 m away). The flame belongs in the middle of the
+ * square in front of the monument; the previous gap-based placement put the
+ * slab halfway under the obelisk base corner (reported defect 2026-10-28).
+ */
+const FLAME_OFFSET: readonly [number, number] = [-18.96, -15.52];
+/** Eternal-flame platform footprint: the real platform is a 9 x 9 m square. */
+const FLAME_SLAB_HALF_U = 4.5;
+const FLAME_SLAB_HALF_V = 4.5;
+const FLAME_SLAB_HEIGHT = 0.45;
 /** Fallback shaft half width when the generated step rings collapse. */
 const MIN_SHAFT_HALF = 1.2;
 
@@ -626,14 +634,13 @@ export function addVictoryObelisk(
       surface(style, FACE_KIND.trim, GOLD),
     );
 
-    // --- eternal flame on a low slab in front of the pedestal --------------
-    // The flame is south of the monument (towards the avenue in the reference
-    // shot), i.e. local -Y.
-    const baseExtent = Math.max(
-      distanceToRing(basePoints, centre[0], centre[1]),
-      Math.min(rect.halfLength, 9),
-    );
-    const flameCentre: Point2 = [centre[0], centre[1] - (baseExtent + FLAME_GAP)];
+    // --- eternal flame on its own platform in the square -------------------
+    // Curated OSM position (way 1308903766): west-south of the obelisk, ~24 m
+    // from the centre. The flame is NOT attached to the pedestal.
+    const flameCentre: Point2 = [
+      centre[0] + FLAME_OFFSET[0],
+      centre[1] + FLAME_OFFSET[1],
+    ];
     emitEternalFlame(sink, flameCentre, ux, uy, style);
   } catch (error) {
     warn(`victory obelisk failed: ${error instanceof Error ? error.message : String(error)}`);

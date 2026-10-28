@@ -14,7 +14,7 @@
 > render (`docs/screenshots/11`–`18`, `25`–`26`), both ferris wheels render
 > (`22`–`24`), and
 > the relation fixes restored the Svislach river through Yanka Kupala park (`21`)
-> plus the surveyed islands (`19`). A stale-cache bug was also fixed: tile
+> plus the surveyed islands (`19`). A misplaced eternal flame at the Victory obelisk was fixed (it now sits on its own 9 × 9 m platform at the real OSM position, `docs/screenshots/27-victory-flame.png`). A stale-cache bug was also fixed: tile
 > payloads used to be fetched with `cache: 'force-cache'`, so after a dataset
 > regeneration the map kept the old geometry even on refresh (manifest updated,
 > tiles did not); tiles are now revalidated (`no-cache`, guarded by
