@@ -71,7 +71,10 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
   **non-overlapping** `volumes` (the pipeline resolves `building:part` overlaps
   so the renderer can extrude each volume blindly). Every volume carries
   `footprint` (rings), `minHeight`, `height` (eave), `roofShape`, `roofHeight`,
-  optional `roofDirection` and the `heightSource` provenance.
+  optional `roofDirection` and the `heightSource` provenance. Relation features
+  arrive as proper `Polygon`/`MultiPolygon` geometry (member roles honoured at
+  extraction); water polygons keep island holes, so surfaces are triangulated
+  with holes respected (`src/city/environment/surfaceMeshes.ts`).
 * **Curated landmarks** — four buildings carry a `landmark` id
   (`minsk-gate`, `national-library`, `victory-obelisk`, `red-church`) plus the
   untrimmed original OSM footprint in `outline` (see `docs/DATA_SOURCES.md` §7).

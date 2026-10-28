@@ -8,9 +8,11 @@
 > **289/289 passed** (18 files); `pnpm test:e2e` → **12/12 passed** (software
 > SwiftShader, 5 min); `tsc --noEmit` clean; `data:validate` pilot + city →
 > **VALIDATION PASSED**; full-city capture (hardware GPU) → 144/144 tiles,
-> **4 025 650 triangles / 424 draws / 60 FPS**, 0 console errors. City belt holds
-> **31 782 buildings** and the four curated landmarks render
-> (`docs/screenshots/11`–`18`). Everything else in this report remains the
+> **4 005 571 triangles / 424 draws / 60 FPS**, 0 console errors. City belt holds
+> **31 778 buildings** and the four curated landmarks render
+> (`docs/screenshots/11`–`18`). A later data revision also fixed multipolygon
+> relation assembly (the flooded Yanka Kupala park and the missing river islands,
+> `docs/screenshots/19`–`20`). Everything else in this report remains the
 > historical 2026-10-27 record.
 
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**

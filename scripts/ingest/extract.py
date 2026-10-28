@@ -33,6 +33,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import osmium  # noqa: E402
+from shapely.geometry import LineString, Polygon, mapping  # noqa: E402
+from shapely.ops import polygonize, unary_union  # noqa: E402
 
 from geo_config import (  # noqa: E402
     EPSG_UTM35N,
@@ -304,41 +306,108 @@ class TreeCollector:
 def feature_in_window(feature: dict) -> bool:
     """Keep features that have at least one vertex inside the padded window."""
     geom = feature["geometry"]
-    if geom["type"] == "Polygon":
-        for ring in geom["coordinates"]:
-            for lon, lat in ring:
-                if inside_window(lat, lon):
-                    return True
+
+    def any_point_inside(coords) -> bool:
+        if isinstance(coords, (list, tuple)):
+            if len(coords) == 2 and all(isinstance(value, (int, float)) for value in coords):
+                lon, lat = coords[0], coords[1]
+                return inside_window(lat, lon)
+            return any(any_point_inside(child) for child in coords)
         return False
-    for lon, lat in geom["coordinates"]:
-        if inside_window(lat, lon):
-            return True
-    return False
+
+    return any_point_inside(geom.get("coordinates", []))
 
 
-def assemble_relation_features(relations: list[dict], way_coords: dict[int, list[list[float]]]) -> list[dict]:
-    """Turn collected relations + resolved way geometries into polygon features."""
+def assemble_relation_features(
+    relations: list[dict], way_coords: dict[int, list[list[float]]]
+) -> tuple[list[dict], dict]:
+    """Turn collected relations + resolved member ways into polygon features.
+
+    Multipolygon relations MUST be assembled with their member roles: `outer`
+    ways form the shells, `inner` ways the holes. The earlier implementation
+    concatenated every ring into one ``Polygon`` (first ring = shell, all others
+    = holes). For relations with several unrelated outer rings that is invalid
+    geometry, and ``make_valid`` in the normaliser repaired it into large spurious
+    areas — e.g. the Svislach river relation 14605048 flooded the Yanka Kupala
+    park between the circus and the opera with a ~13 hectare "lake".
+
+    Outer ways may also be split into multiple segments, so the linework is
+    noded (`unary_union`) and rebuilt with `polygonize` before the inner rings
+    are subtracted.
+    """
     features: list[dict] = []
+    stats = {
+        "assembled": 0,
+        "multipolygons": 0,
+        "fallbacks": 0,
+        "missing_outer": 0,
+        "empty": 0,
+    }
     for relation in relations:
-        rings: list[list[list[float]]] = []
-        for _role, way_id in relation["members"]:
+        outer_lines: list[LineString] = []
+        inner_rings: list[list[list[float]]] = []
+        for role, way_id in relation["members"]:
             coords = way_coords.get(way_id)
             if not coords or len(coords) < 3:
                 continue
-            ring = coords[:]
-            if ring[0] != ring[-1]:
-                ring.append(ring[0])
-            rings.append(ring)
-        if not rings:
+            if role == "inner":
+                ring = [list(coord) for coord in coords]
+                if ring[0] != ring[-1]:
+                    ring.append(ring[0])
+                inner_rings.append(ring)
+            else:
+                outer_lines.append(LineString(coords))
+        if not outer_lines:
+            stats["missing_outer"] += 1
             continue
+
+        geometry = None
+        try:
+            shells = list(polygonize(unary_union(outer_lines)))
+            if shells:
+                geometry = unary_union(shells)
+                if inner_rings:
+                    holes = [Polygon(ring) for ring in inner_rings if len(ring) >= 4]
+                    if holes:
+                        hole_union = unary_union(holes)
+                        if not hole_union.is_empty:
+                            geometry = geometry.difference(hole_union)
+            else:
+                stats["fallbacks"] += 1
+                geometry = unary_union(
+                    [Polygon(line.coords) for line in outer_lines if len(line.coords) >= 4]
+                )
+        except Exception:
+            stats["fallbacks"] += 1
+            try:
+                geometry = unary_union(
+                    [Polygon(line.coords) for line in outer_lines if len(line.coords) >= 4]
+                )
+            except Exception:
+                geometry = None
+        if geometry is None or geometry.is_empty:
+            stats["empty"] += 1
+            continue
+        if not geometry.is_valid:
+            geometry = geometry.buffer(0)
+        if geometry.is_empty:
+            stats["empty"] += 1
+            continue
+        mapped = mapping(geometry)
+        if mapped["type"] not in {"Polygon", "MultiPolygon"}:
+            stats["empty"] += 1
+            continue
+        stats["assembled"] += 1
+        if mapped["type"] == "MultiPolygon":
+            stats["multipolygons"] += 1
         features.append({
             "kind": relation["kind"],
             "osm_type": "relation",
             "osm_id": relation["osm_id"],
             "tags": relation["tags"],
-            "geometry": {"type": "Polygon", "coordinates": rings},
+            "geometry": mapped,
         })
-    return features
+    return features, stats
 
 
 def main() -> int:
@@ -392,11 +461,14 @@ def main() -> int:
     )
     for obj in fp:
         wc.way(obj)
-    relation_features = assemble_relation_features(rc.relations, wc.way_coords)
+    relation_features, relation_stats = assemble_relation_features(rc.relations, wc.way_coords)
     print(f"[pass B] ways: {len(wc.features):,} features, "
           f"{len(wc.way_coords):,} relation rings resolved, "
           f"{len(relation_features):,} relation polygons "
-          f"(missing node locations: {wc.missing_locations:,}) in {time.time() - t1:.1f}s")
+          f"(assembled {relation_stats['assembled']:,}, multipolygons {relation_stats['multipolygons']:,}, "
+          f"fallbacks {relation_stats['fallbacks']:,}, missing outer {relation_stats['missing_outer']:,}, "
+          f"empty {relation_stats['empty']:,}; "
+          f"missing node locations: {wc.missing_locations:,}) in {time.time() - t1:.1f}s")
 
     # pass C вЂ” trees
     t2 = time.time()
@@ -437,6 +509,7 @@ def main() -> int:
             "source_srs": EPSG_WGS84,
             "attribution": "(c) OpenStreetMap contributors, ODbL 1.0",
             "counts": counts,
+            "relationAssembly": relation_stats,
         },
         "features": kept,
     }

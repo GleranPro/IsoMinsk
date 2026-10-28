@@ -489,26 +489,37 @@ def rings_to_polygons(rings: list[list[tuple[float, float]]]) -> list[Polygon]:
     if not assembled:
         return []
 
-    # nesting: a polygon is a hole when contained by an odd number of others
-    shells: list[Polygon] = []
-    for i, poly in enumerate(assembled):
+    # nesting: classify rings by containment depth using their *exterior*
+    # boundaries only — a polygon that already carries holes does not contain
+    # its own hole rings, which made the old depth test fail for nested rings.
+    outer_polys: list[Polygon] = []
+    for poly in assembled:
+        try:
+            outer_polys.append(Polygon(poly.exterior.coords))
+        except Exception:
+            outer_polys.append(poly)
+    depths: list[int] = []
+    for index, poly in enumerate(assembled):
+        point = poly.representative_point()
         depth = 0
-        representative = poly.representative_point()
-        for j, other in enumerate(assembled):
-            if i == j:
+        for other_index, outer in enumerate(outer_polys):
+            if other_index == index:
                 continue
-            if other.area > poly.area and other.contains(representative):
+            if outer.area > poly.area and outer.contains(point):
                 depth += 1
-        if depth % 2 == 0:
-            shells.append(poly)
+        depths.append(depth)
 
     result: list[Polygon] = []
-    for shell in shells:
+    for shell_index, shell in enumerate(assembled):
+        if depths[shell_index] % 2 != 0:
+            continue
         holes: list[list[tuple[float, float]]] = []
-        for other in assembled:
-            if other is shell or other.area >= shell.area:
+        for other_index, other in enumerate(assembled):
+            if other_index == shell_index:
                 continue
-            if shell.contains(other.representative_point()):
+            if depths[other_index] != depths[shell_index] + 1:
+                continue
+            if outer_polys[shell_index].contains(outer_polys[other_index].representative_point()):
                 holes.append(list(other.exterior.coords)[:-1])
         try:
             poly = Polygon(shell.exterior.coords, holes)
@@ -525,20 +536,46 @@ def rings_to_polygons(rings: list[list[tuple[float, float]]]) -> list[Polygon]:
     return result if result else fallback_polys
 
 
-def feature_polygons(feature: dict) -> list[Polygon]:
-    geom = feature["geometry"]
-    if geom["type"] != "Polygon":
-        return []
-    rings = [ring_to_local(ring) for ring in geom["coordinates"]]
+def _polygons_from_ring_coords(coords) -> list[Polygon]:
+    """Build shapely polygons from one GeoJSON polygon's rings.
+
+    GeoJSON guarantees ring order: the first ring is the exterior ring, every
+    further ring is a hole. MultiPolygon features are split by the caller, so no
+    nesting heuristic is needed here. Earlier versions re-polygonised the rings,
+    which silently turned island holes (e.g. Komsomolskoye Lake, the Svislach
+    river) into separate water/land polygons — the islands then disappeared
+    under the water surface.
+    """
+    rings = [ring_to_local(ring) for ring in coords]
     rings = [ring for ring in rings if len(ring) >= 3]
     if not rings:
         return []
-    if len(rings) == 1:
-        poly = Polygon(rings[0])
-        if not poly.is_valid:
-            poly = repair(poly) or Polygon()
-        return [] if poly.is_empty else [poly]
+    polygon = Polygon(rings[0], rings[1:])
+    if polygon.is_valid:
+        return [] if polygon.is_empty else [polygon]
+    pieces = iter_polygons(repair(polygon))
+    if pieces:
+        return pieces
+    # Last resort for broken ring order: reconstruct shells/holes heuristically.
     return rings_to_polygons(rings)
+
+
+def feature_polygons(feature: dict) -> list[Polygon]:
+    """Polygon geometry of one raw feature.
+
+    Building/surface relations are assembled with their member roles in
+    `extract.py`, so a relation feature may arrive as a proper MultiPolygon.
+    """
+    geom = feature["geometry"]
+    geom_type = geom["type"]
+    if geom_type == "Polygon":
+        return _polygons_from_ring_coords(geom["coordinates"])
+    if geom_type == "MultiPolygon":
+        polygons: list[Polygon] = []
+        for polygon_coords in geom["coordinates"]:
+            polygons.extend(_polygons_from_ring_coords(polygon_coords))
+        return polygons
+    return []
 
 
 def feature_line(feature: dict) -> LineString | None:
@@ -727,6 +764,18 @@ CURATED_DUPLICATE_IDS: dict[tuple[str, int], str] = {
     ("way", 602639199): "aggregate of the gate tower + Bobruiskaya 13 + Leningradskaya 7",
 }
 
+# Curated `building:part` parenting for the Minsk Gate. After relations are
+# assembled with their member roles (extract.py), relation 9383682 is a ring
+# outline: the four tower parts' centroids fall into its courtyard hole, so the
+# generic containment test cannot associate them and the curated crown loses
+# its tower tiers. Keys are part way ids, values the parent record key.
+CURATED_PART_PARENTS: dict[int, tuple[str, int]] = {
+    25434766: ("relation", 9383682),
+    35996179: ("relation", 9383682),
+    229705382: ("relation", 9383682),
+    229705383: ("relation", 9383682),
+}
+
 
 # --- main normalisation -----------------------------------------------------
 
@@ -881,10 +930,30 @@ def main() -> int:
     classifier = ArchetypeClassifier(avenue_distance)
 
     # --- building parts association ---------------------------------------
-    # group parts under the building polygon that contains their centroid
+    # group parts under the building polygon that contains their centroid;
+    # curated landmarks can force a parent when the relation is a ring outline
+    # (see CURATED_PART_PARENTS).
     part_groups: dict[int, list[dict]] = defaultdict(list)
     orphan_parts = 0
+    curated_parts = 0
+    building_index_by_key: dict[tuple[str, int], int] = {}
+    for index, building in enumerate(buildings_raw):
+        feature = building["feature"]
+        building_index_by_key.setdefault(
+            (feature["osm_type"], int(feature["osm_id"])), index
+        )
     for part in parts_raw:
+        part_feature = part["feature"]
+        forced_parent = (
+            CURATED_PART_PARENTS.get(int(part_feature["osm_id"]))
+            if part_feature["osm_type"] == "way"
+            else None
+        )
+        forced_index = building_index_by_key.get(forced_parent) if forced_parent else None
+        if forced_index is not None:
+            part_groups[forced_index].append(part)
+            curated_parts += 1
+            continue
         centroid = part["polygon"].representative_point()
         best_index = None
         best_area = float("inf")
@@ -901,6 +970,7 @@ def main() -> int:
         else:
             part_groups[best_index].append(part)
     stats["orphan_parts"] = orphan_parts
+    stats["curated_parts_parented"] = curated_parts
 
     # --- build BuildingFeature records ------------------------------------
     buildings: list[dict] = []
@@ -1746,6 +1816,11 @@ def main() -> int:
                 for (osm_type, osm_id), reason in CURATED_DUPLICATE_IDS.items()
             ],
             "duplicateAggregatesSkippedCount": stats.get("curated_duplicates_skipped", 0),
+            "partParents": [
+                {"part": f"w{part_id}", "parent": f"{parent_type[0]}{parent_id}"}
+                for part_id, (parent_type, parent_id) in CURATED_PART_PARENTS.items()
+            ],
+            "partParentsForced": stats.get("curated_parts_parented", 0),
             "note": (
                 "Hand-reviewed OSM mapping fixes for individual landmarks. Only feature "
                 "metadata is overridden; every rendered volume still comes from OSM."

@@ -101,10 +101,12 @@ From the generated milestone data:
   repaired or dropped at generation time (coverage report: 120 slivers dropped,
   0 invalid geometries kept, 51 tunnels skipped, 2 orphan `building:part`
   polygons rendered standalone). What the pipeline drops is gone from the map.
-- Multi-polygon relations are merged into a **single** `BuildingFeature` with one
-  `footprint` volume per polygon part; ids are plain `${type}${id}`. Volume count
-  is therefore not the same as OSM part count, and a relation may render as
-  several disconnected volumes.
+- Multi-polygon relations are assembled at extraction time **with their member
+  roles** (`outer` shells, `inner` holes) and may therefore arrive as
+  `MultiPolygon` features; a relation may render as several disconnected
+  volumes. Water polygons keep their island holes, so surveyed islands are not
+  painted over by the enclosing water surface. Curated landmark records keep the
+  untrimmed original footprint in `outline`. Ids are plain `${type}${id}`.
 - The duplicate detector uses a coarse 2 m centroid / 20 m² area signature but
   verifies each candidate against the real footprint before dropping it (area
   within 15 %, centroid within 3 m). Three hand-reviewed aggregate ways around

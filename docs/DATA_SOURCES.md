@@ -118,6 +118,17 @@ registry); non-landmark buildings are untouched.
 
 Related general fixes made in the same revisions:
 
+- **Multipolygon assembly (extract.py).** Relation members are now assembled with
+  their `outer`/`inner` roles (noded linework → `polygonize` → shells minus
+  holes, emitted as `Polygon`/`MultiPolygon`) instead of concatenating every ring
+  into one invalid polygon. This removed the "flooded Yanka Kupala park" (the
+  Svislach water relation `14605048` was repaired into a ~13 ha blob) and lets
+  water polygons keep their island holes; `normalize.py` keeps the GeoJSON ring
+  order (exterior + holes) for the same reason. One side effect had to be
+  curated: the Minsk Gate relation is a ring outline, so its tower parts could no
+  longer be attached by centroid containment — `CURATED_PART_PARENTS` forces the
+  four tower `building:part` ways under relation `9383682` and the curated crown
+  renders again.
 - Explicit `height` values below `MIN_PLAUSIBLE_HEIGHT_M = 2.5 m` are treated as
   missing data (a door is taller than 1 m). This removes the `height=0.01`
   typo class from the render instead of producing 7 m blocks.

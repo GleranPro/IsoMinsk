@@ -39,11 +39,11 @@ The app needs no backend: it is a static Vite site plus JSON tiles.
 The repository ships a **1.6 × 1.6 km central district** (16 × 512 m tiles,
 ~2 MiB) so the app runs immediately after `pnpm install`.
 
-A **12 × 12 km city dataset** (144 × 1024 m tiles, ~60 MB, 31 782 buildings
+A **12 × 12 km city dataset** (144 × 1024 m tiles, ~60 MB, 31 778 buildings
 including panel/historic/industrial/stadium/palace archetypes across all inner
-districts, plus the curated Minsk Gate landmark with its clock and emblem
-towers) can be generated locally from the same OSM extract — it is
-git-ignored because of its size:
+districts, plus four curated landmarks: Minsk Gate clock/emblem towers, National
+Library diamond, Victory Square obelisk and the Red Church) can be generated
+locally from the same OSM extract — it is git-ignored because of its size:
 
 ```powershell
 pnpm run data:city        # extract + normalise + validate, ~6 min, no new downloads
