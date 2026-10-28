@@ -92,7 +92,37 @@ Liability: The organisations in charge of the Copernicus programme by law or by 
 Buildings/height: GlobalBuildingAtlas © Zhu et al. (2025), CC BY-NC 4.0 — non-commercial use only.
 ```
 
-## 7. Gaps and UNVERIFIED items
+## 7. Curated landmark corrections (manual review)
+
+The pipeline is procedural end-to-end, but three OSM features around the Minsk
+Gate needed hand review before the geometry could be rendered truthfully. Every
+override lives in `scripts/normalize/normalize.py` (`LANDMARK_OVERRIDES`,
+`CURATED_DUPLICATE_IDS`) and is echoed into `data/processed/coverage_city.json`
+under `curation`, so the curation is auditable rather than silent.
+
+| OSM feature | Problem found | Correction |
+| --- | --- | --- |
+| `relation/9383682` «Вароты Мінска» | Malformed multipolygon: four member rings (two 7-storey tower blocks and their 11-storey `building:part` tiers) flattened into one invalid polygon with two outer rings; no `height`/`building:levels` tags | Curated `landmark = "minsk-gate"` + `archetype = "stalin"`. The volumes (two 24.5 m base blocks, two 38.5 m tower tiers) still come from the OSM `building:part` polygons; only the metadata is overridden. The renderer adds the flat parapet, clock/emblem medallions and corner turrets (`src/city/buildings/cityGate.ts`) |
+| `way/602639195` | `building=residential` with `height=0.01`; its single ring traces the gate tower + Bobruiskaya 15 + Ulyanovskaya 34 at once | Aggregate record skipped. Those three buildings are mapped separately and were previously being deleted by the duplicate detector — now they render |
+| `way/602639199` | Same defect pattern; one ring traces the other gate tower + Bobruiskaya 13 + Leningradskaya 7 | Aggregate record skipped; the separately mapped buildings render |
+
+Related general fixes made in the same revision:
+
+- Explicit `height` values below `MIN_PLAUSIBLE_HEIGHT_M = 2.5 m` are treated as
+  missing data (a door is taller than 1 m). This removes the `height=0.01`
+  typo class from the render instead of producing 7 m blocks.
+- The duplicate detector keeps its coarse 2 m / 20 m² signature but now verifies
+  every collision against the actual footprint area (≤ 15 % difference) and
+  centroid (≤ 3 m) before dropping a record, and it never drops a curated
+  landmark. `geometry.duplicatesDropped` / `geometry.nearMissCollisionsKeptApart`
+  report both outcomes (city belt: 3 dropped, 0 false collisions).
+
+Reference for the landmark appearance: the Wikimedia Commons photo of
+Privokzalnaya Square (flat-topped pylon towers, one 3.5 m clock on one tower, a
+round BSSR emblem medallion on the other; no spires). No new data source was
+introduced — the corrections are metadata overrides of ODbL data.
+
+## 8. Gaps and UNVERIFIED items
 
 - **Local PBF snapshot date — UNVERIFIED.** File is 351,118,849 B vs 334 MB current; no download timestamp/hash recorded.
 - **Overture Minsk feature count / height completeness — UNVERIFIED.** Only tile presence was checked. Inspect `sources[].dataset` on extracted features to see whether they are OSM-derived.

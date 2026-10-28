@@ -49,6 +49,16 @@ export type Archetype =
   | 'palace' // monumental civic ensembles (colonnades, loggias)
   | 'stadium'; // sports arenas and grandstands (bowl geometry, no windows)
 
+/**
+ * Curated landmark ids that unlock landmark-specific procedural geometry.
+ *
+ * The offline pipeline assigns these to individual OSM features after manual
+ * data review (see `docs/DATA_SOURCES.md`); geometry code may attach extra
+ * superstructures (spires, clock dials, emblems) that OSM does not describe.
+ */
+export type LandmarkId =
+  | 'minsk-gate'; // Ворота Минска ensemble: two 11-storey towers (clock + emblem crowns)
+
 export type RoofShape =
   | 'flat'
   | 'gabled'
@@ -97,6 +107,11 @@ export interface BuildingFeature {
   tags: Record<string, string>;
   /** Optional short description used by the info panel. */
   address?: string;
+  /**
+   * Curated landmark id (data-pipeline assigned). When present the renderer may
+   * add landmark-specific procedural geometry on top of the regular volumes.
+   */
+  landmark?: LandmarkId;
 }
 
 /** Road class, drives width and surface colour. */

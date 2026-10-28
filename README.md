@@ -9,10 +9,10 @@ upscale).
 
 Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsaw-izo/).
 
-**Status:** vertical slice of the October Square / Independence Avenue area
-(1.6 × 1.6 km, 512 m tiles), fully generated offline, streamed and rendered in
-the browser. See `docs/PROGRESS.md` for milestone status and
-`docs/LIMITATIONS.md` for what is inferred vs. surveyed.
+**Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
+tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
+generated offline, streamed and rendered in the browser. See `docs/PROGRESS.md`
+for milestone status and `docs/LIMITATIONS.md` for what is inferred vs. surveyed.
 
 ---
 
@@ -39,9 +39,10 @@ The app needs no backend: it is a static Vite site plus JSON tiles.
 The repository ships a **1.6 × 1.6 km central district** (16 × 512 m tiles,
 ~2 MiB) so the app runs immediately after `pnpm install`.
 
-A **12 × 12 km city dataset** (144 × 1024 m tiles, ~59 MiB, 31 779 buildings
+A **12 × 12 km city dataset** (144 × 1024 m tiles, ~58.7 MiB, 31 782 buildings
 including panel/historic/industrial/stadium/palace archetypes across all inner
-districts) can be generated locally from the same OSM extract — it is
+districts, plus the curated Minsk Gate landmark with its clock and emblem
+towers) can be generated locally from the same OSM extract — it is
 git-ignored because of its size:
 
 ```powershell
@@ -88,8 +89,8 @@ tiles.
 
 ```powershell
 pnpm run typecheck      # TypeScript, strict
-pnpm test               # Vitest: 221 tests — geometry, roofs, facades, environment,
-                        #   tile maths, config sync, real-tile data validation
+pnpm test               # Vitest: 253 tests — geometry, roofs, facades, environment,
+                        #   tile maths, config sync, curated landmarks, real-tile data
 pnpm run test:e2e       # Playwright: 12 browser tests (real WebGL)
 $env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)
 pnpm run qa:capture     # 6 canonical screenshots + stats.json + console.log
@@ -97,10 +98,13 @@ node scripts/qa/geometryAudit.ts    # headless geometry audit of all tiles (need
 ```
 
 Measured on the reference machine (RTX 3080 Laptop, 16 GB VRAM, Chromium
-ANGLE/D3D11, 1600×900): **60 FPS, 50 draw calls, ~182k triangles,
-640×360 internal pixel-art resolution, 24 MB GPU geometry, 0 console errors**.
-Screenshots are written to `screenshots/` (git-ignored) and a copy of the final
-set is committed under `docs/screenshots/`.
+ANGLE/D3D11, 1600×900): **60 FPS, 49 draw calls, ~199k visible triangles
+(368 871 in the resident set), 640×360 internal pixel-art resolution, 26 MB GPU
+geometry, 0 console errors**. The 12 km city belt renders 4.03 M triangles in
+424 draw calls at full residency on the same machine.
+Screenshots are written to `screenshots/` (git-ignored) and a copy of the
+QA set plus the City Gate landmark shots is kept under `docs/screenshots/`
+(also git-ignored, local evidence for the docs).
 
 ## Controls
 

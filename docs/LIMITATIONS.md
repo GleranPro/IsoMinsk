@@ -53,12 +53,16 @@ From the generated milestone data:
 
 | Height provenance | Buildings |
 | --- | --- |
-| Explicit OSM `height` tag | 69 (10.6 %) |
+| Explicit OSM `height` tag | 57 (8.7 %) |
 | Derived from OSM `building:levels` × floor height | 366 (56.0 %) |
-| **Heuristic estimate** (archetype + district rules) | 219 (33.5 %) |
+| **Heuristic estimate** (archetype + district rules) | 231 (35.3 %) |
 
 - Observed rendered heights span **2.5 m – 115.5 m**; the pipeline clamps to
   `MIN_BUILDING_HEIGHT_M = 2.5 m` / `MAX_BUILDING_HEIGHT_M = 400 m`.
+- Explicit `height` values below `MIN_PLAUSIBLE_HEIGHT_M = 2.5 m` are treated as
+  missing data (12 pilot / ~48 city buildings carry such typos, e.g.
+  `height=0.01`), so they fall back to `building:levels` or heuristics instead of
+  rendering as 7 m blocks.
 - Explicit `roof:shape` tags cover 305 buildings (46.6 %); the rest are inferred
   from archetype. Pitched roofs are approximated; `complex` roofs fall back to
   flat (`complex` is present in the schema but the mesh builder logs a warning and
@@ -72,6 +76,16 @@ From the generated milestone data:
   `stadium` is inside the current extent.
 - Floor counts and floor heights are nominal (`DEFAULT_FLOOR_HEIGHT_M = 3.0 m`),
   not surveyed; the same building can be 5 %–20 % off in reality.
+- **Landmark geometry is curated, not generic.** Only the Minsk Gate ensemble
+  (`relation/9383682`, flagged `landmark: "minsk-gate"` in the data) has
+  dedicated geometry: flat parapet, clock/emblem medallions and corner turrets
+  (`src/city/buildings/cityGate.ts`). Its tower tiers, base blocks and heights
+  still come from OSM `building:part` polygons, but the medallions, parapet and
+  turret details are approximations — the clock face is a 12-gon disc with two
+  gold hands at a fixed 10:10 pose, not a working clock. All other landmarks
+  (Red Church, Bolshoi Theatre, railway station, Minsk-Arena, …) still use the
+  generic archetype presets. Three OSM features needed hand-reviewed metadata
+  overrides; they are listed in `docs/DATA_SOURCES.md` §7.
 - There is no terrain elevation: every building sits on the local y = 0 plane.
   Minsk is hilly in places; slopes are not represented, so stair-step buildings
   and river banks are flattened.
@@ -86,6 +100,11 @@ From the generated milestone data:
   `footprint` volume per polygon part; ids are plain `${type}${id}`. Volume count
   is therefore not the same as OSM part count, and a relation may render as
   several disconnected volumes.
+- The duplicate detector uses a coarse 2 m centroid / 20 m² area signature but
+  verifies each candidate against the real footprint before dropping it (area
+  within 15 %, centroid within 3 m). Three hand-reviewed aggregate ways around
+  the Minsk Gate are skipped entirely (`CURATED_DUPLICATE_IDS`); their lobes
+  duplicate separately mapped buildings, which now render.
 - Absent optional fields (`levels`, `name`, `address`, …) are omitted from the
   JSON; consumers must treat `undefined` as unknown. (`levels: null` appeared in
   an earlier data revision and was fixed at 14:37.)

@@ -180,10 +180,16 @@ def parse_number(value: str | None, default: float | None = None) -> float | Non
         return default
 
 
+# OSM occasionally carries obvious height typos (e.g. height=0.01 on a
+# five-storey block). Treat anything below a door height as missing data
+# instead of rendering a 1 cm building.
+MIN_PLAUSIBLE_HEIGHT_M = 2.5
+
+
 def parse_height(tags: dict[str, str]) -> float | None:
     for key in ("height", "building:height", "est_height"):
         value = parse_number(tags.get(key))
-        if value is not None and 0 < value <= MAX_BUILDING_HEIGHT_M:
+        if value is not None and MIN_PLAUSIBLE_HEIGHT_M <= value <= MAX_BUILDING_HEIGHT_M:
             return value
     return None
 
@@ -664,6 +670,36 @@ def surface_kind_from_tags(tags: dict[str, str]) -> str:  # noqa: F811
     return "unknown"
 
 
+# --- curated landmark fixes -------------------------------------------------
+# A very small, explicit table of OSM mapping defects that the generic rules
+# cannot resolve. Keys are (osm_type, osm_id); every entry is documented here
+# and reported in the coverage statistics, so the curation stays auditable.
+LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
+    # "Ворота Минска" (The Minsk Gate, Privokzalnaya square). The OSM relation
+    # aggregates the two 7-storey tower blocks together with their 11-storey
+    # building:parts. It carries no height/levels tags and is a malformed
+    # multipolygon (two outer rings in one flattened polygon), so without this
+    # override it renders as generic blocks. The volumes themselves stay fully
+    # data-driven; the renderer adds the clock tier, emblem and spires for
+    # `landmark: "minsk-gate"` (see src/city/buildings/cityGate.ts).
+    ("relation", 9383682): {
+        "landmark": "minsk-gate",
+        "archetype": "stalin",
+    },
+}
+
+# Broken OSM mappings around the Minsk Gate: two `building=residential` ways with
+# a bogus `height=0.01` whose single ring traces several unrelated real buildings
+# at once. Each lobe duplicates a building that is mapped separately (the gate
+# towers and Bobruiskaya 13/15, Leningradskaya 7, Ulyanovskaya 34), so these
+# aggregate records are skipped entirely instead of being rendered as 7 m blocks
+# or deleting the real ways in the duplicate detector.
+CURATED_DUPLICATE_IDS: dict[tuple[str, int], str] = {
+    ("way", 602639195): "aggregate of the gate tower + Bobruiskaya 15 + Ulyanovskaya 34",
+    ("way", 602639199): "aggregate of the gate tower + Bobruiskaya 13 + Leningradskaya 7",
+}
+
+
 # --- main normalisation -----------------------------------------------------
 
 def main() -> int:
@@ -728,6 +764,9 @@ def main() -> int:
         kind = feature["kind"]
         tags = feature.get("tags", {})
         if kind == "building":
+            if (feature["osm_type"], int(feature["osm_id"])) in CURATED_DUPLICATE_IDS:
+                stats["curated_duplicates_skipped"] += 1
+                continue
             polys = feature_polygons(feature)
             if not polys:
                 stats["buildings_invalid"] += 1
@@ -862,6 +901,11 @@ def main() -> int:
 
         # archetype first (needed for height inference)
         archetype = classifier.classify(tags, polygon, explicit_height or 0, levels, centroid)
+
+        # curated landmark override (documented OSM mapping defects only)
+        landmark_override = LANDMARK_OVERRIDES.get((osm_type, osm_id))
+        if landmark_override:
+            archetype = landmark_override.get("archetype", archetype)
 
         if explicit_height is not None:
             height = explicit_height
@@ -1010,6 +1054,7 @@ def main() -> int:
             "tags": tags_out,
             "address": address,
             "roofShapeExplicit": roof_explicit,
+            **({"landmark": landmark_override["landmark"]} if landmark_override else {}),
         })
 
     # --- merge polygons that belong to the same OSM feature -----------------
@@ -1041,12 +1086,13 @@ def main() -> int:
     # --- de-duplicate exact double-mapped buildings ------------------------
     # OSM occasionally contains the same building twice (e.g. a way and a
     # multipolygon relation for one footprint). Rendering both would z-fight.
+    # The signature is deliberately coarse (2 m centroid cell, 20 m2 area
+    # cell), so every collision is verified against the actual footprint area
+    # and centroid: distinct neighbouring buildings must never be merged.
     source_rank = {"osm_height": 4, "osm_levels": 3, "heuristic": 2, "default": 1}
-    deduped: list[dict] = []
-    signatures: dict[tuple[int, int, int], int] = {}
-    duplicates_dropped = 0
-    for candidate in buildings:
-        ring = candidate["volumes"][0]["footprint"][0]
+
+    def footprint_metrics(record: dict) -> tuple[float, float, float]:
+        ring = record["volumes"][0]["footprint"][0]
         cx = sum(point[0] for point in ring) / len(ring)
         cy = sum(point[1] for point in ring) / len(ring)
         area = abs(
@@ -1055,29 +1101,53 @@ def main() -> int:
                 for i in range(len(ring))
             )
         ) / 2.0
+        return cx, cy, area
+
+    def is_landmark(record: dict) -> bool:
+        return (record["osmType"], record["osmId"]) in LANDMARK_OVERRIDES
+
+    deduped: list[dict] = []
+    signatures: dict[tuple[int, int, int], int] = {}
+    signature_metrics: list[tuple[float, float, float]] = []
+    duplicates_dropped = 0
+    near_misses_kept = 0
+    for candidate in buildings:
+        cx, cy, area = footprint_metrics(candidate)
         signature = (round(cx / 2.0), round(cy / 2.0), round(area / 20.0))
         existing_index = signatures.get(signature)
-        if existing_index is None:
+        same_footprint = False
+        if existing_index is not None:
+            ex_cx, ex_cy, ex_area = signature_metrics[existing_index]
+            area_ref = max(area, ex_area, 1.0)
+            same_footprint = (
+                abs(area - ex_area) / area_ref <= 0.15
+                and abs(cx - ex_cx) <= 3.0
+                and abs(cy - ex_cy) <= 3.0
+            )
+        if existing_index is None or not same_footprint:
+            if existing_index is not None:
+                near_misses_kept += 1
             signatures[signature] = len(deduped)
             deduped.append(candidate)
+            signature_metrics.append((cx, cy, area))
             continue
         existing = deduped[existing_index]
-        if source_rank.get(candidate["volumes"][0]["heightSource"], 0) > source_rank.get(
-            existing["volumes"][0]["heightSource"], 0
-        ):
+        if is_landmark(candidate) and not is_landmark(existing):
             deduped[existing_index] = candidate
+            signature_metrics[existing_index] = (cx, cy, area)
+        elif not is_landmark(candidate) and not is_landmark(existing) and source_rank.get(
+            candidate["volumes"][0]["heightSource"], 0
+        ) > source_rank.get(existing["volumes"][0]["heightSource"], 0):
+            deduped[existing_index] = candidate
+            signature_metrics[existing_index] = (cx, cy, area)
         duplicates_dropped += 1
     buildings = deduped
     stats["duplicate_buildings_dropped"] = duplicates_dropped
-    if os.environ.get("NORMALIZE_DEBUG_ID"):
-        target = os.environ["NORMALIZE_DEBUG_ID"]
-        found = [b for b in buildings if b["id"] == target]
-        print(f"[debug] {target}: {len(found)} building records after merge/dedupe")
-        for record in found[:2]:
-            print(f"[debug]   archetype={record['archetype']} h={record['height']} volumes={len(record['volumes'])}")
+    stats["dedupe_near_misses_kept"] = near_misses_kept
 
     stats["buildings"] = len(buildings)
-    print(f"Buildings: {len(buildings):,} (duplicates dropped: {duplicates_dropped}) "
+    print(f"Buildings: {len(buildings):,} (duplicates dropped: {duplicates_dropped}, "
+          f"near-miss collisions kept apart: {near_misses_kept}) "
           f"(archetypes: {dict(archetype_counts)})")
 
     # --- road / rail polygons ---------------------------------------------
@@ -1624,6 +1694,23 @@ def main() -> int:
             "emptyVolumeBuildings": stats.get("buildings_empty_volumes", 0),
             "orphanParts": stats.get("orphan_parts", 0),
             "tunnelsSkipped": stats.get("tunnels_skipped", 0),
+            "duplicatesDropped": duplicates_dropped,
+            "nearMissCollisionsKeptApart": near_misses_kept,
+        },
+        "curation": {
+            "landmarkOverrides": [
+                {"id": f"{osm_type[0]}{osm_id}", "landmark": override.get("landmark")}
+                for (osm_type, osm_id), override in LANDMARK_OVERRIDES.items()
+            ],
+            "duplicateAggregatesSkipped": [
+                {"id": f"{osm_type[0]}{osm_id}", "reason": reason}
+                for (osm_type, osm_id), reason in CURATED_DUPLICATE_IDS.items()
+            ],
+            "duplicateAggregatesSkippedCount": stats.get("curated_duplicates_skipped", 0),
+            "note": (
+                "Hand-reviewed OSM mapping fixes for individual landmarks. Only feature "
+                "metadata is overridden; every rendered volume still comes from OSM."
+            ),
         },
         "environment": {
             "surfacePolygons": len(surface_features),

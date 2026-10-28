@@ -1,6 +1,6 @@
 {
  "version": "0.1.0",
- "generatedAt": "2026-10-27",
+ "generatedAt": "2026-10-28",
  "epsg": 32635,
  "originUtm": [
   536859.254,
@@ -35,7 +35,7 @@
    "y": -2,
    "file": "tiles/-2_-2.json",
    "buildings": 35,
-   "bytes": 75868
+   "bytes": 75862
   },
   {
    "x": -2,
@@ -77,7 +77,7 @@
    "y": 0,
    "file": "tiles/-1_0.json",
    "buildings": 93,
-   "bytes": 241323
+   "bytes": 241311
   },
   {
    "x": -1,
@@ -105,14 +105,14 @@
    "y": 0,
    "file": "tiles/0_0.json",
    "buildings": 29,
-   "bytes": 113025
+   "bytes": 113021
   },
   {
    "x": 0,
    "y": 1,
    "file": "tiles/0_1.json",
    "buildings": 3,
-   "bytes": 167015
+   "bytes": 167011
   },
   {
    "x": 1,
@@ -133,7 +133,7 @@
    "y": 0,
    "file": "tiles/1_0.json",
    "buildings": 9,
-   "bytes": 197203
+   "bytes": 197206
   },
   {
    "x": 1,
@@ -145,7 +145,7 @@
  ],
  "counts": {
   "buildings": 654,
-  "buildingsWithExplicitHeight": 69,
+  "buildingsWithExplicitHeight": 57,
   "buildingsWithLevels": 366,
   "buildingsWithRoofShape": 305,
   "surfaces": 671,

@@ -35,6 +35,7 @@ import type { BufferGeometry } from 'three';
 import { FACE_KIND } from '../../shared/geometry';
 import type { BuildingFeature, BuildingVolume, FeatureId } from '../../shared/types';
 import { addRoof } from '../roofs/roofMesh';
+import { addCityGateCrown, isCityGateBuilding } from './cityGate';
 import { MeshSink } from './meshSink';
 import { addPalaceAccents } from './palaceAccents';
 import {
@@ -186,6 +187,15 @@ export function buildBuildingsMesh(
         }
       } catch (error) {
         warnings.push(`${label}: ${describe(error)}`);
+      }
+    }
+
+    // Curated landmarks: append superstructures above the regular volumes.
+    if (isCityGateBuilding(building)) {
+      try {
+        addCityGateCrown(sink, building, style, (message) => warnings.push(`${id}: ${message}`));
+      } catch (error) {
+        warnings.push(`${id}: city gate crown failed (${describe(error)})`);
       }
     }
   }

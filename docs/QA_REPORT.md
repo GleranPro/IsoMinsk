@@ -1,5 +1,18 @@
 # QA Report — Isometric Minsk
 
+> **Revision addendum — 2026-10-28 (post-landmark round).** The report body below
+> documents the 2026-10-27 16:30 QA round. Since then the data pipeline gained
+> curated landmark fixes (Minsk Gate) and stricter duplicate detection, the pilot
+> tiles were regenerated and a new unit suite was added. Re-verified on this
+> revision: `pnpm test` → **253/253 passed** (16 files); `pnpm test:e2e` →
+> **12/12 passed** (software SwiftShader, 4.5 min); `tsc --noEmit` clean;
+> `data:validate` pilot + city → **VALIDATION PASSED**; `qa:capture` (hardware
+> GPU) → 6/6 shots, 16/16 tiles, 60 FPS, 0 console errors. City belt now holds
+> **31 782 buildings** (144 tiles) and the Minsk Gate renders as a curated
+> landmark (`docs/screenshots/11-city-gates.png`,
+> `docs/screenshots/12-city-gates-square.png`). Everything else in this report
+> remains the historical 2026-10-27 record.
+
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**
 **Author:** QA & Integration agent (qa-dev)
 **Repo state:** no git commits (all files untracked, working-tree only). Five agents work in one directory; QA does not edit `src/**` — defects are reported to their owners, never fixed by QA.
