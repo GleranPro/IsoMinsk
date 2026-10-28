@@ -301,6 +301,49 @@ class TreeCollector:
         pass
 
 
+# --- pass D: non-building attractions (ferris wheels) -----------------------
+
+ATTRACTION_TAGS = (
+    ("attraction", "big_wheel"),
+    ("attraction", "ferris_wheel"),
+    ("man_made", "ferris_wheel"),
+)
+
+
+class AttractionCollector:
+    """Collect park attractions mapped as standalone OSM nodes.
+
+    Ferris wheels in Minsk are nodes tagged `attraction=big_wheel` with a
+    `height`; the pipeline adds the curated radius/cabins/orientation.
+    """
+
+    def __init__(self) -> None:
+        self.features: list[dict] = []
+
+    def node(self, node) -> None:
+        tags = {t.k: t.v for t in node.tags}
+        if not any(tags.get(key) == value for key, value in ATTRACTION_TAGS):
+            return
+        if not node.location.valid():
+            return
+        lat, lon = node.location.lat, node.location.lon
+        if not inside_window(lat, lon):
+            return
+        self.features.append({
+            "kind": "attraction",
+            "osm_type": "node",
+            "osm_id": node.id,
+            "tags": filter_tags(tags),
+            "geometry": {"type": "Point", "coordinates": [round(lon, 7), round(lat, 7)]},
+        })
+
+    def way(self, way) -> None:
+        pass
+
+    def relation(self, rel) -> None:
+        pass
+
+
 # --- helpers ----------------------------------------------------------------
 
 def feature_in_window(feature: dict) -> bool:
@@ -348,7 +391,12 @@ def assemble_relation_features(
         inner_rings: list[list[list[float]]] = []
         for role, way_id in relation["members"]:
             coords = way_coords.get(way_id)
-            if not coords or len(coords) < 3:
+            # Member ways are frequently short 2-point segments of a shared
+            # boundary (the Svislach river and Yanka Kupala park are both split
+            # into such pieces). They must all take part in the polygonize step;
+            # dropping anything shorter than 3 points left the ring open and the
+            # whole relation was lost.
+            if not coords or len(coords) < 2:
                 continue
             if role == "inner":
                 ring = [list(coord) for coord in coords]
@@ -481,7 +529,16 @@ def main() -> int:
             tc.node(obj)
     print(f"[pass C] {len(tc.trees):,} mapped trees in {time.time() - t2:.1f}s")
 
-    all_features = wc.features + relation_features
+    # pass D вЂ” non-building attractions (ferris wheels)
+    t3 = time.time()
+    ac = AttractionCollector()
+    fp = osmium.FileProcessor(str(pbf)).with_filter(osmium.filter.TagFilter(*ATTRACTION_TAGS))
+    for obj in fp:
+        if isinstance(obj, osmium.osm.Node):
+            ac.node(obj)
+    print(f"[pass D] {len(ac.features):,} attraction nodes in {time.time() - t3:.1f}s")
+
+    all_features = wc.features + relation_features + ac.features
     kept = [f for f in all_features if feature_in_window(f)]
     print(f"[filter] kept {len(kept):,} / {len(all_features):,} features")
 
@@ -491,6 +548,7 @@ def main() -> int:
         "railways": sum(1 for f in kept if f["kind"] == "railway"),
         "waterways": sum(1 for f in kept if f["kind"] == "waterway"),
         "surfaces": sum(1 for f in kept if f["kind"] == "surface"),
+        "attractions": sum(1 for f in kept if f["kind"] == "attraction"),
         "trees": len(tc.trees),
     }
 

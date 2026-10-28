@@ -168,7 +168,12 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
         trees: options.trees,
       });
       const merged = mergeEnvironmentGeometries([result.ground, result.roads]);
-      const trees = result.trees ? mergeEnvironmentGeometries([result.trees]) : null;
+      // Trees and park props (ferris wheels) share the same vertex-coloured
+      // environment material, so they are merged into one geometry/draw call.
+      const vegetation = [result.trees, result.attractions].filter(
+        (part): part is NonNullable<typeof part> => Boolean(part),
+      );
+      const trees = vegetation.length ? mergeEnvironmentGeometries(vegetation) : null;
       return { merged, trees };
     } catch (error) {
       buildingsError = `environment: ${String(error)}`;

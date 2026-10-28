@@ -6,7 +6,7 @@
 
 - Source: OpenStreetMap
 - Extract: `Minsk.osm.pbf`
-- Extraction date: 2026-10-28T14:34:22Z
+- Extraction date: 2026-10-28T15:47:51Z
 - Attribution: (c) OpenStreetMap contributors, ODbL 1.0
 - Pilot area: 1600.0 m × 1600.0 m, tile size 512.0 m, projection EPSG:32635
 - Local origin (UTM 35N): [536859.254, 5972786.284]
@@ -15,21 +15,21 @@
 
 | Metric | Value |
 | --- | --- |
-| Building footprints rendered | 653 |
+| Building footprints rendered | 654 |
 | With explicit OSM `height` | 57 (8.7%) |
-| With `building:levels` (height derived) | 365 (55.9%) |
-| Height inferred by heuristic | 231 (35.4%) |
-| With explicit `roof:shape` | 304 (46.6%) |
-| Pitched roofs rendered | 446 |
+| With `building:levels` (height derived) | 366 (56.0%) |
+| Height inferred by heuristic | 231 (35.3%) |
+| With explicit `roof:shape` | 305 (46.6%) |
+| Pitched roofs rendered | 447 |
 | Buildings using `building:part` volumes | 74 |
 
 ### Archetype distribution (heuristic classification)
 
 | Archetype | Buildings |
 | --- | --- |
-| historic | 170 |
-| small | 150 |
-| stalin | 116 |
+| historic | 169 |
+| small | 149 |
+| stalin | 117 |
 | civic | 88 |
 | office | 81 |
 | khrushchev | 34 |
@@ -42,7 +42,7 @@
 
 | Roof shape | Buildings |
 | --- | --- |
-| gabled | 333 |
+| gabled | 332 |
 | flat | 209 |
 | hipped | 105 |
 | dome | 8 |
@@ -63,10 +63,10 @@
 
 | Metric | Value |
 | --- | --- |
-| Ground surface polygons | 480 |
-| Road/rail/pavement polygons | 3250 |
+| Ground surface polygons | 484 |
+| Road/rail/pavement polygons | 3243 |
 | OSM-mapped trees | 150 |
-| Heuristically placed trees | 6056 |
+| Heuristically placed trees | 8380 |
 
 ## External height data
 
@@ -78,23 +78,23 @@
 | Tile | Buildings | Surfaces | Roads | Trees | Bytes |
 | --- | --- | --- | --- | --- | --- |
 | -2_-2 | 35 | 35 | 205 | 66 | 78,551 |
-| -2_-1 | 61 | 14 | 210 | 80 | 96,718 |
-| -2_0 | 77 | 27 | 265 | 1 | 120,387 |
-| -2_1 | 8 | 49 | 95 | 17 | 41,292 |
-| -1_-2 | 46 | 20 | 169 | 64 | 78,064 |
-| -1_-1 | 97 | 39 | 415 | 5 | 155,653 |
-| -1_0 | 93 | 93 | 531 | 83 | 239,703 |
-| -1_1 | 44 | 49 | 307 | 267 | 123,377 |
-| 0_-2 | 23 | 54 | 228 | 183 | 90,765 |
-| 0_-1 | 70 | 76 | 394 | 608 | 196,429 |
-| 0_0 | 29 | 48 | 324 | 109 | 109,980 |
-| 0_1 | 3 | 21 | 143 | 1584 | 170,175 |
-| 1_-2 | 27 | 10 | 79 | 140 | 46,777 |
-| 1_-1 | 19 | 23 | 178 | 972 | 136,499 |
-| 1_0 | 9 | 9 | 137 | 1872 | 198,047 |
-| 1_1 | 12 | 22 | 109 | 155 | 46,462 |
+| -2_-1 | 61 | 15 | 210 | 80 | 96,788 |
+| -2_0 | 77 | 28 | 265 | 1 | 120,994 |
+| -2_1 | 8 | 50 | 95 | 17 | 41,478 |
+| -1_-2 | 46 | 20 | 169 | 64 | 78,065 |
+| -1_-1 | 97 | 37 | 415 | 4 | 155,519 |
+| -1_0 | 93 | 95 | 531 | 83 | 240,235 |
+| -1_1 | 44 | 50 | 307 | 267 | 124,086 |
+| 0_-2 | 23 | 55 | 228 | 179 | 90,752 |
+| 0_-1 | 71 | 77 | 394 | 605 | 198,209 |
+| 0_0 | 29 | 53 | 320 | 1427 | 224,535 |
+| 0_1 | 3 | 26 | 142 | 2359 | 238,158 |
+| 1_-2 | 27 | 10 | 79 | 143 | 47,031 |
+| 1_-1 | 19 | 24 | 178 | 972 | 136,827 |
+| 1_0 | 9 | 12 | 133 | 2040 | 212,357 |
+| 1_1 | 12 | 25 | 106 | 223 | 52,731 |
 
-Total payload: **1884 KiB** across 16 tiles (uncompressed JSON).
+Total payload: **2086 KiB** across 16 tiles (uncompressed JSON).
 
 ## Validation result
 

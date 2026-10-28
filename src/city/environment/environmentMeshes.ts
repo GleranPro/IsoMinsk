@@ -32,6 +32,7 @@ import {
   type SurfaceBuildStats,
 } from './surfaceMeshes';
 import { buildTreeGeometry, type TreeDetailTier } from './treeMeshes';
+import { emitAttractions, type AttractionEmitStats } from './ferrisWheel';
 import { createRoadStats, emitRoadPolygons, type RoadBuildStats } from '../roads/roadMeshes';
 
 export interface EnvironmentMeshOptions {
@@ -52,6 +53,10 @@ export interface EnvironmentMeshCounts {
   treeLod: boolean;
   /** Detail tier used for the merged tree geometry. */
   treeTier?: TreeDetailTier;
+  /** Number of park attractions (ferris wheels) emitted. */
+  attractions: number;
+  /** Triangles in the merged attraction geometry. */
+  attractionTriangles: number;
   /** Total number of polygons skipped because of malformed data. */
   skippedPolygons: number;
 }
@@ -63,6 +68,12 @@ export interface EnvironmentMeshResult {
   roads: THREE.BufferGeometry;
   /** Tree instances (merged trunk+crown geometry) or null. */
   trees: THREE.BufferGeometry | null;
+  /**
+   * Park attractions (ferris wheels) as one merged geometry, or null.
+   * The renderer merges this with the tree geometry (same material) — the
+   * dedicated field keeps the existing ground/roads/trees contract intact.
+   */
+  attractions?: THREE.BufferGeometry | null;
   triangleCount: number;
   /** Extra diagnostics (optional field — the renderer may ignore it). */
   counts?: EnvironmentMeshCounts;
@@ -120,10 +131,30 @@ export function buildEnvironmentMeshes(
     }
   }
 
+  // Park attractions (ferris wheels) — merged separately from the trees so the
+  // renderer can combine them into one draw call with the tree material.
+  let attractionGeometry: THREE.BufferGeometry | null = null;
+  let attractionStats: AttractionEmitStats = { attractions: 0, triangles: 0, skipped: 0 };
+  if (Array.isArray(tile?.attractions) && tile.attractions.length > 0) {
+    try {
+      const attractionSink = new GeometrySink();
+      attractionStats = emitAttractions(attractionSink, tile.attractions);
+      if (!attractionSink.isEmpty) {
+        attractionGeometry = attractionSink.build();
+      }
+    } catch {
+      attractionGeometry = null;
+      attractionStats = { attractions: 0, triangles: 0, skipped: 0 };
+    }
+  }
+
   const ground = groundSink.build();
   const roads = roadsSink.build();
   const triangleCount =
-    groundSink.triangleCount + roadsSink.triangleCount + treeTriangles;
+    groundSink.triangleCount +
+    roadsSink.triangleCount +
+    treeTriangles +
+    attractionStats.triangles;
 
   const counts: EnvironmentMeshCounts = {
     groundTriangles: groundSink.triangleCount,
@@ -134,10 +165,12 @@ export function buildEnvironmentMeshes(
     trees: treeCount,
     treeLod,
     treeTier,
+    attractions: attractionStats.attractions,
+    attractionTriangles: attractionStats.triangles,
     skippedPolygons: surfaceStats.skippedPolygons + roadStats.skippedPolygons,
   };
 
-  return { ground, roads, trees: treeGeometry, triangleCount, counts };
+  return { ground, roads, trees: treeGeometry, attractions: attractionGeometry, triangleCount, counts };
 }
 
 /**

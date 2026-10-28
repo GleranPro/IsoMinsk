@@ -39,7 +39,7 @@ The app needs no backend: it is a static Vite site plus JSON tiles.
 The repository ships a **1.6 × 1.6 km central district** (16 × 512 m tiles,
 ~2 MiB) so the app runs immediately after `pnpm install`.
 
-A **12 × 12 km city dataset** (144 × 1024 m tiles, ~60 MB, 31 778 buildings
+A **12 × 12 km city dataset** (144 × 1024 m tiles, ~60 MB, 31 783 buildings
 including panel/historic/industrial/stadium/palace archetypes across all inner
 districts, plus four curated landmarks: Minsk Gate clock/emblem towers, National
 Library diamond, Victory Square obelisk and the Red Church) can be generated
@@ -89,7 +89,7 @@ tiles.
 
 ```powershell
 pnpm run typecheck      # TypeScript, strict
-pnpm test               # Vitest: 289 tests — geometry, roofs, facades, environment,
+pnpm test               # Vitest: 308 tests — geometry, roofs, facades, environment,
                         #   tile maths, config sync, curated landmarks, real-tile data
 pnpm run test:e2e       # Playwright: 12 browser tests (real WebGL)
 $env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)

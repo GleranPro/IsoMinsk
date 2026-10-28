@@ -109,6 +109,7 @@ under `curation`, so the curation is auditable rather than silent.
 | `way/25319604` Нацыянальная бібліятэка Беларусі | The stylobate is one 89-point footprint and the rhombicuboctahedron shell is split into many `building:part` polygons (some with unusable heights); no single volume describes the real massing | Curated `landmark = "national-library"`, `height = 71.6 m`. The renderer rebuilds the terraced podium from the curated `outline` (the untrimmed OSM footprint, now emitted for landmarks) and generates the true rhombicuboctahedron (edge 24.67 m, 11.0–70.7 m) — `src/city/buildings/nationalLibrary.ts` |
 | `way/346312699` Манумент Победы | The obelisk is mapped as a 16×16 m "building" with a bogus `height=4` plus pedestal/pyramidion parts; the real monument is ~38 m tall | Curated `landmark = "victory-obelisk"`, `height = 38.2 m`; geometry rebuilt from the footprint and the OSM part heights (`src/city/buildings/victoryObelisk.ts`) |
 | `way/100418249` Касцёл Св. Сымона і Св. Алены | Detailed `building:part`s (nave 25 m gabled, towers to 50 m) but no way to render the brick neo-gothic massing, twin spires and crosses | Curated `landmark = "red-church"`, `height = 50.0 m`; geometry rebuilt from the outline + tower part positions (`src/city/buildings/redChurch.ts`) |
+| `node/3588199861`, `node/9841484917` «Агляднае кола» | Ferris wheels are mapped only as `attraction=big_wheel` nodes with a `height` tag; diameter, cabin count and the wheel-plane orientation are not tagged | Curated `attractions` records: wheel radius / hub height / cabin count / open cabins / plane bearing come from the reference model of the project's X-Plane scenery (measured against photos and a 2012 orthophoto): Gorky Park 54 m tall, Ø51 m, 36 cabins (4 open), plane 70.87°; Chelyuskintsev Park 28 m, Ø25.6 m, 18 cabins (2 open), plane 303.39°. Rendered by `src/city/environment/ferrisWheel.ts`; heuristic trees are cleared in a radius + 10 m around each wheel |
 
 Curated landmarks also receive an extra `outline` field (the untrimmed original
 OSM footprint), because the generic per-tile de-overlap cuts the base footprint
@@ -124,11 +125,15 @@ Related general fixes made in the same revisions:
   into one invalid polygon. This removed the "flooded Yanka Kupala park" (the
   Svislach water relation `14605048` was repaired into a ~13 ha blob) and lets
   water polygons keep their island holes; `normalize.py` keeps the GeoJSON ring
-  order (exterior + holes) for the same reason. One side effect had to be
-  curated: the Minsk Gate relation is a ring outline, so its tower parts could no
-  longer be attached by centroid containment — `CURATED_PART_PARENTS` forces the
-  four tower `building:part` ways under relation `9383682` and the curated crown
-  renders again.
+  order (exterior + holes) for the same reason. **Member ways shorter than three
+  points must take part in the assembly**: shared boundaries such as the Svislach
+  river and Yanka Kupala park are split into many 2-point segments, and skipping
+  them left the rings open, so those relations were lost entirely (the river
+  section then rendered as dry land). One side effect had to be curated: the
+  Minsk Gate relation is a ring outline, so its tower parts could no longer be
+  attached by centroid containment — `CURATED_PART_PARENTS` forces the four tower
+  `building:part` ways under relation `9383682` and the curated crown renders
+  again.
 - Explicit `height` values below `MIN_PLAUSIBLE_HEIGHT_M = 2.5 m` are treated as
   missing data (a door is taller than 1 m). This removes the `height=0.01`
   typo class from the render instead of producing 7 m blocks.

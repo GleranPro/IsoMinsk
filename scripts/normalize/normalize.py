@@ -776,6 +776,28 @@ CURATED_PART_PARENTS: dict[int, tuple[str, int]] = {
     229705383: ("relation", 9383682),
 }
 
+# --- curated park attractions ----------------------------------------------
+# Ferris wheels are mapped as `attraction=big_wheel` NODES with only a `height`
+# tag; diameter, cabin count and the wheel-plane orientation are not tagged. The
+# missing values come from the reference model of the project's X-Plane scenery
+# (measured against photos and a 2012 orthophoto, see docs/DATA_SOURCES.md §7).
+ATTRACTION_CURATION: dict[int, dict] = {
+    3588199861: {  # Агляднае кола, park Horkaha - 54 m tall, Ø51 m, 36 cabins
+        "radius": 25.0,
+        "hubHeight": 28.6,
+        "cabins": 36,
+        "openCabins": 4,
+        "planeBearingDeg": 70.87,
+    },
+    9841484917: {  # Агляднае кола, Čaliuškinca park - 28 m tall
+        "radius": 12.8,
+        "hubHeight": 14.6,
+        "cabins": 18,
+        "openCabins": 2,
+        "planeBearingDeg": 303.39,
+    },
+}
+
 
 # --- main normalisation -----------------------------------------------------
 
@@ -828,6 +850,52 @@ def main() -> int:
 
     stats = Counter()
     warnings: list[str] = []
+
+    # --- park attractions (ferris wheels) ---------------------------------
+    # OSM nodes (`attraction=big_wheel`) with a curated radius / cabin count /
+    # wheel-plane orientation; emitted per tile and rendered by the environment
+    # builder as merged props (src/city/environment/ferrisWheel.ts).
+    attractions: list[dict] = []
+    for feature in features:
+        if feature["kind"] != "attraction":
+            continue
+        geometry = feature.get("geometry", {})
+        if geometry.get("type") != "Point":
+            continue
+        coords = geometry.get("coordinates")
+        if not isinstance(coords, (list, tuple)) or len(coords) < 2:
+            continue
+        x, y = to_local(coords[0], coords[1])
+        if not (-half <= x <= half and -half <= y <= half):
+            continue
+        tags = feature.get("tags", {})
+        osm_id = int(feature["osm_id"])
+        curation = ATTRACTION_CURATION.get(osm_id, {})
+        raw_height = parse_number(tags.get("height"))
+        height = float(curation.get("height") or raw_height or 24.0)
+        hub_height = float(curation.get("hubHeight") or height * 0.53)
+        radius = float(curation.get("radius") or max(6.0, height - hub_height - 0.7))
+        cabins = int(curation.get("cabins") or (36 if height >= 40 else 18))
+        open_cabins = int(curation.get("openCabins") or (4 if cabins >= 30 else 2))
+        bearing = float(curation.get("planeBearingDeg") or 0.0)
+        attractions.append({
+            "id": f"n{osm_id}",
+            "type": "ferris-wheel",
+            "x": round(x, 2),
+            "y": round(y, 2),
+            "radius": round(radius, 2),
+            "hubHeight": round(hub_height, 2),
+            "height": round(max(height, hub_height + radius + 0.5), 2),
+            "cabins": cabins,
+            "openCabins": min(max(open_cabins, 0), max(cabins - 1, 0)),
+            # plane yaw (math CCW from +X/east) from the compass bearing
+            "rotation": round(math.radians(90.0 - bearing), 4),
+            **({"name": tags["name"]} if tags.get("name") else {}),
+        })
+    if attractions:
+        print(f"Attractions: {len(attractions)} ferris wheel(s) -> " +
+              ", ".join(f"{item['id']} at ({item['x']:.0f}, {item['y']:.0f})"
+                        for item in attractions))
 
     # --- pass 1: project / validate all polygons ---------------------------
     buildings_raw: list[dict] = []
@@ -1512,6 +1580,17 @@ def main() -> int:
                 continue
             if not poly.is_empty:
                 exclude_geoms.append(poly)
+    # Keep the ground under a park attraction clear of heuristic trees: the real
+    # ferris wheels stand on an open plaza, and tree canopies would hide them.
+    for attraction in attractions:
+        try:
+            clearing = Point(attraction["x"], attraction["y"]).buffer(
+                float(attraction["radius"]) + 10.0, 16
+            )
+        except Exception:
+            continue
+        if not clearing.is_empty:
+            exclude_geoms.append(clearing)
     exclusion_tree = STRtree(exclude_geoms) if exclude_geoms else None
 
     def vegetation_blocked(x: float, y: float, margin: float = 2.5) -> bool:
@@ -1698,6 +1777,11 @@ def main() -> int:
         if owner is not None:
             tiles[owner]["trees"].append(tree)
 
+    for attraction in attractions:
+        owner = tile_of_point(attraction["x"], attraction["y"])
+        if owner is not None:
+            tiles[owner].setdefault("attractions", []).append(attraction)
+
     # --- write tiles ------------------------------------------------------
     tiles_dir.mkdir(parents=True, exist_ok=True)
     for stale in tiles_dir.glob("*.json"):
@@ -1750,6 +1834,7 @@ def main() -> int:
             "surfaces": sum(len(t["surfaces"]) for t in tiles.values()),
             "roads": sum(len(t["roads"]) for t in tiles.values()),
             "trees": len(trees),
+            "attractions": len(attractions),
         },
         "attribution": [
             {
@@ -1831,6 +1916,7 @@ def main() -> int:
             "roadPolygons": len(road_polys),
             "treesMapped": stats["trees_mapped"],
             "treesHeuristic": stats["trees_heuristic"],
+            "attractions": len(attractions),
         },
         "externalHeightData": {
             "used": False,
@@ -1853,6 +1939,7 @@ def main() -> int:
                 "surfaces": surface_features,
                 "roads": road_polys,
                 "trees": trees,
+                "attractions": attractions,
             },
             ensure_ascii=False,
             separators=(",", ":"),

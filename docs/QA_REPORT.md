@@ -3,16 +3,21 @@
 > **Revision addendum — 2026-10-28 (post-landmark round).** The report body below
 > documents the 2026-10-27 16:30 QA round. Since then the data pipeline gained
 > curated landmark fixes (Minsk Gate, National Library, Victory obelisk, Red
-> Church) and stricter duplicate detection, the pilot tiles were regenerated and
-> two new unit suites were added. Re-verified on this revision: `pnpm test` →
-> **289/289 passed** (18 files); `pnpm test:e2e` → **12/12 passed** (software
-> SwiftShader, 5 min); `tsc --noEmit` clean; `data:validate` pilot + city →
-> **VALIDATION PASSED**; full-city capture (hardware GPU) → 144/144 tiles,
-> **4 005 571 triangles / 424 draws / 60 FPS**, 0 console errors. City belt holds
-> **31 778 buildings** and the four curated landmarks render
-> (`docs/screenshots/11`–`18`). A later data revision also fixed multipolygon
-> relation assembly (the flooded Yanka Kupala park and the missing river islands,
-> `docs/screenshots/19`–`20`). A stale-cache bug was also fixed: tile payloads used to be fetched with `cache: 'force-cache'`, so after a dataset regeneration the map kept the old geometry even on refresh (manifest updated, tiles did not); tiles are now revalidated (`no-cache`, guarded by `scripts/qa/cache-check.mjs`). Everything else in this report remains the
+> Church), two ferris wheels, multipolygon/relation repairs and a tile-cache fix;
+> the pilot tiles were regenerated and new unit suites were added. Re-verified on
+> this revision: `pnpm test` → **308/308 passed** (19 files); `pnpm test:e2e` →
+> **12/12 passed** (software SwiftShader, 5.4 min); `tsc --noEmit` clean;
+> `vite build` ✓; `data:validate` pilot + city → **VALIDATION PASSED**; geometry
+> audit PASSED; full-city capture (hardware GPU) → 144/144 tiles, **4 007 662
+> triangles / 424 draws / 60 FPS**, 0 console errors; tile-cache revalidation
+> check PASS. City belt holds **31 783 buildings**; the four curated landmarks
+> render (`docs/screenshots/11`–`18`), both ferris wheels render (`22`–`24`), and
+> the relation fixes restored the Svislach river through Yanka Kupala park (`21`)
+> plus the surveyed islands (`19`). A stale-cache bug was also fixed: tile
+> payloads used to be fetched with `cache: 'force-cache'`, so after a dataset
+> regeneration the map kept the old geometry even on refresh (manifest updated,
+> tiles did not); tiles are now revalidated (`no-cache`, guarded by
+> `scripts/qa/cache-check.mjs`). Everything else in this report remains the
 > historical 2026-10-27 record.
 
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**

@@ -195,6 +195,35 @@ export interface TreeInstance {
   mapped: boolean;
 }
 
+/**
+ * A non-building attraction rendered by the environment builder (park props).
+ *
+ * Ferris wheels are mapped in OSM as `attraction=big_wheel` nodes with only a
+ * `height` tag; diameter, cabin count and wheel-plane orientation are curated
+ * (see `docs/DATA_SOURCES.md`) and carried here so the renderer stays data-driven.
+ */
+export interface AttractionFeature {
+  /** Stable id: `${osmType[0]}${osmId}` (e.g. "n3588199861"). */
+  id: FeatureId;
+  type: 'ferris-wheel';
+  name?: string;
+  /** Wheel centre (axle) position in local metres. */
+  x: number;
+  y: number;
+  /** Wheel radius to the cabin pivots, metres. */
+  radius: number;
+  /** Axle height above ground, metres. */
+  hubHeight: number;
+  /** Total height above ground, metres (hub + radius + roof allowance). */
+  height: number;
+  /** Number of cabins evenly spaced on the rim. */
+  cabins: number;
+  /** Number of those cabins that are open (no window band), for colour variety. */
+  openCabins?: number;
+  /** Yaw of the wheel plane, radians CCW from +X (east). */
+  rotation: number;
+}
+
 /** Everything needed to render one tile. */
 export interface TileData {
   tileX: number;
@@ -205,6 +234,8 @@ export interface TileData {
   surfaces: SurfacePolygon[];
   roads: RoadPolygon[];
   trees: TreeInstance[];
+  /** Non-building park attractions (ferris wheels). Optional for old tiles. */
+  attractions?: AttractionFeature[];
   /**
    * Building ids whose footprint crosses this tile but which are owned by
    * another tile. Renderers use this for spatial indexing only; the geometry
@@ -238,6 +269,8 @@ export interface TileManifest {
     surfaces: number;
     roads: number;
     trees: number;
+    /** Park attractions (ferris wheels); optional for older manifests. */
+    attractions?: number;
   };
   /** Provenance and licence information, shown in the attribution panel. */
   attribution: AttributionEntry[];

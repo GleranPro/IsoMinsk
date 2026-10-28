@@ -85,6 +85,10 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
 * `surfaces` — parks, grass, forests, water, plazas (already clipped to the tile).
 * `roads` — buffered road/pavement/rail polygons (already clipped to the tile).
 * `trees` — deterministic tree instances, `mapped` = real OSM node.
+* `attractions` (optional) — non-building park props, currently ferris wheels:
+  centre, rim radius, hub height, cabin count and wheel-plane yaw. Built by
+  `src/city/environment/ferrisWheel.ts` and merged with the vegetation geometry
+  (same vertex-coloured environment material, one draw call).
 * `crossingBuildingIds` — spatial-index hints for buildings owned by a
   neighbouring tile (geometry is never duplicated).
 

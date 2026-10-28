@@ -91,6 +91,12 @@ From the generated milestone data:
   railway station, Minsk-Arena, Holy Spirit Cathedral, …) still use the generic
   archetype presets. Six OSM features needed hand-reviewed metadata overrides;
   they are listed in `docs/DATA_SOURCES.md` §7.
+- **Park attractions are curated and static.** Both ferris wheels are real
+  geometry (Gorky Park 54 m / Ø51 m / 36 cabins, Chelyuskintsev Park 28 m /
+  18 cabins) but they do not rotate — the environment geometry is baked per tile,
+  so adding animation would need a separately animated scene object. Their
+  dimensions and wheel-plane bearings are curated (`ATTRACTION_CURATION`), since
+  OSM only tags the wheel nodes with `attraction=big_wheel` + `height`.
 - There is no terrain elevation: every building sits on the local y = 0 plane.
   Minsk is hilly in places; slopes are not represented, so stair-step buildings
   and river banks are flattened.
