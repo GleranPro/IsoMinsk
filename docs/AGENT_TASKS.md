@@ -51,17 +51,3 @@ Lead → tiles (TileData JSON)
 3. No `git commit` by agents; the Lead commits at verified checkpoints.
 4. Every module ships with unit tests; TypeScript must typecheck.
 5. Nothing is reported as "done" without an actual command output or screenshot.
-
-## Road-detail round (v0.2 payload)
-
-The second multi-agent round added the centreline payload and street furniture.
-Ownership was:
-
-| Agent | Scope | Deliverable |
-| --- | --- | --- |
-| **Lead** | `src/shared/types.ts` (contract), `src/city/roads/**` (except parking), `src/engine/createCityApp.ts` (QA camera URL params), `scripts/qa/road-detail-shots.mjs`, `tests/unit/environment/roadDetail.test.ts`, `tests/unit/data/tiles.test.ts`, docs | lane markings, crossings/stop lines/signal heads, medians, bridge parapets, surface tints, integration + verification + commit |
-| **pipeline-dev** | `scripts/ingest/extract.py`, `scripts/normalize/normalize.py`, `scripts/validation/coverage_report.py`, `data/**`, `public/data/tiles/**` | centreline/lanes/oneway/surface/sidewalk, crossing node pass + projection/dedupe, parking surfaces, regenerated pilot tiles |
-| **parking-dev** | `src/city/environment/{parkingMesh,surfaceMeshes,envLayers}.ts`, `src/engine/materials/palette.ts`, `tests/unit/environment/parking.test.ts` | parking surface tier + stall markings |
-| **visual QA (subagent)** | read-only | independent screenshot review of the road detail (artifacts, placement, FPS/console errors) |
-
-Canonical result and known limits: `docs/ROADS_DETAIL.md`.

@@ -35,19 +35,6 @@ REPORT_MD = ROOT / "docs/COVERAGE_REPORT.md"
 errors: list[str] = []
 warnings: list[str] = []
 
-# Additive v0.2 road-detail payload (docs/ROADS_DETAIL.md).
-ROAD_SURFACES = {
-    "asphalt", "paving_stones", "paved", "concrete", "cobblestone",
-    "ground", "dirt", "compacted",
-}
-CROSSING_KINDS = {"zebra", "unmarked", "signals"}
-SIDEWALK_VALUES = {"both", "left", "right", "none"}
-ROAD_CLASSES = {
-    "motorway", "trunk", "primary", "secondary", "tertiary", "residential",
-    "service", "living_street", "pedestrian", "footway", "cycleway", "path",
-    "steps", "track", "unknown",
-}
-
 
 def fail(message: str) -> None:
     errors.append(message)
@@ -91,23 +78,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--area", choices=["pilot", "city"], default="pilot",
                         help="validate the central dataset or the city-scale one")
-    parser.add_argument("--tiles-dir", default=None,
-                        help="override the tile directory (staging runs)")
-    parser.add_argument("--coverage-json", default=None,
-                        help="override data/processed/coverage*.json")
-    parser.add_argument("--report", default=None,
-                        help="override the generated markdown report path")
     args = parser.parse_args()
     if args.area == "city":
         TILES_DIR = ROOT / "public/data/city-tiles"
         COVERAGE_JSON = ROOT / "data/processed/coverage_city.json"
         REPORT_MD = ROOT / "docs/COVERAGE_REPORT_CITY.md"
-    if args.tiles_dir:
-        TILES_DIR = Path(args.tiles_dir)
-    if args.coverage_json:
-        COVERAGE_JSON = Path(args.coverage_json)
-    if args.report:
-        REPORT_MD = Path(args.report)
 
     manifest_path = TILES_DIR / "manifest.json"
     if not manifest_path.exists():
@@ -129,13 +104,9 @@ def main() -> int:
     total_trees = 0
     total_roads = 0
     total_surfaces = 0
-    total_crossings = 0
-    total_parking = 0
-    total_centerlines = 0
     height_sources: Counter[str] = Counter()
     archetypes: Counter[str] = Counter()
     roof_shapes: Counter[str] = Counter()
-    crossing_kinds: Counter[str] = Counter()
     per_tile: list[dict] = []
 
     for entry in tiles:
@@ -191,114 +162,19 @@ def main() -> int:
 
         for road in tile["roads"]:
             total_roads += 1
-            label = f"{tile_path.name} road"
             polygon = road.get("polygon")
-            if not polygon or not check_ring(polygon[0], label):
+            if not polygon or not check_ring(polygon[0], f"{tile_path.name} road"):
                 continue
             rx0 = min(p[0] for p in polygon[0])
             rx1 = max(p[0] for p in polygon[0])
             ry0 = min(p[1] for p in polygon[0])
             ry1 = max(p[1] for p in polygon[0])
             if rx0 < minx - 0.5 or rx1 > maxx + 0.5 or ry0 < miny - 0.5 or ry1 > maxy + 0.5:
-                fail(f"{label}: road extends outside its tile bounds")
-
-            # Additive v0.2 road-detail fields: optional, but valid when present.
-            centerline = road.get("centerline")
-            if centerline is not None:
-                total_centerlines += 1
-                if (
-                    not isinstance(centerline, list)
-                    or len(centerline) < 4
-                    or len(centerline) % 2 != 0
-                ):
-                    fail(f"{label}: malformed centerline (not a flat even-length array)")
-                else:
-                    bad_point = None
-                    for index in range(0, len(centerline), 2):
-                        cx, cy = centerline[index], centerline[index + 1]
-                        if (
-                            not isinstance(cx, (int, float))
-                            or not isinstance(cy, (int, float))
-                            or not (math.isfinite(cx) and math.isfinite(cy))
-                        ):
-                            bad_point = f"non-finite value at ({index}, {index + 1})"
-                            break
-                        if not (minx - 0.5 <= cx <= maxx + 0.5 and miny - 0.5 <= cy <= maxy + 0.5):
-                            bad_point = f"point ({cx}, {cy}) outside the tile"
-                            break
-                    if bad_point:
-                        fail(f"{label}: {bad_point}")
-                offset = road.get("centerlineOffset")
-                if offset is not None and not (
-                    isinstance(offset, (int, float)) and math.isfinite(offset)
-                ):
-                    fail(f"{label}: centerlineOffset is not a finite number")
-            lanes = road.get("lanes")
-            if lanes is not None and not (type(lanes) is int and 1 <= lanes <= 8):
-                fail(f"{label}: lanes={lanes!r} is not an integer in 1..8")
-            oneway = road.get("oneway")
-            if oneway is not None and not isinstance(oneway, bool):
-                fail(f"{label}: oneway={oneway!r} is not a boolean")
-            surface = road.get("surface")
-            if surface is not None and surface not in ROAD_SURFACES:
-                fail(f"{label}: unknown surface={surface!r}")
-            cycleway = road.get("cycleway")
-            if cycleway is not None and cycleway not in {"lane", "track"}:
-                fail(f"{label}: unknown cycleway={cycleway!r}")
-            sidewalk = road.get("sidewalk")
-            if sidewalk is not None and sidewalk not in SIDEWALK_VALUES:
-                fail(f"{label}: unknown sidewalk={sidewalk!r}")
-            sidewalk_width = road.get("sidewalkWidth")
-            if sidewalk_width is not None and not (
-                isinstance(sidewalk_width, (int, float))
-                and math.isfinite(sidewalk_width)
-                and 1 <= sidewalk_width <= 8
-            ):
-                fail(f"{label}: sidewalkWidth={sidewalk_width!r} outside 1..8 m")
+                fail(f"{tile_path.name}: road extends outside its tile bounds")
 
         for surface in tile["surfaces"]:
             total_surfaces += 1
-            if surface.get("kind") == "parking":
-                total_parking += 1
             check_ring(surface.get("polygon", [[]])[0], f"{tile_path.name} surface")
-
-        crossings = tile.get("crossings")
-        if crossings is not None and not isinstance(crossings, list):
-            fail(f"{tile_path.name}: crossings is not an array")
-            crossings = []
-        for crossing in crossings or []:
-            total_crossings += 1
-            label = f"{tile_path.name} crossing"
-            cx, cy = crossing.get("x"), crossing.get("y")
-            if not (isinstance(cx, (int, float)) and math.isfinite(cx)):
-                fail(f"{label}: non-finite x")
-            if not (isinstance(cy, (int, float)) and math.isfinite(cy)):
-                fail(f"{label}: non-finite y")
-            if (
-                isinstance(cx, (int, float)) and isinstance(cy, (int, float))
-                and math.isfinite(cx) and math.isfinite(cy)
-                and not (minx - 0.5 <= cx <= maxx + 0.5 and miny - 0.5 <= cy <= maxy + 0.5)
-            ):
-                fail(f"{label}: point ({cx}, {cy}) outside the tile")
-            angle = crossing.get("angle")
-            if not (isinstance(angle, (int, float)) and math.isfinite(angle)):
-                fail(f"{label}: non-finite angle")
-            width = crossing.get("width")
-            if not (isinstance(width, (int, float)) and math.isfinite(width) and 0.5 <= width <= 60):
-                fail(f"{label}: carriageway width={width!r} outside 0.5..60 m")
-            kind = crossing.get("kind")
-            if kind not in CROSSING_KINDS:
-                fail(f"{label}: unknown kind={kind!r}")
-            else:
-                crossing_kinds[kind] += 1
-            road_class = crossing.get("roadClass")
-            if road_class not in ROAD_CLASSES:
-                fail(f"{label}: unknown roadClass={road_class!r}")
-            span = crossing.get("span")
-            if span is not None and not (
-                isinstance(span, (int, float)) and math.isfinite(span) and span > 0
-            ):
-                fail(f"{label}: span={span!r} is not a positive finite number")
 
         for tree in tile.get("trees", []):
             total_trees += 1
@@ -313,9 +189,6 @@ def main() -> int:
             "surfaces": len(tile["surfaces"]),
             "roads": len(tile["roads"]),
             "trees": len(tile.get("trees", [])),
-            "crossings": len(crossings or []),
-            "parking": sum(1 for surface in tile["surfaces"] if surface.get("kind") == "parking"),
-            "centerlines": sum(1 for road in tile["roads"] if road.get("centerline") is not None),
             "bytes": entry.get("bytes", tile_path.stat().st_size),
         })
 
@@ -327,16 +200,8 @@ def main() -> int:
     counts = manifest.get("counts", {})
     if counts.get("buildings") != total_buildings:
         fail(f"manifest counts.buildings={counts.get('buildings')} != actual {total_buildings}")
-    # Additive v0.2 counts: when present they must match the payloads.
-    if counts.get("crossings") is not None and counts.get("crossings") != total_crossings:
-        fail(f"manifest counts.crossings={counts.get('crossings')} != actual {total_crossings}")
-    if counts.get("parking") is not None and counts.get("parking") != total_parking:
-        fail(f"manifest counts.parking={counts.get('parking')} != actual {total_parking}")
 
     total_bytes = sum(t["bytes"] for t in per_tile)
-    total_files_bytes = total_bytes
-    if (TILES_DIR / "manifest.json").exists():
-        total_files_bytes += (TILES_DIR / "manifest.json").stat().st_size
     coverage = json.loads(COVERAGE_JSON.read_text(encoding="utf-8")) if COVERAGE_JSON.exists() else None
     if coverage is None:
         warn(f"{COVERAGE_JSON} missing; report will contain less detail")
@@ -409,30 +274,14 @@ def main() -> int:
         lines.append(f"- Used: **{'yes' if ext.get('used') else 'no'}**")
         lines.append(f"- {ext.get('note', '')}")
         lines.append("")
-    lines.append("## Road detail (v0.2 additive payload)\n")
-    lines.append("| Metric | Value |")
-    lines.append("| --- | --- |")
-    lines.append(f"| Road pieces with OSM centreline | {total_centerlines} |")
-    lines.append(f"| Crossings projected onto drivable roads | {total_crossings} |")
-    lines.append(f"| Parking surface polygons (amenity=parking) | {total_parking} |")
-    if crossing_kinds:
-        lines.append("")
-        lines.append("### Crossings by kind\n")
-        lines.append("| Kind | Count |")
-        lines.append("| --- | --- |")
-        for kind in ("zebra", "signals", "unmarked"):
-            lines.append(f"| {kind} | {crossing_kinds.get(kind, 0)} |")
-    lines.append("")
     lines.append("## Tiles\n")
-    lines.append("| Tile | Buildings | Surfaces | Parking | Roads | Centrelines | Crossings | Trees | Bytes |")
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| Tile | Buildings | Surfaces | Roads | Trees | Bytes |")
+    lines.append("| --- | --- | --- | --- | --- | --- |")
     for tile in per_tile:
         lines.append(f"| {tile['tile']} | {tile['buildings']} | {tile['surfaces']} | "
-                     f"{tile['parking']} | {tile['roads']} | {tile['centerlines']} | "
-                     f"{tile['crossings']} | {tile['trees']} | {tile['bytes']:,} |")
-    lines.append(f"\nTotal tile payload: **{total_bytes:,} bytes** ({total_bytes / 1024:.0f} KiB) "
-                 f"across {len(per_tile)} tiles (uncompressed JSON); with the tile manifest: "
-                 f"**{total_files_bytes:,} bytes**.\n")
+                     f"{tile['roads']} | {tile['trees']} | {tile['bytes']:,} |")
+    lines.append(f"\nTotal payload: **{total_bytes / 1024:.0f} KiB** across {len(per_tile)} tiles "
+                 f"(uncompressed JSON).\n")
     lines.append("## Validation result\n")
     if errors:
         lines.append(f"**{len(errors)} error(s)**, {len(warnings)} warning(s)\n")
@@ -463,11 +312,7 @@ def main() -> int:
 
     print(f"Tiles: {len(per_tile)}  buildings: {total_buildings}  roads: {total_roads}  "
           f"surfaces: {total_surfaces}  trees: {total_trees}")
-    print(f"Road detail: centrelines={total_centerlines}  crossings={total_crossings} "
-          f"({', '.join(f'{k}={v}' for k, v in sorted(crossing_kinds.items()))})  "
-          f"parking={total_parking}")
-    print(f"Payload: {total_bytes / 1024:.0f} KiB ({total_bytes:,} bytes; "
-          f"with manifest {total_files_bytes:,} bytes)")
+    print(f"Payload: {total_bytes / 1024:.0f} KiB")
     print(f"Report: {REPORT_MD}")
     if errors:
         print(f"\n{len(errors)} ERROR(S):", file=sys.stderr)

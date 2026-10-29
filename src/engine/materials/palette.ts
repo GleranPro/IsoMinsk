@@ -26,8 +26,6 @@ export const ENV_PALETTE = {
   pitch: '#8f9c7a',
   cemetery: '#7a8a6a',
   plaza: '#b0a99b',
-  /** Parking asphalt: a touch lighter than residential road asphalt. */
-  parking: '#83878c',
   residential: '#8d8d80',
   industrial: '#8b8b81',
   commercial: '#96928a',
@@ -195,10 +193,6 @@ export function surfaceColor(kind: SurfaceKind): Hex {
       return ENV_PALETTE.cemetery;
     case 'plaza':
       return ENV_PALETTE.plaza;
-    case 'parking':
-      // Asphalt-like grey, slightly lighter than ROAD_PALETTE.residential so
-      // bays read as a separate surface where they border a street.
-      return ENV_PALETTE.parking;
     case 'residential':
       return ENV_PALETTE.residential;
     case 'industrial':

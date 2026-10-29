@@ -5,10 +5,8 @@
  * `TileData`:
  *   - `ground` : flat base quad, landcover polygons (parks, grass, forest,
  *                plaza, residential/industrial landuse, water) with holes;
- *   - `roads`  : drivable roads (tinted by `surface`), real lane markings along
- *                the OSM centreline, zebra crossings, stop lines and signal
- *                heads, medians, cycle lanes, pavements, kerbs, tram/rail
- *                ballast and rails, bridge decks with skirts/parapets/piers;
+ *   - `roads`  : drivable roads, pavements, kerbs, dashed centre lines,
+ *                tram/rail ballast and rails, bridge decks with skirts;
  *   - `trees`  : one merged stylised tree geometry, or null.
  *
  * Each category is a single indexed `BufferGeometry` in renderer world space
@@ -106,7 +104,7 @@ export function buildEnvironmentMeshes(
   }
 
   try {
-    emitRoadPolygons(roadsSink, tile?.roads, tile?.crossings, bounds, roadStats);
+    emitRoadPolygons(roadsSink, tile?.roads, bounds, roadStats);
   } catch {
     // Same as above.
   }

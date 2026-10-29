@@ -6,7 +6,7 @@
 
 - Source: OpenStreetMap
 - Extract: `Minsk.osm.pbf`
-- Extraction date: 2026-10-29T13:16:35Z
+- Extraction date: 2026-10-28T15:47:51Z
 - Attribution: (c) OpenStreetMap contributors, ODbL 1.0
 - Pilot area: 1600.0 m × 1600.0 m, tile size 512.0 m, projection EPSG:32635
 - Local origin (UTM 35N): [536859.254, 5972786.284]
@@ -63,54 +63,38 @@
 
 | Metric | Value |
 | --- | --- |
-| Ground surface polygons | 599 |
-| Road/rail/pavement polygons | 3053 |
+| Ground surface polygons | 484 |
+| Road/rail/pavement polygons | 3243 |
 | OSM-mapped trees | 150 |
-| Heuristically placed trees | 8410 |
+| Heuristically placed trees | 8380 |
 
 ## External height data
 
 - Used: **no**
 - No external height dataset is used. GlobalBuildingAtlas LoD1/height data is licensed non-commercially and was not integrated; OSM height/level tags plus documented architectural heuristics are the only height sources.
 
-## Road detail (v0.2 additive payload)
-
-| Metric | Value |
-| --- | --- |
-| Road pieces with OSM centreline | 1026 |
-| Crossings projected onto drivable roads | 204 |
-| Parking surface polygons (amenity=parking) | 132 |
-
-### Crossings by kind
-
-| Kind | Count |
-| --- | --- |
-| zebra | 57 |
-| signals | 134 |
-| unmarked | 13 |
-
 ## Tiles
 
-| Tile | Buildings | Surfaces | Parking | Roads | Centrelines | Crossings | Trees | Bytes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| -2_-2 | 35 | 39 | 4 | 191 | 65 | 16 | 69 | 84,794 |
-| -2_-1 | 61 | 20 | 5 | 202 | 74 | 16 | 80 | 104,914 |
-| -2_0 | 77 | 35 | 7 | 257 | 77 | 9 | 2 | 129,192 |
-| -2_1 | 8 | 53 | 3 | 95 | 22 | 4 | 19 | 44,625 |
-| -1_-2 | 46 | 30 | 10 | 164 | 61 | 12 | 64 | 83,659 |
-| -1_-1 | 97 | 54 | 17 | 378 | 165 | 28 | 9 | 168,530 |
-| -1_0 | 93 | 116 | 21 | 503 | 106 | 29 | 83 | 250,532 |
-| -1_1 | 44 | 57 | 7 | 294 | 40 | 7 | 262 | 127,006 |
-| 0_-2 | 23 | 68 | 13 | 207 | 65 | 17 | 174 | 95,435 |
-| 0_-1 | 71 | 88 | 11 | 358 | 132 | 24 | 603 | 205,357 |
-| 0_0 | 29 | 61 | 8 | 293 | 76 | 19 | 1421 | 228,680 |
-| 0_1 | 3 | 26 | 0 | 125 | 19 | 4 | 2366 | 238,915 |
-| 1_-2 | 27 | 19 | 9 | 77 | 33 | 0 | 149 | 50,897 |
-| 1_-1 | 19 | 30 | 6 | 156 | 42 | 14 | 997 | 140,643 |
-| 1_0 | 9 | 13 | 1 | 132 | 25 | 2 | 2040 | 215,055 |
-| 1_1 | 12 | 35 | 10 | 106 | 24 | 3 | 222 | 55,972 |
+| Tile | Buildings | Surfaces | Roads | Trees | Bytes |
+| --- | --- | --- | --- | --- | --- |
+| -2_-2 | 35 | 35 | 205 | 66 | 78,551 |
+| -2_-1 | 61 | 15 | 210 | 80 | 96,788 |
+| -2_0 | 77 | 28 | 265 | 1 | 120,994 |
+| -2_1 | 8 | 50 | 95 | 17 | 41,478 |
+| -1_-2 | 46 | 20 | 169 | 64 | 78,065 |
+| -1_-1 | 97 | 37 | 415 | 4 | 155,519 |
+| -1_0 | 93 | 95 | 531 | 83 | 240,235 |
+| -1_1 | 44 | 50 | 307 | 267 | 124,086 |
+| 0_-2 | 23 | 55 | 228 | 179 | 90,752 |
+| 0_-1 | 71 | 77 | 394 | 605 | 198,209 |
+| 0_0 | 29 | 53 | 320 | 1427 | 224,535 |
+| 0_1 | 3 | 26 | 142 | 2359 | 238,158 |
+| 1_-2 | 27 | 10 | 79 | 143 | 47,031 |
+| 1_-1 | 19 | 24 | 178 | 972 | 136,827 |
+| 1_0 | 9 | 12 | 133 | 2040 | 212,357 |
+| 1_1 | 12 | 25 | 106 | 223 | 52,731 |
 
-Total tile payload: **2,224,206 bytes** (2172 KiB) across 16 tiles (uncompressed JSON); with the tile manifest: **2,226,991 bytes**.
+Total payload: **2086 KiB** across 16 tiles (uncompressed JSON).
 
 ## Validation result
 

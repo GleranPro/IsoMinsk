@@ -144,12 +144,6 @@ export type RoadClass =
   | 'track'
   | 'unknown';
 
-/** How a pedestrian crossing is treated on the carriageway. */
-export type CrossingKind =
-  | 'zebra' // marked pedestrian crossing (white bars + stop lines)
-  | 'unmarked' // highway=crossing without painted markings
-  | 'signals'; // traffic-signal crossing (signals + stop lines; bars if painted)
-
 export interface RoadPolygon {
   kind: 'road' | 'footway' | 'rail';
   class: RoadClass;
@@ -161,57 +155,6 @@ export interface RoadPolygon {
   tunnel?: boolean;
   /** Optional name for debugging. */
   name?: string;
-  /**
-   * Centreline of the OSM way clipped to this tile piece, as a flat
-   * `[x0, y0, x1, y1, …]` array in local metres (open polyline, no closing
-   * vertex). Supplied by pipelines from v0.2 for drivable `road` pieces only.
-   *
-   * This is the unlock for real lane markings, medians and bridge details:
-   * they are laid out along the centreline instead of the polygon's
-   * minimum-area rectangle. Renderers must keep a fallback for tiles written
-   * by older pipelines (the field is absent there).
-   */
-  centerline?: number[];
-  /**
-   * Distance along the full OSM way from its first node to the first centreline
-   * point, metres. Used to keep dashed markings phase-continuous across tile
-   * borders.
-   */
-  centerlineOffset?: number;
-  /** Total marked lanes in both directions (OSM `lanes`), 1..8. */
-  lanes?: number;
-  /** One-way carriageway (`oneway=yes` / `junction=roundabout`). */
-  oneway?: boolean;
-  /** OSM `surface` value when it is one the renderer tints (asphalt, paving_stones, …). */
-  surface?: string;
-  /** On-carriageway cycling provision: painted lane or raised track. */
-  cycleway?: 'lane' | 'track';
-  /** Where the pipeline emitted sidewalks for this way. */
-  sidewalk?: 'both' | 'left' | 'right' | 'none';
-  /** Sidewalk strip width used by the pipeline, metres. */
-  sidewalkWidth?: number;
-}
-
-/**
- * A pedestrian crossing or signalised crossing of a drivable road, projected
- * onto the crossed road's centreline by the offline pipeline.
- *
- * The renderer draws the zebra bars and stop lines from this record, so the
- * marking layout follows the real crossing instead of a heuristic.
- */
-export interface CrossingFeature {
-  /** Crossing point on the crossed carriageway, local metres. */
-  x: number;
-  y: number;
-  /** Direction of the crossed road at that point, radians CCW from +X (east). */
-  angle: number;
-  /** Carriageway width at the crossing, metres. */
-  width: number;
-  kind: CrossingKind;
-  /** Class of the crossed road (drives which crossings are painted). */
-  roadClass: RoadClass;
-  /** Crossing width along the road axis, metres (default 4 m). */
-  span?: number;
 }
 
 export type SurfaceKind =
@@ -226,7 +169,6 @@ export type SurfaceKind =
   | 'cemetery'
   | 'railway'
   | 'plaza'
-  | 'parking'
   | 'residential'
   | 'industrial'
   | 'commercial'
@@ -292,8 +234,6 @@ export interface TileData {
   buildings: BuildingFeature[];
   surfaces: SurfacePolygon[];
   roads: RoadPolygon[];
-  /** Pedestrian / signalised crossings on drivable roads. Optional for old tiles. */
-  crossings?: CrossingFeature[];
   trees: TreeInstance[];
   /** Non-building park attractions (ferris wheels). Optional for old tiles. */
   attractions?: AttractionFeature[];
@@ -330,10 +270,6 @@ export interface TileManifest {
     surfaces: number;
     roads: number;
     trees: number;
-    /** Pedestrian / signalised crossings; optional for older manifests. */
-    crossings?: number;
-    /** Parking surface polygons; optional for older manifests. */
-    parking?: number;
     /** Park attractions (ferris wheels); optional for older manifests. */
     attractions?: number;
   };

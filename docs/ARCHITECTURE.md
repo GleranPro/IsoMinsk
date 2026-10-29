@@ -84,19 +84,6 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
   other buildings use the generic volume builder.
 * `surfaces` — parks, grass, forests, water, plazas (already clipped to the tile).
 * `roads` — buffered road/pavement/rail polygons (already clipped to the tile).
-  From pipeline v0.2 (manifest `0.2.0`) drivable road pieces additionally carry
-  the OSM **centreline** (`centerline` as a flat `[x0,y0,…]` array in local
-  metres, clipped to the tile, plus `centerlineOffset` for dash phase
-  continuity), `lanes`, `oneway`, `surface`, `cycleway`, `sidewalk` and
-  `sidewalkWidth` (all optional; see `docs/ROADS_DETAIL.md`). The renderer uses
-  them for lane markings, medians and bridge detail, and falls back to the
-  polygon-axis dash heuristic for older tiles.
-* `crossings` (optional) — pedestrian / signalised crossings projected onto the
-  crossed road's centreline: point, road direction, carriageway width, kind
-  (`zebra` / `unmarked` / `signals`) and road class. Used for zebra bars, stop
-  lines and signal heads.
-* `parking` surface kind — `amenity=parking` areas (underground / multi-storey /
-  rooftop excluded) with derived stall markings.
 * `trees` — deterministic tree instances, `mapped` = real OSM node.
 * `attractions` (optional) — non-building park props, currently ferris wheels:
   centre, rim radius, hub height, cabin count and wheel-plane yaw. Built by
@@ -156,8 +143,6 @@ Key properties:
 | `src/city/buildings/**`, `src/city/roofs/**` | geometry-dev | extrusion, roofs, merged building mesh |
 | `src/city/facades/**`, `src/engine/shaders/**`, `src/engine/materials/facadeMaterial.ts` | facade-artist | facade shader, presets, palette |
 | `src/city/roads/**`, `src/city/environment/**` | environment-dev | roads, pavements, parks, water, trees, rail |
-| `src/city/roads/roadPath.ts`, `markingLayout.ts`, `crossings.ts`, `medianMesh.ts`, `bridgeMesh.ts`, `roadColors.ts` | environment-dev (road-detail round) | centreline resampling, lane markings, zebra/stop lines/signal heads, medians, bridge parapets/piers, paint palette |
-| `src/city/environment/parkingMesh.ts` | environment-dev (road-detail round) | parking stall markings |
 | `src/engine/renderer|camera|tiles|picking|postprocess/**`, `src/engine/createCityApp.ts` | renderer-dev | renderer, controls, streaming, lighting, post, picking |
 | `tests/e2e/**`, `scripts/qa/**`, `docs/QA_REPORT.md` | qa-dev | browser tests, screenshots, performance, visual QA |
 
