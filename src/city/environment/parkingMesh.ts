@@ -34,8 +34,12 @@ import {
 
 /** Stall depth measured inward from the long edge, metres. */
 export const STALL_DEPTH_M = 5;
-/** Painted tick width (along the long axis), metres. */
-export const STALL_TICK_WIDTH_M = 0.12;
+/** Painted tick width (along the long axis), metres.
+ *
+ * 0.22 m (not 0.12 m): at close zoom one screen pixel is ~6–10 cm, so a thinner
+ * divider fragmented into 2–3 dots; 0.22 m keeps each stall line readable in
+ * both pixel-art and clean modes. */
+export const STALL_TICK_WIDTH_M = 0.22;
 /** Stall spacing along the long axis, metres. */
 export const STALL_SPACING_M = 2.6;
 /** Margin left free at both ends of a row, metres. */

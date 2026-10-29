@@ -282,7 +282,8 @@ const HEAD_BOTTOM_Y = POLE_BASE_Y + 2.35;
 const HEAD_TOP_Y = POLE_BASE_Y + 3.3;
 const SIGNAL_POLE_COLOR = '#4a4e52';
 const SIGNAL_HEAD_COLOR = '#303438';
-const SIGNAL_LENS_COLORS = ['#a83a2e', '#b8873c', '#3f7a4a'] as const;
+/** Bright lens tints so the head still reads at night (lit by ambient only). */
+const SIGNAL_LENS_COLORS = ['#ff6a55', '#ffc65a', '#66d47a'] as const;
 
 /**
  * Stylised traffic signal: a slim post plus a head with three dark lenses,

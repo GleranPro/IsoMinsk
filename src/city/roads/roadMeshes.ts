@@ -60,7 +60,7 @@ import {
 } from './crossings';
 import { createMedianStats, emitMedian, type MedianStats } from './medianMesh';
 import { createBridgeStats, emitBridgeDetails, type BridgeStats } from './bridgeMesh';
-import { BIKE_LANE_COLOR, MARKING_BAR_COLOR, cyclewayColor, roadSurfaceColor } from './roadColors';
+import { BIKE_LANE_COLOR, BRIDGE_PIER_COLOR, MARKING_BAR_COLOR, cyclewayColor, roadSurfaceColor } from './roadColors';
 
 const MIN_RING_AREA_M2 = 0.5;
 
@@ -107,11 +107,24 @@ interface JunctionPoint {
   owner: number;
 }
 
+/** A carriageway polygon indexed for "is this bar inside another street?" tests. */
+interface JunctionPolygon {
+  prepared: PreparedPolygon;
+  bbox: [number, number, number, number];
+  /** Unit direction of the street (centreline first→last). */
+  ux: number;
+  uy: number;
+  owner: number;
+}
+
 /** Per-tile data shared by the road emitters. */
 interface RoadEmitContext {
   surfaces: RoadSurfaceRef[];
   crossings: readonly CrossingFeature[];
   junctionGrid: Map<string, JunctionPoint[]>;
+  junctionPolygonGrid: Map<string, JunctionPolygon[]>;
+  /** Bridge decks of the tile (for shared-edge parapet suppression). */
+  bridgeDecks: PreparedPolygon[];
 }
 
 /** Sample a centreline every `JUNCTION_SAMPLE_STEP_M` for junction tests. */
@@ -147,6 +160,29 @@ function buildJunctionGrid(points: readonly JunctionPoint[]): Map<string, Juncti
     const cell = grid.get(key);
     if (cell) cell.push(point);
     else grid.set(key, [point]);
+  }
+  return grid;
+}
+
+/** Index drivable polygons by bounding-box cells for containment tests. */
+function buildJunctionPolygonGrid(
+  entries: readonly JunctionPolygon[],
+): Map<string, JunctionPolygon[]> {
+  const grid = new Map<string, JunctionPolygon[]>();
+  for (const entry of entries) {
+    const [minX, minY, maxX, maxY] = entry.bbox;
+    const minCellX = Math.floor(minX / JUNCTION_GRID_M);
+    const maxCellX = Math.floor(maxX / JUNCTION_GRID_M);
+    const minCellY = Math.floor(minY / JUNCTION_GRID_M);
+    const maxCellY = Math.floor(maxY / JUNCTION_GRID_M);
+    for (let gx = minCellX; gx <= maxCellX; gx++) {
+      for (let gy = minCellY; gy <= maxCellY; gy++) {
+        const key = `${gx},${gy}`;
+        const cell = grid.get(key);
+        if (cell) cell.push(entry);
+        else grid.set(key, [entry]);
+      }
+    }
   }
   return grid;
 }
@@ -197,6 +233,20 @@ function insideJunction(
           return true;
         }
       }
+    }
+  }
+
+  // Exact test: the bar lies on another street's asphalt and that street runs
+  // at a different angle → it is inside the junction box, not just near it.
+  const polygonCell = context.junctionPolygonGrid.get(`${cx},${cy}`);
+  if (polygonCell) {
+    for (const candidate of polygonCell) {
+      if (candidate.owner === owner) continue;
+      const [minX, minY, maxX, maxY] = candidate.bbox;
+      if (x < minX || x > maxX || y < minY || y > maxY) continue;
+      const dot = Math.abs(ux * candidate.ux + uy * candidate.uy);
+      if (dot >= 0.866) continue; // parallel street: overlapping asphalt is fine
+      if (pointInPreparedPolygon(candidate.prepared, x, y)) return true;
     }
   }
   return false;
@@ -336,10 +386,35 @@ export function emitRoadPolygons(
     sampleJunctionPoints(junctionPoints, points, entry.index);
   }
   const junctionGrid = buildJunctionGrid(junctionPoints);
+  const junctionPolygons: JunctionPolygon[] = [];
+  for (const entry of preparedRoads) {
+    if (roadTier(entry.road) !== 'road' || entry.road.bridge) continue;
+    const points = centerlinePoints(entry.road.centerline);
+    if (points.length < 2) continue;
+    const first = points[0];
+    const last = points[points.length - 1];
+    const dx = last[0] - first[0];
+    const dy = last[1] - first[1];
+    const length = Math.hypot(dx, dy);
+    if (!(length > 1e-6)) continue;
+    const [minX, minY, maxX, maxY] = ringBounds(entry.prepared.exterior);
+    junctionPolygons.push({
+      prepared: entry.prepared,
+      bbox: [minX, minY, maxX, maxY],
+      ux: dx / length,
+      uy: dy / length,
+      owner: entry.index,
+    });
+  }
+  const junctionPolygonGrid = buildJunctionPolygonGrid(junctionPolygons);
   const context: RoadEmitContext = {
     surfaces,
     crossings: crossings ?? [],
     junctionGrid,
+    junctionPolygonGrid,
+    bridgeDecks: preparedRoads
+      .filter((entry) => entry.road.bridge && roadTier(entry.road) === 'road')
+      .map((entry) => entry.prepared),
   };
 
   for (const entry of preparedRoads) {
@@ -454,10 +529,16 @@ function emitCarRoad(
 
   if (road.bridge) {
     // Choice: bridges are raised decks without ramps (BRIDGE_RAISE_M ≈ 2.5 m)
-    // plus a vertical skirt down to ground so the slab never floats.
+    // plus a vertical skirt down to ground so the slab never floats. The skirt
+    // only covers the longitudinal deck edges: a skirt across the road at a
+    // tile/deck cut would read as a black wall blocking the carriageway.
     const deckY = y + BRIDGE_RAISE_M;
+    const deckTangent = stations.length >= 2 ? stations[Math.floor(stations.length / 2)] : null;
     stats.roadTriangles += sink.addFlatTriangles(triangles, deckY, color);
-    stats.roadTriangles += emitBridgeSides(sink, prepared, deckY, color);
+    stats.roadTriangles += emitBridgeSides(sink, prepared, deckY, color, {
+      color: BRIDGE_PIER_COLOR,
+      tangent: deckTangent ? [deckTangent.ux, deckTangent.uy] : null,
+    });
     stats.roadPolygons++;
     stats.bridges++;
     if (stations.length >= 2) {
@@ -469,6 +550,7 @@ function emitCarRoad(
         deckY,
         stats.bridgeDetails,
         MAX_BRIDGE_DETAIL_TRIANGLES_PER_TILE,
+        context.bridgeDecks,
       );
     }
     return;
@@ -580,8 +662,15 @@ function emitBridgeSides(
   prepared: PreparedPolygon,
   deckY: number,
   topColor: string,
+  options?: {
+    /** Explicit skirt colour (bridges read better as concrete than asphalt). */
+    color?: string;
+    /** Road tangent: only edges parallel to it get a skirt (no end walls). */
+    tangent?: [number, number] | null;
+  },
 ): number {
-  const color = mixHex(topColor, '#2f3236', 0.35);
+  const color = options?.color ?? mixHex(topColor, '#2f3236', 0.35);
+  const tangent = options?.tangent ?? null;
   const rings: PreparedPolygon['exterior'][] = [prepared.exterior];
   for (const hole of prepared.holes) {
     // Hole walls are seen from inside the hole, so orient the ring clockwise
@@ -599,6 +688,12 @@ function emitBridgeSides(
       const dy = b[1] - a[1];
       const length = Math.hypot(dx, dy);
       if (!(length > 1e-6)) continue;
+      if (tangent) {
+        // Skip cross-Road edges (tile/deck cuts): a skirt there would read as a
+        // black wall blocking the carriageway.
+        const along = Math.abs((dx / length) * tangent[0] + (dy / length) * tangent[1]);
+        if (along < 0.5) continue;
+      }
       const outward: Vec3 = [dy / length, 0, dx / length];
       const topA: Vec3 = [a[0], deckY, -a[1]];
       const topB: Vec3 = [b[0], deckY, -b[1]];

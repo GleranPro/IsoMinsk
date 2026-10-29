@@ -87,6 +87,8 @@ export function emitBridgeDetails(
   deckY: number,
   stats: BridgeStats,
   maxTriangles: number,
+  /** Other bridge decks of the tile: a shared edge gets no double parapet. */
+  otherDecks: readonly PreparedPolygon[] = [],
 ): void {
   if (!road.bridge || road.kind !== 'road') return;
   if (stations.length < 3) return;
@@ -100,22 +102,43 @@ export function emitBridgeDetails(
     ? road.width
     : (ROAD_WIDTH_M[road.class] ?? 8);
   const half = width / 2;
-  const railOffset = clamp(half - 0.25, 0.8, 30);
+  const railOffset = clamp(half - 0.35, 0.8, 30);
+  const parquetHalf = PARAPET_HALF_THICKNESS_M;
+  const innerOffset = railOffset - parquetHalf;
+
+  // A carriageway pair mapped as two overlapping bridge ways must not paint two
+  // back-to-back parapets down the middle: skip a side whose inner line lies on
+  // another bridge deck of the tile.
+  const midStation = stationAtS(stations, total / 2);
+  const sharedSide = (side: -1 | 1): boolean => {
+    if (!midStation) return false;
+    const point = offsetAlong(midStation, side * innerOffset);
+    for (const other of otherDecks) {
+      if (other === prepared) continue;
+      if (pointInPreparedPolygon(other, point[0], point[1])) return true;
+    }
+    return false;
+  };
+  const sideShared: Record<number, boolean> = {
+    [-1]: sharedSide(-1),
+    [1]: sharedSide(1),
+  };
 
   // 1. Continuous parapet wall along both deck edges: inner face, outer face
-  //    and a top cap. Reads as a bridge even at district zoom.
+  //    and a top cap. Only the INNER corners must be on the deck — the outer
+  //    face can sit on the polygon boundary (requiring all four corners inside
+  //    made the wall break into dashes along curves).
   for (let i = 1; i < stations.length; i++) {
     if (overCap()) break;
     const previous = stations[i - 1];
     const current = stations[i];
     if (current.s - previous.s > 4) continue;
     for (const side of [-1, 1] as const) {
-      const outerA = offsetAlong(previous, side * (railOffset + PARAPET_HALF_THICKNESS_M));
-      const outerB = offsetAlong(current, side * (railOffset + PARAPET_HALF_THICKNESS_M));
-      const innerA = offsetAlong(previous, side * (railOffset - PARAPET_HALF_THICKNESS_M));
-      const innerB = offsetAlong(current, side * (railOffset - PARAPET_HALF_THICKNESS_M));
-      if (!pointInPreparedPolygon(prepared, outerA[0], outerA[1])) continue;
-      if (!pointInPreparedPolygon(prepared, outerB[0], outerB[1])) continue;
+      if (sideShared[side]) continue;
+      const outerA = offsetAlong(previous, side * (railOffset + parquetHalf));
+      const outerB = offsetAlong(current, side * (railOffset + parquetHalf));
+      const innerA = offsetAlong(previous, side * innerOffset);
+      const innerB = offsetAlong(current, side * innerOffset);
       if (!pointInPreparedPolygon(prepared, innerA[0], innerA[1])) continue;
       if (!pointInPreparedPolygon(prepared, innerB[0], innerB[1])) continue;
       const nx = -previous.uy * side;
@@ -151,6 +174,7 @@ export function emitBridgeDetails(
     if (!station) continue;
     let emitted = false;
     for (const side of [-1, 1] as const) {
+      if (sideShared[side]) continue;
       const point = offsetAlong(station, side * railOffset);
       if (!pointInPreparedPolygon(prepared, point[0], point[1])) continue;
       emitBox(
