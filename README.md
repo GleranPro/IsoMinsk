@@ -12,9 +12,9 @@ Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsa
 **Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
 tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
 generated offline, streamed and rendered in the browser. See
-`docs/REQUIREMENTS.md` for the requirements baseline and change-request log,
-`docs/PROGRESS.md` for milestone/roadmap status and `docs/LIMITATIONS.md` for
-what is inferred vs. surveyed.
+`docs/REQUIREMENTS_ORIGINAL.md` for the original brief, `docs/REQUIREMENTS.md`
+for the compliance matrix, `docs/PROGRESS.md` for milestone/roadmap status and
+`docs/LIMITATIONS.md` for what is inferred vs. surveyed.
 
 ---
 
@@ -141,7 +141,8 @@ docs/         requirements, architecture, data sources, roadmap/progress,
               limitations, QA report, testing guide
 ```
 
-See `docs/REQUIREMENTS.md` for the requirements baseline and change-request log,
+See `docs/REQUIREMENTS_ORIGINAL.md` (original brief, verbatim),
+`docs/REQUIREMENTS.md` (compliance matrix and change requests),
 `docs/PROGRESS.md` for the roadmap and verified numbers,
 `docs/ARCHITECTURE.md` for the coordinate conventions, tile payload schema,
 renderer pipeline and module ownership.

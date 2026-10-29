@@ -3,7 +3,9 @@
 Living document. Status is updated only after the work has actually run.
 Legend: ✅ done & verified · 🟡 implemented, verification pending · ⏳ in progress · ❌ blocked
 
-Requirement baseline and change-request log: [`docs/REQUIREMENTS.md`](REQUIREMENTS.md).
+Original project brief: [`docs/REQUIREMENTS_ORIGINAL.md`](REQUIREMENTS_ORIGINAL.md)
+(verbatim). Compliance matrix and change-request log:
+[`docs/REQUIREMENTS.md`](REQUIREMENTS.md).
 Next iterations: see the [roadmap](#roadmap-next-iterations) at the bottom.
 
 ## Current state

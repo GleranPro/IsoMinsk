@@ -31,3 +31,4 @@ tmp_*.ts
 tmp_*.mjs
 tmp_*.py
 .agent-scratch/
+.dsh-browser-work/

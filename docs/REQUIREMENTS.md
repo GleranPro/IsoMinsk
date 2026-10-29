@@ -1,122 +1,163 @@
-# Requirements — Isometric Minsk
+# Requirements compliance — Isometric Minsk
 
-> **Provenance.** This document is a *reconstruction* of the project requirements,
-> written on 2026-10-29 from the original project brief and the change requests
-> made during the working sessions. The original brief was never stored as a
-> repository artifact — this file is the requirements baseline going forward.
-> Where a requirement was added later it is marked as a change request (§5).
-> Verification status is only claimed from artifacts that actually exist
-> (tests, audits, captures, commits), never from intent.
+This document is the **compliance analysis** of the project against its
+**original brief**, which is stored verbatim in
+[`docs/REQUIREMENTS_ORIGINAL.md`](REQUIREMENTS_ORIGINAL.md) (recovered from the
+first project message on 2026-10-29). Section references below (§1–§12) point to
+that document. The earlier reconstructed-requirements file was replaced by this
+pair: original brief + traceability matrix.
 
-## 1. Product goal
+Status legend: ✅ delivered & verified · 🟡 partially delivered / deviation
+documented · ⏳ planned (explicitly non-MVP or later iteration) · ❌ not delivered.
 
-Build a **working, interactive isometric pixel-art 3D map of central Minsk**,
-generated from **real OpenStreetMap geometry**, visually inspired by
-[bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsaw-izo/).
+Verification is only claimed from artifacts that exist in the repository:
+tests, audits, captures, commits. Numbers are from the latest verified run
+(docs updated 2026-10-29).
 
-Priorities, in the order stated by the project owner:
+## 1. Compliance summary by original section
 
-1. A working application first (not a static mock-up or a data dump).
-2. Accurate real footprints, positions and heights — nothing invented where OSM
-   has data; inferred values must be labelled as inferred.
-3. Recognisable architecture: real facades, roofs, landmarks and park features.
-4. A genuine pixel-art rendering pipeline (not a CSS filter over a 3D scene).
-5. Full camera control, tile streaming, tests and honest documentation.
-6. Then widen the area: at least one full city district, ideally the whole city,
-   to judge how the procedural generator handles different urban fabric.
-
-## 2. Functional requirements
-
-Status legend: ✅ delivered & verified · 🟡 partially delivered · ⏳ planned ·
-❌ not planned.
-
-| ID | Requirement | Status | Evidence |
-| --- | --- | --- | --- |
-| FR-1 | Offline data pipeline from a public OSM extract (WGS84 → local metres) producing per-tile JSON payloads: buildings with volumes/roofs, roads, surfaces/water, trees, rails | ✅ | `scripts/ingest/extract.py`, `scripts/normalize/normalize.py`, `docs/ARCHITECTURE.md` §1–3, `docs/COVERAGE_REPORT*.md` |
-| FR-2 | Real building massing: extruded footprints, every OSM `roof:shape` (flat, gabled, hipped, pyramidal, skillion, dome, complex fallback), heights from OSM with provenance (`heightSource`) | ✅ | `src/city/buildings/**`, `src/city/roofs/**`, 321 unit tests, `docs/LIMITATIONS.md` §3 |
-| FR-3 | Procedural facades with no textures: window grids, ground-floor bands/shopfronts, cornices, balconies, night windows, LOD detail; archetype-driven presets | ✅ | `src/city/facades/**`, facade shader tests, `docs/screenshots/03-night.png` |
-| FR-4 | Environment: roads/pavements/kerbs/markings/tram rails/bridges, parks/forest/grass, water surfaces, deterministic vegetation (mapped + heuristic), correct layer ordering | ✅ | `src/city/environment/**`, `src/city/roads/**`, environment tests, `docs/screenshots/19-komsomolskoye-islands.png` |
-| FR-5 | True isometric orthographic camera (45° azimuth, `atan(1/√2)` elevation) with pan, cursor-anchored zoom, rotation and reset | ✅ | `src/engine/camera/**`, e2e tests 5–7, `src/shared/config.ts` |
-| FR-6 | Real pixel-art pipeline: low-resolution raster target, depth/normal outline, colour quantisation + dithering, nearest-neighbour upscale; clean-3D comparison toggle | ✅ | `src/engine/postprocess/**`, e2e test 9, `docs/ART_REFERENCE.md` |
-| FR-7 | Tile streaming with nearest-first order, bounded resident set (LRU), cancellation, worker-pool geometry build; no geometry cracks across tiles; tiles revalidated so data updates appear on refresh | ✅ | `src/engine/tiles/**`, `scripts/qa/cache-check.mjs`, e2e tests 2–3, 11 |
-| FR-8 | Building picking with info panel (name, address, archetype, height, floors, roof, OSM tags, stable OSM id) | ✅ | `src/engine/picking/**`, `src/app/**`, e2e test 10 |
-| FR-9 | Time-of-day slider (night windows), facade-detail toggle, pixel-art toggle, debug wireframe, loading indicator, visible ODbL attribution with data-sources panel | ✅ | `src/app/**`, e2e tests 8–9 |
-| FR-10 | Two datasets: a small committed pilot (instant start) and a generated 12 × 12 km city belt via `?dataset=city` (`pnpm run data:city`) | ✅ | `public/data/tiles/`, `docs/PROGRESS.md` verified numbers |
-| FR-11 | Curated landmark kit: iconic buildings get dedicated procedural geometry derived from real OSM footprints/parts instead of generic extrusion | 🟡 5 of 9 planned: Minsk Gate, National Library, Victory obelisk, Red Church, TV tower. Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral | `src/city/buildings/landmarks.ts` + `cityGate.ts`, `nationalLibrary.ts`, `victoryObelisk.ts`, `redChurch.ts`, `tvTower.ts`; landmark tests and screenshots 11–18, 25–28 |
-| FR-12 | Park attractions as real geometry: the two Minsk ferris wheels (Gorky Park, Chelyuskintsev Park) with supports, rims, cabins, platform and beacon | ✅ | `src/city/environment/ferrisWheel.ts`, `TileData.attractions`, 19 wheel tests, `docs/screenshots/22`–`24` |
-| FR-13 | Reported visual/data defects must be diagnosed from data and fixed (not hidden): trees in impossible places, flooded park, missing river islands, wrong Palace facade, stadium as slab, missing Minsk Gate, TV tower as a prism, misplaced eternal flame, stale tiles after data regeneration | ✅ | defect table in `docs/PROGRESS.md`; commits `8d8741f`, `2fbeb30`, `85e66fa`, `7703158`, `11a8b3d`, `4916455`, `3e50014` |
-| FR-14 | Documentation set: architecture, data sources/licences, progress/roadmap, limitations, QA report, testing guide, requirements | ✅ | `docs/ARCHITECTURE.md`, `DATA_SOURCES.md`, `PROGRESS.md`, `LIMITATIONS.md`, `QA_REPORT.md`, `TESTING.md`, this file |
-| FR-15 | Automated QA: unit/data tests, browser e2e, geometry audit, data validation, screenshot capture, tile-cache regression | ✅ | `pnpm test` 321/321, `pnpm test:e2e` 12/12, `scripts/qa/**`, `docs/TESTING.md` |
-
-## 3. Non-functional requirements
-
-| ID | Requirement | Status | Evidence |
-| --- | --- | --- | --- |
-| NFR-1 | Deterministic pipeline: same PBF + same scripts produces byte-identical tiles | ✅ | documented in README; `data:all` workflow |
-| NFR-2 | Licensing discipline: only ODbL/permissive sources; non-commercial datasets excluded and documented | ✅ | `docs/DATA_SOURCES.md` (§4 licence conclusions) |
-| NFR-3 | Honesty: every inferred height/roof documented; known gaps listed rather than papered over | ✅ | `docs/LIMITATIONS.md`, provenance fields in the data |
-| NFR-4 | Performance: 60 FPS at the pilot overview and at full-city residency on the reference machine; interactive picking/controls | ✅ | 60 FPS, city 4 010 150 triangles / 424 draw calls / 540 MB geometry |
-| NFR-5 | Maintainability: strict TypeScript, frozen shared contracts, single-responsibility modules, no committed generated bulk data | ✅ | `tsc --noEmit` clean, `src/shared/**`, `.gitignore` (city tiles ignored) |
-| NFR-6 | Reproducibility: documented one-command data, dev, test, e2e, capture workflows | ✅ | `README.md` quick start, `docs/TESTING.md` |
-| NFR-7 | Budget discipline: the work must not balloon in time/cost; reuse of existing assets/references instead of re-modelling everything | ✅ | city dataset reused from one PBF; landmark kit derived from measured references |
-| NFR-8 | Windows 11 / PowerShell working environment, Python 3.11 + pnpm toolchain | ✅ | README requirements, scripts |
-
-## 4. Acceptance criteria
-
-| ID | Criterion | Current result |
+| Brief section | Status | Key evidence / note |
 | --- | --- | --- |
-| AC-1 | App loads the committed dataset and renders a non-empty city with no console/page errors | ✅ e2e 1–4; 0 errors |
-| AC-2 | Camera controls change the rendered image / camera state | ✅ e2e 5–7 |
-| AC-3 | Display toggles and time of day visibly change the frame | ✅ e2e 8–9 |
-| AC-4 | Clicking a building opens the info panel with real OSM metadata | ✅ e2e 10 |
-| AC-5 | Five-minute interaction run and page reload stay error-free | ✅ e2e 11–12 |
-| AC-6 | Full unit/data suite and typecheck are green | ✅ 321/321, `tsc` clean |
-| AC-7 | City belt renders at 60 FPS with all 144 tiles resident | ✅ 424 draws, 4 010 150 tris, 540 MB |
-| AC-8 | Every reported defect has a documented root cause, a verified fix and a screenshot/regression check where visual | ✅ defect table + screenshots 19–28, cache-check script |
-| AC-9 | Docs let a new maintainer rebuild data, run tests and understand what is inferred vs surveyed | ✅ README, ARCHITECTURE, DATA_SOURCES, LIMITATIONS, TESTING |
+| §1 Product vision — interactive, geographically accurate, procedurally generated 3D Minsk with stylized isometric pixel-art renderer; real streets/footprints/parks/water; true 3D buildings with facades; ortho camera; GPU rasterization; dynamic loading; selection + info; configurable time of day; not a static image | ✅ | App runs as a static Vite site over generated tile JSON; real OSM geometry (31 783 buildings city-wide), procedural facades, picking, day/night; see `README.md`, `docs/PROGRESS.md` verified numbers |
+| §1 Study the original Warsaw project's technical explanation before implementation | ✅ | `docs/ART_REFERENCE.md` — the write-up was read (Cloudflare bypass via `r.jina.ai`) and decomposed into the camera, low-res raster + nearest upscale, depth/normal outlines, palette/dither, fog, silhouettes; implementation follows it |
+| §1 Minsk architectural identity (Soviet neoclassical / Stalinist avenue, Soviet residential, modern) | ✅ | archetype classifier + 11 facade presets (stalin, khrushchev, panel, modern, office, historic, industrial, small, civic, palace, stadium); `src/city/facades/presets.ts`, facade shader; screenshots 01–03, 06 |
+| §2 Windows 11 / PowerShell / Node 24 / RTX 3080 / 32 GB; free & open-source tooling; no paid APIs or cloud GPUs; no backend; static hosting; real geography, no AI-generated city | ✅ | documented in `README.md`; stack is TypeScript/Vite/Three.js/React + Python/shapely/pyproj/pyosmium; no backend; one offline PBF |
+| §2 Priorities 1→8 (working app first, then footprint accuracy, facades, pixel-art, navigation, performance, expansion, secondary details) | ✅ | execution order followed; city expansion only after pilot acceptance; animations deferred (§7) |
+| §3 Recommended stack (TypeScript, Vite, Three.js, React for UI only, GLSL/WebGL2; Python 3.11+, pyproj, shapely, GDAL/Rasterio where appropriate, pyosmium; Vitest, Playwright) | ✅ except GDAL/Rasterio | no raster/DEM data was used, so GDAL/Rasterio was not needed; `docs/ARCHITECTURE.md` §1 |
+| §3 Renderer independent from offline data pipeline; React does not manage thousands of building components | ✅ | `scripts/**` produces JSON; the renderer consumes `TileData`; React only mounts the canvas and panels (`src/app/**`) |
+| §3 Local metric EPSG:32635 with local origin; consistent conventions; 512 m tiles configurable; compact JSON/GeoJSON with binary+Brotli-compatible design; browser never downloads the whole raw dataset | ✅ (binary deferred) | `scripts/geo_config.py` + `src/shared/config.ts` kept in sync by a unit test; pilot 512 m tiles, city 1024 m; tiles streamed per view; binary/Brotli encoding is documented as the next scalability step (LIMITATIONS §3) |
+| §4 Data source research (OSM/Geofabrik, Overture, GlobalBuildingAtlas, OSM Simple 3D tagging); investigate DEM/height/rooftop data; assume nothing is complete; GBA non-commercial → isolated; ODbL attribution; no prohibited bulk downloads; per-source record (provider, coverage, resolution, date, licence, quality) | ✅ | `docs/DATA_SOURCES.md` §1–§7: Overture STAC + Microsoft footprint checks, GBA terms and coverage, OSM extract details, licence conclusions, attribution blocks; GBA not integrated; no bulk tile downloads |
+| §4 Geometry source fallback hierarchy (OSM → external height → levels → heuristics → defaults) with provenance; never present inferred values as surveyed | ✅ | `heightSource` = osm_height / osm_levels / heuristic per volume; coverage report counts 1.7 % explicit in the city belt; `docs/LIMITATIONS.md` §3 |
+| §4 Compare coverage/height completeness before choosing external datasets; do not download a global dataset for one square kilometre | ✅ | DATA_SOURCES §3: Minsk has no Microsoft height estimates and GBA heights are non-commercial, so no external height layer is used |
+| §5 Initial scope: central Minsk around 53.902 N, 27.561 E near October Square; 1×1 km expandable to 2×2 km; actual buildings/roads/green/water; mandatory first milestone before whole-city generation | ✅ | pilot is 1.6×1.6 km around 53.9022/27.5610 (`scripts/geo_config.py`), city belt added only after the pilot passed QA |
+| §5 Milestone A — geospatial foundation: extraction, footprints, multipolygons/inner rings, building:parts, roads, parks, water, local metres, schema, reproducible tiles, tests for invalid geometry/duplicates/projection, coverage report with required metrics | ✅ | `scripts/ingest/extract.py`, `scripts/normalize/normalize.py` (MultiPolygon with roles, inner rings preserved), `docs/COVERAGE_REPORT.md` + `docs/COVERAGE_REPORT_CITY.md` list footprints, explicit-height/levels/roof shares, invalid/sliver/orphan counts, height provenance; validation script exits non-zero on hard errors |
+| §5 Milestone B — real 3D buildings: walls, roofs, elevation, correct normals, materials/colors, no holes/floating geometry; complex/concave footprints, holes, parts without double rendering; flat/gabled/hipped/skillion/pyramidal (+dome/complex fallback); explicit roof tags; robust fallback with warning | ✅ | `src/city/buildings/**`, `src/city/roofs/**`; non-overlapping volumes resolved in the pipeline; geometry audit on all 16 pilot tiles: 0 issues; roofs for every OSM shape, `complex` falls back to flat with a warning |
+| §5 Milestone C — procedural facades: window rows/columns, floor-aware, archetype spacing, distinct colors/materials, entrances/ground-floor differentiation, balconies, cornices, orientation shading; 6 required presets; metadata-first classification; batched/instanced windows (no one draw call per window); readable at close/medium zoom, details disabled far | ✅ | GLSL facade shader driven by vertex attributes (`aUV`, `aStyle`, `aFace`); 11 presets incl. the six required ones; one draw call per tile; LOD detail scale; facade tests (60) and screenshots |
+| §5 Milestone D — isometric rendering: orthographic classic isometric default, smooth pan/zoom/rotation, mouse+keyboard, ground+building shadows, ambient+directional light, pixel-art palette, readable silhouettes; pixel-art as real post-processing (low-res framebuffer, nearest upscale, depth/normal outlines, limited colours, controlled shadows/contrast, no excessive edge noise); debug toggle | ✅ | `src/engine/camera/**`, `src/engine/renderer/**`, `src/engine/postprocess/**`; ortho frustum, 45° azimuth + `atan(1/√2)` elevation; 640×360 internal target, outline + dither/levels, nearest upscale; pixel/clean-3D toggle in UI |
+| §5 Milestone E — streets and environment: road widths from OSM attributes, pavements, intersections, parks/grass, rivers/water, trees, rail/tram, materials; deterministic vegetation from mapped + land-use; no false claims about surveyed trees; roads not intersecting walls/floating; flat terrain with a later provider supported | 🟡 deviation documented | roads/pavements/kerbs/markings/tram/rail, parks, water, deterministic trees (mapped flag distinguishes OSM trees) implemented; **intersections are rendered as overlapping road polygons without fillets** (LIMITATIONS §4); flat terrain — the renderer is built around a flat ground plane and a provider can be added, but **no terrain-provider interface is shipped yet** (LIMITATIONS §6) |
+| §5 Milestone F — interaction: drag/WASD pan, wheel zoom, Q/E or right-drag rotate, reset button, building inspect, pixel toggle, facade-detail toggle, time-of-day slider, loading indicator, raycasting with stable IDs, attribution panel | ✅ | `src/app/**`, `src/engine/camera/controls.ts`, picking map uses stable `${type}${id}` ids; e2e tests 5–10; visible ODbL badge + data-sources panel |
+| §6 Scaling strategy: visible-tile calc, background loading, caching/eviction, cancellation, configurable LOD/view distance, batched meshes, shared materials, disposal, stable ids across tiles, no duplicates at borders, cracks avoided, separation of data/render, no thousands of Meshes, all districts without rewrite | ✅ | `src/engine/tiles/**`: nearest-first streaming, LRU (city budget fits all 144 tiles), abort/build worker pool, per-tile merged geometries (≤3 environment + 1 building draw calls per tile), disposal, `crossingBuildingIds`; full city renders with 424 draw calls |
+| §7 Future features (trams/trolleybuses/trains/parked vehicles; sun from real date/time; night windows + street lamps; seasons/snow; custom landmark models; historical info cards; bookmarks/deep links; mobile) | 🟡 subset | **implemented**: sun position derived from real date + Minsk lat/lon (`solarPosition.ts`), night illuminated windows, 5 curated landmark models (Minsk Gate, National Library, Victory obelisk, Red Church, TV tower) + 2 ferris wheels; **not implemented** (non-MVP): transport vehicles, street lamps, seasons/snow, historical info cards, bookmarks/deep links, mobile/touch |
+| §8 Multi-agent execution with real environment mechanisms; interfaces before parallel work; bounded tasks; explicit file ownership; worktrees/branches preferred; no shared-file overwrites; review+tests before integration; commits at checkpoints; progress doc + issue list; honest blockers | 🟡 deviation | used the real mechanisms: native `spawn_teammate`/`send_message`, shared task board, Playwright browser automation, parallel tool calls. Six teammates: geometry-dev, facade-artist, environment-dev, renderer-dev, qa-dev, landmark-dev; Lead owned pipeline/contracts/integration. **Deviation**: one checkout with disjoint file ownership instead of git worktrees (the brief allows alternative mechanisms); integration only after tests; git checkpoints per round; `docs/PROGRESS.md` + `docs/AGENT_TASKS.md` |
+| §9 Repository structure | 🟡 deviations | see §4 below (structure followed, with documented adaptations) |
+| §10 QA: geodata/dedup/projection tests; geometry tests (roofs, winding, normals, heights, complex polygons); browser tests (server, district loads, geometry visible, facades, camera, errors, selection, reload); visual QA captures (overview, residential close-up, large building close-up, night) inspected; performance targets 45–60 FPS at 1080p with measured FPS/draw calls/triangles/load time/memory | ✅ | 321 unit/data tests, 12 e2e tests, geometry audit, coverage validation; screenshots in `docs/screenshots/` (overview 01, close-ups 02/03/06, night 03); measured 60 FPS, 424 draw calls, 4 010 150 triangles, ~540 MB geometry at full city; 1600×900 and 1900×1000 captures (no explicit 1920×1080 capture — see §5) |
+| §11 Execution procedure phases 0–5 | ✅ | Phase 0 research/bootstrap (`ab0b248`), Phase 1 first real render (`d254aba`), Phase 2 architecture quality (`8652c60`/`6892719`), Phase 3 pixel-art identity (same rounds), Phase 4 streaming + expansion (`c4892e4`), Phase 5 atmosphere/advanced (landmarks, wheels, TV tower, fixes) |
+| §12 Completion requirements (working app, real geometry, true 3D + facades, windows, isometric pixel-art mode, camera, not static, documented sources/limitations, tests pass, screenshots, startup commands in README, PowerShell workflow, no undocumented GIS steps) | ✅ | all met; see §3 below and `README.md` quick start |
 
-## 5. Change requests (scope evolution)
+## 2. Milestone evidence (brief §5)
 
-| # | Request (chronological) | Outcome |
+| Milestone | Current evidence |
+| --- | --- |
+| A — Geospatial foundation | 16 pilot tiles (512 m) + 144 city tiles (1024 m); coverage reports list counts, height/roof provenance, invalid/sliver/orphan parts; validation PASSED for both datasets |
+| B — Real 3D buildings | 31 783 city buildings; roofs for all supported shapes; geometry audit PASSED (0 issues); merged per-tile geometry with exact flat normals |
+| C — Procedural facades | 11 presets, GLSL windows/floors/balconies/cornices/night/LOD; single draw call per tile; close-up screenshots show windows and facade structure |
+| D — Isometric rendering | true isometric ortho camera, custom controls, shadows, day/night, pixel-art post pass (640×360 internal), clean-3D toggle |
+| E — Streets and environment | roads/pavements/kerbs/markings/tram/rail, parks/water/islands, deterministic trees; deviations in intersection fillets and terrain provider (above) |
+| F — Interaction | pan/zoom/rotate/reset, picking + OSM metadata panel, pixel/facade/wireframe toggles, time-of-day slider, loading indicator, attribution card |
+
+## 3. Completion checklist (brief §12)
+
+| Requirement | Result |
+| --- | --- |
+| Local browser application starts | ✅ `pnpm dev` (Vite, `http://127.0.0.1:5173`); e2e boots it and renders |
+| Real geographic geometry from central Minsk | ✅ OSM extract (BBBike `Minsk.osm.pbf`, Geofabrik fallback), EPSG:32635 local origin |
+| True 3D buildings with roofs and visible facades | ✅ extruded volumes + roof geometry + procedural facades |
+| Windows and architectural variations | ✅ shader windows, 11 archetype presets |
+| Isometric pixel-art mode | ✅ post-processing pipeline + toggle |
+| Camera pan/rotation/zoom | ✅ custom controls, e2e 5–7 |
+| Not a static illustration | ✅ live WebGL2 scene, streaming, picking |
+| Data sources and limitations documented | ✅ `docs/DATA_SOURCES.md`, `docs/LIMITATIONS.md` |
+| Essential automated tests pass | ✅ 321/321 unit, 12/12 e2e, geometry audit, data validation, cache regression |
+| At least one browser screenshot | ✅ 28 screenshots in `docs/screenshots/` (git-ignored, produced by `scripts/qa/capture.mjs` and the landmark/flame capture script) |
+| Startup commands in README, PowerShell workflow, no undocumented GIS steps | ✅ README quick start: `pnpm install` → `pnpm dev`; data workflows `data:all`, `data:city` (documented) |
+
+## 4. Repository structure deviations (brief §9)
+
+| Brief | Actual | Reason |
 | --- | --- | --- |
-| CR-1 | Fix reported defects: trees in impossible places, Yanka Kupala park flooded diagonally, wrong Palace of the Republic facade, Dynamo stadium as an oval slab | ✅ fixed (`8d8741f`): exclusion masks, polygon-only water, `palace`/`stadium` archetypes |
-| CR-2 | Extend coverage at least to one full district, preferably the whole city, to test the procedural generator on diverse fabric | ✅ 12 × 12 km city dataset (`c4892e4`), all 144 tiles verified |
-| CR-3 | Curate iconic landmarks (Minsk Gate first, then National Library, Victory obelisk, Red Church) | ✅ `2fbeb30`, `b5e4e4a`; landmark contract + registry + 4 modules |
-| CR-4 | «Почему ворота города отсутствуют?» — investigate missing City Gate | ✅ root cause: malformed OSM relation + broken aggregate ways + coarse dedupe; curated fix |
-| CR-5 | Remove the park flooding and restore missing river islands | ✅ relation assembly by roles, GeoJSON ring order, short member ways kept (`85e66fa`, `11a8b3d`) |
-| CR-6 | Add the two ferris wheels as real models | ✅ `11a8b3d`; OSM `attraction=big_wheel` nodes + curated dimensions |
-| CR-7 | Replace `way/1158101395` (a white prism) with the real TV/radio lattice mast | ✅ `4916455`; 176 m procedural lattice from the measured profile |
-| CR-8 | Fix the eternal flame of Victory Square (should stand in the square, not against the obelisk) | ✅ `3e50014`; real OSM position of `way/1308903766` |
-| CR-9 | After a data regeneration the page kept showing old geometry — explain/fix | ✅ `7703158`; tiles are revalidated (`no-cache`), regression check `scripts/qa/cache-check.mjs` |
-| CR-10 | Make the roadmap and the initial-requirements doc available | ✅ this file + roadmap section in `docs/PROGRESS.md` |
+| `src/ui/` | React shell lives in `src/app/` | `app/` already contained the UI shell from the bootstrap; adding `ui/` would have split one responsibility across two folders |
+| `public/landmarks/` | no asset directory; landmarks are procedural modules + curated data flags (`landmark` field, `ATTRACTION_CURATION`) | the brief asks for models, not necessarily assets; procedural geometry avoids third-party asset licensing and keeps the tile payload free of binary blobs |
+| `scripts/tiles/` | tile emission is a section of `scripts/normalize/normalize.py` | tiles are produced from the same normalized scene in one pass (no separate serialization stage); file remains documented |
+| `tests/integration/`, `tests/visual/` | root `integration-check.mjs` + `scripts/qa/**` (Playwright captures, geometry audit, screenshot analysis, cache check) | integration/visual checks are browser- or CI-script based, not Vitest files |
+| docs list | added `ART_REFERENCE.md`, `TESTING.md`, `QA_REPORT.md`, `REQUIREMENTS_ORIGINAL.md`, `REQUIREMENTS.md`, coverage reports | documentation required by later brief sections (QA, testing, art reference, requirements) |
 
-## 6. Explicit non-goals
+## 5. Known gaps and honest deviations
 
-* No interiors, no per-floor detail, no stairs/elevators.
-* No terrain/DEM: the ground is flat (`docs/LIMITATIONS.md` §6).
-* No underground objects (metro, passages) as visible surfaces.
-* No live OSM updates or backend: the app is a static Vite site over generated JSON.
-* No photorealistic textures: facades are procedural shader geometry.
-* No custom model for every building: only the curated landmark kit is bespoke;
-  everything else is the procedural generator.
-* No turn-by-turn navigation, routing or search beyond the building info panel.
-* Not a commercial product; the data licences keep it an ODbL/non-commercial
-  prototype (see `docs/DATA_SOURCES.md`).
+1. **Intersection fillets** — road surfaces are buffered centrelines and junctions
+   are rendered as overlapping polygons without fillets (brief §5 Milestone E asks
+   for intersections; they exist, just not filleted). Documented in
+   `docs/LIMITATIONS.md` §4.
+2. **Terrain provider** — terrain is flat and no provider interface is shipped;
+   the brief allows flat terrain "provided the architecture explicitly supports a
+   later terrain-height provider". The environment geometry is separated from the
+   data pipeline and a provider can be inserted, but this is documented as an
+   extension point rather than an implemented interface (`LIMITATIONS.md` §6).
+3. **Binary/Brotli tiles** — the payload format is JSON; the design is compatible
+   with later binary arrays + Brotli, but this optimisation was not implemented
+   (brief §3 explicitly permits MVP JSON; documented in `PROGRESS.md` roadmap).
+4. **1080p performance measurement** — the brief targets 45–60 FPS at 1080p. The
+   scene is rasterised internally at 640×360 and measured at 60 FPS in 1600×900
+   and 1900×1000 captures (city and pilot); no explicit 1920×1080 capture exists.
+   The low internal render target makes the scene cost almost independent of the
+   canvas size, but this exact resolution was not measured — stated honestly.
+5. **Future features (§7)** — transport vehicles, street lamps, seasons/snow,
+   historical info cards, bookmarks/deep links and mobile/touch controls are not
+   implemented. Sun position, night windows, curated landmark models and two
+   ferris wheels are implemented.
+6. **Landmark kit** — 5 of 9 planned landmarks are modelled; the remaining four
+   (Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral) are
+   listed in the roadmap.
+7. **Multi-agent** — one git checkout with disjoint file ownership and a shared
+   task board was used instead of per-agent git worktrees; the brief allows
+   alternative mechanisms if documented (`docs/AGENT_TASKS.md`).
+8. **No external height/DEM layer** — deliberately not integrated (licensing and
+   coverage; brief §4 requires evaluation, not use).
 
-## 7. Traceability quick index
+## 6. Change requests beyond the original brief
+
+These were requested later; each is delivered and verified.
+
+| # | Request | Outcome |
+| --- | --- | --- |
+| CR-1 | Fix visual defects: trees in impossible places, flooded park, wrong Palace facade, stadium slab | ✅ `8d8741f` |
+| CR-2 | Expand to at least one full district, preferably the whole city | ✅ 12 × 12 km city dataset (`c4892e4`) |
+| CR-3 | Curated landmark kit (Minsk Gate, then National Library, Victory obelisk, Red Church) | ✅ `2fbeb30`, `b5e4e4a` |
+| CR-4 | Investigate missing Minsk Gate | ✅ root cause in malformed OSM relation + broken aggregates + coarse dedupe; curated fix |
+| CR-5 | Remove park flood; restore river islands | ✅ role-based relation assembly, ring order, short member ways (`85e66fa`, `11a8b3d`) |
+| CR-6 | Real ferris wheels in the parks | ✅ `11a8b3d` (2 wheels, data-driven attractions) |
+| CR-7 | TV/radio lattice mast instead of `way/1158101395` prism | ✅ `4916455` |
+| CR-8 | Eternal flame of Victory Square in the square, not against the obelisk | ✅ `3e50014` |
+| CR-9 | Tiles refreshed after data regeneration (stale-cache bug) | ✅ `7703158` + `scripts/qa/cache-check.mjs` |
+| CR-10 | Requirements doc + roadmap | ✅ this document + `docs/REQUIREMENTS_ORIGINAL.md` + `docs/PROGRESS.md` roadmap |
+
+## 7. Verification snapshot (2026-10-29)
+
+* `pnpm test` — 321/321 (20 files); `pnpm test:e2e` — 12/12; `tsc --noEmit` clean;
+  `vite build` OK; `data:validate` pilot + city PASSED; geometry audit PASSED;
+  tile-cache regression PASS.
+* Pilot: 654 buildings, 16/16 tiles, 222 702 triangles, 49 draw calls, 60 FPS,
+  28.5 MB geometry.
+* City belt: 31 783 buildings, 144/144 tiles, 4 010 150 triangles, 424 draw calls,
+  540 MB geometry, 60 FPS.
+* Curated landmarks: 5 buildings + 2 ferris wheels; documented in
+  `docs/DATA_SOURCES.md` §7.
+
+## 8. Traceability index
 
 | Area | Source of truth |
 | --- | --- |
-| Coordinates & payload schema | `src/shared/types.ts`, `src/shared/config.ts`, `docs/ARCHITECTURE.md` §2–3 |
+| Original brief | `docs/REQUIREMENTS_ORIGINAL.md` |
+| Requirements → status | this file |
+| Roadmap / next iterations | `docs/PROGRESS.md` (section "Roadmap") |
+| Architecture & contracts | `docs/ARCHITECTURE.md`, `src/shared/**` |
 | Data pipeline | `scripts/ingest/extract.py`, `scripts/normalize/normalize.py`, `scripts/geo_config.py` |
-| Curated data fixes / landmarks / attractions | `docs/DATA_SOURCES.md` §7, `src/city/buildings/landmarks.ts`, `ATTRACTION_CURATION` in `normalize.py` |
-| Renderer | `src/engine/**`, `docs/ARCHITECTURE.md` §4 |
-| Geometry | `src/city/**`, tests under `tests/unit/{buildings,roofs,environment,facades}` |
-| QA evidence | `docs/QA_REPORT.md`, `docs/COVERAGE_REPORT*.md`, `screenshots/` (git-ignored), `scripts/qa/**` |
-| Known gaps | `docs/LIMITATIONS.md`, open-issues table in `docs/PROGRESS.md` |
+| Licensing | `docs/DATA_SOURCES.md` |
+| Known gaps | `docs/LIMITATIONS.md`, `docs/PROGRESS.md` open issues |
+| QA evidence | `docs/QA_REPORT.md`, `docs/COVERAGE_REPORT*.md`, `scripts/qa/**`, `docs/screenshots/` |
+| Multi-agent contract | `docs/AGENT_TASKS.md` |
 
-## 8. Revision history
+## 9. Revision history
 
 | Date | Change |
 | --- | --- |
-| 2026-10-29 | Reconstructed the requirements baseline from the project brief and change requests; added the current verification matrix and non-goals. |
+| 2026-10-29 | Replaced the reconstructed requirements with the verbatim original brief + this compliance matrix. |
