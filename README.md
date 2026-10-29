@@ -11,8 +11,10 @@ Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsa
 
 **Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
 tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
-generated offline, streamed and rendered in the browser. See `docs/PROGRESS.md`
-for milestone status and `docs/LIMITATIONS.md` for what is inferred vs. surveyed.
+generated offline, streamed and rendered in the browser. See
+`docs/REQUIREMENTS.md` for the requirements baseline and change-request log,
+`docs/PROGRESS.md` for milestone/roadmap status and `docs/LIMITATIONS.md` for
+what is inferred vs. surveyed.
 
 ---
 
@@ -135,10 +137,13 @@ src/
 scripts/      offline pipeline: ingest, normalize, tiles, validation, QA
 public/data/  generated tiles (static hosting)
 tests/        unit (Vitest), integration, e2e (Playwright)
-docs/         architecture, data sources, progress, limitations, QA report
+docs/         requirements, architecture, data sources, roadmap/progress,
+              limitations, QA report, testing guide
 ```
 
-See `docs/ARCHITECTURE.md` for the coordinate conventions, tile payload schema,
+See `docs/REQUIREMENTS.md` for the requirements baseline and change-request log,
+`docs/PROGRESS.md` for the roadmap and verified numbers,
+`docs/ARCHITECTURE.md` for the coordinate conventions, tile payload schema,
 renderer pipeline and module ownership.
 
 ## Data sources & licensing

@@ -3,6 +3,9 @@
 Living document. Status is updated only after the work has actually run.
 Legend: ✅ done & verified · 🟡 implemented, verification pending · ⏳ in progress · ❌ blocked
 
+Requirement baseline and change-request log: [`docs/REQUIREMENTS.md`](REQUIREMENTS.md).
+Next iterations: see the [roadmap](#roadmap-next-iterations) at the bottom.
+
 ## Current state
 
 **Delivered: an interactive isometric pixel-art 3D map of Minsk, generated from
@@ -32,8 +35,10 @@ Park (`TileData.attractions`, built by `src/city/environment/ferrisWheel.ts` and
 merged with the vegetation geometry). Wheel dimensions and plane bearings are
 curated (OSM only carries `attraction=big_wheel` + height), see §7.
 
-Acceptance screenshots: `docs/screenshots/` (overview, close-up, detail, night,
-golden hour, clean 3D debug, landmark shots `11`–`18`).
+Acceptance screenshots: `docs/screenshots/` — overview, close-up, detail, night,
+golden hour, clean 3D; landmarks `11`–`18`, `25`–`28`; park attractions `22`–`24`;
+water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
+`28`.
 
 ### Defect-fix round (after first visual review)
 
@@ -44,7 +49,7 @@ golden hour, clean 3D debug, landmark shots `11`–`18`).
 | Palace of the Republic facade wrong | generic `civic` preset | new `palace` archetype + preset (colonnade rhythm, glazed loggia, paired windows, double cornice) and massing accents (plinth/cornice/attic bands) |
 | Dynamo stadium was an oval slab | every `building=*` was extruded | new `stadium` archetype: arena bowl (outer wall, sloped stands, inner rim, pitch), grandstands as blank rakes; 18 stadiums in the city dataset |
 | Minsk Gate («Ворота Минска») absent | OSM relation `9383682` is a malformed multipolygon with two outer rings; two `height=0.01` aggregate ways traced several unrelated buildings at once, and the old duplicate detector deleted the whole ensemble and four real neighbouring buildings | new `landmark: "minsk-gate"` contract + `src/city/buildings/cityGate.ts`: flat parapet, clock/emblem medallions and corner turrets on both tower tiers (38.5 m); two broken aggregates skipped (`CURATED_DUPLICATE_IDS`), real ways (Bobruiskaya 13/15, Leningradskaya 7, Ulyanovskaya 34) now render; height sanity (<2.5 m ignored) and footprint-verified dedupe added |
-| Yanka Kupala park "flooded", all river islands missing | `extract.py` concatenated every multipolygon member ring into one `Polygon` (member roles ignored); `make_valid` repaired the Svislach water relation `14605048` into a ~13 ha blob over the park. `normalize.py` then re-polygonised the rings, so island holes (inner rings) were dropped instead of being kept | relation assembly now respects `outer`/`inner` roles (noded linework → `polygonize` → shells minus holes, MultiPolygon output); GeoJSON ring order (exterior + holes) is preserved, so water polygons keep their islands — 14 city water polygons with 50 island holes now render (Komsomolskoye Lake 11, Drozdy 4, Svislach 1, …). A follow-up fix keeps **2-point member ways** in the assembly: the Svislach river and the park boundary are split into many short segments, and dropping them had left those rings open — the river relation was lost and that river section rendered as dry land. Both relations restore (park 104 474 m², Svislach 76 118 m² + 26 182 m²) while the bogus flood stays gone. A regression this exposed in the Minsk Gate — its ring-shaped relation no longer captured the tower parts — is fixed by the curated `CURATED_PART_PARENTS` mapping, so the clock/emblem crown is back |
+| Yanka Kupala park "flooded", all river islands missing | `extract.py` concatenated every multipolygon member ring into one `Polygon` (member roles ignored); `make_valid` repaired the Svislach water relation `14605048` into a ~13 ha blob over the park. `normalize.py` then re-polygonised the rings, so island holes (inner rings) were dropped instead of being kept | relation assembly now respects `outer`/`inner` roles (noded linework → `polygonize` → shells minus holes, MultiPolygon output); GeoJSON ring order (exterior + holes) is preserved, so water polygons keep their islands — 15 city water polygons with 42 island holes now render (Komsomolskoye Lake 11, Drozdy 4, Svislach 1, …). A follow-up fix keeps **2-point member ways** in the assembly: the Svislach river and the park boundary are split into many short segments, and dropping them had left those rings open — the river relation was lost and that river section rendered as dry land. Both relations restore (park 104 474 m², Svislach 76 118 m² + 26 182 m²) while the bogus flood stays gone. A regression this exposed in the Minsk Gate — its ring-shaped relation no longer captured the tower parts — is fixed by the curated `CURATED_PART_PARENTS` mapping, so the clock/emblem crown is back |
 | Victory obelisk: eternal flame against the monument base corner | the flame slab was placed at `baseExtent + 2.6 m` along local −Y, so a 5.2 m slab touched the pedestal base and sat at the obelisk instead of in the square | the flame is its own 9 × 9 m platform at the real OSM position (`way/1308903766` «Вечны агонь», centroid 24 m west-south of the monument centre, `FLAME_OFFSET` in `src/city/buildings/victoryObelisk.ts`), i.e. in the middle of the square in front of the obelisk (`docs/screenshots/27-victory-flame.png`) |
 
 
@@ -59,7 +64,8 @@ golden hour, clean 3D debug, landmark shots `11`–`18`).
 | E — Streets and environment | ✅ | roads/pavements/kerbs/markings/tram rails/bridges, parks, water banding, deterministic trees; ≤10.7k env tris/tile; 67 unit tests |
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 783 buildings, 4.01 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
-| Landmark kit (curated) | 🟡 5 of 7+ landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
+| Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
+| Park attractions (curated) | ✅ | both ferris wheels as real geometry: Gorky Park (54 m, Ø51 m, 36 cabins) and Chelyuskintsev Park (28 m, 18 cabins), with A-frame supports, rims/spokes, upright cabins, boarding deck, hub sign and the trees cleared around them; `TileData.attractions` + `src/city/environment/ferrisWheel.ts`, 19 tests |
 
 ## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop)
 
@@ -129,7 +135,41 @@ golden hour, clean 3D debug, landmark shots `11`–`18`).
 | 4 | Some vegetation is procedurally placed (140 000 instances city-wide) | low | `TreeInstance.mapped` distinguishes surveyed from inferred; UI/docs say so |
 | 5 | Underground objects (metro, passages) are not rendered | low | deliberate: they painted black strips on squares in an early build |
 | 6 | Flat terrain (no DEM) | low | terrain-height provider is the extension point; see `docs/DATA_SOURCES.md` |
-| 7 | Landmark geometry is curated for 4 of the iconic buildings only | medium | done: Minsk Gate, National Library, Victory obelisk, Red Church. Next candidates (same pattern: data flag + dedicated module in `src/city/buildings/landmarks.ts`): Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral |
+| 7 | Landmark geometry is curated for 5 of the iconic buildings only | medium | done: Minsk Gate, National Library, Victory obelisk, Red Church, TV tower. Next candidates (same pattern: data flag + dedicated module in `src/city/buildings/landmarks.ts`): Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral |
+
+## Roadmap (next iterations)
+
+Ordered by expected visual/value gain per effort. Nothing here is started unless
+it also appears as delivered above.
+
+**Now — finish the curated kit (highest value per effort)**
+1. Remaining four landmarks, same pattern (data flag + dedicated geometry module
+   in `src/city/buildings/landmarks.ts`): Bolshoi Theatre, Minsk railway station
+   (with the platforms/canopy), Minsk-Arena, Holy Spirit Cathedral. Each needs a
+   measured reference (photo / old X-Plane model) like the five existing ones.
+2. Landmark LOD/decoration pass: the library's curtain-wall mullion grid and
+   LED band, the gate's sculpture groups, the church's buttresses/rose-window
+   tracery; landmark night lighting hints (lit clock, TV-tower warning lights).
+
+**Next — data quality and performance headroom**
+3. Roof-shape model for the ~60 % heuristic city buildings (per-district
+   statistics instead of one global heuristic) — the largest remaining visual
+   error outside the centre.
+4. Binary/Brotli tile encoding (city payload is ~60 MB uncompressed JSON;
+   gzip ≈ 24 %).
+5. Dense-forest tree tier if the tree triangle budget on 2 000+-tree tiles
+   becomes a bottleneck again (the current LOD tiers hold 60 FPS).
+6. Multipolygon edge cases: relations with missing members or broken ring order
+   still fall back to a heuristic assembly; log/count them in the coverage report.
+7. Animation layer: slow wheel rotation (8 min/turn), blinking aviation lights,
+   animated night windows — needs a separate animated scene object, so it is a
+   renderer task, not a tile-geometry task.
+
+**Later / optional**
+8. Terrain (DEM) support — flat ground is the current documented limitation.
+9. Mobile/touch camera controls (currently mouse + keyboard).
+10. Additional datasets (e.g. a zoomed-in "hero" dataset around Independence
+    Square) if tile load time becomes the limiting factor.
 
 ## Multi-agent execution
 
