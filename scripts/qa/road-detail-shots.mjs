@@ -191,6 +191,15 @@ const SHOTS = [
     pixel: 0,
     time: 13,
   },
+  {
+    file: '17-second-bridge-clean.png',
+    note: 'second bridge (different deck pairing): parapet continuity check',
+    fx: 197,
+    fy: 433,
+    zoom: 60,
+    pixel: 0,
+    time: 13,
+  },
 ];
 
 function shotUrl(shot) {
