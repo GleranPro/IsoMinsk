@@ -101,19 +101,19 @@ byte-identical output):
 | drivable `kind:"road"` pieces | 1 056 |
 | pieces with `centerline` | 1 026 (97.2 %) |
 | pieces with `lanes` / `oneway` / `surface` / `sidewalk` | 302 / 289 / 677 / 146 |
-| crossings | 212 (signals 138, zebra 59, unmarked 15); 66 mapped nodes merged, 1 unmatched |
+| crossings | 204 (signals 134, zebra 57, unmarked 13); 74 mapped nodes merged, 1 unmatched |
 | parking surface polygons (tiles) | 132 across 15 tiles |
-| payload size | 2 224 919 B (2 173 KiB) vs 2 139 060 B baseline → **+85 859 B = +4.0 %** |
+| payload size | 2 224 206 B (2 172 KiB) vs 2 139 060 B baseline → **+85 146 B = +4.0 %** |
 
-Why the pilot has 212 crossings and not 1 000+: the pilot is 1.6 × 1.6 km inside
+Why the pilot has 204 crossings and not 1 000+: the pilot is 1.6 × 1.6 km inside
 a ~4 km extraction window; the window contains 1 904 crossing/signal nodes, the
 pilot only 279. Likewise 115 parking areas are inside the pilot (132 after tile
 splitting). This is the data extent, not missing extraction.
 
 Renderer (`node scripts/qa/geometryAudit.ts`, `screenshots/roads/`):
 
-* environment triangles 156 000 → **200 934** (+29 %) at 49–81 draw calls and
-  60 FPS; total pilot geometry 267 922 triangles (audit), geometry audit PASSED;
+* environment triangles 156 000 → **193 860** (+24 %) at 49–81 draw calls and
+  60 FPS; total pilot geometry 260 848 triangles (audit), geometry audit PASSED;
 * `pnpm typecheck`, `vite build`, 356 unit tests (22 files) pass, including
   `tests/unit/environment/roadDetail.test.ts` (23) and `parking.test.ts` (10);
 * screenshots: `screenshots/roads/01-junction-zebras-pixel.png`,

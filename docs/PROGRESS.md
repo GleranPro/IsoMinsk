@@ -31,7 +31,7 @@ dividers, edge lines, red cycle lanes), zebra crossings with stop lines and
 signal heads from `TileData.crossings`, raised medians on wide two-way avenues,
 parking stalls on `amenity=parking` surfaces, one-sided sidewalks, and concrete
 parapets/posts/piers on bridges. See `docs/ROADS_DETAIL.md` for the contract and
-the measured result (pilot payload +4.0 %, +29 % environment triangles).
+the measured result (pilot payload +4.0 %, +24 % environment triangles).
 
 **Curated landmarks** (`landmark` field in the data, dedicated geometry modules):
 «Ворота Минска» (clock/emblem towers), Национальная библиотека (rhombicuboctahedron
@@ -72,10 +72,10 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 (`roadPath`, `markingLayout`, `crossings`, `medianMesh`, `bridgeMesh`,
 `parkingMesh`). Full contract and measurements: `docs/ROADS_DETAIL.md`.
 
-**Pilot result:** 1 026 / 1 056 drivable pieces carry a centreline (97 %), 212
-crossings (138 signals / 59 zebra / 15 unmarked; 66 mapped nodes merged), 132
-parking polygons; payload 2 224 919 B (+4.0 % vs 2 139 060 B), environment
-triangles +29 % (156 k → 200.9 k) at 49–81 draw calls and 60 FPS. Tiles are
+**Pilot result:** 1 026 / 1 056 drivable pieces carry a centreline (97 %), 204
+crossings (134 signals / 57 zebra / 13 unmarked; 74 mapped nodes merged), 132
+parking polygons; payload 2 224 206 B (+4.0 % vs 2 139 060 B), environment
+triangles +24 % (156 k → 193.9 k) at 49–81 draw calls and 60 FPS. Tiles are
 byte-identical across two normalize runs; validation and the geometry audit
 pass; 356 unit tests pass. Screenshots with pixel-art and clean 3D variants are
 produced by `scripts/qa/road-detail-shots.mjs` into `screenshots/roads/`.
@@ -86,8 +86,8 @@ minimum-area-rectangle edge, which dropped one whole row on trapezoid aprons
 row); derived medians were suppressed by overlapping *polygons* of parallel
 streets (junction detection now uses street centrelines, not asphalt overlap);
 crossings mapped as two signal nodes per crossing painted two zebra bands (now
-merged within 18 m on the same road, 275 → 212 features); bridge rail bands were
-dark-on-dark (now light concrete parapets).
+merged within 18 m on the same road plus a cross-way pass within 8 m, 275 → 204
+features); bridge rail bands were dark-on-dark (now light concrete parapets).
 
 
 ## Milestones
@@ -98,7 +98,7 @@ dark-on-dark (now light concrete parapets).
 | B — Real 3D buildings | ✅ | merged per-tile geometry; ~65 000 triangles for 905 volumes; flat normals exact; all roof shapes; 53 unit tests; geometry audit 0 issues on all 16 tiles |
 | C — Procedural facades | ✅ | GLSL facade material: window grids, dark day glass, ground-floor bands + shopfronts, cornices, balconies, night windows, LOD detail; 9 archetype presets; 60 facade tests |
 | D — Isometric pixel-art rendering | ✅ | ortho camera + custom controls, tile streaming with LRU/cancel/worker pool, low-res target + depth-outline + dither/levels post pass, nearest upscale, artt-directed shadows, pixel-art vs clean-3D toggle |
-| E — Streets and environment | ✅ | roads/pavements/kerbs/tram rails/bridges, parks, water banding, deterministic trees; **v0.2 road detail**: centreline-driven lane markings, 212 zebra/signal crossings with stop lines and signal heads, derived medians, 132 parking surfaces with stalls, red cycle lanes, one-sided sidewalks, bridge parapets/piers; ≤10.7k env tris/tile before the round, 200.9 k env triangles total after; 108 unit tests in the environment/roads suites |
+| E — Streets and environment | ✅ | roads/pavements/kerbs/tram rails/bridges, parks, water banding, deterministic trees; **v0.2 road detail**: centreline-driven lane markings, 204 zebra/signal crossings with stop lines and signal heads, derived medians, 132 parking surfaces with stalls, red cycle lanes, one-sided sidewalks, bridge parapets/piers; ≤10.7k env tris/tile before the round, 193.9 k env triangles total after; 108 unit tests in the environment/roads suites |
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 783 buildings, 4.01 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
 | Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
@@ -107,8 +107,8 @@ dark-on-dark (now light concrete parapets).
 ## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop)
 
 **Central pilot dataset** (1600×900):
-* 654 buildings, 16 tiles resident, 267 922 triangles (≈67 000 building +
-  ≈201 000 environment/trees incl. road detail; geometry audit passes), 49–81
+* 654 buildings, 16 tiles resident, 260 848 triangles (≈67 000 building +
+  ≈194 000 environment/trees incl. road detail; geometry audit passes), 49–81
   draw calls, 60 FPS, 640×360 internal pixel-art resolution, ~32 MB GPU
   geometry, 0 console/page errors. The v0.2 road detail added ≈45 k environment
   triangles (lane markings, zebra/stop lines/signals, medians, parking stalls,

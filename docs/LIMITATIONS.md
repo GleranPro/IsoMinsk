@@ -213,8 +213,8 @@ From the generated milestone data:
   Nodes are snapped to the nearest drivable centreline within 22 m and crossings
   on the same road within 18 m are merged. Where OSM places a node inside a large
   junction box (or maps only the signal head without the zebra), the painted
-  crossing can sit further into the intersection than reality. 212 features exist
-  in the pilot; unmarked crossings (15) are deliberately not painted.
+  crossing can sit further into the intersection than reality. 204 features exist
+  in the pilot; unmarked crossings (13) are deliberately not painted.
 - **Medians are derived only for wide two-way carriageways** (motorway/trunk/
   primary/secondary, ≥ 14 m, ≥ 4 lanes or ≥ 17 m) and break at crossings,
   junctions and 8 m from the piece ends. A median between dual carriageways mapped

@@ -656,6 +656,10 @@ CENTERLINE_SIMPLIFY_M = 1.0
 CENTERLINE_MIN_LENGTH_M = 2.0
 CROSSING_MATCH_RADIUS_M = 22.0
 CROSSING_DEDUPE_M = 18.0
+# Second merge pass across different road pieces (same crossing mapped at both
+# kerbs / ways split at the junction): metres and radians.
+CROSSING_MERGE_DIST_M = 8.0
+CROSSING_MERGE_ANGLE_RAD = 0.35
 
 
 def parse_lanes(tags: dict[str, str]) -> int | None:
@@ -935,12 +939,65 @@ def build_crossings(crossing_nodes: list[dict], road_polys: list[dict]) -> tuple
             "station": (existing["station"] + candidate["station"]) / 2.0,
             "record": merged,
         }
-    records = [candidate["record"] for candidate in sorted(accepted, key=lambda cand: cand["osm_id"])]
+    records = _merge_crossings_by_position(accepted, stats)
     stats["crossings"] = len(records)
     stats["crossings_signals"] = sum(1 for record in records if record["kind"] == "signals")
     stats["crossings_zebra"] = sum(1 for record in records if record["kind"] == "zebra")
     stats["crossings_unmarked"] = sum(1 for record in records if record["kind"] == "unmarked")
     return records, stats
+
+
+def _angle_diff_mod_pi(a: float, b: float) -> float:
+    delta = (a - b) % math.pi
+    return min(delta, math.pi - delta)
+
+
+def _merge_record_pair(existing: dict, candidate: dict) -> dict:
+    """Merge two crossing records into one (average position, strongest kind)."""
+    kind_rank = {"signals": 2, "zebra": 1, "unmarked": 0}
+    merged = dict(existing)
+    merged["x"] = round((existing["x"] + candidate["x"]) / 2.0, 1)
+    merged["y"] = round((existing["y"] + candidate["y"]) / 2.0, 1)
+    merged["width"] = max(existing["width"], candidate["width"])
+    merged["kind"] = (
+        candidate["kind"]
+        if kind_rank[candidate["kind"]] > kind_rank[existing["kind"]]
+        else existing["kind"]
+    )
+    return merged
+
+
+def _merge_crossings_by_position(accepted: list[dict], stats: Counter) -> list[dict]:
+    """Merge crossings that snapped to different road pieces but are the same one.
+
+    OSM ways are split at junctions, so the two kerb ends of one pedestrian
+    crossing can be snapped to different ways; they then arrive as two records
+    a few metres apart which would paint two overlapping zebra bands. Merge
+    nearby crossings with a similar road direction (modulo pi, because a way's
+    OSM direction is arbitrary) and a similar carriageway width.
+    """
+    merged: list[dict] = []
+    for candidate in sorted(accepted, key=lambda cand: cand["osm_id"]):
+        record = candidate["record"]
+        target = None
+        for existing in merged:
+            other = existing["record"]
+            if abs(existing["station"] - candidate["station"]) <= CROSSING_DEDUPE_M and existing["road_key"] == candidate["road_key"]:
+                continue  # already handled by the per-road pass
+            if math.hypot(record["x"] - other["x"], record["y"] - other["y"]) > CROSSING_MERGE_DIST_M:
+                continue
+            if _angle_diff_mod_pi(record["angle"], other["angle"]) > CROSSING_MERGE_ANGLE_RAD:
+                continue
+            if max(record["width"], other["width"]) / max(1e-6, min(record["width"], other["width"])) > 1.5:
+                continue
+            target = existing
+            break
+        if target is None:
+            merged.append(candidate)
+            continue
+        stats["crossing_deduped"] += 1
+        target["record"] = _merge_record_pair(target["record"], record)
+    return [candidate["record"] for candidate in sorted(merged, key=lambda cand: cand["osm_id"])]
 
 
 def surface_kind_from_tags(tags: dict[str, str]) -> str:

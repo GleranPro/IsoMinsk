@@ -42,7 +42,7 @@
    "y": -1,
    "file": "tiles/-2_-1.json",
    "buildings": 61,
-   "bytes": 105090
+   "bytes": 104914
   },
   {
    "x": -2,
@@ -70,35 +70,35 @@
    "y": -1,
    "file": "tiles/-1_-1.json",
    "buildings": 97,
-   "bytes": 168620
+   "bytes": 168530
   },
   {
    "x": -1,
    "y": 0,
    "file": "tiles/-1_0.json",
    "buildings": 93,
-   "bytes": 250622
+   "bytes": 250532
   },
   {
    "x": -1,
    "y": 1,
    "file": "tiles/-1_1.json",
    "buildings": 44,
-   "bytes": 127098
+   "bytes": 127006
   },
   {
    "x": 0,
    "y": -2,
    "file": "tiles/0_-2.json",
    "buildings": 23,
-   "bytes": 95525
+   "bytes": 95435
   },
   {
    "x": 0,
    "y": -1,
    "file": "tiles/0_-1.json",
    "buildings": 71,
-   "bytes": 205447
+   "bytes": 205357
   },
   {
    "x": 0,
@@ -112,7 +112,7 @@
    "y": 1,
    "file": "tiles/0_1.json",
    "buildings": 3,
-   "bytes": 239000
+   "bytes": 238915
   },
   {
    "x": 1,
@@ -152,7 +152,7 @@
   "roads": 3538,
   "trees": 8560,
   "attractions": 0,
-  "crossings": 212,
+  "crossings": 204,
   "parking": 132
  },
  "attribution": [
