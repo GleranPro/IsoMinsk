@@ -5,13 +5,14 @@ Commands assume the repository root: `D:\Workk\VoxelMinsk`.
 
 | Suite | Command | What it covers | Typical time |
 | --- | --- | --- | --- |
-| Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync, real-data validation and the curated landmarks (Minsk Gate, National Library, obelisk, Red Church) (321 tests at the current milestone) | ~30 s |
+| Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync, real-data validation, curated landmarks, road-detail geometry and parking stalls (356 tests at the current milestone) | ~30 s |
 | Data pipeline | `pnpm run data:all` | download → extract → normalize (writes tiles + manifest) → coverage report | several minutes |
 | Geometry audit | `pnpm exec tsx scripts/qa/geometryAudit.ts` | builds building/environment meshes from the real tiles without a browser; writes `screenshots/geometry-audit.json`; exits 1 on invalid geometry | ~5 s |
 | QA unit only | `pnpm exec vitest run tests/unit/data tests/unit/tile_math.test.ts tests/unit/config_sync.test.ts` | 44 QA-owned tests | ~1 s |
 | E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 12 browser tests against the real app + dev server, hardware WebGL | **~1 min** |
 | E2E (default software) | `pnpm exec playwright test` | same tests on SwiftShader (deterministic CI mode) | ~10 min |
 | Screenshots | `$env:QA_GPU='1'; pnpm run qa:capture` | 6 fixed screenshots + `screenshots/stats.json` + `screenshots/console.log` (waits for all 16 tiles) | ~45 s |
+| Road-detail shots | `$env:QA_GPU='1'; node scripts/qa/road-detail-shots.mjs` | 16 close-ups of lane markings, zebras, medians, parking stalls and bridges (pixel-art + clean 3D, day/night) into `screenshots/roads/` with `shots.json`; `QA_ONLY=<name-substring>` captures a single shot | ~90 s |
 | Screenshot metrics | `node scripts/qa/analyze-screenshots.mjs` | `screenshots/analysis.json` (colour / luminance / near-black share / content bbox) for the canonical 6 | ~5 s |
 | Tile cache freshness | `node scripts/qa/cache-check.mjs` | proves a changed tile payload is revalidated on reload instead of served stale from the HTTP cache (mutates + restores `city-tiles/-1_-2.json`; needs `?dataset=city`) | ~40 s |
 | Typecheck | `pnpm run typecheck` | `tsc --noEmit` over `src`, `tests`, `scripts` | ~10 s |

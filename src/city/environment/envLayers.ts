@@ -12,8 +12,10 @@
  *        < kerb < road < markings < railTrack
  *
  * `feature` is a local layer for specific built features (sports pitches,
- * plazas, sand) that frequently sit *inside* a broader park/landuse polygon in
- * OSM, and therefore must draw above it to stay visible.
+ * plazas, sand, parking) that frequently sit *inside* a broader park/landuse
+ * polygon in OSM, and therefore must draw above it to stay visible. Parking
+ * asphalt intentionally stays *below* the water and road layers so a
+ * street-side bay that overlaps the carriageway is hidden under the road.
  *
  * Coplanar *overlapping* polygons in the same category would still shimmer, so
  * every category also gets a small deterministic per-polygon offset ("jitter")
@@ -122,8 +124,11 @@ export function surfaceTier(kind: SurfaceKind | undefined): SurfaceTier {
     case 'pitch':
     case 'plaza':
     case 'sand':
+    case 'parking':
       // Specific features often drawn inside a park/landuse polygon in OSM:
-      // they need to sit above it to remain visible.
+      // they need to sit above it to remain visible. Parking bays along a
+      // street edge are also often nested in road landuse; they still end up
+      // below the road layer so the carriageway paints over them.
       return 'feature';
     default:
       return 'landuse';

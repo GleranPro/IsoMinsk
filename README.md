@@ -11,7 +11,10 @@ Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsa
 
 **Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
 tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
-generated offline, streamed and rendered in the browser. See
+generated offline, streamed and rendered in the browser. The streets carry real
+road detail derived from OSM centrelines: lane markings, zebra crossings with
+stop lines and signal heads, medians, parking stalls, cycle lanes and bridge
+parapets (`docs/ROADS_DETAIL.md`). See
 `docs/REQUIREMENTS_ORIGINAL.md` for the original brief, `docs/REQUIREMENTS.md`
 for the compliance matrix, `docs/PROGRESS.md` for milestone/roadmap status and
 `docs/LIMITATIONS.md` for what is inferred vs. surveyed.
@@ -92,11 +95,13 @@ tiles.
 
 ```powershell
 pnpm run typecheck      # TypeScript, strict
-pnpm test               # Vitest: 321 tests — geometry, roofs, facades, environment,
-                        #   tile maths, config sync, curated landmarks, real-tile data
+pnpm test               # Vitest: 356 tests — geometry, roofs, facades, environment,
+                        #   tile maths, config sync, curated landmarks, road detail,
+                        #   real-tile data
 pnpm run test:e2e       # Playwright: 12 browser tests (real WebGL)
 $env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)
 pnpm run qa:capture     # 6 canonical screenshots + stats.json + console.log
+node scripts/qa/road-detail-shots.mjs  # 16 close-ups of markings/zebras/parking/bridges
 node scripts/qa/geometryAudit.ts    # headless geometry audit of all tiles (needs tsx)
 ```
 

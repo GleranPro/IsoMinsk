@@ -199,6 +199,43 @@ From the generated milestone data:
   each stats snapshot before storing it (fixed QA defect D12), so the numbers in
   the screenshots are live values.
 
+### 6.1 Road detail (v0.2 centreline payload)
+
+- **Markings are derived from OSM tags, not surveyed paint.** `lanes` is tagged
+  on only 302 of 1 056 drivable pilot pieces (29 %); untagged streets get the
+  class-based default layout (centre line + edge lines, no lane dividers). The
+  double solid centre is applied to motorway/trunk/primary with ≥ 4 lanes and
+  ≥ 14 m width; everything else gets a dashed centre. Paint stops 11 m from a
+  crossing street's centreline (>30° direction difference), 4 m from a parallel
+  one and 7 m from the way ends; on very large squares some centre dashes can
+  still remain because no street centreline passes nearby.
+- **Crossings come from `highway=crossing` / `highway=traffic_signals` nodes.**
+  Nodes are snapped to the nearest drivable centreline within 22 m and crossings
+  on the same road within 18 m are merged. Where OSM places a node inside a large
+  junction box (or maps only the signal head without the zebra), the painted
+  crossing can sit further into the intersection than reality. 212 features exist
+  in the pilot; unmarked crossings (15) are deliberately not painted.
+- **Medians are derived only for wide two-way carriageways** (motorway/trunk/
+  primary/secondary, ≥ 14 m, ≥ 4 lanes or ≥ 17 m) and break at crossings,
+  junctions and 8 m from the piece ends. A median between dual carriageways mapped
+  as two separate `oneway` ways is not synthesised — that gap is whatever the
+  mapped landcover/road geometry shows (often a green strip in OSM).
+- **Parking stalls are a stylistic derivation**: two rows along the real
+  cross-section edges of an `amenity=parking` area, 5 m deep / 2.6 m pitch,
+  single row on narrow bays, with caps 200 tri/polygon and 600 tri/tile. Real
+  aisle/stall layouts (and disabled/EV bays) are not in OSM and not modelled.
+  Underground/multi-storey/rooftop parking is skipped.
+- **Bridge parapets/piers are stylistic**: a 0.95 m concrete parapet wall plus
+  posts every 6 m and piers every ~20 m on every `bridge=yes` road piece with a
+  centreline. Bridge type, railing design, pier position and span are not surveyed.
+- **Old tiles keep the old look**: tiles generated before manifest `0.2.0` have no
+  centreline/crossings/parking kind, so they render with the single dashed-axis
+  fallback and no zebras/median/parapet detail (relevant to a stale
+  `public/data/city-tiles` without `pnpm run data:city`).
+- **Pixel-art resolution limits legibility**: a 0.12 m lane line is sub-pixel at
+  overview zoom (10–12 px/m); markings are designed for close zoom (≤ 120 m
+  orthographic half-height).
+
 ## 7. Test / QA limitations
 
 - E2E tests run in headless Chromium. They verify *presence of change*, not visual

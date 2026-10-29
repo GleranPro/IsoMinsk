@@ -24,6 +24,15 @@ procedural facades, avenues, pavements, tram rails, parks, the Svislach river,
 deterministic vegetation, cast shadows, day/night lighting and building
 selection with OSM metadata.
 
+**Road detail (v0.2 centreline payload)**: drivable road tiles now carry the OSM
+centreline plus `lanes` / `oneway` / `surface` / `cycleway` / `sidewalk`, so the
+renderer paints real lane markings (dashed and double-solid centres, lane
+dividers, edge lines, red cycle lanes), zebra crossings with stop lines and
+signal heads from `TileData.crossings`, raised medians on wide two-way avenues,
+parking stalls on `amenity=parking` surfaces, one-sided sidewalks, and concrete
+parapets/posts/piers on bridges. See `docs/ROADS_DETAIL.md` for the contract and
+the measured result (pilot payload +4.0 %, +29 % environment triangles).
+
 **Curated landmarks** (`landmark` field in the data, dedicated geometry modules):
 «Ворота Минска» (clock/emblem towers), Национальная библиотека (rhombicuboctahedron
 "diamond" on its terraced podium), Монумент Победы obelisk on Victory Square, the
@@ -54,6 +63,32 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 | Yanka Kupala park "flooded", all river islands missing | `extract.py` concatenated every multipolygon member ring into one `Polygon` (member roles ignored); `make_valid` repaired the Svislach water relation `14605048` into a ~13 ha blob over the park. `normalize.py` then re-polygonised the rings, so island holes (inner rings) were dropped instead of being kept | relation assembly now respects `outer`/`inner` roles (noded linework → `polygonize` → shells minus holes, MultiPolygon output); GeoJSON ring order (exterior + holes) is preserved, so water polygons keep their islands — 15 city water polygons with 42 island holes now render (Komsomolskoye Lake 11, Drozdy 4, Svislach 1, …). A follow-up fix keeps **2-point member ways** in the assembly: the Svislach river and the park boundary are split into many short segments, and dropping them had left those rings open — the river relation was lost and that river section rendered as dry land. Both relations restore (park 104 474 m², Svislach 76 118 m² + 26 182 m²) while the bogus flood stays gone. A regression this exposed in the Minsk Gate — its ring-shaped relation no longer captured the tower parts — is fixed by the curated `CURATED_PART_PARENTS` mapping, so the clock/emblem crown is back |
 | Victory obelisk: eternal flame against the monument base corner | the flame slab was placed at `baseExtent + 2.6 m` along local −Y, so a 5.2 m slab touched the pedestal base and sat at the obelisk instead of in the square | the flame is its own 9 × 9 m platform at the real OSM position (`way/1308903766` «Вечны агонь», centroid 24 m west-south of the monument centre, `FLAME_OFFSET` in `src/city/buildings/victoryObelisk.ts`), i.e. in the middle of the square in front of the obelisk (`docs/screenshots/27-victory-flame.png`) |
 
+### Road-detail round (v0.2 centreline payload)
+
+**Delivered:** `RoadPolygon.centerline` + `lanes` / `oneway` / `surface` /
+`cycleway` / `sidewalk` / `sidewalkWidth`, `TileData.crossings`,
+`SurfaceKind: "parking"`; extractor node pass for `highway=crossing` /
+`highway=traffic_signals`; renderer layout modules
+(`roadPath`, `markingLayout`, `crossings`, `medianMesh`, `bridgeMesh`,
+`parkingMesh`). Full contract and measurements: `docs/ROADS_DETAIL.md`.
+
+**Pilot result:** 1 026 / 1 056 drivable pieces carry a centreline (97 %), 212
+crossings (138 signals / 59 zebra / 15 unmarked; 66 mapped nodes merged), 132
+parking polygons; payload 2 224 919 B (+4.0 % vs 2 139 060 B), environment
+triangles +29 % (156 k → 200.9 k) at 49–81 draw calls and 60 FPS. Tiles are
+byte-identical across two normalize runs; validation and the geometry audit
+pass; 356 unit tests pass. Screenshots with pixel-art and clean 3D variants are
+produced by `scripts/qa/road-detail-shots.mjs` into `screenshots/roads/`.
+
+**Fixes found during the visual pass:** parking stall rows used the
+minimum-area-rectangle edge, which dropped one whole row on trapezoid aprons
+(now each row follows the real cross-section edge, and narrow bays get a single
+row); derived medians were suppressed by overlapping *polygons* of parallel
+streets (junction detection now uses street centrelines, not asphalt overlap);
+crossings mapped as two signal nodes per crossing painted two zebra bands (now
+merged within 18 m on the same road, 275 → 212 features); bridge rail bands were
+dark-on-dark (now light concrete parapets).
+
 
 ## Milestones
 
@@ -63,7 +98,7 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 | B — Real 3D buildings | ✅ | merged per-tile geometry; ~65 000 triangles for 905 volumes; flat normals exact; all roof shapes; 53 unit tests; geometry audit 0 issues on all 16 tiles |
 | C — Procedural facades | ✅ | GLSL facade material: window grids, dark day glass, ground-floor bands + shopfronts, cornices, balconies, night windows, LOD detail; 9 archetype presets; 60 facade tests |
 | D — Isometric pixel-art rendering | ✅ | ortho camera + custom controls, tile streaming with LRU/cancel/worker pool, low-res target + depth-outline + dither/levels post pass, nearest upscale, artt-directed shadows, pixel-art vs clean-3D toggle |
-| E — Streets and environment | ✅ | roads/pavements/kerbs/markings/tram rails/bridges, parks, water banding, deterministic trees; ≤10.7k env tris/tile; 67 unit tests |
+| E — Streets and environment | ✅ | roads/pavements/kerbs/tram rails/bridges, parks, water banding, deterministic trees; **v0.2 road detail**: centreline-driven lane markings, 212 zebra/signal crossings with stop lines and signal heads, derived medians, 132 parking surfaces with stalls, red cycle lanes, one-sided sidewalks, bridge parapets/piers; ≤10.7k env tris/tile before the round, 200.9 k env triangles total after; 108 unit tests in the environment/roads suites |
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 783 buildings, 4.01 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
 | Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
@@ -72,10 +107,12 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 ## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop)
 
 **Central pilot dataset** (1600×900):
-* 654 buildings, 16 tiles resident, 222 702 triangles (≈67 000 building +
-  ≈156 000 environment/trees; geometry audit passes), 49 draw calls, 60 FPS,
-  640×360 internal pixel-art resolution, ~28.5 MB GPU geometry, 0 console/page
-  errors. The restored park/forest relations added ~25 k environment triangles.
+* 654 buildings, 16 tiles resident, 267 922 triangles (≈67 000 building +
+  ≈201 000 environment/trees incl. road detail; geometry audit passes), 49–81
+  draw calls, 60 FPS, 640×360 internal pixel-art resolution, ~32 MB GPU
+  geometry, 0 console/page errors. The v0.2 road detail added ≈45 k environment
+  triangles (lane markings, zebra/stop lines/signals, medians, parking stalls,
+  bridge parapets); the restored park/forest relations added ~25 k earlier.
 
 **City dataset** (12 × 12 km, 1900×1000):
 * Full overview with **all 144 tiles resident: 424 draw calls, 4 010 150
@@ -114,9 +151,10 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 **General**
 * Day overview: mean luminance 108/255, 0 % near-black. Night (22:30): mean
   39/255 with sparse warm lit windows.
-* Tests: **321/321 unit** (Vitest, 20 files), **12/12 browser e2e** (Playwright,
-  software SwiftShader), `tsc --noEmit` clean, `vite build` ✓; pilot captured on
-  hardware GPU (RTX 3080, ANGLE/D3D11) at 60 FPS with 0 console errors.
+* Tests: **356/356 unit** (Vitest, 22 files), **12/12 browser e2e** (Playwright,
+  software SwiftShader), `tsc --noEmit` clean, `vite build` ✓, geometry audit
+  PASSED; pilot captured on hardware GPU (RTX 3080, ANGLE/D3D11) at 60 FPS with
+  0 console errors.
 * Data coverage (pilot): 8.7 % explicit `height`, 56 % from `building:levels`,
   35.3 % heuristic; 46.6 % explicit `roof:shape`. City belt: 1.7 % / 37.8 % /
   60.5 %, reflecting sparser tagging outside the centre.
@@ -157,8 +195,13 @@ it also appears as delivered above.
 3. Roof-shape model for the ~60 % heuristic city buildings (per-district
    statistics instead of one global heuristic) — the largest remaining visual
    error outside the centre.
-4. Binary/Brotli tile encoding (city payload is ~60 MB uncompressed JSON;
-   gzip ≈ 24 %).
+4. Road-detail follow-ups (see `docs/ROADS_DETAIL.md` known limits): crossings
+   whose OSM node sits inside the junction box, medians between dual
+   carriageways mapped as two one-way ways, signal heads on both approaches,
+   parking rows with a real aisle layout, regenerating `?dataset=city` tiles
+   with the v0.2 payload.
+4b. Binary/Brotli tile encoding (city payload is ~60 MB uncompressed JSON;
+    gzip ≈ 24 %).
 5. Dense-forest tree tier if the tree triangle budget on 2 000+-tree tiles
    becomes a bottleneck again (the current LOD tiers hold 60 FPS).
 6. Multipolygon edge cases: relations with missing members or broken ring order

@@ -19,6 +19,7 @@ import {
   surfaceTier,
   type Bounds4,
 } from './envLayers';
+import { emitParkingStalls, type ParkingBuildStats } from './parkingMesh';
 import {
   clipRingToYBand,
   prepareFlatPolygon,
@@ -42,7 +43,7 @@ const WATER_BAND_HEIGHT_M = 9;
 const WATER_BAND_MAX_RING_VERTS = 220;
 const WATER_BAND_MAX_TRIANGLES = 1400;
 
-export interface SurfaceBuildStats {
+export interface SurfaceBuildStats extends ParkingBuildStats {
   surfacePolygons: number;
   surfaceTriangles: number;
   waterPolygons: number;
@@ -61,6 +62,9 @@ export function createSurfaceStats(): SurfaceBuildStats {
     waterBands: 0,
     skippedPolygons: 0,
     degeneratePolygons: 0,
+    parkingPolygons: 0,
+    parkingStalls: 0,
+    parkingTriangles: 0,
   };
 }
 
@@ -135,6 +139,14 @@ function emitSurface(
   const added = sink.addFlatTriangles(triangles, layerY(tier, index), surfaceColor(kind));
   stats.surfacePolygons++;
   stats.surfaceTriangles += added;
+  if (kind === 'parking') {
+    // Parking asphalt is a flat feature-layer surface (above landuse/grass,
+    // below water/road, so street-side bays are covered by the carriageway).
+    // Painted stall ticks follow on the markings layer, exactly like the road
+    // marking line work.
+    stats.parkingPolygons++;
+    emitParkingStalls(sink, prepared, index, stats);
+  }
 }
 
 function emitWaterSurface(

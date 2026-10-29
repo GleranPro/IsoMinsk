@@ -5,13 +5,15 @@ Geofabrik Belarus country extract (~350 MB, fallback). Both are OSM data under
 ODbL 1.0 (see docs/DATA_SOURCES.md).
 
 pyosmium's C++ node-location index is used so that only ways/relations are handed
-to Python. Three cheap passes over the file:
+to Python. Five cheap passes over the file:
 
   A. relations (no geometry needed): keep multipolygon/building relations and
      remember the way ids that form their rings.
   B. ways (with node locations): buildings, roads, rails, waterways, land
      surfaces, plus the ring geometries of the relations collected in pass A.
   C. tag-filtered pass: individually mapped trees (natural=tree).
+  D. tag-filtered pass: non-building attractions (ferris wheels).
+  E. tag-filtered pass: pedestrian crossings and traffic-signal nodes.
 
 Output (data/interim/minsk_raw.geojson) is a GeoJSON-ish document where each
 feature carries its OSM id/type and the original tags. Projection, validation,
@@ -102,6 +104,9 @@ SURFACE_VALUES = {
     "residential", "industrial", "commercial", "construction", "orchard",
     "meadow", "village_green", "recreation_ground", "school", "university",
     "hospital", "theatre", "museum", "fountain", "garden", "fitness_station",
+    # `amenity=parking` areas: rendered as ground surfaces with stall markings.
+    # (The normaliser still drops underground / multi-storey / rooftop parking.)
+    "parking",
 }
 
 HIGHWAY_VALUES = {
@@ -122,6 +127,15 @@ KEEP_TAGS = {
     "width", "lanes", "surface", "bridge", "tunnel", "layer", "oneway",
     "place", "admin_level", "building:levels", "building:min_level",
     "roof:levels", "start_date", "ele",
+    # --- road detail (docs/ROADS_DETAIL.md) --------------------------------
+    # Tags that drive lane markings, pavements, crossings, signals and parking.
+    "cycleway", "cycleway:left", "cycleway:right",
+    "sidewalk", "footway",
+    "crossing", "crossing:ref", "crossing_ref", "crossing:markings",
+    "traffic_signals", "parking", "junction",
+    "lanes:forward", "lanes:backward",
+    "sidewalk:width", "sidewalk:both:width", "sidewalk:left:width",
+    "sidewalk:right:width",
 }
 MAX_TAGS = 48
 
@@ -344,6 +358,45 @@ class AttractionCollector:
         pass
 
 
+# --- pass E: crossings / traffic signals -----------------------------------
+
+class CrossingCollector:
+    """Collect pedestrian crossing and traffic-signal nodes in the window.
+
+    Both `highway=crossing` (marked/unmarked crossing) and
+    `highway=traffic_signals` (signal head) nodes are emitted as `crossing`
+    point features. The normaliser projects each one onto the nearest drivable
+    road centreline and turns it into a `CrossingFeature` for the renderer
+    (zebra bars, stop lines, signal heads).
+    """
+
+    def __init__(self) -> None:
+        self.features: list[dict] = []
+
+    def node(self, node) -> None:
+        tags = {t.k: t.v for t in node.tags}
+        if tags.get("highway") not in {"crossing", "traffic_signals"}:
+            return
+        if not node.location.valid():
+            return
+        lat, lon = node.location.lat, node.location.lon
+        if not inside_window(lat, lon):
+            return
+        self.features.append({
+            "kind": "crossing",
+            "osm_type": "node",
+            "osm_id": node.id,
+            "tags": filter_tags(tags),
+            "geometry": {"type": "Point", "coordinates": [round(lon, 7), round(lat, 7)]},
+        })
+
+    def way(self, way) -> None:
+        pass
+
+    def relation(self, rel) -> None:
+        pass
+
+
 # --- helpers ----------------------------------------------------------------
 
 def feature_in_window(feature: dict) -> bool:
@@ -538,7 +591,18 @@ def main() -> int:
             ac.node(obj)
     print(f"[pass D] {len(ac.features):,} attraction nodes in {time.time() - t3:.1f}s")
 
-    all_features = wc.features + relation_features + ac.features
+    # pass E вЂ” crossings / traffic signals (point features)
+    t4 = time.time()
+    cc = CrossingCollector()
+    fp = osmium.FileProcessor(str(pbf)).with_filter(
+        osmium.filter.TagFilter(("highway", "crossing"), ("highway", "traffic_signals"))
+    )
+    for obj in fp:
+        if isinstance(obj, osmium.osm.Node):
+            cc.node(obj)
+    print(f"[pass E] {len(cc.features):,} crossing/signal nodes in {time.time() - t4:.1f}s")
+
+    all_features = wc.features + relation_features + ac.features + cc.features
     kept = [f for f in all_features if feature_in_window(f)]
     print(f"[filter] kept {len(kept):,} / {len(all_features):,} features")
 
@@ -549,6 +613,7 @@ def main() -> int:
         "waterways": sum(1 for f in kept if f["kind"] == "waterway"),
         "surfaces": sum(1 for f in kept if f["kind"] == "surface"),
         "attractions": sum(1 for f in kept if f["kind"] == "attraction"),
+        "crossings": sum(1 for f in kept if f["kind"] == "crossing"),
         "trees": len(tc.trees),
     }
 

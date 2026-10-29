@@ -627,51 +627,329 @@ def normalise_road_class(tags: dict[str, str]) -> str:
     return ROAD_CLASS_NORMALISE.get(raw, raw)
 
 
+# --- road detail: derived attributes + centreline ---------------------------
+# Everything below feeds the additive `RoadPolygon` fields from
+# docs/ROADS_DETAIL.md. The renderer treats all of them as optional.
+
+SURFACE_TINT_VALUES = {
+    "asphalt", "paving_stones", "paved", "concrete", "cobblestone",
+    "ground", "dirt", "compacted",
+}
+# Classes that get the drivable-road treatment (centreline + lane detail).
+DRIVABLE_CLASSES = {
+    "motorway", "trunk", "primary", "secondary", "tertiary", "residential",
+    "service", "living_street", "unknown",
+}
+# Classes that currently get pavements; keeps the pre-v0.2 output unchanged.
+PAVEMENT_CLASSES = {"motorway", "trunk", "primary", "secondary", "tertiary", "residential"}
+SIDEWALK_DEFAULT_WIDTH_M = 3.0
+SIDEWALK_MIN_WIDTH_M = 1.0
+SIDEWALK_MAX_WIDTH_M = 8.0
+PARKING_EXCLUDED_TYPES = {"underground", "multi-storey", "multistorey", "rooftop", "roof"}
+PARKING_MIN_AREA_M2 = 25.0
+
+# Centreline payload hygiene: points are decimated and Douglas-Peucker
+# simplified. The budget allows a moderately dense line, so keep enough points
+# for curved avenues to stay faithful (±1 m) while staying compact.
+CENTERLINE_MIN_SPACING_M = 4.0
+CENTERLINE_SIMPLIFY_M = 1.0
+CENTERLINE_MIN_LENGTH_M = 2.0
+CROSSING_MATCH_RADIUS_M = 22.0
+CROSSING_DEDUPE_M = 18.0
+
+
+def parse_lanes(tags: dict[str, str]) -> int | None:
+    value = parse_number(tags.get("lanes"))
+    if value is None or not (1 <= value <= 8):
+        return None
+    return max(1, min(8, int(round(value))))
+
+
+def parse_oneway(tags: dict[str, str]) -> bool:
+    value = (tags.get("oneway") or "").strip().lower()
+    if value in {"yes", "true", "1", "-1"}:
+        return True
+    return (tags.get("junction") or "").strip().lower() == "roundabout"
+
+
+def parse_cycleway(tags: dict[str, str]) -> str | None:
+    for key in ("cycleway", "cycleway:left", "cycleway:right"):
+        value = (tags.get(key) or "").strip().lower()
+        if value in {"lane", "opposite_lane"}:
+            return "lane"
+        if value in {"track", "opposite_track"}:
+            return "track"
+    return None
+
+
+def parse_sidewalk(tags: dict[str, str], road_class: str) -> str:
+    """Where pavements are emitted for this way (docs/ROADS_DETAIL.md)."""
+    value = (tags.get("sidewalk") or "").strip().lower()
+    if value in {"both", "left", "right"}:
+        return value
+    if value in {"no", "none", "separate"}:
+        return "none"
+    if value == "yes":
+        return "both"
+    return "both" if road_class in PAVEMENT_CLASSES else "none"
+
+
+def parse_sidewalk_width(tags: dict[str, str], side: str) -> float:
+    keys = ["sidewalk:width"]
+    if side in {"both", "left", "right"}:
+        keys.insert(0, f"sidewalk:{side}:width")
+    for key in keys:
+        value = parse_number(tags.get(key))
+        if value is not None and value > 0:
+            return min(SIDEWALK_MAX_WIDTH_M, max(SIDEWALK_MIN_WIDTH_M, value))
+    return SIDEWALK_DEFAULT_WIDTH_M
+
+
+def road_detail_attrs(tags: dict[str, str], road_class: str) -> dict:
+    """Derived additive RoadPolygon fields for one OSM way.
+
+    Optional values are omitted (never `null`) so old renderers and the tile
+    schema contract stay valid.
+    """
+    attrs: dict = {}
+    lanes = parse_lanes(tags)
+    if lanes is not None:
+        attrs["lanes"] = lanes
+    if parse_oneway(tags):
+        attrs["oneway"] = True
+    surface = (tags.get("surface") or "").strip().lower()
+    if surface in SURFACE_TINT_VALUES:
+        attrs["surface"] = surface
+    cycleway = parse_cycleway(tags)
+    if cycleway is not None:
+        attrs["cycleway"] = cycleway
+    sidewalk = parse_sidewalk(tags, road_class)
+    if (tags.get("sidewalk") or "").strip():
+        attrs["sidewalk"] = sidewalk
+    if sidewalk != "none" and road_class in PAVEMENT_CLASSES:
+        sidewalk_width = parse_sidewalk_width(tags, sidewalk)
+        if abs(sidewalk_width - SIDEWALK_DEFAULT_WIDTH_M) > 1e-6:
+            attrs["sidewalkWidth"] = round(sidewalk_width, 1)
+    return attrs
+
+
+def simplify_centerline_points(seg: LineString) -> list[tuple[float, float]] | None:
+    """Decimate + simplify one clipped centreline segment for the payload."""
+    coords = list(seg.coords)
+    if len(coords) < 2:
+        return None
+    # 1. keep the first point and every point at least ~6 m from the previous
+    kept = [coords[0]]
+    for x, y in coords[1:]:
+        if math.dist((x, y), kept[-1]) >= CENTERLINE_MIN_SPACING_M:
+            kept.append((x, y))
+    if kept[-1] != coords[-1]:
+        if math.dist(coords[-1], kept[-1]) >= 1.0:
+            kept.append(coords[-1])
+        else:
+            kept[-1] = coords[-1]
+    # 2. Douglas-Peucker with a 1.5 m tolerance (rounding to 0.1 m hides ~2 cm)
+    if len(kept) >= 3:
+        kept = list(
+            LineString(kept).simplify(CENTERLINE_SIMPLIFY_M, preserve_topology=False).coords
+        )
+    # 3. drop points that collapse after rounding to 0.1 m
+    points = [kept[0]]
+    for point in kept[1:]:
+        if math.dist(point, points[-1]) > 0.05:
+            points.append(point)
+    if len(points) < 2 or LineString(points).length < CENTERLINE_MIN_LENGTH_M:
+        return None
+    return points
+
+
+def centerline_for_piece(
+    road_line: LineString, piece: Polygon, clip_rect: Polygon
+) -> tuple[list[float], float] | None:
+    """Clip a way centreline to one tile piece (docs/ROADS_DETAIL.md).
+
+    `clip_rect` is the same tile rectangle (intersected with the requested
+    area) that produced the polygon piece, so the line is clipped exactly like
+    the polygon. It is only attached when a sample point of the clipped line
+    lies inside that polygon piece — a duplicated polygon part of the same way
+    must not paint the same markings twice.
+    """
+    try:
+        clipped = road_line.intersection(clip_rect)
+    except Exception:
+        return None
+    best: tuple[float, list[tuple[float, float]]] | None = None
+    for segment in iter_lines(clipped):
+        points = simplify_centerline_points(segment)
+        if points is None:
+            continue
+        simplified = LineString(points)
+        sample_count = max(8, min(48, int(simplified.length / 2.0) + 1))
+        inside = False
+        for index in range(sample_count):
+            probe = simplified.interpolate((index + 0.5) / sample_count, normalized=True)
+            if piece.contains(probe):
+                inside = True
+                break
+        if not inside:
+            continue
+        length = simplified.length
+        if best is None or length > best[0]:
+            best = (length, points)
+    if best is None:
+        return None
+    points = best[1]
+    # GEOS preserves the way direction when clipping; stay defensive so the
+    # dash phase is always measured from the true first point of the way.
+    start_station = road_line.project(Point(points[0]))
+    end_station = road_line.project(Point(points[-1]))
+    if start_station > end_station:
+        points = points[::-1]
+        start_station = end_station
+    flattened: list[float] = []
+    for x, y in points:
+        rx, ry = round(x, 1), round(y, 1)
+        if len(flattened) >= 2 and flattened[-2] == rx and flattened[-1] == ry:
+            continue
+        flattened.extend((rx, ry))
+    if len(flattened) < 4:
+        return None
+    return flattened, round(start_station, 1)
+
+
+def road_tangent_angle(line: LineString, station: float) -> float:
+    """Direction of the road at `station`, radians CCW from +X (east)."""
+    length = line.length
+    before = line.interpolate(max(0.0, station - 0.5))
+    after = line.interpolate(min(length, station + 0.5))
+    dx = after.x - before.x
+    dy = after.y - before.y
+    if dx == 0.0 and dy == 0.0:
+        return 0.0
+    return math.atan2(dy, dx)
+
+
+def crossing_kind(tags: dict[str, str]) -> str:
+    """`signals` > `unmarked` > `zebra` (docs/ROADS_DETAIL.md)."""
+    if (
+        (tags.get("highway") or "") == "traffic_signals"
+        or (tags.get("crossing") or "").strip().lower() == "traffic_signals"
+        or bool((tags.get("traffic_signals") or "").strip())
+    ):
+        return "signals"
+    crossing = (tags.get("crossing") or "").strip().lower()
+    markings = (tags.get("crossing:markings") or "").strip().lower()
+    if crossing in {"unmarked", "no"} or markings == "no":
+        return "unmarked"
+    return "zebra"
+
+
+def build_crossings(crossing_nodes: list[dict], road_polys: list[dict]) -> tuple[list[dict], Counter]:
+    """Project crossing / signal nodes onto the nearest drivable road line.
+
+    Returns the deduplicated crossing records (sorted by OSM id) and stats.
+    The angle stored is the direction of the CROSSED ROAD at the projected
+    point (not the footway direction), which is what the renderer needs to lay
+    zebra bars across the carriageway.
+    """
+    stats: Counter = Counter()
+    drivable = [
+        road for road in road_polys
+        if road.get("kind") == "road" and road.get("class") in DRIVABLE_CLASSES
+    ]
+    stats["crossing_nodes"] = len(crossing_nodes)
+    if not drivable or not crossing_nodes:
+        return [], stats
+    lines = [road["line"] for road in drivable]
+    tree = STRtree(lines)
+    candidates: list[dict] = []
+    for node in crossing_nodes:
+        point = Point(node["x"], node["y"])
+        nearest = None
+        for index in tree.query(point, predicate="dwithin", distance=CROSSING_MATCH_RADIUS_M):
+            index = int(index)
+            line = lines[index]
+            station = line.project(point)
+            snapped = line.interpolate(station)
+            distance = point.distance(snapped)
+            if distance > CROSSING_MATCH_RADIUS_M:
+                continue
+            key = (distance, int(drivable[index].get("osm_id") or 0))
+            if nearest is None or key < nearest[0]:
+                nearest = (key, index, station, snapped)
+        if nearest is None:
+            stats["crossing_unmatched"] += 1
+            continue
+        _, index, station, snapped = nearest
+        road = drivable[index]
+        candidates.append({
+            "osm_id": int(node["osm_id"]),
+            "road_key": int(road.get("osm_id") or 0),
+            "station": station,
+            "record": {
+                "x": round(snapped.x, 1),
+                "y": round(snapped.y, 1),
+                "angle": round(road_tangent_angle(road["line"], station), 3),
+                "width": round(float(road["width"]), 1),
+                "kind": crossing_kind(node["tags"]),
+                "roadClass": road["class"],
+            },
+        })
+    # Deduplicate crossings on the same road that are close together along it:
+    # one pedestrian crossing is routinely mapped with two signal nodes (one per
+    # approach / kerb) 5-20 m apart, or as a crossing + signal pair. Merging
+    # them into one feature puts a single zebra band between the two stop lines
+    # instead of two overlapping bands. Distinct crossings on the same street
+    # are normally >20 m apart.
+    candidates.sort(key=lambda cand: (cand["osm_id"], cand["road_key"], cand["station"]))
+    accepted: list[dict] = []
+    kind_rank = {"signals": 2, "zebra": 1, "unmarked": 0}
+    for candidate in candidates:
+        collision = None
+        for index, existing in enumerate(accepted):
+            if (
+                existing["road_key"] == candidate["road_key"]
+                and abs(existing["station"] - candidate["station"]) <= CROSSING_DEDUPE_M
+            ):
+                collision = index
+                break
+        if collision is None:
+            accepted.append(candidate)
+            continue
+        stats["crossing_deduped"] += 1
+        existing = accepted[collision]
+        # Average the position of both mapped nodes: the merged zebra then sits
+        # between the two stop lines, which is where the crossing actually is.
+        merged = dict(existing["record"])
+        merged["x"] = round((existing["record"]["x"] + candidate["record"]["x"]) / 2.0, 1)
+        merged["y"] = round((existing["record"]["y"] + candidate["record"]["y"]) / 2.0, 1)
+        merged["width"] = max(existing["record"]["width"], candidate["record"]["width"])
+        merged["kind"] = (
+            candidate["record"]["kind"]
+            if kind_rank[candidate["record"]["kind"]] > kind_rank[existing["record"]["kind"]]
+            else existing["record"]["kind"]
+        )
+        accepted[collision] = {
+            "osm_id": min(existing["osm_id"], candidate["osm_id"]),
+            "road_key": existing["road_key"],
+            "station": (existing["station"] + candidate["station"]) / 2.0,
+            "record": merged,
+        }
+    records = [candidate["record"] for candidate in sorted(accepted, key=lambda cand: cand["osm_id"])]
+    stats["crossings"] = len(records)
+    stats["crossings_signals"] = sum(1 for record in records if record["kind"] == "signals")
+    stats["crossings_zebra"] = sum(1 for record in records if record["kind"] == "zebra")
+    stats["crossings_unmarked"] = sum(1 for record in records if record["kind"] == "unmarked")
+    return records, stats
+
+
 def surface_kind_from_tags(tags: dict[str, str]) -> str:
     landuse = tags.get("landuse")
     leisure = tags.get("leisure")
     natural = tags.get("natural")
     amenity = tags.get("amenity")
-    if natural in {"water", "bay", "spring"} or landuse == "reservoir" or tags.get("waterway") == "riverbank":
-        return "water"
-    if natural in {"river", "stream"}:
-        return "river"
-    if landuse == "forest" or natural == "wood":
-        return "forest"
-    if landuse in {"grass", "meadow", "orchard", "village_green", "recreation_ground"} or natural == "grassland" or natural == "meadow":
-        return "grass"
-    if leisure in {"park", "garden", "playground", "fitness_station"}:
-        return "park"
-    if natural == "scrub":
-        return "scrub"
-    if natural in {"sand", "beach"}:
-        return "sand"
-    if leisure == "pitch":
-        return "pitch"
-    if landuse == "cemetery" or amenity == "grave_yard":
-        return "cemetery"
-    if landuse == "railway" or tags.get("railway") == "station":
-        return "railway"
-    if landuse in {"plaza", "square"} or place == "square" or (leisure or "") == "square":
-        return "plaza"
-    if landuse == "residential":
-        return "residential"
-    if landuse == "industrial":
-        return "industrial"
-    if landuse == "commercial":
-        return "commercial"
-    if landuse in {"construction", "brownfield"}:
-        return "construction"
-    if amenity in {"school", "university", "hospital"}:
-        return "plaza"
-    return "unknown"
-
-
-def surface_kind_from_tags(tags: dict[str, str]) -> str:  # noqa: F811
-    landuse = tags.get("landuse")
-    leisure = tags.get("leisure")
-    natural = tags.get("natural")
-    amenity = tags.get("amenity")
+    if amenity == "parking":
+        return "parking"
     if natural in {"water", "bay", "spring"} or landuse == "reservoir" or tags.get("waterway") == "riverbank":
         return "water"
     if natural in {"river", "stream"}:
@@ -819,6 +1097,8 @@ def main() -> int:
     parser.add_argument("--trees-raw", default=None)
     parser.add_argument("--out", default=None)
     parser.add_argument("--tiles-dir", default=None)
+    parser.add_argument("--coverage-out", default=None,
+                        help="path for the coverage JSON (default: data/processed/coverage.json)")
     parser.add_argument("--tile-size", type=float, default=None)
     parser.add_argument("--pilot-size", type=float, default=None)
     args = parser.parse_args()
@@ -833,7 +1113,10 @@ def main() -> int:
     out_path = Path(args.out) if args.out else OUT_DIR / (
         "city_area_normalized.json" if is_city else "city_normalized.json"
     )
-    coverage_path = OUT_DIR / ("coverage_city.json" if is_city else "coverage.json")
+    coverage_path = (
+        Path(args.coverage_out) if args.coverage_out
+        else OUT_DIR / ("coverage_city.json" if is_city else "coverage.json")
+    )
     tiles_dir = (
         Path(args.tiles_dir) if args.tiles_dir
         else (TILES_DIR.parent / "city-tiles" if is_city else TILES_DIR)
@@ -914,6 +1197,7 @@ def main() -> int:
     roads_raw: list[tuple[dict, LineString]] = []
     rails_raw: list[tuple[dict, LineString]] = []
     waterways: list[tuple[dict, LineString]] = []
+    crossing_nodes: list[dict] = []
 
     for feature in features:
         kind = feature["kind"]
@@ -951,6 +1235,23 @@ def main() -> int:
                     if piece.area < 8.0:
                         continue
                     surfaces.append({"tags": tags, "polygon": piece, "name": tags.get("name")})
+        elif kind == "crossing":
+            geometry = feature.get("geometry", {})
+            if geometry.get("type") != "Point":
+                continue
+            coords = geometry.get("coordinates")
+            if not isinstance(coords, (list, tuple)) or len(coords) < 2:
+                continue
+            x, y = to_local(coords[0], coords[1])
+            if not (-half <= x <= half and -half <= y <= half):
+                stats["crossings_outside"] += 1
+                continue
+            crossing_nodes.append({
+                "osm_id": int(feature["osm_id"]),
+                "x": x,
+                "y": y,
+                "tags": tags,
+            })
         elif kind in {"highway", "railway", "waterway"}:
             line = feature_line(feature)
             if line is None:
@@ -1346,6 +1647,34 @@ def main() -> int:
         clipped = buffered.intersection(pilot_rect)
         return iter_polygons(repair(clipped))
 
+    def pavement_strips(
+        line: LineString, width: float, pavement_width: float, side: str
+    ) -> list[Polygon]:
+        """Pavement polygons for the sides allowed by `sidewalk=*`.
+
+        `both` keeps the historical full ring (both sides + end caps); `left` /
+        `right` follow the offset centreline on that side only.
+        """
+        if side == "both":
+            try:
+                outer = line.buffer(width / 2.0 + pavement_width, cap_style=2, join_style=2)
+                inner = line.buffer(width / 2.0, cap_style=2, join_style=2)
+                ring = outer.difference(inner).intersection(pilot_rect)
+            except Exception:
+                return []
+            return iter_polygons(repair(ring))
+        offset = (width / 2.0 + pavement_width / 2.0) * (1.0 if side == "left" else -1.0)
+        try:
+            offset_line = line.offset_curve(offset)
+            if offset_line.is_empty:
+                return []
+            strip = offset_line.buffer(pavement_width / 2.0, cap_style=2, join_style=2)
+            inner = line.buffer(width / 2.0, cap_style=2, join_style=2)
+            strip = strip.difference(inner).intersection(pilot_rect)
+        except Exception:
+            return []
+        return iter_polygons(repair(strip))
+
     road_polys: list[dict] = []
     for entry, line in roads_raw:
         tags = entry["tags"]
@@ -1359,36 +1688,40 @@ def main() -> int:
             stats["tunnels_skipped"] += 1
             continue
         is_bridge = tags.get("bridge") == "yes"
+        kind = "road" if road_class not in {"footway", "path", "steps", "cycleway", "pedestrian"} else "footway"
+        detail_attrs = road_detail_attrs(tags, road_class) if kind == "road" else {}
+        osm_id = int(entry["feature"]["osm_id"])
         surfaces_list = buffer_line(line, width)
         for poly in surfaces_list:
             if poly.area < 6:
                 continue
             road_polys.append({
-                "kind": "road" if road_class not in {"footway", "path", "steps", "cycleway", "pedestrian"} else "footway",
+                "kind": kind,
                 "class": road_class,
                 "polygon": poly_to_rings(poly),
                 "width": round(width, 2),
                 "bridge": is_bridge,
                 "name": tags.get("name", ""),
+                # Internal metadata: kept for the tile writer (centreline /
+                # detail fields) and stripped from the processed JSON below.
+                "osm_id": osm_id,
+                "line": line,
+                "detail": detail_attrs,
             })
-        # pavements for vehicle streets
-        if road_class in {"motorway", "trunk", "primary", "secondary", "tertiary", "residential"}:
-            pavement_width = 3.0
-            try:
-                outer = line.buffer(width / 2.0 + pavement_width, cap_style=2, join_style=2)
-                inner = line.buffer(width / 2.0, cap_style=2, join_style=2)
-                ring = outer.difference(inner).intersection(pilot_rect)
-            except Exception:
-                continue
-            for poly in iter_polygons(repair(ring)):
-                if poly.area < 8:
-                    continue
-                road_polys.append({
-                    "kind": "footway",
-                    "class": "footway",
-                    "polygon": poly_to_rings(poly),
-                    "width": round(pavement_width, 2),
-                })
+        # pavements for vehicle streets (sides follow `sidewalk=*`)
+        if road_class in PAVEMENT_CLASSES:
+            sidewalk = parse_sidewalk(tags, road_class)
+            if sidewalk != "none":
+                pavement_width = parse_sidewalk_width(tags, sidewalk)
+                for poly in pavement_strips(line, width, pavement_width, sidewalk):
+                    if poly.area < 8:
+                        continue
+                    road_polys.append({
+                        "kind": "footway",
+                        "class": "footway",
+                        "polygon": poly_to_rings(poly),
+                        "width": round(pavement_width, 2),
+                    })
 
     for entry, line in rails_raw:
         tags = entry["tags"]
@@ -1420,9 +1753,20 @@ def main() -> int:
                 **({"name": tags["name"]} if tags.get("name") else {}),
             })
     stats["road_polygons"] = len(road_polys)
+    stats["road_pieces_with_detail"] = sum(1 for road in road_polys if road.get("detail"))
     print(f"Road/rail polygons: {len(road_polys):,} "
           f"(metro skipped: {stats['subway_skipped']}, "
           f"underground rail skipped: {stats['rail_tunnels_skipped']})")
+    print(f"Road detail attrs: {stats['road_pieces_with_detail']:,} polygon(s) carry "
+          f"lanes/oneway/surface/cycleway/sidewalk tags")
+
+    # --- crossings ---------------------------------------------------------
+    crossings, crossing_stats = build_crossings(crossing_nodes, road_polys)
+    stats.update(crossing_stats)
+    print(f"Crossings: {len(crossings)} feature(s) from {len(crossing_nodes)} "
+          f"crossing/signal node(s) — signals {stats['crossings_signals']}, "
+          f"zebra {stats['crossings_zebra']}, unmarked {stats['crossings_unmarked']}, "
+          f"unmatched {stats['crossing_unmatched']}, deduped {stats['crossing_deduped']}")
 
     # --- ground surface list (mapped polygon land cover, incl. water areas) ---
     surface_features: list[dict] = []
@@ -1430,12 +1774,24 @@ def main() -> int:
         kind = surface_kind_from_tags(entry["tags"])
         if kind == "unknown":
             continue
+        if kind == "parking":
+            parking_type = (entry["tags"].get("parking") or "").strip().lower()
+            if parking_type in PARKING_EXCLUDED_TYPES:
+                stats["parking_excluded"] += 1
+                continue
+            if entry["polygon"].area < PARKING_MIN_AREA_M2:
+                stats["parking_too_small"] += 1
+                continue
         for ring_set in [poly_to_rings(entry["polygon"])]:
             surface_features.append({
                 "kind": kind,
                 "polygon": ring_set,
                 "name": entry["name"] or "",
             })
+    stats["parking_polygons"] = sum(1 for feature in surface_features if feature["kind"] == "parking")
+    print(f"Parking: {stats['parking_polygons']} surface polygon(s) "
+          f"({stats['parking_excluded']} underground/multi-storey/rooftop skipped, "
+          f"{stats['parking_too_small']} smaller than {PARKING_MIN_AREA_M2:.0f} m2)")
 
     # --- narrow streams from centre lines -----------------------------------
     # Wide water must come from mapped AREAS (natural=water, waterway=riverbank,
@@ -1727,6 +2083,14 @@ def main() -> int:
         ty = math.floor(y / tile_size)
         return (tx, ty) if (tx, ty) in tiles else None
 
+    # Polygon pieces are clipped to the requested area first and then to the
+    # tile; centrelines use the identical clip rectangle.
+    tile_clip_rects: dict[tuple[int, int], Polygon] = {
+        key: box(key[0] * tile_size, key[1] * tile_size,
+                 (key[0] + 1) * tile_size, (key[1] + 1) * tile_size).intersection(pilot_rect)
+        for key in tiles
+    }
+
     for building in buildings:
         centroid = Polygon(building["volumes"][0]["footprint"][0]).representative_point()
         owner = tile_of_point(centroid.x, centroid.y)
@@ -1768,19 +2132,40 @@ def main() -> int:
                 **({"name": surface["name"]} if surface.get("name") else {}),
             })
 
+    centerline_pieces = 0
+    road_pieces_with_detail = 0
     for road in road_polys:
         poly = Polygon(road["polygon"][0], [Polygon(ring).exterior.coords for ring in road["polygon"][1:]])
         if not poly.is_valid:
             poly = repair(poly)
-        for (tx, ty), piece in split_polygon(poly) if poly is not None else []:
-            tiles[(tx, ty)]["roads"].append({
+        if poly is None:
+            continue
+        for (tx, ty), piece in split_polygon(poly):
+            entry = {
                 "kind": road["kind"],
                 "class": road["class"],
                 "polygon": poly_to_rings(piece),
                 "width": road["width"],
                 **({"bridge": True} if road.get("bridge") else {}),
                 **({"name": road["name"]} if road.get("name") else {}),
-            })
+            }
+            if road.get("detail"):
+                entry.update(road["detail"])
+                road_pieces_with_detail += 1
+            # Centreline: drivable road pieces only, clipped to this tile and
+            # attached only when it actually belongs to this polygon part.
+            if road["kind"] == "road" and road.get("line") is not None:
+                centerline = centerline_for_piece(
+                    road["line"], piece, tile_clip_rects[(tx, ty)]
+                )
+                if centerline is not None:
+                    entry["centerline"], entry["centerlineOffset"] = centerline
+                    centerline_pieces += 1
+            tiles[(tx, ty)]["roads"].append(entry)
+    stats["centerline_pieces"] = centerline_pieces
+    stats["road_pieces_with_detail"] = road_pieces_with_detail
+    print(f"Centrelines: {centerline_pieces:,} road piece(s) with a centreline "
+          f"(detail attrs on {road_pieces_with_detail:,} piece(s))")
 
     for tree in trees:
         owner = tile_of_point(tree["x"], tree["y"])
@@ -1791,6 +2176,17 @@ def main() -> int:
         owner = tile_of_point(attraction["x"], attraction["y"])
         if owner is not None:
             tiles[owner].setdefault("attractions", []).append(attraction)
+
+    crossing_total = 0
+    for crossing in crossings:
+        owner = tile_of_point(crossing["x"], crossing["y"])
+        if owner is None:
+            stats["crossings_outside_tiles"] += 1
+            continue
+        tiles[owner].setdefault("crossings", []).append(crossing)
+        crossing_total += 1
+    stats["crossings_emitted"] = crossing_total
+    print(f"Crossings written: {crossing_total}")
 
     # --- write tiles ------------------------------------------------------
     tiles_dir.mkdir(parents=True, exist_ok=True)
@@ -1819,7 +2215,7 @@ def main() -> int:
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
     manifest = {
-        "version": "0.1.0",
+        "version": "0.2.0",
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
         "epsg": EPSG_UTM35N,
         "originUtm": [round(ORIGIN_X, 3), round(ORIGIN_Y, 3)],
@@ -1845,6 +2241,12 @@ def main() -> int:
             "roads": sum(len(t["roads"]) for t in tiles.values()),
             "trees": len(trees),
             "attractions": len(attractions),
+            # Additive v0.2 counts (optional fields for older consumers).
+            "crossings": crossing_total,
+            "parking": sum(
+                1 for t in tiles.values() for surface in t["surfaces"]
+                if surface["kind"] == "parking"
+            ),
         },
         "attribution": [
             {
@@ -1927,6 +2329,11 @@ def main() -> int:
             "treesMapped": stats["trees_mapped"],
             "treesHeuristic": stats["trees_heuristic"],
             "attractions": len(attractions),
+            # Additive v0.2 road-detail statistics (docs/ROADS_DETAIL.md).
+            "crossingFeatures": crossing_total,
+            "parkingPolygons": stats.get("parking_polygons", 0),
+            "roadPiecesWithCenterline": stats.get("centerline_pieces", 0),
+            "roadPiecesWithDetail": stats.get("road_pieces_with_detail", 0),
         },
         "externalHeightData": {
             "used": False,
@@ -1938,16 +2345,22 @@ def main() -> int:
         },
         "warnings": warnings,
     }
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    coverage_path.parent.mkdir(parents=True, exist_ok=True)
     coverage_path.write_text(json.dumps(coverage, ensure_ascii=False, indent=1), encoding="utf-8")
-    # Full normalised city payload (debug/validation; not served to the browser)
+    # Full normalised city payload (debug/validation; not served to the browser).
+    # Internal shapely handles are stripped; every remaining field is JSON-safe.
+    processed_roads = [
+        {key: value for key, value in road.items() if key not in {"line", "detail"}}
+        for road in road_polys
+    ]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         json.dumps(
             {
                 "meta": manifest,
                 "buildings": buildings,
                 "surfaces": surface_features,
-                "roads": road_polys,
+                "roads": processed_roads,
                 "trees": trees,
                 "attractions": attractions,
             },

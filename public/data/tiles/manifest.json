@@ -1,6 +1,6 @@
 {
- "version": "0.1.0",
- "generatedAt": "2026-10-28",
+ "version": "0.2.0",
+ "generatedAt": "2026-10-29",
  "epsg": 32635,
  "originUtm": [
   536859.254,
@@ -35,112 +35,112 @@
    "y": -2,
    "file": "tiles/-2_-2.json",
    "buildings": 35,
-   "bytes": 78551
+   "bytes": 84794
   },
   {
    "x": -2,
    "y": -1,
    "file": "tiles/-2_-1.json",
    "buildings": 61,
-   "bytes": 96788
+   "bytes": 105090
   },
   {
    "x": -2,
    "y": 0,
    "file": "tiles/-2_0.json",
    "buildings": 77,
-   "bytes": 120994
+   "bytes": 129192
   },
   {
    "x": -2,
    "y": 1,
    "file": "tiles/-2_1.json",
    "buildings": 8,
-   "bytes": 41478
+   "bytes": 44625
   },
   {
    "x": -1,
    "y": -2,
    "file": "tiles/-1_-2.json",
    "buildings": 46,
-   "bytes": 78065
+   "bytes": 83659
   },
   {
    "x": -1,
    "y": -1,
    "file": "tiles/-1_-1.json",
    "buildings": 97,
-   "bytes": 155519
+   "bytes": 168620
   },
   {
    "x": -1,
    "y": 0,
    "file": "tiles/-1_0.json",
    "buildings": 93,
-   "bytes": 240235
+   "bytes": 250622
   },
   {
    "x": -1,
    "y": 1,
    "file": "tiles/-1_1.json",
    "buildings": 44,
-   "bytes": 124086
+   "bytes": 127098
   },
   {
    "x": 0,
    "y": -2,
    "file": "tiles/0_-2.json",
    "buildings": 23,
-   "bytes": 90752
+   "bytes": 95525
   },
   {
    "x": 0,
    "y": -1,
    "file": "tiles/0_-1.json",
    "buildings": 71,
-   "bytes": 198209
+   "bytes": 205447
   },
   {
    "x": 0,
    "y": 0,
    "file": "tiles/0_0.json",
    "buildings": 29,
-   "bytes": 224535
+   "bytes": 228680
   },
   {
    "x": 0,
    "y": 1,
    "file": "tiles/0_1.json",
    "buildings": 3,
-   "bytes": 238158
+   "bytes": 239000
   },
   {
    "x": 1,
    "y": -2,
    "file": "tiles/1_-2.json",
    "buildings": 27,
-   "bytes": 47031
+   "bytes": 50897
   },
   {
    "x": 1,
    "y": -1,
    "file": "tiles/1_-1.json",
    "buildings": 19,
-   "bytes": 136827
+   "bytes": 140643
   },
   {
    "x": 1,
    "y": 0,
    "file": "tiles/1_0.json",
    "buildings": 9,
-   "bytes": 212357
+   "bytes": 215055
   },
   {
    "x": 1,
    "y": 1,
    "file": "tiles/1_1.json",
    "buildings": 12,
-   "bytes": 52731
+   "bytes": 55972
   }
  ],
  "counts": {
@@ -148,10 +148,12 @@
   "buildingsWithExplicitHeight": 57,
   "buildingsWithLevels": 366,
   "buildingsWithRoofShape": 305,
-  "surfaces": 612,
-  "roads": 3777,
-  "trees": 8530,
-  "attractions": 0
+  "surfaces": 744,
+  "roads": 3538,
+  "trees": 8560,
+  "attractions": 0,
+  "crossings": 212,
+  "parking": 132
  },
  "attribution": [
   {

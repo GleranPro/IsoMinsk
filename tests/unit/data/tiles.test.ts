@@ -73,6 +73,7 @@ interface DataAnalysis {
   buildingViolations: string[];
   polygonViolations: string[];
   crossingViolations: string[];
+  crossingFeatureViolations: string[];
   treeViolations: string[];
   counts: {
     buildings: number;
@@ -82,6 +83,9 @@ interface DataAnalysis {
     buildingsExplicitHeight: number;
     buildingsWithLevels: number;
     buildingsWithRoofShape: number;
+    roadsWithCenterline: number;
+    crossings: number;
+    parkingSurfaces: number;
   };
 }
 
@@ -116,6 +120,7 @@ const SURFACE_KINDS = new Set([
   'cemetery',
   'railway',
   'plaza',
+  'parking',
   'residential',
   'industrial',
   'commercial',
@@ -140,6 +145,21 @@ const ROAD_CLASSES = new Set([
   'unknown',
 ]);
 const ROAD_KINDS = new Set(['road', 'footway', 'rail']);
+const ROAD_SURFACES = new Set([
+  'asphalt',
+  'paving_stones',
+  'paving_stone',
+  'paved',
+  'concrete',
+  'cobblestone',
+  'sett',
+  'ground',
+  'dirt',
+  'compacted',
+  'gravel',
+]);
+const CROSSING_KINDS = new Set(['zebra', 'unmarked', 'signals']);
+const SIDEWALK_VALUES = new Set(['both', 'left', 'right', 'none']);
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -175,6 +195,7 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     buildingViolations: [],
     polygonViolations: [],
     crossingViolations: [],
+    crossingFeatureViolations: [],
     treeViolations: [],
     counts: {
       buildings: 0,
@@ -184,6 +205,9 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       buildingsExplicitHeight: 0,
       buildingsWithLevels: 0,
       buildingsWithRoofShape: 0,
+      roadsWithCenterline: 0,
+      crossings: 0,
+      parkingSurfaces: 0,
     },
   };
 
@@ -214,6 +238,7 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     result.counts.surfaces += data.surfaces.length;
     result.counts.roads += data.roads.length;
     result.counts.trees += data.trees.length;
+    result.counts.crossings += (data.crossings ?? []).length;
 
     for (const building of data.buildings) {
       const label = `${tileName}/${building.id}`;
@@ -318,6 +343,77 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       }
       const problem = polygonProblem(road.polygon);
       if (problem) result.polygonViolations.push(`${label}: ${problem}`);
+
+      // v0.2 road detail (all optional; old tiles simply omit them).
+      if (road.centerline !== undefined) {
+        result.counts.roadsWithCenterline += 1;
+        const centerline = road.centerline;
+        if (!Array.isArray(centerline) || centerline.length < 4 || centerline.length % 2 !== 0) {
+          result.polygonViolations.push(`${label}: centerline must be a flat even-length array of >= 4 numbers`);
+        } else if (!centerline.every(isFiniteNumber)) {
+          result.polygonViolations.push(`${label}: centerline has a non-finite coordinate`);
+        } else {
+          let outside = false;
+          for (let i = 0; i < centerline.length; i += 2) {
+            const x = centerline[i];
+            const y = centerline[i + 1];
+            if (x < data.bounds[0] - 1 || x > data.bounds[2] + 1 || y < data.bounds[1] - 1 || y > data.bounds[3] + 1) {
+              outside = true;
+            }
+          }
+          if (outside) result.polygonViolations.push(`${label}: centerline leaves the tile bounds`);
+        }
+        if (road.centerlineOffset !== undefined && !isFiniteNumber(road.centerlineOffset)) {
+          result.polygonViolations.push(`${label}: centerlineOffset is not finite`);
+        }
+      }
+      if (road.lanes !== undefined && (!Number.isInteger(road.lanes) || road.lanes < 1 || road.lanes > 8)) {
+        result.polygonViolations.push(`${label}: lanes must be an integer 1..8, got ${String(road.lanes)}`);
+      }
+      if (road.oneway !== undefined && typeof road.oneway !== 'boolean') {
+        result.polygonViolations.push(`${label}: oneway must be a boolean`);
+      }
+      if (road.surface !== undefined && !ROAD_SURFACES.has(road.surface)) {
+        result.polygonViolations.push(`${label}: unknown surface ${String(road.surface)}`);
+      }
+      if (road.cycleway !== undefined && road.cycleway !== 'lane' && road.cycleway !== 'track') {
+        result.polygonViolations.push(`${label}: cycleway must be 'lane' or 'track'`);
+      }
+      if (road.sidewalk !== undefined && !SIDEWALK_VALUES.has(road.sidewalk)) {
+        result.polygonViolations.push(`${label}: unknown sidewalk value ${String(road.sidewalk)}`);
+      }
+      if (
+        road.sidewalkWidth !== undefined &&
+        (!isFiniteNumber(road.sidewalkWidth) || road.sidewalkWidth < 1 || road.sidewalkWidth > 8)
+      ) {
+        result.polygonViolations.push(`${label}: sidewalkWidth outside 1..8 m`);
+      }
+    }
+
+    for (const crossing of data.crossings ?? []) {
+      const label = `${tileName}/crossing`;
+      if (!isFiniteNumber(crossing.x) || !isFiniteNumber(crossing.y)) {
+        result.crossingFeatureViolations.push(`${label}: position is not finite`);
+        continue;
+      }
+      if (crossing.x < data.bounds[0] || crossing.x > data.bounds[2] || crossing.y < data.bounds[1] || crossing.y > data.bounds[3]) {
+        result.crossingFeatureViolations.push(`${label}: point outside the tile bounds`);
+      }
+      if (!isFiniteNumber(crossing.angle)) {
+        result.crossingFeatureViolations.push(`${label}: angle is not finite`);
+      }
+      if (!isFiniteNumber(crossing.width) || crossing.width <= 0) {
+        result.crossingFeatureViolations.push(`${label}: width is not a positive finite number`);
+      }
+      if (!CROSSING_KINDS.has(crossing.kind)) {
+        result.crossingFeatureViolations.push(`${label}: unknown kind ${String(crossing.kind)}`);
+      }
+      if (!ROAD_CLASSES.has(crossing.roadClass)) {
+        result.crossingFeatureViolations.push(`${label}: unknown roadClass ${String(crossing.roadClass)}`);
+      }
+      if (crossing.span !== undefined && (!isFiniteNumber(crossing.span) || crossing.span < 2 || crossing.span > 12)) {
+        result.crossingFeatureViolations.push(`${label}: implausible span ${String(crossing.span)}`);
+      }
     }
 
     for (const surface of data.surfaces) {
@@ -325,6 +421,7 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       if (!SURFACE_KINDS.has(surface.kind)) {
         result.polygonViolations.push(`${label}: unknown kind ${String(surface.kind)}`);
       }
+      if (surface.kind === 'parking') result.counts.parkingSurfaces += 1;
       const problem = polygonProblem(surface.polygon);
       if (problem) result.polygonViolations.push(`${label}: ${problem}`);
     }
@@ -437,6 +534,16 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     expect(counts.buildingsWithExplicitHeight).toBeLessThanOrEqual(counts.buildings);
     expect(counts.buildingsWithLevels).toBeLessThanOrEqual(counts.buildings);
     expect(counts.buildingsWithRoofShape).toBeLessThanOrEqual(counts.buildings);
+    if (counts.crossings !== undefined) {
+      expect(counts.crossings, 'manifest counts.crossings vs tile payloads').toBe(
+        analysis.counts.crossings,
+      );
+    }
+    if (counts.parking !== undefined) {
+      expect(counts.parking, 'manifest counts.parking vs tile payloads').toBe(
+        analysis.counts.parkingSurfaces,
+      );
+    }
   });
 
   it('tile index matches the declared grid and covers it completely', () => {
@@ -559,6 +666,47 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
       analysis.crossingViolations.length,
       `${analysis.crossingViolations.length} crossing violation(s):\n${formatProblems(analysis.crossingViolations)}`,
     ).toBe(0);
+  });
+
+  it('crossing feature records are finite, inside their tile and reference real road classes', () => {
+    expect(
+      analysis.crossingFeatureViolations.length,
+      `${analysis.crossingFeatureViolations.length} crossing-feature violation(s):\n` +
+        formatProblems(analysis.crossingFeatureViolations),
+    ).toBe(0);
+  });
+
+  it('v0.2 payload carries centrelines, crossings and parking (unlocks road detail)', () => {
+    const manifest = store.manifest;
+    if (!manifest) throw new Error('manifest missing');
+    const [majorText, minorText] = manifest.version.split('.');
+    const major = Number.parseInt(majorText ?? '0', 10);
+    const minor = Number.parseInt(minorText ?? '0', 10);
+    const isV02 = major > 0 || (major === 0 && minor >= 2);
+    if (!isV02) {
+      // Regenerating the tiles with `pnpm run data:extract && data:normalize`
+      // flips the manifest to 0.2.0 and activates these assertions.
+      return;
+    }
+    const drivablePieces = store.tiles.reduce(
+      (sum, { data }) => sum + data.roads.filter((road) => road.kind === 'road').length,
+      0,
+    );
+    expect(analysis.counts.roadsWithCenterline, 'road pieces with a centreline').toBeGreaterThan(200);
+    expect(
+      analysis.counts.roadsWithCenterline / Math.max(1, drivablePieces),
+      'share of drivable road pieces carrying a centreline',
+    ).toBeGreaterThan(0.5);
+    expect(analysis.counts.crossings, 'crossings in the pilot payload').toBeGreaterThan(100);
+    expect(analysis.counts.parkingSurfaces, 'parking surface polygons').toBeGreaterThan(0);
+    const lanesValues = new Set(
+      store.tiles.flatMap(({ data }) =>
+        data.roads.flatMap((road) => (road.lanes === undefined ? [] : [road.lanes])),
+      ),
+    );
+    for (const lanes of lanesValues) {
+      expect(Number.isInteger(lanes) && lanes >= 1 && lanes <= 8).toBe(true);
+    }
   });
 
   it('trees have finite positions and plausible size', () => {

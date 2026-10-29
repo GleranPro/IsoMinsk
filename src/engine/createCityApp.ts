@@ -1110,6 +1110,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     // Initial framing: fit the whole district (manifest arrives before the user
     // can interact in practice).
     rig.reset(defaultView.orthoHeight, defaultView.targetLocalX, defaultView.targetLocalY);
+    // A QA URL may have asked for a specific close-up; the manifest framing
+    // above must not swallow it.
+    applyUrlCameraOverrides();
 
     if (manifest.counts && typeof manifest.counts.buildings === 'number') {
       recordDiagnostic(
@@ -1476,14 +1479,24 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   }
 
   // URL-driven initial camera/time overrides (QA convenience).
-  const initialZoom = Number.parseFloat(params.get('zoom') ?? '');
-  if (Number.isFinite(initialZoom)) {
-    handle.setCameraSettings({ orthoHeight: initialZoom });
+  // `?fx=&fy=` focuses on a local-metre point before the zoom is applied, so a
+  // screenshot URL can reproduce a close-up of any street detail.
+  function applyUrlCameraOverrides(): void {
+    const fx = Number.parseFloat(params.get('fx') ?? '');
+    const fy = Number.parseFloat(params.get('fy') ?? '');
+    if (Number.isFinite(fx) && Number.isFinite(fy)) {
+      handle.focusOnLocal(fx, fy);
+    }
+    const zoom = Number.parseFloat(params.get('zoom') ?? '');
+    if (Number.isFinite(zoom)) {
+      handle.setCameraSettings({ orthoHeight: zoom });
+    }
+    const az = Number.parseFloat(params.get('az') ?? '');
+    if (Number.isFinite(az)) {
+      handle.setCameraSettings({ azimuth: az });
+    }
   }
-  const initialAzimuth = Number.parseFloat(params.get('az') ?? '');
-  if (Number.isFinite(initialAzimuth)) {
-    handle.setCameraSettings({ azimuth: initialAzimuth });
-  }
+  applyUrlCameraOverrides();
   const initialTime = Number.parseFloat(params.get('time') ?? '');
   if (Number.isFinite(initialTime)) {
     handle.setTimeOfDay(initialTime);
