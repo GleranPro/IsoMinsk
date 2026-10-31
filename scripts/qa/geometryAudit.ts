@@ -22,6 +22,11 @@ interface Audit {
   nanCount: number;
   envTriangles: number;
   trees: number;
+  /** Payload 0.2.0 road layer counts (per tile). */
+  roadSurfaces: number;
+  roadNetwork: number;
+  junctions: number;
+  crossings: number;
 }
 
 const results: Audit[] = [];
@@ -74,6 +79,17 @@ for (const entry of manifest.tiles) {
   if (result.triangleCount === 0 && tile.buildings.length > 0) invalid.push('no triangles emitted');
   if (minY < -0.01) invalid.push(`geometry below ground: ${minY.toFixed(2)}`);
 
+  // Payload 0.2.0: the normalized surface partition always accompanies the
+  // semantic network layer; a tile with centrelines but no rendered surface
+  // would generate markings over the ground plate.
+  const roadSurfaces = tile.roadSurfaces ?? [];
+  const roadNetwork = tile.roadNetwork ?? [];
+  const junctions = tile.junctions ?? [];
+  const crossings = tile.crossings ?? [];
+  if (roadNetwork.length > 0 && roadSurfaces.length === 0) {
+    invalid.push(`roadNetwork has ${roadNetwork.length} piece(s) but roadSurfaces is empty`);
+  }
+
   const env = buildEnvironmentMeshes(tile, { tileBounds: tile.bounds, trees: true });
   const envTriangles =
     (env.ground.index ? env.ground.index.count / 3 : env.ground.getAttribute('position').count / 3) +
@@ -92,6 +108,10 @@ for (const entry of manifest.tiles) {
     nanCount,
     envTriangles,
     trees: tile.trees.length,
+    roadSurfaces: roadSurfaces.length,
+    roadNetwork: roadNetwork.length,
+    junctions: junctions.length,
+    crossings: crossings.length,
   });
   for (const issue of invalid) globalIssues.push(`${tile.tileX}_${tile.tileY}: ${issue}`);
 }
@@ -103,6 +123,10 @@ const totals = {
   roofTriangles: results.reduce((s, r) => s + r.roofTriangles, 0),
   wallTriangles: results.reduce((s, r) => s + r.wallTriangles, 0),
   trees: results.reduce((s, r) => s + r.trees, 0),
+  roadSurfaces: results.reduce((s, r) => s + r.roadSurfaces, 0),
+  roadNetwork: results.reduce((s, r) => s + r.roadNetwork, 0),
+  junctions: results.reduce((s, r) => s + r.junctions, 0),
+  crossings: results.reduce((s, r) => s + r.crossings, 0),
 };
 
 console.log('Per-tile:');
@@ -111,10 +135,17 @@ for (const r of results) {
     `  ${r.tile.padEnd(5)} bld=${String(r.buildings).padStart(3)} tris=${String(r.triangles).padStart(6)} ` +
       `roof=${String(r.roofTriangles).padStart(5)} wall=${String(r.wallTriangles).padStart(5)} ` +
       `env=${String(r.envTriangles).padStart(6)} trees=${String(r.trees).padStart(3)} ` +
+      `roads=${String(r.roadSurfaces).padStart(3)}/${String(r.roadNetwork).padStart(3)} ` +
+      `jct=${String(r.junctions).padStart(2)} xing=${String(r.crossings).padStart(2)} ` +
       `y=[${r.minY.toFixed(1)},${r.maxY.toFixed(1)}]${r.invalid.length ? ' ISSUES: ' + r.invalid.join('; ') : ''}`,
   );
 }
 console.log('\nTotals:', JSON.stringify(totals));
+console.log(
+  'Road payload: ' +
+    `${totals.roadSurfaces} surface piece(s), ${totals.roadNetwork} network piece(s), ` +
+    `${totals.junctions} junction record(s) (tile-duplicated), ${totals.crossings} crossing(s)`,
+);
 console.log('Triangle per building:', (totals.triangles / Math.max(1, totals.buildings)).toFixed(1));
 if (globalIssues.length) {
   console.log(`\n${globalIssues.length} ISSUE(S):`);

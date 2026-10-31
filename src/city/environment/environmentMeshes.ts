@@ -5,8 +5,12 @@
  * `TileData`:
  *   - `ground` : flat base quad, landcover polygons (parks, grass, forest,
  *                plaza, residential/industrial landuse, water) with holes;
- *   - `roads`  : drivable roads, pavements, kerbs, dashed centre lines,
- *                tram/rail ballast and rails, bridge decks with skirts;
+ *   - `roads`  : drivable roads, pavements, kerbs, dashes, tram/rail ballast and
+ *                rails, bridge decks with skirts. Payload 0.2.0 tiles render the
+ *                normalized surface partition (`roadSurfaces`) plus lane paint
+ *                and crossings derived from `roadNetwork`/`junctions`/`crossings`;
+ *                old tiles fall back to the legacy buffered `roads` polygons.
+ *                Either way this is one merged geometry / one draw call.
  *   - `trees`  : one merged stylised tree geometry, or null.
  *
  * Each category is a single indexed `BufferGeometry` in renderer world space
@@ -33,7 +37,7 @@ import {
 } from './surfaceMeshes';
 import { buildTreeGeometry, type TreeDetailTier } from './treeMeshes';
 import { emitAttractions, type AttractionEmitStats } from './ferrisWheel';
-import { createRoadStats, emitRoadPolygons, type RoadBuildStats } from '../roads/roadMeshes';
+import { createRoadStats, emitRoadLayer, type RoadBuildStats } from '../roads/roadMeshes';
 
 export interface EnvironmentMeshOptions {
   /** Ground rectangle of the tile in local metres [minX, minY, maxX, maxY]. */
@@ -104,7 +108,9 @@ export function buildEnvironmentMeshes(
   }
 
   try {
-    emitRoadPolygons(roadsSink, tile?.roads, bounds, roadStats);
+    // Payload 0.2.0: normalized surface partition + network paint + legacy rail.
+    // Demo/old tiles: legacy buffered road polygons. Same single merged sink.
+    emitRoadLayer(roadsSink, tile, bounds, roadStats);
   } catch {
     // Same as above.
   }

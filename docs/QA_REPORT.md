@@ -20,6 +20,32 @@
 > tiles did not); tiles are now revalidated (`no-cache`, guarded by
 > `scripts/qa/cache-check.mjs`). Everything else in this report remains the
 > historical 2026-10-27 record.
+>
+> **Revision addendum — 2026-11-01 (road network normalization, payload 0.2.0).**
+> The road layer was rewritten: one non-overlapping surface partition (drivable
+> material zones `asphalt/stone/concrete/unpaved`, paving, kerbs, medians) plus a
+> semantic centreline network with junction boxes and pedestrian crossings.
+> Overlapping class-tinted per-way buffers are gone (measured before the rewrite:
+> 1 166 overlapping drivable pairs, 73 994 m² of stacked surface, 1.14 overdraw;
+> both one-way carriageways of a dual carriageway were 18 m wide because the
+> width model used the class default as a floor). After the rewrite
+> (`pnpm run qa:road-audit`): same-layer overlap **0.0 m²**, drivable×paving
+> overlap **0.0 m²**, worst tile-seam gap **0.0 m**, street width spread
+> **0.0 m**, 16 031/16 031 centreline samples inside the drivable surface.
+> Payload 0.2.0: 1 324 surface pieces, 1 075 network pieces, 520 junction
+> records (tile-duplicated), 183 crossings (81 zebra / 89 signal heads /
+> 13 unmarked), 13 medians; **2 166 247 B (+1.4 %)** versus 0.1.0. Materials:
+> 186 asphalt + 111 stone + 2 concrete drivable zones, 36 405 m² of stone
+> (Karl Marx Street sett/cobblestone section verified against OSM).
+> Verification: `pnpm test` **348/348** (22 files), Python road tests **24/24**,
+> `tsc --noEmit` clean, `data:validate` **PASSED**, geometry audit **PASSED**
+> (envTriangles 164 832, +5.7 %, 0 invalid), e2e **12/12 passed** (hardware GPU,
+> 52.8 s), canonical capture 6/6 (**60 FPS, 49 draw calls, 0 console/page
+> errors**), road focus sweep **13/13 shots** with 0 console/page errors
+> (`screenshots/roads/`). Known limits: bridge decks remain raised slabs
+> without ramps (structural side skirts only; bridge sidewalks are flat slabs
+> on the deck), and lane paint stops at junction boxes and crossings — see
+> `docs/ROAD_NETWORK.md`.
 
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**
 **Author:** QA & Integration agent (qa-dev)

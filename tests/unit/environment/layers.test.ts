@@ -69,6 +69,20 @@ describe('environment layer heights', () => {
     expect(LAYER_JITTER_STEP_M).toBeGreaterThan(0.001);
   });
 
+  it('places the median layer between rail ballast and kerb', () => {
+    const medianIndex = ENV_LAYER_ORDER.indexOf('median');
+    expect(medianIndex).toBeGreaterThan(ENV_LAYER_ORDER.indexOf('railBallast'));
+    expect(medianIndex).toBeLessThan(ENV_LAYER_ORDER.indexOf('kerb'));
+    // Payload 0.2.0: road surface pieces are drawn at the exact semantic height
+    // with no per-polygon jitter, so the layer order itself is the whole guard.
+    expect(ENV_LAYER_Y.median).toBeGreaterThan(maxLayerY('railBallast'));
+    expect(ENV_LAYER_Y.median).toBeLessThan(ENV_LAYER_Y.kerb);
+    expect(ENV_LAYER_JITTER_LEVELS.median).toBe(1);
+    // The 2 mm guard band is preserved on both sides of the new layer.
+    expect(ENV_LAYER_Y.median - maxLayerY('railBallast')).toBeGreaterThanOrEqual(0.002 - 1e-6);
+    expect(ENV_LAYER_Y.kerb - maxLayerY('median')).toBeGreaterThanOrEqual(0.002 - 1e-6);
+  });
+
   it('raises bridges well clear of the ground layers', () => {
     expect(BRIDGE_RAISE_M).toBeGreaterThan(1);
     expect(ENV_LAYER_Y.road + BRIDGE_RAISE_M).toBeGreaterThan(1);

@@ -6,7 +6,7 @@
 
 - Source: OpenStreetMap
 - Extract: `Minsk.osm.pbf`
-- Extraction date: 2026-10-28T15:47:51Z
+- Extraction date: 2026-10-31T22:48:41Z
 - Attribution: (c) OpenStreetMap contributors, ODbL 1.0
 - Pilot area: 1600.0 m × 1600.0 m, tile size 512.0 m, projection EPSG:32635
 - Local origin (UTM 35N): [536859.254, 5972786.284]
@@ -57,16 +57,34 @@
 | Sliver polygons dropped | 119 |
 | Buildings left without volumes | 0 |
 | Orphan `building:part` polygons (rendered standalone) | 2 |
-| Tunnels skipped (not rendered as surface) | 51 |
+| Tunnels skipped (not rendered as surface) | 0 |
 
 ## Environment
 
 | Metric | Value |
 | --- | --- |
 | Ground surface polygons | 484 |
-| Road/rail/pavement polygons | 3243 |
-| OSM-mapped trees | 150 |
-| Heuristically placed trees | 8380 |
+| Legacy road/rail polygons (rails only in 0.2.0) | 4 |
+| OSM-mapped trees | 149 |
+| Heuristically placed trees | 8410 |
+
+## Road network (payload 0.2.0)
+
+Non-overlapping surface partition + semantic network layer; see `docs/ROAD_NETWORK.md` for the width/material model.
+
+| Metric | Value |
+| --- | --- |
+| Surface pieces (tile-split) | 1324 |
+| — by kind | {'drivable': 299, 'kerb': 435, 'median': 13, 'paving': 577} |
+| — by material | {'(kerb)': 435, '(median)': 13, '(paving)': 577, 'asphalt': 186, 'concrete': 2, 'stone': 111} |
+| Network pieces (centrelines) | 1075 |
+| Junction boxes | 520 |
+| Pedestrian crossings | 183 |
+| Named streets with a consistent width | 33 / 33 |
+| OSM ways processed | 2843 |
+| Widths normalized | 96 |
+| Material overrides (curated) | 0 |
+| Materials (ways) | {'asphalt': 1761, 'stone': 1068, 'concrete': 4, 'unpaved': 10} |
 
 ## External height data
 
@@ -75,26 +93,26 @@
 
 ## Tiles
 
-| Tile | Buildings | Surfaces | Roads | Trees | Bytes |
-| --- | --- | --- | --- | --- | --- |
-| -2_-2 | 35 | 35 | 205 | 66 | 78,551 |
-| -2_-1 | 61 | 15 | 210 | 80 | 96,788 |
-| -2_0 | 77 | 28 | 265 | 1 | 120,994 |
-| -2_1 | 8 | 50 | 95 | 17 | 41,478 |
-| -1_-2 | 46 | 20 | 169 | 64 | 78,065 |
-| -1_-1 | 97 | 37 | 415 | 4 | 155,519 |
-| -1_0 | 93 | 95 | 531 | 83 | 240,235 |
-| -1_1 | 44 | 50 | 307 | 267 | 124,086 |
-| 0_-2 | 23 | 55 | 228 | 179 | 90,752 |
-| 0_-1 | 71 | 77 | 394 | 605 | 198,209 |
-| 0_0 | 29 | 53 | 320 | 1427 | 224,535 |
-| 0_1 | 3 | 26 | 142 | 2359 | 238,158 |
-| 1_-2 | 27 | 10 | 79 | 143 | 47,031 |
-| 1_-1 | 19 | 24 | 178 | 972 | 136,827 |
-| 1_0 | 9 | 12 | 133 | 2040 | 212,357 |
-| 1_1 | 12 | 25 | 106 | 223 | 52,731 |
+| Tile | Buildings | Surfaces | Rails | Road surfaces | Network | Junctions | Crossings | Trees | Bytes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| -2_-2 | 35 | 35 | 0 | 64 | 68 | 24 | 13 | 67 | 79,613 |
+| -2_-1 | 61 | 15 | 0 | 110 | 77 | 44 | 14 | 80 | 107,181 |
+| -2_0 | 77 | 28 | 0 | 96 | 82 | 36 | 7 | 3 | 127,615 |
+| -2_1 | 8 | 50 | 0 | 32 | 22 | 11 | 4 | 18 | 44,202 |
+| -1_-2 | 46 | 20 | 0 | 82 | 64 | 39 | 13 | 62 | 84,312 |
+| -1_-1 | 97 | 37 | 0 | 157 | 172 | 78 | 26 | 12 | 165,852 |
+| -1_0 | 93 | 95 | 0 | 160 | 114 | 56 | 27 | 84 | 233,298 |
+| -1_1 | 44 | 50 | 0 | 68 | 42 | 15 | 6 | 259 | 113,995 |
+| 0_-2 | 23 | 55 | 2 | 77 | 70 | 38 | 16 | 187 | 96,337 |
+| 0_-1 | 71 | 77 | 0 | 155 | 137 | 66 | 22 | 594 | 203,467 |
+| 0_0 | 29 | 53 | 0 | 103 | 76 | 43 | 16 | 1408 | 219,805 |
+| 0_1 | 3 | 26 | 0 | 24 | 21 | 1 | 4 | 2378 | 233,676 |
+| 1_-2 | 27 | 10 | 2 | 33 | 34 | 30 | 0 | 135 | 50,007 |
+| 1_-1 | 19 | 24 | 4 | 87 | 45 | 18 | 11 | 1017 | 144,822 |
+| 1_0 | 9 | 12 | 0 | 37 | 26 | 11 | 2 | 2033 | 210,012 |
+| 1_1 | 12 | 25 | 0 | 39 | 25 | 10 | 2 | 222 | 52,053 |
 
-Total payload: **2086 KiB** across 16 tiles (uncompressed JSON).
+Total payload: **2115 KiB** across 16 tiles (uncompressed JSON).
 
 ## Validation result
 

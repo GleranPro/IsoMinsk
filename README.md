@@ -11,10 +11,15 @@ Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsa
 
 **Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
 tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
-generated offline, streamed and rendered in the browser. See
-`docs/REQUIREMENTS_ORIGINAL.md` for the original brief, `docs/REQUIREMENTS.md`
-for the compliance matrix, `docs/PROGRESS.md` for milestone/roadmap status and
-`docs/LIMITATIONS.md` for what is inferred vs. surveyed.
+generated offline, streamed and rendered in the browser. The road layer was
+rewritten to **payload 0.2.0**: a non-overlapping surface partition
+(asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians) plus
+a semantic network of centrelines, junction boxes and pedestrian crossings — so
+road seams, junction patchwork and stacked detail layers are gone (see
+`docs/ROAD_NETWORK.md`). See `docs/REQUIREMENTS_ORIGINAL.md` for the original
+brief, `docs/REQUIREMENTS.md` for the compliance matrix, `docs/PROGRESS.md` for
+milestone/roadmap status and `docs/LIMITATIONS.md` for what is inferred vs.
+surveyed.
 
 ---
 
@@ -92,11 +97,15 @@ tiles.
 
 ```powershell
 pnpm run typecheck      # TypeScript, strict
-pnpm test               # Vitest: 321 tests — geometry, roofs, facades, environment,
-                        #   tile maths, config sync, curated landmarks, real-tile data
+pnpm test               # Vitest: geometry, roofs, facades, environment,
+                        #   road surfaces/network, tile maths, config sync,
+                        #   curated landmarks, real-tile data
+pnpm run test:data      # Python unit tests of the road normalization rules
+pnpm run qa:road-audit  # independent audit of the generated road payload
 pnpm run test:e2e       # Playwright: 12 browser tests (real WebGL)
 $env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)
 pnpm run qa:capture     # 6 canonical screenshots + stats.json + console.log
+pnpm run qa:road-shots  # close-up road/junction screenshot sweep
 node scripts/qa/geometryAudit.ts    # headless geometry audit of all tiles (needs tsx)
 ```
 
@@ -144,6 +153,7 @@ docs/         requirements, architecture, data sources, roadmap/progress,
 See `docs/REQUIREMENTS_ORIGINAL.md` (original brief, verbatim),
 `docs/REQUIREMENTS.md` (compliance matrix and change requests),
 `docs/PROGRESS.md` for the roadmap and verified numbers,
+`docs/ROAD_NETWORK.md` for the road width/material/junction model, and
 `docs/ARCHITECTURE.md` for the coordinate conventions, tile payload schema,
 renderer pipeline and module ownership.
 

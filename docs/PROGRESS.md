@@ -24,6 +24,12 @@ procedural facades, avenues, pavements, tram rails, parks, the Svislach river,
 deterministic vegetation, cast shadows, day/night lighting and building
 selection with OSM metadata.
 
+**Roads (payload 0.2.0)** are a non-overlapping surface partition
+(asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians) plus
+a semantic centreline network with junction boxes and OSM pedestrian crossings;
+markings/zebras are derived from the network, never stacked over overlapping
+polygons. See `docs/ROAD_NETWORK.md`.
+
 **Curated landmarks** (`landmark` field in the data, dedicated geometry modules):
 «Ворота Минска» (clock/emblem towers), Национальная библиотека (rhombicuboctahedron
 "diamond" on its terraced podium), Монумент Победы obelisk on Victory Square, the
@@ -64,6 +70,7 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 | C — Procedural facades | ✅ | GLSL facade material: window grids, dark day glass, ground-floor bands + shopfronts, cornices, balconies, night windows, LOD detail; 9 archetype presets; 60 facade tests |
 | D — Isometric pixel-art rendering | ✅ | ortho camera + custom controls, tile streaming with LRU/cancel/worker pool, low-res target + depth-outline + dither/levels post pass, nearest upscale, artt-directed shadows, pixel-art vs clean-3D toggle |
 | E — Streets and environment | ✅ | roads/pavements/kerbs/markings/tram rails/bridges, parks, water banding, deterministic trees; ≤10.7k env tris/tile; 67 unit tests |
+| E2 — Road network normalization (payload 0.2.0) | ✅ | non-overlapping surface partition (material zones/paving/kerb/median) + network centrelines + 520 junction records + 183 crossings (81 zebra/89 signals/13 unmarked) + 13 medians; same-layer overlaps 0.0 m² (was 73 994 m² stacked), tile-seam gaps 0.0 m, street width spread 0.0 m; 2 166 247 B payload (+1.4 % vs 0.1.0); envTriangles 164 832 (+5.7 %); 348 unit tests, 24 Python road tests; `docs/ROAD_NETWORK.md`; 13 road screenshots |
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 783 buildings, 4.01 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
 | Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |

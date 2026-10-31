@@ -129,9 +129,32 @@ From the generated milestone data:
   Picking relies on that ownership map.
 - No interiors, no boolean-cut openings, no stairs, no antennas/chimneys except as
   simplified roof volumes.
-- Road geometry is **buffered centrelines**, not carriageway edges: road widths
-  are inferred from the OSM class (motorway … footway). Junctions are not
-  filleted; overlapping road surfaces rely on layer offsets to avoid z-fighting.
+- Road geometry is **buffered centrelines**, not surveyed carriageway edges.
+  Width is normalized per named street: explicit `width`, else
+  `lanes × 3.0 m + 0.6 m` shoulders (one-way aware), else a class default; all
+  segments of a street share the median width. Junctions are not filleted
+  (sharp kerb corners). The payload 0.2.0 surface partition guarantees that
+  drivable/paving/kerb pieces never overlap, so the old per-polygon Y jitter
+  and its "stacked layers" are gone; see `docs/ROAD_NETWORK.md`.
+- Road **material** comes from OSM `surface`, folded into
+  `asphalt/stone/concrete/unpaved`. Explicit tags are authoritative; untagged
+  segments inherit the street's length-weighted majority. OSM gaps or wrong
+  tags therefore render as asphalt unless a hand-reviewed
+  `SURFACE_OVERRIDES` entry is added. Material changes are crisp shared edges
+  inside the partition, not stacked tints. There is no per-class road tint any
+  more: street hierarchy is read from width and markings.
+- **Bridges** are raised decks (2.5 m) without ramps: the deck steps up from
+  the ground carriageway at its ends, structural side skirts are drawn only
+  where the deck is not adjacent to a ground road (bridge sidewalks are flat
+  slabs on the deck). This reads as a stylised bridge at isometric zoom but is
+  not a true approach ramp.
+- **Markings** are derived from normalized centrelines (paint only on
+  asphalt). OSM `highway=crossing` / `highway=traffic_signals` nodes drive
+  zebras and stop lines; a junction without a mapped crossing gets no zebra.
+  Signalised pedestrian crossings are rendered as zebra bars + stop lines, a
+  bare signal head gets a stop line only. Dash phase is anchored per way, so it
+  restarts at OSM way joins (most of which are junctions, where markings stop
+  anyway). Paint is kept out of junction boxes and crossing spans.
 - Surface polygons (landuse/leisure/natural) may be nested or overlapping in OSM;
   the pipeline flattens them with small y offsets (`GROUND_LAYER_Y`), so extreme
   close-ups can show layering artefacts.

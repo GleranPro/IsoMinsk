@@ -9,7 +9,7 @@
  * keep the exported names stable.
  */
 
-import type { Archetype, RoofShape, RoadClass, SurfaceKind } from '../../shared/types';
+import type { Archetype, RoofShape, RoadClass, RoadMaterial, SurfaceKind } from '../../shared/types';
 
 export type Hex = string;
 
@@ -65,6 +65,36 @@ export const ROAD_PALETTE: Record<RoadClass, Hex> = {
 
 /** Sidewalk / kerb tint used for the road shoulder ring. */
 export const SIDEWALK_COLOR: Hex = '#a9a293';
+
+/**
+ * Normalized road surface materials (payload 0.2.0): one flat tone per
+ * material, no per-class tints. Applied to non-overlapping partition pieces,
+ * so a material change is a crisp shared edge instead of stacked polygons.
+ *
+ * Starting values tuned for pixel-art scale: asphalt stays the darkest large
+ * family, sett/cobblestone reads warmer and lighter, concrete is neutral,
+ * ground/dirt is warm brown-grey.
+ */
+export const SURFACE_COLORS: Record<RoadMaterial, Hex> = {
+  asphalt: ROAD_PALETTE.primary,
+  stone: '#8a8478',
+  concrete: '#8d9089',
+  unpaved: '#8c8068',
+};
+
+/** Paving / sidewalk tone of the normalized partition. */
+export const PAVING_COLOR: Hex = SIDEWALK_COLOR;
+
+/** Kerb strip tone: darker than paving, lighter than asphalt. */
+export const KERB_COLOR: Hex = mixHex(ROAD_PALETTE.primary, SIDEWALK_COLOR, 0.45);
+
+/** Median strip between paired one-way carriageways. */
+export const MEDIAN_COLOR: Hex = mixHex(ENV_PALETTE.grass, SIDEWALK_COLOR, 0.35);
+
+/** Painted lane markings / zebra bars: warm off-white derived from the pavement. */
+export const MARKING_COLOR: Hex = shadeHex(SIDEWALK_COLOR, 0.55);
+/** Slightly dimmer paint for stop lines (reads as worn paint, not glare). */
+export const MARKING_COLOR_DIM: Hex = shadeHex(MARKING_COLOR, -0.12);
 
 /** Effective road width by class in metres (used when OSM has no `width`). */
 export const ROAD_WIDTH_M: Record<RoadClass, number> = {

@@ -8,7 +8,10 @@ raw GeoJSON (WGS84, lon/lat)
   -> infer building heights, roof shapes and architectural archetypes
     (with explicit provenance for every inferred value)
   -> resolve OSM building:part volumes into non-overlapping volumes
-  -> buffer road centre lines into renderable polygons (+ pavements)
+  -> normalize the road network: one width/material per street, a non-overlapping
+     surface partition (drivable material zones / paving / kerbs / medians) and a
+     semantic centreline network with junction boxes and pedestrian crossings
+     (see scripts/normalize/road_network.py and docs/ROAD_NETWORK.md)
   -> deterministic tree placement
   -> clip everything into the 512 m tile grid
   -> data/processed/city_normalized.json + public/data/tiles/*.json + manifest
@@ -43,7 +46,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pyproj import Transformer  # noqa: E402
-from shapely import STRtree, make_valid  # noqa: E402
+from shapely import STRtree, make_valid, set_precision  # noqa: E402
 from shapely.geometry import (  # noqa: E402
     GeometryCollection,
     LineString,
@@ -68,6 +71,7 @@ from geo_config import (  # noqa: E402
     PILOT_SIZE_M,
     TILE_SIZE_M,
 )
+from road_network import build_road_network  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data/interim/minsk_raw.geojson"
@@ -144,6 +148,24 @@ def repair(geom):
     if len(polys) == 1:
         return polys[0]
     return MultiPolygon(polys)
+
+
+def ring_area_abs(ring: list[list[float]]) -> float:
+    """Absolute shoelace area of a payload ring (after rounding)."""
+    area = 0.0
+    for index in range(len(ring)):
+        x1, y1 = ring[index]
+        x2, y2 = ring[(index + 1) % len(ring)]
+        area += x1 * y2 - x2 * y1
+    return abs(area) / 2.0
+
+
+def payload_rings(polygon: Polygon, min_hole_area: float = 0.1) -> list[list[list[float]]]:
+    """Serialise a polygon, dropping holes that collapsed on the 1 cm grid."""
+    rings = poly_to_rings(polygon)
+    if len(rings) > 1:
+        rings = [rings[0]] + [hole for hole in rings[1:] if ring_area_abs(hole) >= min_hole_area]
+    return rings
 
 
 def iter_lines(geom) -> list[LineString]:
@@ -588,16 +610,8 @@ def feature_line(feature: dict) -> LineString | None:
     return LineString(pts)
 
 
-def parse_width(tags: dict[str, str], default: float) -> float:
-    width = parse_number(tags.get("width"))
-    if width is not None and 0.5 <= width <= 60:
-        return width
-    lanes = parse_number(tags.get("lanes"))
-    if lanes is not None and 1 <= lanes <= 12:
-        return max(default, lanes * 3.1)
-    return default
-
-
+# Raw OSM highway values that produce a road/rail polygon feature. Actual
+# width/material normalization lives in scripts/normalize/road_network.py.
 ROAD_WIDTH = {
     "motorway": 22.0, "motorway_link": 8.0,
     "trunk": 20.0, "trunk_link": 8.0,
@@ -609,22 +623,6 @@ ROAD_WIDTH = {
     "pedestrian": 8.0, "footway": 2.5, "cycleway": 2.5,
     "path": 2.0, "steps": 2.5, "track": 3.5, "construction": 6.0, "road": 6.0,
 }
-
-ROAD_CLASS_NORMALISE = {
-    "motorway_link": "motorway",
-    "trunk_link": "trunk",
-    "primary_link": "primary",
-    "secondary_link": "secondary",
-    "tertiary_link": "tertiary",
-    "unclassified": "residential",
-    "construction": "unknown",
-    "road": "unknown",
-}
-
-
-def normalise_road_class(tags: dict[str, str]) -> str:
-    raw = tags.get("highway", "unknown")
-    return ROAD_CLASS_NORMALISE.get(raw, raw)
 
 
 def surface_kind_from_tags(tags: dict[str, str]) -> str:
@@ -914,6 +912,7 @@ def main() -> int:
     roads_raw: list[tuple[dict, LineString]] = []
     rails_raw: list[tuple[dict, LineString]] = []
     waterways: list[tuple[dict, LineString]] = []
+    crossing_nodes: list[dict] = []
 
     for feature in features:
         kind = feature["kind"]
@@ -967,6 +966,25 @@ def main() -> int:
                     rails_raw.append(({"tags": tags, "feature": feature}, line))
             else:
                 waterways.append(({"tags": tags, "feature": feature}, line))
+        elif kind == "crossing":
+            geometry = feature.get("geometry", {})
+            if geometry.get("type") != "Point":
+                stats["crossings_invalid"] += 1
+                continue
+            coords = geometry.get("coordinates")
+            if not isinstance(coords, (list, tuple)) or len(coords) < 2:
+                stats["crossings_invalid"] += 1
+                continue
+            x, y = to_local(coords[0], coords[1])
+            if not (-half <= x <= half and -half <= y <= half):
+                stats["crossings_outside"] += 1
+                continue
+            crossing_nodes.append({
+                "osm_id": int(feature["osm_id"]),
+                "tags": tags,
+                "x": x,
+                "y": y,
+            })
 
     stats["buildings_raw"] = len(buildings_raw)
     stats["building_parts_raw"] = len(parts_raw)
@@ -974,9 +992,11 @@ def main() -> int:
     stats["roads_raw"] = len(roads_raw)
     stats["rails_raw"] = len(rails_raw)
     stats["waterways_raw"] = len(waterways)
+    stats["crossings_raw"] = len(crossing_nodes)
     print(
         f"Projected: buildings={stats['buildings_raw']:,} parts={stats['building_parts_raw']:,} "
         f"surfaces={stats['surfaces_raw']:,} roads={stats['roads_raw']:,} rails={stats['rails_raw']:,} "
+        f"crossings={stats['crossings_raw']:,} "
         f"| outside={stats['buildings_outside']:,} slivers={stats['buildings_sliver']:,} "
         f"invalid={stats['buildings_invalid']:,} empty={stats['buildings_empty_geom']:,}"
     )
@@ -1337,7 +1357,49 @@ def main() -> int:
           f"near-miss collisions kept apart: {near_misses_kept}) "
           f"(archetypes: {dict(archetype_counts)})")
 
-    # --- road / rail polygons ---------------------------------------------
+    # --- road network normalization (payload 0.2.0) ------------------------
+    # One non-overlapping surface partition (drivable material zones / paving /
+    # kerbs / medians) plus a semantic network layer (centrelines, width, lanes,
+    # direction, material) and junction/crossing records. The old per-way
+    # overlapping buffers (and their class-tinted fills) are gone; see
+    # scripts/normalize/road_network.py for the width/material model.
+    mapped_water_areas = [
+        surface["polygon"]
+        for surface in surfaces
+        if surface_kind_from_tags(surface["tags"]) in {"water", "river"}
+    ]
+    road_way_entries = [
+        {
+            "osm_type": entry["feature"]["osm_type"],
+            "osm_id": entry["feature"]["osm_id"],
+            "tags": entry["tags"],
+            "line": line,
+        }
+        for entry, line in roads_raw
+    ]
+    road_result = build_road_network(
+        road_way_entries, crossing_nodes, pilot_rect, mapped_water_areas
+    )
+    road_stats = road_result["stats"]
+    road_surfaces = road_result["surfaces"]
+    network_pieces = road_result["network"]
+    junction_features = road_result["junctions"]
+    crossing_features = road_result["crossings"]
+    print(
+        f"Road network: {road_stats.get('ways', 0):,} ways "
+        f"({road_stats.get('named_street_groups', 0)} named streets), "
+        f"{road_stats.get('surface_drivable', 0)} drivable zones, "
+        f"{road_stats.get('surface_paving', 0)} paving / "
+        f"{road_stats.get('surface_kerb', 0)} kerb / "
+        f"{road_stats.get('surface_median', 0)} median pieces, "
+        f"{road_stats.get('junctions', 0)} junctions, "
+        f"{road_stats.get('crossings', 0)} crossings; "
+        f"widths normalized={road_stats.get('widths_normalized', 0)}, "
+        f"materials={road_stats.get('materials', {})} "
+        f"[{road_stats.get('build_seconds', 0)}s]"
+    )
+
+    # --- rail polygons (legacy `roads` payload; unchanged this round) ------
     def buffer_line(line: LineString, width: float) -> list[Polygon]:
         try:
             buffered = line.buffer(width / 2.0, cap_style=2, join_style=2)
@@ -1347,49 +1409,6 @@ def main() -> int:
         return iter_polygons(repair(clipped))
 
     road_polys: list[dict] = []
-    for entry, line in roads_raw:
-        tags = entry["tags"]
-        raw_class = tags.get("highway", "unknown")
-        road_class = normalise_road_class(tags)
-        if road_class not in ROAD_WIDTH and raw_class not in ROAD_WIDTH:
-            continue
-        base_width = ROAD_WIDTH.get(raw_class, ROAD_WIDTH.get(road_class, 6.0))
-        width = parse_width(tags, base_width)
-        if tags.get("tunnel") == "yes":
-            stats["tunnels_skipped"] += 1
-            continue
-        is_bridge = tags.get("bridge") == "yes"
-        surfaces_list = buffer_line(line, width)
-        for poly in surfaces_list:
-            if poly.area < 6:
-                continue
-            road_polys.append({
-                "kind": "road" if road_class not in {"footway", "path", "steps", "cycleway", "pedestrian"} else "footway",
-                "class": road_class,
-                "polygon": poly_to_rings(poly),
-                "width": round(width, 2),
-                "bridge": is_bridge,
-                "name": tags.get("name", ""),
-            })
-        # pavements for vehicle streets
-        if road_class in {"motorway", "trunk", "primary", "secondary", "tertiary", "residential"}:
-            pavement_width = 3.0
-            try:
-                outer = line.buffer(width / 2.0 + pavement_width, cap_style=2, join_style=2)
-                inner = line.buffer(width / 2.0, cap_style=2, join_style=2)
-                ring = outer.difference(inner).intersection(pilot_rect)
-            except Exception:
-                continue
-            for poly in iter_polygons(repair(ring)):
-                if poly.area < 8:
-                    continue
-                road_polys.append({
-                    "kind": "footway",
-                    "class": "footway",
-                    "polygon": poly_to_rings(poly),
-                    "width": round(pavement_width, 2),
-                })
-
     for entry, line in rails_raw:
         tags = entry["tags"]
         railway = tags.get("railway", "rail")
@@ -1420,7 +1439,7 @@ def main() -> int:
                 **({"name": tags["name"]} if tags.get("name") else {}),
             })
     stats["road_polygons"] = len(road_polys)
-    print(f"Road/rail polygons: {len(road_polys):,} "
+    print(f"Rail polygons (legacy roads payload): {len(road_polys):,} "
           f"(metro skipped: {stats['subway_skipped']}, "
           f"underground rail skipped: {stats['rail_tunnels_skipped']})")
 
@@ -1480,55 +1499,6 @@ def main() -> int:
           f"({stats['waterway_lines_skipped']} river/canal lines skipped — areas only)")
     print(f"Ground surfaces: {len(surface_features):,}")
 
-    # Footways that are mostly inside a water area are either bridge decks (those
-    # carry bridge=yes and are raised by the renderer) or mapping noise. Drawing
-    # them at the sidewalk layer paints light lines across the river/lake, so
-    # unpaved footways that are >50 % over water are dropped.
-    water_areas = [
-        Polygon(feature["polygon"][0], [Polygon(ring).exterior.coords for ring in feature["polygon"][1:]])
-        for feature in surface_features
-        if feature["kind"] in {"water", "river"}
-    ]
-    water_areas = [geom for geom in water_areas if not geom.is_empty]
-    if water_areas:
-        water_area_tree = STRtree(water_areas)
-        kept_roads: list[dict] = []
-        dropped_paths = 0
-        for road in road_polys:
-            if road["kind"] == "footway" and not road.get("bridge"):
-                try:
-                    path_poly = Polygon(
-                        road["polygon"][0],
-                        [Polygon(ring).exterior.coords for ring in road["polygon"][1:]],
-                    )
-                except Exception:
-                    kept_roads.append(road)
-                    continue
-                if not path_poly.is_empty and path_poly.area > 0:
-                    if not path_poly.is_valid:
-                        path_poly = repair(path_poly)
-                        if path_poly is None:
-                            kept_roads.append(road)
-                            continue
-                    candidates = water_area_tree.query(path_poly)
-                    if candidates.size:
-                        covered = 0.0
-                        for index in candidates:
-                            try:
-                                piece = water_areas[int(index)].intersection(path_poly)
-                                if not piece.is_empty:
-                                    covered += piece.area
-                            except Exception:
-                                continue
-                        if covered > path_poly.area * 0.5:
-                            dropped_paths += 1
-                            continue
-            kept_roads.append(road)
-        road_polys = kept_roads
-        stats["footways_over_water_dropped"] = dropped_paths
-        if dropped_paths:
-            print(f"Dropped {dropped_paths} unpaved footways that were mostly over water")
-
     # --- trees ------------------------------------------------------------
     import random
 
@@ -1575,13 +1545,13 @@ def main() -> int:
                 continue
             if not poly.is_empty:
                 exclude_geoms.append(poly)
-    for road in road_polys:
-        try:
-            poly = Polygon(road["polygon"][0], [Polygon(ring).exterior.coords for ring in road["polygon"][1:]])
-        except Exception:
+    for road_geom in (road_result["drivable_geom"], road_result["paving_geom"]):
+        if road_geom is None or road_geom.is_empty:
             continue
-        if not poly.is_empty:
-            exclude_geoms.append(poly)
+        if not road_geom.is_valid:
+            road_geom = repair(road_geom)
+        if road_geom is not None and not road_geom.is_empty:
+            exclude_geoms.append(road_geom)
     for surface in surface_features:
         if surface["kind"] in {"water", "river", "pitch", "plaza", "construction", "railway", "sand"}:
             try:
@@ -1718,6 +1688,10 @@ def main() -> int:
                 "buildings": [],
                 "surfaces": [],
                 "roads": [],
+                "roadSurfaces": [],
+                "roadNetwork": [],
+                "junctions": [],
+                "crossings": [],
                 "trees": [],
                 "crossingBuildingIds": [],
             }
@@ -1740,7 +1714,7 @@ def main() -> int:
                 if (tx, ty) in tiles and (tx, ty) != owner:
                     tiles[(tx, ty)]["crossingBuildingIds"].append(building["id"])
 
-    def split_polygon(polygon: Polygon) -> list[tuple[tuple[int, int], Polygon]]:
+    def split_polygon(polygon: Polygon, min_area: float = 1.0) -> list[tuple[tuple[int, int], Polygon]]:
         out: list[tuple[tuple[int, int], Polygon]] = []
         minx, miny, maxx, maxy = polygon.bounds
         for tx in range(math.floor(minx / tile_size), math.floor(maxx / tile_size) + 1):
@@ -1752,7 +1726,7 @@ def main() -> int:
                     continue
                 piece = polygon.intersection(tile_rect)
                 for part in iter_polygons(repair(piece)):
-                    if part.area < 1.0:
+                    if part.area < min_area:
                         continue
                     out.append(((tx, ty), part))
         return out
@@ -1781,6 +1755,91 @@ def main() -> int:
                 **({"bridge": True} if road.get("bridge") else {}),
                 **({"name": road["name"]} if road.get("name") else {}),
             })
+
+    # --- normalized road surfaces / network / junctions / crossings --------
+    for surface in road_surfaces:
+        geom = surface.get("geom")
+        if geom is None or geom.is_empty:
+            continue
+        if not geom.is_valid:
+            geom = repair(geom)
+        if geom is None or geom.is_empty:
+            continue
+        for (tx, ty), piece in split_polygon(geom, min_area=0.02):
+            # Snap to the 1 cm payload grid BEFORE serialising: rounding raw
+            # shapely output independently per ring can create self-touching
+            # polygons, and invalid pieces broke exact tile-seam matching and
+            # the audit's boolean operations.
+            try:
+                snapped = set_precision(piece, 0.01)
+            except Exception:
+                snapped = repair(piece)
+            if snapped is None or snapped.is_empty:
+                continue
+            for part in iter_polygons(snapped):
+                if part.area < 0.05:
+                    continue
+                record = {
+                    "kind": surface["kind"],
+                    "polygon": payload_rings(part),
+                }
+                if surface.get("material"):
+                    record["material"] = surface["material"]
+                if surface.get("bridge"):
+                    record["bridge"] = True
+                tiles[(tx, ty)]["roadSurfaces"].append(record)
+
+    # Network centrelines overhang the tile by 4 m so a dash that straddles a
+    # tile border is emitted by exactly one tile (the renderer culls bars whose
+    # centre is outside the tile bounds).
+    for piece in network_pieces:
+        flat = piece.get("centerline") or []
+        if len(flat) < 4:
+            continue
+        points = [(flat[i], flat[i + 1]) for i in range(0, len(flat) - 1, 2)]
+        line = LineString(points)
+        base = {key: value for key, value in piece.items() if key != "centerline"}
+        minx, miny, maxx, maxy = line.bounds
+        for tx in range(math.floor((minx - 4.0) / tile_size), math.floor((maxx + 4.0) / tile_size) + 1):
+            for ty in range(math.floor((miny - 4.0) / tile_size), math.floor((maxy + 4.0) / tile_size) + 1):
+                if (tx, ty) not in tiles:
+                    continue
+                tile_rect = box(tx * tile_size, ty * tile_size, (tx + 1) * tile_size, (ty + 1) * tile_size)
+                try:
+                    clipped = line.intersection(tile_rect.buffer(4.0))
+                except Exception:
+                    continue
+                for segment in iter_lines(clipped):
+                    coords = list(segment.coords)
+                    if len(coords) < 2:
+                        continue
+                    try:
+                        offset = piece["centerlineOffset"] + line.project(Point(coords[0][0], coords[0][1]))
+                    except Exception:
+                        offset = piece["centerlineOffset"]
+                    flat_out: list[float] = []
+                    for x, y in coords:
+                        flat_out.extend((round(float(x), 2), round(float(y), 2)))
+                    record = dict(base)
+                    record["centerline"] = flat_out
+                    record["centerlineOffset"] = round(float(offset), 2)
+                    tiles[(tx, ty)]["roadNetwork"].append(record)
+
+    # A junction is attached to every tile its clearance circle touches, so
+    # markings near a tile border still know about a junction centred in the
+    # neighbouring tile. Duplicated small records are intentional.
+    for junction in junction_features:
+        radius = float(junction["radius"])
+        x, y = float(junction["x"]), float(junction["y"])
+        for tx in range(math.floor((x - radius - 1.0) / tile_size), math.floor((x + radius + 1.0) / tile_size) + 1):
+            for ty in range(math.floor((y - radius - 1.0) / tile_size), math.floor((y + radius + 1.0) / tile_size) + 1):
+                if (tx, ty) in tiles:
+                    tiles[(tx, ty)]["junctions"].append(junction)
+
+    for crossing in crossing_features:
+        owner = tile_of_point(crossing["x"], crossing["y"])
+        if owner is not None:
+            tiles[owner]["crossings"].append(crossing)
 
     for tree in trees:
         owner = tile_of_point(tree["x"], tree["y"])
@@ -1819,7 +1878,7 @@ def main() -> int:
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
     manifest = {
-        "version": "0.1.0",
+        "version": "0.2.0",
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
         "epsg": EPSG_UTM35N,
         "originUtm": [round(ORIGIN_X, 3), round(ORIGIN_Y, 3)],
@@ -1843,6 +1902,10 @@ def main() -> int:
             "buildingsWithRoofShape": roof_explicit_count,
             "surfaces": sum(len(t["surfaces"]) for t in tiles.values()),
             "roads": sum(len(t["roads"]) for t in tiles.values()),
+            "roadSurfaces": sum(len(t["roadSurfaces"]) for t in tiles.values()),
+            "roadNetwork": sum(len(t["roadNetwork"]) for t in tiles.values()),
+            "junctions": sum(len(t["junctions"]) for t in tiles.values()),
+            "crossings": sum(len(t["crossings"]) for t in tiles.values()),
             "trees": len(trees),
             "attractions": len(attractions),
         },
@@ -1924,6 +1987,11 @@ def main() -> int:
         "environment": {
             "surfacePolygons": len(surface_features),
             "roadPolygons": len(road_polys),
+            "roadSurfaces": len(road_surfaces),
+            "roadNetworkPieces": len(network_pieces),
+            "junctions": len(junction_features),
+            "crossings": len(crossing_features),
+            "roadNormalization": road_stats,
             "treesMapped": stats["trees_mapped"],
             "treesHeuristic": stats["trees_heuristic"],
             "attractions": len(attractions),
@@ -1948,6 +2016,18 @@ def main() -> int:
                 "buildings": buildings,
                 "surfaces": surface_features,
                 "roads": road_polys,
+                "roadSurfaces": [
+                    {
+                        "kind": surface["kind"],
+                        **({"material": surface["material"]} if surface.get("material") else {}),
+                        **({"bridge": True} if surface.get("bridge") else {}),
+                        "area": round(float(surface["geom"].area), 1),
+                    }
+                    for surface in road_surfaces
+                ],
+                "roadNetwork": network_pieces,
+                "junctions": junction_features,
+                "crossings": crossing_features,
                 "trees": trees,
                 "attractions": attractions,
             },

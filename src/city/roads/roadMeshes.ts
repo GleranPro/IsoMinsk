@@ -1,8 +1,14 @@
 /**
- * Road / pavement / tram-rail meshes for one tile.
+ * Road / pavement / tram-rail meshes for one tile — legacy path and dispatcher.
  *
- * The pipeline hands us buffered centreline polygons (already the correct
- * width). This module renders:
+ * Payload 0.2.0 tiles carry a normalized, non-overlapping road surface
+ * partition (`roadSurfaces`) plus a semantic network layer (`roadNetwork`,
+ * `junctions`, `crossings`). The new path lives in `surfaceMeshes.ts` /
+ * `networkMeshes.ts` and only the legacy rail polygons remain in `TileData.roads`:
+ * `emitRoadLayer()` dispatches to it. Demo / old tiles without the new arrays
+ * still go through the legacy path below.
+ *
+ * Legacy path (buffered centreline polygons, already the correct width):
  *  - drivable polygons flat at the road layer with `ROAD_PALETTE` colours;
  *  - footways / cycleways / paths at the sidewalk layer;
  *  - a subtle dark kerb strip around wider streets (0.6 m, its own layer just
@@ -15,12 +21,13 @@
  *    down to the ground so nothing floats in mid air;
  *  - tunnels not at all.
  *
- * All flat geometry is merged into the single `roads` sink of the tile.
+ * All flat geometry of either path is merged into the single `roads` sink of
+ * the tile, so the environment still costs one draw call for roads.
  */
 
-import type { Polygon, RoadClass, RoadPolygon } from '../../shared/types';
+import type { Polygon, RoadClass, RoadPolygon, TileData } from '../../shared/types';
 import { ROAD_PALETTE, ROAD_WIDTH_M, SIDEWALK_COLOR, mixHex, shadeHex } from '../../engine/materials/palette';
-import type { GeometrySink, Vec3 } from '../environment/meshBuilder';
+import type { GeometrySink } from '../environment/meshBuilder';
 import {
   BRIDGE_RAISE_M,
   DASH_MARKING_CLASSES,
@@ -33,13 +40,27 @@ import {
 } from '../environment/envLayers';
 import {
   prepareFlatPolygon,
-  signedRingArea,
   simplifyPreparedPolygon,
   simplifyRing,
   triangulatePrepared,
   type PreparedPolygon,
 } from '../environment/triangulate';
 import { offsetRingOutward, railLineLayout, roadDashes } from './roadAnalysis';
+import { emitBridgeSides } from './bridgeSides';
+import {
+  createRoadSurfaceStats,
+  emitRoadSurfaces,
+  type RoadSurfaceStats,
+} from './surfaceMeshes';
+import {
+  createRoadNetworkStats,
+  emitRoadNetwork,
+  type RoadNetworkStats,
+} from './networkMeshes';
+
+// Re-exported for tests and for the payload-0.2.0 surface renderer, which needs
+// the same bridge skirt logic as the legacy path.
+export { emitBridgeSides } from './bridgeSides';
 
 const MIN_RING_AREA_M2 = 0.5;
 
@@ -84,6 +105,10 @@ export interface RoadBuildStats {
   tunnelsSkipped: number;
   skippedPolygons: number;
   degeneratePolygons: number;
+  /** Payload-0.2.0 normalized surface piece counters. */
+  surfaces: RoadSurfaceStats;
+  /** Payload-0.2.0 lane-marking / crossing counters. */
+  network: RoadNetworkStats;
 }
 
 export function createRoadStats(): RoadBuildStats {
@@ -102,7 +127,41 @@ export function createRoadStats(): RoadBuildStats {
     tunnelsSkipped: 0,
     skippedPolygons: 0,
     degeneratePolygons: 0,
+    surfaces: createRoadSurfaceStats(),
+    network: createRoadNetworkStats(),
   };
+}
+
+/**
+ * Emit the whole road layer for one tile into the shared roads sink.
+ *
+ * Payload 0.2.0 tiles (non-empty `roadSurfaces`) take the normalized path:
+ * non-overlapping surface partition + network markings/crossings + the legacy
+ * rail polygons that the pipeline still serialises in `TileData.roads`.
+ * Everything else (demo fixtures, old payloads) falls back to the legacy
+ * buffered-polygon renderer.
+ */
+export function emitRoadLayer(
+  sink: GeometrySink,
+  tile: TileData | null | undefined,
+  bounds: Bounds4,
+  stats: RoadBuildStats,
+): void {
+  const surfaces = tile?.roadSurfaces;
+  if (Array.isArray(surfaces) && surfaces.length > 0) {
+    emitRoadSurfaces(sink, surfaces, bounds, stats.surfaces);
+    emitRoadNetwork(sink, tile, bounds, stats.network);
+    const legacyRoads = Array.isArray(tile?.roads) ? tile.roads : [];
+    emitRoadPolygons(
+      sink,
+      legacyRoads.filter((road) => road && roadTier(road) === 'rail'),
+      bounds,
+      stats,
+    );
+    stats.skippedPolygons += stats.surfaces.skippedPieces + stats.network.skippedPieces;
+    return;
+  }
+  emitRoadPolygons(sink, tile?.roads, bounds, stats);
 }
 
 /** Emit all road records into the roads sink; never throws on bad entries. */
@@ -295,42 +354,6 @@ function emitKerb(
     if (stats.kerbTriangles + added >= MAX_KERB_TRIANGLES_PER_TILE) break;
   }
   return added;
-}
-
-/** Vertical walls from a raised deck down to the ground plane. */
-function emitBridgeSides(
-  sink: GeometrySink,
-  prepared: PreparedPolygon,
-  deckY: number,
-  topColor: string,
-): number {
-  const color = shadeHex(topColor, -0.28);
-  const rings: PreparedPolygon['exterior'][] = [prepared.exterior];
-  for (const hole of prepared.holes) {
-    // Hole walls are seen from inside the hole, so orient the ring clockwise
-    // before deriving the outward (here: inwards) direction.
-    const oriented = signedRingArea(hole) > 0 ? [...hole].reverse() : hole;
-    rings.push(oriented);
-  }
-  const before = sink.triangleCount;
-  for (const ring of rings) {
-    if (ring.length < 3) continue;
-    for (let i = 0; i < ring.length; i++) {
-      const a = ring[i];
-      const b = ring[(i + 1) % ring.length];
-      const dx = b[0] - a[0];
-      const dy = b[1] - a[1];
-      const length = Math.hypot(dx, dy);
-      if (!(length > 1e-6)) continue;
-      const outward: Vec3 = [dy / length, 0, dx / length];
-      const topA: Vec3 = [a[0], deckY, -a[1]];
-      const topB: Vec3 = [b[0], deckY, -b[1]];
-      const bottomA: Vec3 = [a[0], 0, -a[1]];
-      const bottomB: Vec3 = [b[0], 0, -b[1]];
-      sink.addOrientedQuad(topA, topB, bottomB, bottomA, outward, color);
-    }
-  }
-  return sink.triangleCount - before;
 }
 
 /** Rail / tram polygon: ballast strip + two light rail lines. */

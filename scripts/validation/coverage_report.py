@@ -25,8 +25,10 @@ from __future__ import annotations
 import json
 import math
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
+
+from shapely.geometry import Polygon
 
 ROOT = Path(__file__).resolve().parents[2]
 TILES_DIR = ROOT / "public/data/tiles"
@@ -34,6 +36,10 @@ COVERAGE_JSON = ROOT / "data/processed/coverage.json"
 REPORT_MD = ROOT / "docs/COVERAGE_REPORT.md"
 errors: list[str] = []
 warnings: list[str] = []
+
+ROAD_SURFACE_KINDS = {"drivable", "paving", "kerb", "median"}
+ROAD_MATERIALS = {"asphalt", "stone", "concrete", "unpaved"}
+CROSSING_KINDS = {"zebra", "signals", "unmarked"}
 
 
 def fail(message: str) -> None:
@@ -108,6 +114,14 @@ def main() -> int:
     archetypes: Counter[str] = Counter()
     roof_shapes: Counter[str] = Counter()
     per_tile: list[dict] = []
+    total_road_surfaces = 0
+    total_network = 0
+    total_junctions = 0
+    total_crossings = 0
+    road_kind_counts: Counter[str] = Counter()
+    road_material_counts: Counter[str] = Counter()
+    street_widths: dict[str, list[float]] = defaultdict(list)
+    same_layer_overlap_total = 0.0
 
     for entry in tiles:
         tile_path = TILES_DIR / Path(entry["file"]).name
@@ -176,6 +190,121 @@ def main() -> int:
             total_surfaces += 1
             check_ring(surface.get("polygon", [[]])[0], f"{tile_path.name} surface")
 
+        # --- normalized road payload 0.2.0 --------------------------------
+        # The renderer relies on the surface partition being non-overlapping
+        # and on the network centrelines carrying a positive normalized width.
+        road_surface_polys: list[tuple[str, bool, Polygon]] = []
+        for record in tile.get("roadSurfaces") or []:
+            total_road_surfaces += 1
+            kind = record.get("kind")
+            if kind not in ROAD_SURFACE_KINDS:
+                fail(f"{tile_path.name}: road surface with unknown kind {kind!r}")
+                continue
+            material = record.get("material")
+            if kind == "drivable" and material not in ROAD_MATERIALS:
+                fail(f"{tile_path.name}: drivable piece with material {material!r}")
+            road_kind_counts[kind] += 1
+            road_material_counts[material or f"({kind})"] += 1
+            polygon = record.get("polygon")
+            if not polygon or not check_ring(polygon[0], f"{tile_path.name} road surface"):
+                continue
+            for number, hole in enumerate(polygon[1:]):
+                check_ring(hole, f"{tile_path.name} road surface hole {number}")
+            flat_points = [point for ring in polygon for point in ring]
+            rx0 = min(point[0] for point in flat_points)
+            rx1 = max(point[0] for point in flat_points)
+            ry0 = min(point[1] for point in flat_points)
+            ry1 = max(point[1] for point in flat_points)
+            if rx0 < minx - 0.5 or rx1 > maxx + 0.5 or ry0 < miny - 0.5 or ry1 > maxy + 0.5:
+                fail(f"{tile_path.name}: {kind} surface extends outside its tile bounds")
+                continue
+            try:
+                road_surface_polys.append((kind, bool(record.get("bridge")), Polygon(polygon[0], polygon[1:])))
+            except Exception:
+                fail(f"{tile_path.name}: {kind} surface cannot be parsed as a polygon")
+        # Same-layer pieces must not overlap (this is the invariant the whole
+        # 0.2.0 rewrite exists for). Different layers (bridge deck over a road)
+        # and drivable x paving (different Y layers, sub-cm rounding) are not
+        # checked here; scripts/qa/road-audit.py reports them separately.
+        for i in range(len(road_surface_polys)):
+            kind_i, bridge_i, poly_i = road_surface_polys[i]
+            bounds_i = poly_i.bounds
+            for j in range(i + 1, len(road_surface_polys)):
+                kind_j, bridge_j, poly_j = road_surface_polys[j]
+                if kind_i != kind_j or bridge_i != bridge_j:
+                    continue
+                bounds_j = poly_j.bounds
+                if bounds_i[2] < bounds_j[0] or bounds_j[2] < bounds_i[0]:
+                    continue
+                if bounds_i[3] < bounds_j[1] or bounds_j[3] < bounds_i[1]:
+                    continue
+                try:
+                    overlap = poly_i.intersection(poly_j).area
+                except Exception:
+                    continue
+                # Rounding to the 1 cm payload grid may leave a sub-centimetre
+                # sliver along a shared boundary; only report meaningful
+                # overlaps (a sliver is far below one pixel at any zoom).
+                if overlap > 0.35:
+                    same_layer_overlap_total += overlap
+                    fail(f"{tile_path.name}: two {kind_i} pieces overlap by {overlap:.2f} m2")
+
+        for piece in tile.get("roadNetwork") or []:
+            total_network += 1
+            flat = piece.get("centerline")
+            if not isinstance(flat, list) or len(flat) < 4 or len(flat) % 2 != 0:
+                fail(f"{tile_path.name}: network piece with malformed centerline")
+                continue
+            if any(not isinstance(value, (int, float)) or not math.isfinite(value) for value in flat):
+                fail(f"{tile_path.name}: network piece with non-finite centerline")
+                continue
+            width = piece.get("width")
+            if not isinstance(width, (int, float)) or not math.isfinite(width) or width <= 0:
+                fail(f"{tile_path.name}: network piece with invalid width {width!r}")
+            material = piece.get("material")
+            if material is not None and material not in ROAD_MATERIALS:
+                fail(f"{tile_path.name}: network piece with material {material!r}")
+            offset = piece.get("centerlineOffset")
+            if not isinstance(offset, (int, float)) or not math.isfinite(offset) or offset < 0:
+                fail(f"{tile_path.name}: network piece with invalid centerlineOffset {offset!r}")
+            # The centreline intentionally overhangs by 4 m for dash continuity.
+            xs = flat[0::2]
+            ys = flat[1::2]
+            if min(xs) < minx - 4.5 or max(xs) > maxx + 4.5 or min(ys) < miny - 4.5 or max(ys) > maxy + 4.5:
+                fail(f"{tile_path.name}: network centerline overhangs by more than 4 m")
+            name = piece.get("name")
+            if name and isinstance(width, (int, float)):
+                street_widths[name].append(float(width))
+
+        for junction in tile.get("junctions") or []:
+            total_junctions += 1
+            radius = junction.get("radius")
+            x, y = junction.get("x"), junction.get("y")
+            if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in (x, y, radius)):
+                fail(f"{tile_path.name}: junction with non-finite values")
+            elif not (3.0 <= radius <= 30.0):
+                fail(f"{tile_path.name}: junction radius {radius} out of range")
+            if int(junction.get("approaches", 0)) < 2:
+                fail(f"{tile_path.name}: junction with fewer than 2 approaches")
+
+        for crossing in tile.get("crossings") or []:
+            total_crossings += 1
+            kind = crossing.get("kind")
+            if kind not in CROSSING_KINDS:
+                fail(f"{tile_path.name}: crossing with unknown kind {kind!r}")
+            x, y = crossing.get("x"), crossing.get("y")
+            if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in (x, y)):
+                fail(f"{tile_path.name}: crossing with non-finite position")
+            elif not (minx <= x <= maxx and miny <= y <= maxy):
+                fail(f"{tile_path.name}: crossing outside its tile bounds")
+            for key in ("width", "span"):
+                value = crossing.get(key)
+                if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+                    fail(f"{tile_path.name}: crossing with invalid {key} {value!r}")
+            material = crossing.get("material")
+            if material is not None and material not in ROAD_MATERIALS:
+                fail(f"{tile_path.name}: crossing with material {material!r}")
+
         for tree in tile.get("trees", []):
             total_trees += 1
             if not (math.isfinite(tree["x"]) and math.isfinite(tree["y"])):
@@ -188,6 +317,10 @@ def main() -> int:
             "buildings": len(tile["buildings"]),
             "surfaces": len(tile["surfaces"]),
             "roads": len(tile["roads"]),
+            "roadSurfaces": len(tile.get("roadSurfaces") or []),
+            "roadNetwork": len(tile.get("roadNetwork") or []),
+            "junctions": len(tile.get("junctions") or []),
+            "crossings": len(tile.get("crossings") or []),
             "trees": len(tile.get("trees", [])),
             "bytes": entry.get("bytes", tile_path.stat().st_size),
         })
@@ -197,9 +330,32 @@ def main() -> int:
         fail(f"{len(duplicates)} building ids are duplicated across tiles "
              f"(e.g. {duplicates[:5]})")
 
+    width_spreads = {
+        name: max(values) - min(values)
+        for name, values in street_widths.items()
+        if len(values) > 1
+    }
+    inconsistent = {
+        name: spread for name, spread in width_spreads.items() if spread > 0.2
+    }
+    if inconsistent:
+        worst = sorted(inconsistent.items(), key=lambda item: -item[1])[:5]
+        fail(f"{len(inconsistent)} street(s) with inconsistent width (> 0.2 m): {worst}")
+    worst_spread = max(width_spreads.values()) if width_spreads else 0.0
+    if same_layer_overlap_total > 2.0:
+        fail(f"same-layer road surface overlap {same_layer_overlap_total:.2f} m2 > 2.0 m2")
+
     counts = manifest.get("counts", {})
     if counts.get("buildings") != total_buildings:
         fail(f"manifest counts.buildings={counts.get('buildings')} != actual {total_buildings}")
+    for key, actual in (
+        ("roadSurfaces", total_road_surfaces),
+        ("roadNetwork", total_network),
+        ("junctions", total_junctions),
+        ("crossings", total_crossings),
+    ):
+        if key in counts and counts[key] != actual:
+            fail(f"manifest counts.{key}={counts[key]} != actual {actual}")
 
     total_bytes = sum(t["bytes"] for t in per_tile)
     coverage = json.loads(COVERAGE_JSON.read_text(encoding="utf-8")) if COVERAGE_JSON.exists() else None
@@ -265,9 +421,29 @@ def main() -> int:
         lines.append("| Metric | Value |")
         lines.append("| --- | --- |")
         lines.append(f"| Ground surface polygons | {e['surfacePolygons']} |")
-        lines.append(f"| Road/rail/pavement polygons | {e['roadPolygons']} |")
+        lines.append(f"| Legacy road/rail polygons (rails only in 0.2.0) | {e['roadPolygons']} |")
         lines.append(f"| OSM-mapped trees | {e['treesMapped']} |")
         lines.append(f"| Heuristically placed trees | {e['treesHeuristic']} |")
+        lines.append("")
+        lines.append("## Road network (payload 0.2.0)\n")
+        lines.append("Non-overlapping surface partition + semantic network layer; see "
+                     "`docs/ROAD_NETWORK.md` for the width/material model.\n")
+        lines.append("| Metric | Value |")
+        lines.append("| --- | --- |")
+        lines.append(f"| Surface pieces (tile-split) | {total_road_surfaces} |")
+        lines.append(f"| — by kind | {dict(sorted(road_kind_counts.items()))} |")
+        lines.append(f"| — by material | {dict(sorted(road_material_counts.items()))} |")
+        lines.append(f"| Network pieces (centrelines) | {total_network} |")
+        lines.append(f"| Junction boxes | {total_junctions} |")
+        lines.append(f"| Pedestrian crossings | {total_crossings} |")
+        lines.append(f"| Named streets with a consistent width | {len(street_widths) - len(inconsistent)}"
+                     f" / {len(street_widths)} |")
+        normalization = e.get("roadNormalization") or {}
+        if normalization:
+            lines.append(f"| OSM ways processed | {normalization.get('ways', 0)} |")
+            lines.append(f"| Widths normalized | {normalization.get('widths_normalized', 0)} |")
+            lines.append(f"| Material overrides (curated) | {normalization.get('material_overrides', 0)} |")
+            lines.append(f"| Materials (ways) | {normalization.get('materials', {})} |")
         lines.append("")
         lines.append("## External height data\n")
         ext = coverage.get("externalHeightData", {})
@@ -275,11 +451,12 @@ def main() -> int:
         lines.append(f"- {ext.get('note', '')}")
         lines.append("")
     lines.append("## Tiles\n")
-    lines.append("| Tile | Buildings | Surfaces | Roads | Trees | Bytes |")
-    lines.append("| --- | --- | --- | --- | --- | --- |")
+    lines.append("| Tile | Buildings | Surfaces | Rails | Road surfaces | Network | Junctions | Crossings | Trees | Bytes |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for tile in per_tile:
         lines.append(f"| {tile['tile']} | {tile['buildings']} | {tile['surfaces']} | "
-                     f"{tile['roads']} | {tile['trees']} | {tile['bytes']:,} |")
+                     f"{tile['roads']} | {tile['roadSurfaces']} | {tile['roadNetwork']} | "
+                     f"{tile['junctions']} | {tile['crossings']} | {tile['trees']} | {tile['bytes']:,} |")
     lines.append(f"\nTotal payload: **{total_bytes / 1024:.0f} KiB** across {len(per_tile)} tiles "
                  f"(uncompressed JSON).\n")
     lines.append("## Validation result\n")
@@ -312,6 +489,9 @@ def main() -> int:
 
     print(f"Tiles: {len(per_tile)}  buildings: {total_buildings}  roads: {total_roads}  "
           f"surfaces: {total_surfaces}  trees: {total_trees}")
+    print(f"Road payload: surfaces={total_road_surfaces} network={total_network} "
+          f"junctions={total_junctions} crossings={total_crossings} "
+          f"worst-width-spread={worst_spread:.2f} m")
     print(f"Payload: {total_bytes / 1024:.0f} KiB")
     print(f"Report: {REPORT_MD}")
     if errors:

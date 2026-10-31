@@ -83,7 +83,21 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
   massing); the Minsk Gate crown is additive and stays in `cityGate.ts`. All
   other buildings use the generic volume builder.
 * `surfaces` — parks, grass, forests, water, plazas (already clipped to the tile).
-* `roads` — buffered road/pavement/rail polygons (already clipped to the tile).
+* `roadSurfaces` (optional, payload 0.2.0) — the normalized, **non-overlapping**
+  road surface partition: `drivable` pieces split into material zones
+  (`asphalt/stone/concrete/unpaved`), `paving`, `kerb` and `median`. Rendered at
+  fixed layer heights without per-polygon jitter; see `docs/ROAD_NETWORK.md`.
+* `roadNetwork` (optional, payload 0.2.0) — per-way semantic centrelines with
+  normalized `width`, `lanes`, `oneway`, `material`, dash-phase
+  `centerlineOffset` (may overhang the tile by 4 m so a border-straddling dash
+  is emitted once). Markings/zebras are derived from this layer, never from the
+  surface polygons.
+* `junctions` / `crossings` (optional, payload 0.2.0) — junction boxes (centre +
+  clearance radius + number of approaches) and OSM pedestrian crossings
+  projected onto the road network.
+* `roads` — legacy buffered road/pavement/rail polygons. Payload 0.2.0 tiles
+  keep only rail polygons here; older tiles still render through the legacy
+  path.
 * `trees` — deterministic tree instances, `mapped` = real OSM node.
 * `attractions` (optional) — non-building park props, currently ferris wheels:
   centre, rim radius, hub height, cabin count and wheel-plane yaw. Built by
@@ -142,7 +156,7 @@ Key properties:
 | `src/app/**` | Lead | React shell (menus, panels, loading) |
 | `src/city/buildings/**`, `src/city/roofs/**` | geometry-dev | extrusion, roofs, merged building mesh |
 | `src/city/facades/**`, `src/engine/shaders/**`, `src/engine/materials/facadeMaterial.ts` | facade-artist | facade shader, presets, palette |
-| `src/city/roads/**`, `src/city/environment/**` | environment-dev | roads, pavements, parks, water, trees, rail |
+| `src/city/roads/**`, `src/city/environment/**` | environment-dev | normalized road surfaces/network, markings, crossings, pavements, parks, water, trees, rail |
 | `src/engine/renderer|camera|tiles|picking|postprocess/**`, `src/engine/createCityApp.ts` | renderer-dev | renderer, controls, streaming, lighting, post, picking |
 | `tests/e2e/**`, `scripts/qa/**`, `docs/QA_REPORT.md` | qa-dev | browser tests, screenshots, performance, visual QA |
 
@@ -157,7 +171,11 @@ writes outside their ownership; React never creates scene objects.
   fitted to the visible footprint.
 * Ground layers are separated vertically (`GROUND_LAYER_Y`) to avoid z-fighting:
   base 0.00, landuse 0.02, grass 0.03, water 0.04, sidewalk 0.05, road 0.07,
-  markings 0.09 m.
+  markings 0.09 m. The normalized road partition adds `median` at 0.0635 m
+  (between rail ballast and kerb) and places `drivable/paving/kerb/median` at
+  their exact layer height — those pieces never overlap, so they need no
+  per-polygon jitter. Jitter remains only for the legacy path and for
+  landcover categories that can overlap in OSM.
 
 ## 7. Scaling plan
 
