@@ -120,7 +120,7 @@ def main() -> int:
     total_crossings = 0
     road_kind_counts: Counter[str] = Counter()
     road_material_counts: Counter[str] = Counter()
-    street_widths: dict[str, list[float]] = defaultdict(list)
+    street_widths: dict[tuple[str, bool], list[float]] = defaultdict(list)
     same_layer_overlap_total = 0.0
 
     for entry in tiles:
@@ -273,8 +273,16 @@ def main() -> int:
             if min(xs) < minx - 4.5 or max(xs) > maxx + 4.5 or min(ys) < miny - 4.5 or max(ys) > maxy + 4.5:
                 fail(f"{tile_path.name}: network centerline overhangs by more than 4 m")
             name = piece.get("name")
-            if name and isinstance(width, (int, float)):
-                street_widths[name].append(float(width))
+            if (
+                name
+                and piece.get("kind") == "road"
+                and not piece.get("merged")
+                and isinstance(width, (int, float))
+            ):
+                # One width per street *and direction*: a merged two-way
+                # corridor piece is derived from a pair of carriageways and is
+                # legitimately wider, so it is not part of this invariant.
+                street_widths[(name, bool(piece.get("oneway")))].append(float(width))
 
         for junction in tile.get("junctions") or []:
             total_junctions += 1

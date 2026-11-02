@@ -1,4 +1,4 @@
-"""Normalise the raw OSM extract into renderer-ready city data.
+﻿"""Normalise the raw OSM extract into renderer-ready city data.
 
 Pipeline
 --------
@@ -56,7 +56,7 @@ from shapely.geometry import (  # noqa: E402
     Polygon,
     box,
 )
-from shapely.ops import polygonize, unary_union  # noqa: E402
+from shapely.ops import linemerge, polygonize, unary_union  # noqa: E402
 
 from geo_config import (  # noqa: E402
     CITY_SIZE_M,
@@ -148,6 +148,17 @@ def repair(geom):
     if len(polys) == 1:
         return polys[0]
     return MultiPolygon(polys)
+
+
+def buffer_line(line: LineString, width: float, clip=None) -> list[Polygon]:
+    """Buffer a centreline, optionally clipping it to the pilot rectangle."""
+    try:
+        buffered = line.buffer(width / 2.0, cap_style=2, join_style=2)
+    except Exception:
+        return []
+    if clip is not None:
+        buffered = buffered.intersection(clip)
+    return iter_polygons(repair(buffered))
 
 
 def ring_area_abs(ring: list[list[float]]) -> float:
@@ -325,7 +336,7 @@ class ArchetypeClassifier:
             # concert halls) get a dedicated colonnade-based facade preset
             # instead of the generic civic window grid.
             name = (tags.get("name") or "").lower()
-            monumental_names = ("дворец", "палац", "palace", "театр", "тэатр", "theatre", "филармони")
+            monumental_names = ("РґРІРѕСЂРµС†", "РїР°Р»Р°С†", "palace", "С‚РµР°С‚СЂ", "С‚СЌР°С‚СЂ", "theatre", "С„РёР»Р°СЂРјРѕРЅРё")
             monumental_use = tags.get("amenity") in {"arts_centre", "theatre", "concert_hall", "townhall", "parliament"}
             if polygon.area >= 6000 and (monumental_use or any(part in name for part in monumental_names)):
                 return "palace"
@@ -412,8 +423,8 @@ def heuristic_height_variation(archetype: str, building_id: str, base: float) ->
     """Break the uniformity of fully inferred heights.
 
     Untagged buildings would otherwise all share one height per archetype, which
-    reads as an artificial skyline. The variation is deterministic (±18 %) and
-    is still an INFERENCE — provenance remains `heuristic` in the payload.
+    reads as an artificial skyline. The variation is deterministic (В±18 %) and
+    is still an INFERENCE вЂ” provenance remains `heuristic` in the payload.
     """
     unit = stable_unit(building_id + "|height")
     factor = 0.82 + 0.36 * unit
@@ -512,7 +523,7 @@ def rings_to_polygons(rings: list[list[tuple[float, float]]]) -> list[Polygon]:
         return []
 
     # nesting: classify rings by containment depth using their *exterior*
-    # boundaries only — a polygon that already carries holes does not contain
+    # boundaries only вЂ” a polygon that already carries holes does not contain
     # its own hole rings, which made the old depth test fail for nested rings.
     outer_polys: list[Polygon] = []
     for poly in assembled:
@@ -565,7 +576,7 @@ def _polygons_from_ring_coords(coords) -> list[Polygon]:
     further ring is a hole. MultiPolygon features are split by the caller, so no
     nesting heuristic is needed here. Earlier versions re-polygonised the rings,
     which silently turned island holes (e.g. Komsomolskoye Lake, the Svislach
-    river) into separate water/land polygons — the islands then disappeared
+    river) into separate water/land polygons вЂ” the islands then disappeared
     under the water surface.
     """
     rings = [ring_to_local(ring) for ring in coords]
@@ -710,7 +721,7 @@ def surface_kind_from_tags(tags: dict[str, str]) -> str:  # noqa: F811
 # cannot resolve. Keys are (osm_type, osm_id); every entry is documented here
 # and reported in the coverage statistics, so the curation stays auditable.
 LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
-    # "Ворота Минска" (The Minsk Gate, Privokzalnaya square). The OSM relation
+    # "Р’РѕСЂРѕС‚Р° РњРёРЅСЃРєР°" (The Minsk Gate, Privokzalnaya square). The OSM relation
     # aggregates the two 7-storey tower blocks together with their 11-storey
     # building:parts. It carries no height/levels tags and is a malformed
     # multipolygon (two outer rings in one flattened polygon), so without this
@@ -721,7 +732,7 @@ LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
         "landmark": "minsk-gate",
         "archetype": "stalin",
     },
-    # Национальная библиотека Беларусі ("алмаз"). OSM maps the stylobate as one
+    # РќР°С†РёРѕРЅР°Р»СЊРЅР°СЏ Р±РёР±Р»РёРѕС‚РµРєР° Р‘РµР»Р°СЂСѓСЃС– ("Р°Р»РјР°Р·"). OSM maps the stylobate as one
     # 89-point footprint and the rhombicuboctahedron shell as many
     # building:part polygons (some with heights that make no sense as volumes).
     # The renderer rebuilds the podium + diamond from the curated `outline`
@@ -731,7 +742,7 @@ LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
         "archetype": "civic",
         "height": 71.6,
     },
-    # Монумент Победы (Victory Square obelisk): mapped as a 16x16 m "building"
+    # РњРѕРЅСѓРјРµРЅС‚ РџРѕР±РµРґС‹ (Victory Square obelisk): mapped as a 16x16 m "building"
     # with a bogus height=4 plus pedestal/pyramidion parts. The real monument is
     # ~38 m tall including the gold star; the renderer rebuilds it from the
     # footprint (src/city/buildings/victoryObelisk.ts).
@@ -740,7 +751,7 @@ LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
         "archetype": "civic",
         "height": 38.2,
     },
-    # Костёл Св. Сымона і Св. Алены ("Чырвоны касцёл" / Red Church). The church
+    # РљРѕСЃС‚С‘Р» РЎРІ. РЎС‹РјРѕРЅР° С– РЎРІ. РђР»РµРЅС‹ ("Р§С‹СЂРІРѕРЅС‹ РєР°СЃС†С‘Р»" / Red Church). The church
     # way carries detailed building:parts (nave 25 m gabled, towers to 50 m); the
     # renderer rebuilds the brick neo-gothic massing, twin spires and crosses
     # (src/city/buildings/redChurch.ts).
@@ -749,7 +760,7 @@ LANDMARK_OVERRIDES: dict[tuple[str, int], dict] = {
         "archetype": "civic",
         "height": 50.0,
     },
-    # Тэлевежа (Minsk TV / radio tower, vul. Kamunistyčnaja). OSM maps it as a
+    # РўСЌР»РµРІРµР¶Р° (Minsk TV / radio tower, vul. KamunistyДЌnaja). OSM maps it as a
     # `building=tower, man_made=tower` with height=176 and a bogus
     # roof:height=170, which made the generic builder extrude a 168 m white prism
     # with an 8 m pyramid cap. The real structure is a free-standing lattice mast;
@@ -788,16 +799,16 @@ CURATED_PART_PARENTS: dict[int, tuple[str, int]] = {
 # Ferris wheels are mapped as `attraction=big_wheel` NODES with only a `height`
 # tag; diameter, cabin count and the wheel-plane orientation are not tagged. The
 # missing values come from the reference model of the project's X-Plane scenery
-# (measured against photos and a 2012 orthophoto, see docs/DATA_SOURCES.md §7).
+# (measured against photos and a 2012 orthophoto, see docs/DATA_SOURCES.md В§7).
 ATTRACTION_CURATION: dict[int, dict] = {
-    3588199861: {  # Агляднае кола, park Horkaha - 54 m tall, Ø51 m, 36 cabins
+    3588199861: {  # РђРіР»СЏРґРЅР°Рµ РєРѕР»Р°, park Horkaha - 54 m tall, Г51 m, 36 cabins
         "radius": 25.0,
         "hubHeight": 28.6,
         "cabins": 36,
         "openCabins": 4,
         "planeBearingDeg": 70.87,
     },
-    9841484917: {  # Агляднае кола, Čaliuškinca park - 28 m tall
+    9841484917: {  # РђРіР»СЏРґРЅР°Рµ РєРѕР»Р°, ДЊaliuЕЎkinca park - 28 m tall
         "radius": 12.8,
         "hubHeight": 14.6,
         "cabins": 18,
@@ -1003,7 +1014,7 @@ def main() -> int:
 
     # --- Independence Avenue reference (for architectural heuristics) ------
     avenue_lines: list[LineString] = []
-    AVE_NAME_PATTERNS = ("незалежнасці", "независимости", "independence")
+    AVE_NAME_PATTERNS = ("РЅРµР·Р°Р»РµР¶РЅР°СЃС†С–", "РЅРµР·Р°РІРёСЃРёРјРѕСЃС‚Рё", "independence")
     for entry, line in roads_raw:
         name = entry["tags"].get("name", "").lower()
         if any(pattern in name for pattern in AVE_NAME_PATTERNS):
@@ -1399,16 +1410,13 @@ def main() -> int:
         f"[{road_stats.get('build_seconds', 0)}s]"
     )
 
-    # --- rail polygons (legacy `roads` payload; unchanged this round) ------
-    def buffer_line(line: LineString, width: float) -> list[Polygon]:
-        try:
-            buffered = line.buffer(width / 2.0, cap_style=2, join_style=2)
-        except Exception:
-            return []
-        clipped = buffered.intersection(pilot_rect)
-        return iter_polygons(repair(clipped))
-
-    road_polys: list[dict] = []
+    # --- rail network (payload 0.2.0) --------------------------------------
+    # Rails are now centrelines in the same `roadNetwork` array as roads: the
+    # renderer draws the ballast strip and the two rail heads along them. This
+    # keeps tram rails continuous through junctions and across tile borders
+    # (the old per-way buffered polygons stopped at OSM way ends, which is what
+    # the user reported as "no rails on the crossing").
+    rail_groups: dict[tuple[str, float], list[LineString]] = defaultdict(list)
     for entry, line in rails_raw:
         tags = entry["tags"]
         railway = tags.get("railway", "rail")
@@ -1428,18 +1436,54 @@ def main() -> int:
             continue
         # Tram rails are embedded in the carriageway: thin strip, heavy rail wider.
         width = 2.2 if railway == "tram" else 3.4
-        for poly in buffer_line(line, width):
-            if poly.area < 6:
+        rail_groups[(railway, width)].append(line)
+
+    rail_pieces: list[dict] = []
+    for (railway, width), lines in sorted(rail_groups.items()):
+        # Both directions of one track are frequently mapped as two nearly
+        # identical ways; render a single rail pair for them, not four rails.
+        representatives: list[LineString] = []
+        for candidate in sorted(
+            lines, key=lambda item: (-item.length, round(item.centroid.x, 2), round(item.centroid.y, 2))
+        ):
+            if any(rep.hausdorff_distance(candidate) <= 3.5 for rep in representatives):
                 continue
-            road_polys.append({
-                "kind": "rail",
-                "class": "unknown",
-                "polygon": poly_to_rings(poly),
-                "width": width,
-                **({"name": tags["name"]} if tags.get("name") else {}),
-            })
-    stats["road_polygons"] = len(road_polys)
-    print(f"Rail polygons (legacy roads payload): {len(road_polys):,} "
+            representatives.append(candidate)
+        try:
+            merged = linemerge(unary_union(representatives))
+        except Exception:
+            stats["rail_merge_failed"] += 1
+            continue
+        for line in iter_lines(merged):
+            if line.length < 5.0:
+                continue
+            clipped = line.intersection(pilot_rect)
+            for segment in iter_lines(clipped):
+                if segment.length < 5.0:
+                    continue
+                simplified = segment.simplify(0.5, preserve_topology=False)
+                points = list(simplified.coords)
+                if len(points) < 2:
+                    continue
+                flat: list[float] = []
+                for x, y in points:
+                    flat.extend((round(float(x), 2), round(float(y), 2)))
+                rail_pieces.append({
+                    "kind": "rail",
+                    "class": "unknown",
+                    "width": round(width, 2),
+                    "centerline": flat,
+                    "centerlineOffset": 0.0,
+                })
+    network_pieces.extend(rail_pieces)
+    stats["rail_pieces"] = len(rail_pieces)
+
+    # Payload 0.2.0 keeps no legacy buffered road/rail polygons: the legacy
+    # `roads` array is empty for new tiles (older tiles still render via the
+    # legacy path).
+    road_polys: list[dict] = []
+    stats["road_polygons"] = 0
+    print(f"Rail network: {len(rail_pieces):,} centreline piece(s) "
           f"(metro skipped: {stats['subway_skipped']}, "
           f"underground rail skipped: {stats['rail_tunnels_skipped']})")
 
@@ -1459,7 +1503,7 @@ def main() -> int:
     # --- narrow streams from centre lines -----------------------------------
     # Wide water must come from mapped AREAS (natural=water, waterway=riverbank,
     # landuse=reservoir, multipolygons). Buffering a river CENTRE LINE into a
-    # 20+ m band synthesises water where OSM only has an axis — that painted a
+    # 20+ m band synthesises water where OSM only has an axis вЂ” that painted a
     # diagonal "flood" across Yanka Kupala park. Centre lines are used only for
     # genuinely narrow streams, and never where an area already covers them.
     water_polys: list[dict] = []
@@ -1479,7 +1523,7 @@ def main() -> int:
             continue
         explicit_width = parse_number(tags.get("width"))
         width = min(6.0, explicit_width) if explicit_width else 3.5
-        buffered = buffer_line(line, width)
+        buffered = buffer_line(line, width, pilot_rect)
         for poly in buffered:
             if poly.area < 10:
                 continue
@@ -1496,7 +1540,7 @@ def main() -> int:
     surface_features.extend(water_polys)
     stats["surfaces"] = len(surface_features)
     print(f"Water: {stats['water_polygons']} line-derived stream polygons "
-          f"({stats['waterway_lines_skipped']} river/canal lines skipped — areas only)")
+          f"({stats['waterway_lines_skipped']} river/canal lines skipped вЂ” areas only)")
     print(f"Ground surfaces: {len(surface_features):,}")
 
     # --- trees ------------------------------------------------------------
@@ -1582,7 +1626,7 @@ def main() -> int:
         return False
 
     # Mapped OSM trees are authoritative unless they land on a hard surface
-    # (bad mapping) — those are dropped instead of being drawn inside a wall.
+    # (bad mapping) вЂ” those are dropped instead of being drawn inside a wall.
     mapped_kept = 0
     mapped_dropped = 0
     for tree in trees:
@@ -1765,8 +1809,7 @@ def main() -> int:
             geom = repair(geom)
         if geom is None or geom.is_empty:
             continue
-        for (tx, ty), piece in split_polygon(geom, min_area=0.02):
-            # Snap to the 1 cm payload grid BEFORE serialising: rounding raw
+        for (tx, ty), piece in split_polygon(geom, min_area=0.005):            # Snap to the 1 cm payload grid BEFORE serialising: rounding raw
             # shapely output independently per ring can create self-touching
             # polygons, and invalid pieces broke exact tile-seam matching and
             # the audit's boolean operations.
@@ -1777,7 +1820,7 @@ def main() -> int:
             if snapped is None or snapped.is_empty:
                 continue
             for part in iter_polygons(snapped):
-                if part.area < 0.05:
+                if part.area < 0.005:
                     continue
                 record = {
                     "kind": surface["kind"],
@@ -1914,7 +1957,7 @@ def main() -> int:
                 "name": "OpenStreetMap",
                 "url": "https://www.openstreetmap.org/copyright",
                 "licence": "ODbL 1.0",
-                "note": "Buildings, roads, landuse, trees. © OpenStreetMap contributors",
+                "note": "Buildings, roads, landuse, trees. В© OpenStreetMap contributors",
             },
             {
                 "name": "Geofabrik",

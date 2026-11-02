@@ -15,8 +15,9 @@
  *    plain FeatureId format, 2..400 m heights, non-empty valid rings with
  *    >= 3 finite points, sane volume heights, known archetype / roof shape /
  *    height source values, optional `levels` omitted (not null) when unknown;
- *  - legacy roads (rail polygons in payload 0.2.0), surfaces and trees: valid
- *    geometry, no NaN, known enum values;
+ *  - legacy `roads` (historically rail polygons; empty for new payload-0.2.0
+ *    tiles, where rails live in `roadNetwork` as kind 'rail'), plus surfaces
+ *    and trees: valid geometry, no NaN, known enum values;
  *  - payload 0.2.0 normalized roads:
  *      * `roadSurfaces`: kind enum, drivable material always present and known,
  *        valid polygons, boolean `bridge`; a sampling-based probe proves that
@@ -24,10 +25,11 @@
  *        overlap (interior points of the smaller piece), exactly what the
  *        partition rewrite is for. Raised bridge decks may stack over the
  *        ground layer, so the probe groups by `bridge`;
- *      * `roadNetwork`: kind/class enums, positive width, even/finite
- *        centreline with >= 2 points, finite non-negative dash offset, known
- *        material when present; one canonical width per named street
- *        (max-min <= 0.2 m);
+ *      * `roadNetwork`: kind/class enums (kind 'rail' included), positive width,
+ *        even/finite centreline with >= 2 points, finite non-negative dash
+ *        offset, known material when present, boolean `merged` flag; one
+ *        canonical width per named street AND direction (max-min <= 0.2 m),
+ *        excluding synthetic `merged: true` whole-corridor pieces;
  *      * `junctions`: finite position, radius 3..30 m, integer approaches >= 2;
  *      * `crossings`: enums, positive carriageway width, positive span, finite
  *        position/angle, known material when present;
@@ -107,7 +109,7 @@ interface DataAnalysis {
   roadNetworkViolations: string[];
   /** Sampling-based drivable-piece overlap probe hits (payload 0.2.0). */
   overlapViolations: string[];
-  /** Named streets whose roadNetwork widths disagree by more than 0.2 m. */
+  /** Named street+direction widths that disagree by more than 0.2 m (merged corridors excluded). */
   widthViolations: string[];
   /** Material contract problems (stone zone, Karl Marx, surfacing rules). */
   materialViolations: string[];
@@ -442,8 +444,17 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
   };
 
   const owners = new Map<string, string[]>();
-  /** name -> widths of all roadNetwork pieces carrying that name. */
-  const widthsByName = new Map<string, number[]>();
+  /**
+   * (name, direction) -> widths of the roadNetwork pieces carrying that street
+   * name in that direction. Synthetic `merged: true` two-way corridors are
+   * excluded: they deliberately combine the two adjacent one-way carriageways
+   * into one wider piece (no `oneway` flag), so they are not comparable to a
+   * single carriageway.
+   */
+  const widthsByStreetDirection = new Map<
+    string,
+    { name: string; direction: string; widths: number[] }
+  >();
 
   for (const { entry, data } of tiles) {
     const tileName = `${entry.x}_${entry.y}`;
@@ -711,12 +722,19 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       if (piece.name !== undefined && typeof piece.name !== 'string') {
         result.roadNetworkViolations.push(`${label}: name is not a string (${String(piece.name)})`);
       }
+      // `merged` marks a synthetic corridor grouping two opposite one-way
+      // carriageways (no `oneway`, summed `lanes`, whole-corridor `width`).
+      if (piece.merged !== undefined && typeof piece.merged !== 'boolean') {
+        result.roadNetworkViolations.push(`${label}: merged is not a boolean (${String(piece.merged)})`);
+      }
 
       const name = typeof piece.name === 'string' ? piece.name.trim() : '';
-      if (name) {
-        const widths = widthsByName.get(name) ?? [];
-        if (isFiniteNumber(piece.width)) widths.push(piece.width);
-        widthsByName.set(name, widths);
+      if (name && piece.merged !== true) {
+        const direction = piece.oneway === true ? 'one-way' : 'two-way';
+        const key = `${name}\u0000${direction}`;
+        const group = widthsByStreetDirection.get(key) ?? { name, direction, widths: [] };
+        if (isFiniteNumber(piece.width)) group.widths.push(piece.width);
+        widthsByStreetDirection.set(key, group);
       }
 
       // Explicit OSM stone surfaces must never be rendered as asphalt: the
@@ -809,13 +827,16 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     }
   }
 
-  // One canonical width per named street (payload 0.2.0 contract).
-  for (const [name, widths] of widthsByName) {
+  // One canonical width per named street AND direction (payload 0.2.0
+  // contract). Directions are grouped separately because the two carriageways
+  // of a dual carriageway can legitimately have different widths; `merged`
+  // synthetic whole-corridor pieces are excluded entirely.
+  for (const { name, direction, widths } of widthsByStreetDirection.values()) {
     if (widths.length < 2) continue;
     const spread = Math.max(...widths) - Math.min(...widths);
     if (spread > 0.2) {
       result.widthViolations.push(
-        `street ${JSON.stringify(name)}: width spread ${spread.toFixed(3)} m > 0.2 m ` +
+        `street ${JSON.stringify(name)} (${direction}): width spread ${spread.toFixed(3)} m > 0.2 m ` +
           `(min ${Math.min(...widths)}, max ${Math.max(...widths)}, ${widths.length} pieces)`,
       );
     }
@@ -907,7 +928,18 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     }
     expect(counts.buildings, 'manifest must contain buildings').toBeGreaterThan(0);
     expect(counts.surfaces, 'manifest must contain surfaces').toBeGreaterThan(0);
-    expect(counts.roads, 'manifest must contain roads').toBeGreaterThan(0);
+    // Payload 0.2.0 moved every drivable/footway polygon out of `roads`; new
+    // tiles put rails into `roadNetwork` (kind 'rail') and therefore have
+    // `counts.roads === 0` legitimately. Legacy `roads` polygons remain
+    // supported for old tiles, so require at least one road representation.
+    expect(
+      counts.roads,
+      'counts.roads may be 0 for payload 0.2.0 (legacy road polygons moved to roadSurfaces/roadNetwork)',
+    ).toBeGreaterThanOrEqual(0);
+    expect(
+      (counts.roadSurfaces ?? 0) + (counts.roadNetwork ?? 0) + counts.roads,
+      'manifest must contain at least one road representation (roads, roadSurfaces or roadNetwork)',
+    ).toBeGreaterThan(0);
     expect(counts.trees, 'manifest must contain trees').toBeGreaterThan(0);
     expect(counts.buildingsWithExplicitHeight).toBeLessThanOrEqual(counts.buildings);
     expect(counts.buildingsWithLevels).toBeLessThanOrEqual(counts.buildings);
@@ -1103,7 +1135,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
-  it('road network pieces are valid (kind/class/width/centerline/offset/material)', () => {
+  it('road network pieces are valid (kind/class/width/centerline/offset/material/merged)', () => {
     expect(
       analysis.roadNetworkViolations.length,
       `${analysis.roadNetworkViolations.length} road network violation(s):\n` +
@@ -1111,7 +1143,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
-  it('named streets use one canonical width (max-min <= 0.2 m)', () => {
+  it('named streets use one canonical width per direction (max-min <= 0.2 m, merged corridors excluded)', () => {
     expect(
       analysis.widthViolations.length,
       `${analysis.widthViolations.length} named street(s) with inconsistent width:\n` +

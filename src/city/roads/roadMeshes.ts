@@ -47,6 +47,7 @@ import {
 } from '../environment/triangulate';
 import { offsetRingOutward, railLineLayout, roadDashes } from './roadAnalysis';
 import { emitBridgeSides } from './bridgeSides';
+import { RAIL_BALLAST_COLOR, RAIL_HEAD_COLOR } from './roadColors';
 import {
   createRoadSurfaceStats,
   emitRoadSurfaces,
@@ -85,10 +86,6 @@ const MAX_RAIL_TRIANGLES_PER_TILE = 1400;
 
 /** Painted lane marking tint: warm off-white derived from the pavement colour. */
 const MARKING_COLOR = shadeHex(SIDEWALK_COLOR, 0.55);
-/** Tram ballast: a touch darker than the shared railway colour. */
-const RAIL_BALLAST_COLOR = shadeHex('#7b7367', -0.18);
-/** Rail heads: lighter, steel-ish. */
-const RAIL_HEAD_COLOR = shadeHex('#7b7367', 0.55);
 
 export interface RoadBuildStats {
   roadPolygons: number;
@@ -136,10 +133,12 @@ export function createRoadStats(): RoadBuildStats {
  * Emit the whole road layer for one tile into the shared roads sink.
  *
  * Payload 0.2.0 tiles (non-empty `roadSurfaces`) take the normalized path:
- * non-overlapping surface partition + network markings/crossings + the legacy
- * rail polygons that the pipeline still serialises in `TileData.roads`.
- * Everything else (demo fixtures, old payloads) falls back to the legacy
- * buffered-polygon renderer.
+ * non-overlapping surface partition + network lane paint/crossings/tram rails.
+ * Such tiles carry an empty legacy `roads` array; if a transitional payload
+ * still has legacy rail polygons *and* no rail centrelines in `roadNetwork`,
+ * they are rendered as a fallback. Everything else (demo fixtures, old
+ * payloads) falls back to the legacy buffered-polygon renderer, which includes
+ * the older rail polygons.
  */
 export function emitRoadLayer(
   sink: GeometrySink,
@@ -151,13 +150,17 @@ export function emitRoadLayer(
   if (Array.isArray(surfaces) && surfaces.length > 0) {
     emitRoadSurfaces(sink, surfaces, bounds, stats.surfaces);
     emitRoadNetwork(sink, tile, bounds, stats.network);
-    const legacyRoads = Array.isArray(tile?.roads) ? tile.roads : [];
-    emitRoadPolygons(
-      sink,
-      legacyRoads.filter((road) => road && roadTier(road) === 'rail'),
-      bounds,
-      stats,
-    );
+    const network = Array.isArray(tile?.roadNetwork) ? tile.roadNetwork : [];
+    const hasNetworkRails = network.some((piece) => piece && piece.kind === 'rail');
+    if (!hasNetworkRails) {
+      const legacyRoads = Array.isArray(tile?.roads) ? tile.roads : [];
+      emitRoadPolygons(
+        sink,
+        legacyRoads.filter((road) => road && roadTier(road) === 'rail'),
+        bounds,
+        stats,
+      );
+    }
     stats.skippedPolygons += stats.surfaces.skippedPieces + stats.network.skippedPieces;
     return;
   }

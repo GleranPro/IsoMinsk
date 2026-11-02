@@ -87,17 +87,21 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
   road surface partition: `drivable` pieces split into material zones
   (`asphalt/stone/concrete/unpaved`), `paving`, `kerb` and `median`. Rendered at
   fixed layer heights without per-polygon jitter; see `docs/ROAD_NETWORK.md`.
-* `roadNetwork` (optional, payload 0.2.0) — per-way semantic centrelines with
-  normalized `width`, `lanes`, `oneway`, `material`, dash-phase
+* `roadNetwork` (optional, payload 0.2.0) — semantic centrelines with
+  normalized `width`/`lanes`/`oneway`/`material`, dash-phase
   `centerlineOffset` (may overhang the tile by 4 m so a border-straddling dash
-  is emitted once). Markings/zebras are derived from this layer, never from the
-  surface polygons.
+  is emitted once). Round 2 additions: `kind: 'rail'` pieces (merged tram/rail
+  centrelines, ballast + two heads rendered by `networkMeshes.ts`) and
+  `merged: true` two-way corridor pieces (opposite one-way carriageways that
+  overlap merged into one piece, lanes summed, double solid centre painted).
+  Markings/zebras/rails are derived from this layer, never from the surface
+  polygons.
 * `junctions` / `crossings` (optional, payload 0.2.0) — junction boxes (centre +
   clearance radius + number of approaches) and OSM pedestrian crossings
-  projected onto the road network.
+  projected onto the widest carriageway that contains the node.
 * `roads` — legacy buffered road/pavement/rail polygons. Payload 0.2.0 tiles
-  keep only rail polygons here; older tiles still render through the legacy
-  path.
+  now carry **no** legacy polygons (`roads: []`; rails moved to `roadNetwork`);
+  older/demo tiles still render through the legacy path.
 * `trees` — deterministic tree instances, `mapped` = real OSM node.
 * `attractions` (optional) — non-building park props, currently ferris wheels:
   centre, rim radius, hub height, cabin count and wheel-plane yaw. Built by

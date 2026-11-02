@@ -130,12 +130,21 @@ From the generated milestone data:
 - No interiors, no boolean-cut openings, no stairs, no antennas/chimneys except as
   simplified roof volumes.
 - Road geometry is **buffered centrelines**, not surveyed carriageway edges.
-  Width is normalized per named street: explicit `width`, else
-  `lanes × 3.0 m + 0.6 m` shoulders (one-way aware), else a class default; all
-  segments of a street share the median width. Junctions are not filleted
-  (sharp kerb corners). The payload 0.2.0 surface partition guarantees that
-  drivable/paving/kerb pieces never overlap, so the old per-polygon Y jitter
-  and its "stacked layers" are gone; see `docs/ROAD_NETWORK.md`.
+  Width is normalized per named street **and direction**: explicit `width`, else
+  `lanes × 3.0 m + 0.6 m` shoulders (one-way aware), else a class default,
+  combined with a length-weighted median; a 1-lane one-way section no longer
+  inherits a 4-lane two-way width (Engels Street near Engels 25 is tagged
+  `oneway lanes=1`, so it renders as a 4 m single carriageway with crossings
+  but no lane divider — data-driven, not an omission). Opposite one-way ways
+  are merged into one two-way corridor piece only when their buffers overlap;
+  pairs that stay apart keep separate carriageways and get a median strip
+  (gap strips smaller than 4 m² are dropped). Junctions receive a limited
+  corner fillet (4.5 m closing, only inside junction neighbourhoods, 2 443 m²
+  claimed as asphalt), which fills the small unfilled notches between roads
+  meeting at shallow angles; it is not a full surveyed kerb-radius model. The
+  payload 0.2.0 surface partition guarantees that drivable/paving/kerb/median
+  pieces never overlap, so the old per-polygon Y jitter and its "stacked
+  layers" are gone; see `docs/ROAD_NETWORK.md`.
 - Road **material** comes from OSM `surface`, folded into
   `asphalt/stone/concrete/unpaved`. Explicit tags are authoritative; untagged
   segments inherit the street's length-weighted majority. OSM gaps or wrong
@@ -149,12 +158,30 @@ From the generated milestone data:
   slabs on the deck). This reads as a stylised bridge at isometric zoom but is
   not a true approach ramp.
 - **Markings** are derived from normalized centrelines (paint only on
-  asphalt). OSM `highway=crossing` / `highway=traffic_signals` nodes drive
-  zebras and stop lines; a junction without a mapped crossing gets no zebra.
-  Signalised pedestrian crossings are rendered as zebra bars + stop lines, a
-  bare signal head gets a stop line only. Dash phase is anchored per way, so it
-  restarts at OSM way joins (most of which are junctions, where markings stop
-  anyway). Paint is kept out of junction boxes and crossing spans.
+  asphalt): two-way carriageways get a double solid centre from 12.5 m width or
+  a dashed centre from 5.5 m; lane dividers use the `lanes` tag when present
+  (clamped to a 2.4 m minimum pitch), else width; solid edge lines are drawn on
+  motorway/trunk/primary/secondary. OSM `highway=crossing` /
+  `highway=traffic_signals` nodes drive zebras and stop lines; a junction
+  without a mapped crossing gets no zebra. Signalised pedestrian crossings are
+  rendered as zebra bars + stop lines, a bare signal head gets a stop line only.
+  Dash phase is anchored per way, so it restarts at OSM way joins (most of which
+  are junctions, where markings stop anyway). Every paint type is clipped out
+  of junction boxes and dashes out of crossing spans; zebra bars and stop lines
+  must have all corners inside asphalt/stone, so a mis-projected crossing is
+  dropped rather than painted over paving (51 elements and 68 stop lines were
+  dropped in the pilot). Paint widths are 0.15–0.5 m: the 0.15 m lines (double
+  solids, dividers, edge lines) can alias away in the 640×360 pixel-art pass at
+  far zoom and read correctly at close zoom; this is a deliberate pixel-art
+  trade-off, not missing data. Bridge paint is raised with the deck.
+- **Tram/rail centrelines** are merged OSM lines rendered as a ballast strip and
+  two 0.34 m rail heads by the network layer; near-duplicate parallel tracks of
+  the same tram line are collapsed (Hausdorff ≤ 3.5 m), so a single-track tram
+  street gets one rail pair, not two. Rails are clipped to tile bounds (halves
+  meet with matching cross-sections) rather than owned whole by one tile, so a
+  rail crossing a tile border is drawn half by each tile; there are no painted
+  markings on rail pieces and no junction clearance for rails (they run through
+  junctions by design). Heavy rail (non-tram) uses a 3.4 m ballast strip.
 - Surface polygons (landuse/leisure/natural) may be nested or overlapping in OSM;
   the pipeline flattens them with small y offsets (`GROUND_LAYER_Y`), so extreme
   close-ups can show layering artefacts.

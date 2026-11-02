@@ -1,6 +1,6 @@
 {
  "version": "0.2.0",
- "generatedAt": "2026-10-31",
+ "generatedAt": "2026-11-02",
  "epsg": 32635,
  "originUtm": [
   536859.254,
@@ -35,112 +35,112 @@
    "y": -2,
    "file": "tiles/-2_-2.json",
    "buildings": 35,
-   "bytes": 79613
+   "bytes": 79552
   },
   {
    "x": -2,
    "y": -1,
    "file": "tiles/-2_-1.json",
    "buildings": 61,
-   "bytes": 107181
+   "bytes": 108370
   },
   {
    "x": -2,
    "y": 0,
    "file": "tiles/-2_0.json",
    "buildings": 77,
-   "bytes": 127615
+   "bytes": 129921
   },
   {
    "x": -2,
    "y": 1,
    "file": "tiles/-2_1.json",
    "buildings": 8,
-   "bytes": 44202
+   "bytes": 47108
   },
   {
    "x": -1,
    "y": -2,
    "file": "tiles/-1_-2.json",
    "buildings": 46,
-   "bytes": 84312
+   "bytes": 84817
   },
   {
    "x": -1,
    "y": -1,
    "file": "tiles/-1_-1.json",
    "buildings": 97,
-   "bytes": 165852
+   "bytes": 165664
   },
   {
    "x": -1,
    "y": 0,
    "file": "tiles/-1_0.json",
    "buildings": 93,
-   "bytes": 233298
+   "bytes": 240499
   },
   {
    "x": -1,
    "y": 1,
    "file": "tiles/-1_1.json",
    "buildings": 44,
-   "bytes": 113995
+   "bytes": 115029
   },
   {
    "x": 0,
    "y": -2,
    "file": "tiles/0_-2.json",
    "buildings": 23,
-   "bytes": 96337
+   "bytes": 98603
   },
   {
    "x": 0,
    "y": -1,
    "file": "tiles/0_-1.json",
    "buildings": 71,
-   "bytes": 203467
+   "bytes": 205524
   },
   {
    "x": 0,
    "y": 0,
    "file": "tiles/0_0.json",
    "buildings": 29,
-   "bytes": 219805
+   "bytes": 219579
   },
   {
    "x": 0,
    "y": 1,
    "file": "tiles/0_1.json",
    "buildings": 3,
-   "bytes": 233676
+   "bytes": 233836
   },
   {
    "x": 1,
    "y": -2,
    "file": "tiles/1_-2.json",
    "buildings": 27,
-   "bytes": 50007
+   "bytes": 51331
   },
   {
    "x": 1,
    "y": -1,
    "file": "tiles/1_-1.json",
    "buildings": 19,
-   "bytes": 144822
+   "bytes": 152197
   },
   {
    "x": 1,
    "y": 0,
    "file": "tiles/1_0.json",
    "buildings": 9,
-   "bytes": 210012
+   "bytes": 209676
   },
   {
    "x": 1,
    "y": 1,
    "file": "tiles/1_1.json",
    "buildings": 12,
-   "bytes": 52053
+   "bytes": 51618
   }
  ],
  "counts": {
@@ -149,11 +149,11 @@
   "buildingsWithLevels": 366,
   "buildingsWithRoofShape": 305,
   "surfaces": 612,
-  "roads": 8,
-  "roadSurfaces": 1324,
-  "roadNetwork": 1075,
-  "junctions": 520,
-  "crossings": 183,
+  "roads": 0,
+  "roadSurfaces": 1321,
+  "roadNetwork": 1055,
+  "junctions": 519,
+  "crossings": 180,
   "trees": 8559,
   "attractions": 0
  },
@@ -162,7 +162,7 @@
    "name": "OpenStreetMap",
    "url": "https://www.openstreetmap.org/copyright",
    "licence": "ODbL 1.0",
-   "note": "Buildings, roads, landuse, trees. © OpenStreetMap contributors"
+   "note": "Buildings, roads, landuse, trees. В© OpenStreetMap contributors"
   },
   {
    "name": "Geofabrik",

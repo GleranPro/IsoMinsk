@@ -15,7 +15,11 @@ generated offline, streamed and rendered in the browser. The road layer was
 rewritten to **payload 0.2.0**: a non-overlapping surface partition
 (asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians) plus
 a semantic network of centrelines, junction boxes and pedestrian crossings — so
-road seams, junction patchwork and stacked detail layers are gone (see
+road seams, junction patchwork and stacked detail layers are gone. Lane
+markings, zebras and tram rails are derived from that network: double solid
+centres on merged four-lane corridors, per-lane dividers and edge lines on all
+asphalt classes, paint raised on bridge decks, junction/crossing clipping, and
+rails that run continuously through junctions and tile borders (see
 `docs/ROAD_NETWORK.md`). See `docs/REQUIREMENTS_ORIGINAL.md` for the original
 brief, `docs/REQUIREMENTS.md` for the compliance matrix, `docs/PROGRESS.md` for
 milestone/roadmap status and `docs/LIMITATIONS.md` for what is inferred vs.

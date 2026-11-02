@@ -88,7 +88,8 @@ class CanonicalizationTests(unittest.TestCase):
         prepared, _ = rn.prepare_ways(ways, PILOT)
         rn.canonicalize(prepared)
         widths = {round(item.width, 2) for item in prepared}
-        self.assertEqual(widths, {7.8})  # median of 6.6 and 9.0
+        # Length-weighted median; with equal lengths the tagged (6.6 m) way wins.
+        self.assertEqual(widths, {6.6})
 
     def test_explicit_material_runs_are_preserved(self):
         # Karl Marx Street shape: stone section + long asphalt continuation.
@@ -100,6 +101,21 @@ class CanonicalizationTests(unittest.TestCase):
         rn.canonicalize(prepared)
         materials = {(item.osm_id, item.material) for item in prepared}
         self.assertEqual(materials, {(1, "stone"), (2, "asphalt")})
+
+    def test_one_way_and_two_way_widths_are_grouped_separately(self):
+        # Mixing both directions in one median made a 1-lane one-way section as
+        # wide as a 4-lane two-way one (reported on Engels Street).
+        ways = [
+            way(1, [(0, 0), (100, 0)], name="Mixed Street", lanes="4", surface="asphalt"),
+            way(2, [(0, 10), (100, 10)], name="Mixed Street", lanes="1", oneway="yes"),
+            way(3, [(0, 20), (100, 20)], name="Mixed Street", lanes="1", oneway="yes"),
+        ]
+        prepared, _ = rn.prepare_ways(ways, PILOT)
+        rn.canonicalize(prepared)
+        widths = {item.osm_id: item.width for item in prepared}
+        self.assertAlmostEqual(widths[1], 12.6)
+        self.assertAlmostEqual(widths[2], 4.0)  # 1 lane clamped to the 4 m minimum
+        self.assertAlmostEqual(widths[3], 4.0)
 
     def test_untagged_way_inherits_street_material(self):
         ways = [
@@ -240,8 +256,45 @@ class CrossingTests(unittest.TestCase):
         )
         self.assertEqual(result["crossings"][0]["kind"], "unmarked")
 
+    def test_crossing_prefers_the_widest_carriageway_that_contains_it(self):
+        # A crossing of a 9.6 m street must not snap to a 4 m service road that
+        # happens to be classed higher and mapped next to it.
+        ways = [
+            way(1, [(0, -400), (0, 400)], highway="secondary", name="Wide", lanes="2"),
+            way(2, [(12, -400), (12, 400)], highway="primary", name="Narrow", lanes="1", oneway="yes"),
+        ]
+        result = build(
+            ways,
+            [{"osm_id": 11, "tags": {"highway": "crossing", "crossing": "zebra"}, "x": 0.5, "y": 20}],
+        )
+        self.assertEqual(len(result["crossings"]), 1)
+        crossing = result["crossings"][0]
+        self.assertAlmostEqual(crossing["width"], 6.6, places=1)
+        self.assertEqual(crossing["roadClass"], "secondary")
+
 
 class MedianTests(unittest.TestCase):
+    def test_near_coincident_opposite_one_way_pair_is_merged(self):
+        # When the two directions practically touch, the network layer emits one
+        # two-way corridor piece so the renderer paints a double solid centre
+        # line (Independence Avenue, Pobediteley, Bogdanovicha) instead of two
+        # one-way dash columns.
+        result = build(
+            [
+                way(1, [(0, 0), (400, 0)], highway="primary", name="Ave", oneway="yes", lanes="2", surface="asphalt"),
+                way(2, [(400, 6), (0, 6)], highway="primary", name="Ave", oneway="yes", lanes="2", surface="asphalt"),
+            ]
+        )
+        roads = [piece for piece in result["network"] if piece["kind"] == "road"]
+        self.assertEqual(len(roads), 1)
+        merged = roads[0]
+        self.assertFalse(merged.get("oneway"))
+        self.assertTrue(merged.get("merged"))
+        self.assertEqual(merged["lanes"], 4)
+        self.assertGreater(merged["width"], 10.0)
+        self.assertEqual(result["stats"].get("merged_pairs"), 1)
+        self.assertEqual(result["stats"].get("merged_network_pieces"), 1)
+
     def test_paired_one_way_carriageways_get_a_median(self):
         # 20 m apart with 6.6 m carriageways leaves ~7.4 m between the inner
         # edges once the 3 m synthetic sidewalks are taken out.

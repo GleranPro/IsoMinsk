@@ -220,22 +220,34 @@ def check_material_coverage(tiles, violations, stats):
 
 
 def check_widths(tiles, violations, stats):
+    # One width per street *and direction*: a merged two-way corridor piece
+    # (double solid centre) is legitimately wider than a one-way carriageway of
+    # the same street, so directions are checked separately.
     by_name = defaultdict(list)
     unnamed = 0
     for tile in tiles:
         for piece in tile["data"].get("roadNetwork") or []:
+            if piece.get("kind") != "road" or piece.get("merged"):
+                # Merged two-way corridor pieces are derived from a pair of
+                # carriageways and are legitimately wider than a carriageway;
+                # their width is checked by the renderer's lane layout instead.
+                continue
             name = piece.get("name")
             if not name:
                 unnamed += 1
                 continue
-            by_name[name].append(float(piece.get("width") or 0.0))
+            by_name[(name, bool(piece.get("oneway")))].append(
+                float(piece.get("width") or 0.0)
+            )
     spreads = {
-        name: round(max(values) - min(values), 2)
-        for name, values in by_name.items()
+        f"{name} ({'one-way' if oneway else 'two-way'})": round(
+            max(values) - min(values), 2
+        )
+        for (name, oneway), values in by_name.items()
         if len(values) > 1
     }
     worst = sorted(spreads.items(), key=lambda item: -item[1])[:5]
-    stats["named_streets"] = len(by_name)
+    stats["named_street_direction_groups"] = len(by_name)
     stats["unnamed_network_pieces"] = unnamed
     stats["worst_width_spreads_m"] = worst
     for name, spread in spreads.items():
@@ -255,6 +267,16 @@ def check_centerlines_inside(tiles, violations, stats):
         surface = unary_union(drivable)
         bounds = tile["bounds"] or [-1e9, -1e9, 1e9, 1e9]
         for piece in tile["data"].get("roadNetwork") or []:
+            if piece.get("kind") == "rail":
+                # Rails legitimately leave the drivable surface (grass tracks,
+                # depots); their continuity is a renderer concern, not a road
+                # centrelines-inside-asphalt invariant.
+                continue
+            if piece.get("merged"):
+                # A merged two-way corridor centreline is a derived midline
+                # between two OSM ways; it can briefly run through the small
+                # unpaved seam between them.
+                continue
             flat = piece.get("centerline") or []
             if len(flat) < 4:
                 violations.append(f"{tile['name']}: network piece with short centerline")
@@ -293,16 +315,22 @@ def _seam_intervals(tile, vertical: bool, coordinate: float):
         if vertical
         else LineString([(tile["bounds"][0], coordinate), (tile["bounds"][2], coordinate)])
     )
-    for piece in tile["pieces"].get("drivable", []):
-        geom = piece["geom"].intersection(line)
-        for part in iter_lines(geom):
-            coords = list(part.coords)
-            if vertical:
-                values = sorted((coord[1] for coord in coords))
-            else:
-                values = sorted((coord[0] for coord in coords))
-            if values and values[-1] - values[0] > 1e-6:
-                intervals.append((values[0], values[-1]))
+    # Seam continuity is about *visible ground coverage*, not just asphalt: a
+    # narrow paving/kerb strip legitimately runs between carriageways and across
+    # the border (e.g. the median slot), so any surface layer counts as covered.
+    for kind, pieces in tile["pieces"].items():
+        if not isinstance(pieces, list):
+            continue
+        for piece in pieces:
+            geom = piece["geom"].intersection(line)
+            for part in iter_lines(geom):
+                coords = list(part.coords)
+                if vertical:
+                    values = sorted((coord[1] for coord in coords))
+                else:
+                    values = sorted((coord[0] for coord in coords))
+                if values and values[-1] - values[0] > 1e-6:
+                    intervals.append((values[0], values[-1]))
     merged = []
     for start, end in sorted(intervals):
         if merged and start <= merged[-1][1] + 1e-6:

@@ -31,7 +31,8 @@
  *   QA_READY_TIMEOUT_MS=120000
  *   QA_ONLY=<substring> # capture only matching shot files, e.g. QA_ONLY=night
  *
- * Output: `screenshots/roads/*.png` (12 shots), `screenshots/roads/shots.json`
+ * Output: `screenshots/roads/*.png` (20 shots: 13 core road views + 7 targeted
+ * close-ups for the user-reported marking/artifact places), `screenshots/roads/shots.json`
  * (per-shot camera/time/pixel/stats evidence) and `screenshots/roads/console.log`.
  * Honesty contract: if the renderer never becomes ready or the full city never
  * streams in, no misleading screenshots are kept as success — the script writes
@@ -90,6 +91,19 @@ const ISO_ELEVATION = Math.atan(1 / Math.SQRT2);
  *   (g) far overview = resetCamera + orthoHeight 900 m
  *   (+1) zebra-crossing cluster at (-258.5, -501.5): five zebra crossings in one junction
  *   (13 shots total; at least the 8 required views a–h are present)
+ *
+ * Second round (payload 0.2.0 addendum — merged corridors + rail pieces):
+ * seven extra fixed close-ups for the user-reported marking/artifact places,
+ * kept alongside the original 13 (20 shots total):
+ *   14 Independence Ave merged corridor on the October Square/station stretch —
+ *      double solid centre, focus (-448, -454) on the 24 m merged piece
+ *      (the Lead-confirmed user-reported spot)
+ *   15 Pobediteley Ave at the Svislach bridge/river — median + paint, (-495, 340)
+ *   16 Bogdanovicha near (-273, 637) — lane dividers
+ *   17 Engels 25 at (364, -462)
+ *   18 Krasnoarmeyskaya at (300, -200)
+ *   19 Ulyanovskaya tram junction near (241, -730) — rail pieces through the junction
+ *   20 Bogdanovicha × Yanka Kupala junction (-205, 783) — no paint/median artifacts
  */
 const SHOTS = [
   {
@@ -203,6 +217,69 @@ const SHOTS = [
     note: 'crossing-dense junction with five zebra crossings (zebra bars + stop lines derived from roadNetwork)',
     fx: -258.5,
     fy: -501.5,
+    zoom: 70,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '14-independence-october-double-solid.png',
+    note: 'Independence Ave merged two-way corridor: double solid centre line (October Square/station stretch, user-reported spot)',
+    fx: -448,
+    fy: -454,
+    zoom: 75,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '15-pobediteley-river-median-paint.png',
+    note: 'Pobediteley Ave at the Svislach bridge/river: raised median, lane paint, deck geometry',
+    fx: -495,
+    fy: 340,
+    zoom: 75,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '16-bogdanovicha-lane-dividers.png',
+    note: 'Bogdanovicha lane dividers near (-273, 637)',
+    fx: -273,
+    fy: 637,
+    zoom: 55,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '17-engels-25.png',
+    note: 'Engels 25 at (364, -462): marking/artifact check',
+    fx: 364,
+    fy: -462,
+    zoom: 55,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '18-krasnoarmeyskaya.png',
+    note: 'Krasnoarmeyskaya at (300, -200): marking/artifact check',
+    fx: 300,
+    fy: -200,
+    zoom: 60,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '19-ulyanovskaya-tram-junction.png',
+    note: 'Ulyanovskaya tram junction near (241, -730): rail pieces passing through the junction',
+    fx: 241,
+    fy: -730,
+    zoom: 65,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '20-bogdanovicha-yanka-junction.png',
+    note: 'Bogdanovicha × Yanka Kupala junction (-205, 783): paint/median artifact check',
+    fx: -205,
+    fy: 783,
     zoom: 70,
     time: 13,
     pixel: 1,
@@ -535,7 +612,8 @@ async function captureShot(page, shot, index) {
   console.log(
     `[shot] ${shot.file}  focus=${meta.target === 'default-camera-centre' ? 'default' : `(${shot.fx}, ${shot.fy})`} ` +
       `zoom=${shot.zoom} tod=${applied.timeOfDay} pixel=${applied.pixelEffect} ` +
-      `tiles=${stats?.loadedTiles ?? '?'} tris=${stats?.triangles ?? '?'} draws=${stats?.drawCalls ?? '?'}`,
+      `tiles=${stats?.loadedTiles ?? '?'} tris=${stats?.triangles ?? '?'} draws=${stats?.drawCalls ?? '?'} ` +
+      `fps=${stats?.fps ?? '?'}`,
   );
 }
 

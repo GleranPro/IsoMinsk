@@ -214,6 +214,14 @@ export interface RoadNetworkPiece {
   surface?: string;
   bridge?: boolean;
   name?: string;
+  /**
+   * True for a synthetic piece that merges the two near-coincident opposite
+   * one-way carriageways of one street into a single two-way corridor
+   * (no `oneway`, `lanes` summed, `width` = whole corridor). The renderer
+   * paints a double solid centre line on it; QA width checks treat merged
+   * pieces separately because they are legitimately wider than a carriageway.
+   */
+  merged?: boolean;
   /** Flat `[x0,y0,x1,y1,…]` open polyline in local metres. */
   centerline: number[];
   /** Arc length along the source way at `centerline[0]`, metres (dash phase). */

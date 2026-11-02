@@ -20,20 +20,20 @@
 | With `building:levels` (height derived) | 366 (56.0%) |
 | Height inferred by heuristic | 231 (35.3%) |
 | With explicit `roof:shape` | 305 (46.6%) |
-| Pitched roofs rendered | 447 |
+| Pitched roofs rendered | 445 |
 | Buildings using `building:part` volumes | 74 |
 
 ### Archetype distribution (heuristic classification)
 
 | Archetype | Buildings |
 | --- | --- |
-| historic | 169 |
-| small | 149 |
-| stalin | 117 |
+| historic | 197 |
+| small | 137 |
+| stalin | 97 |
 | civic | 88 |
-| office | 81 |
+| office | 80 |
 | khrushchev | 34 |
-| panel | 14 |
+| panel | 19 |
 | industrial | 3 |
 | palace | 1 |
 | stadium | 1 |
@@ -42,8 +42,8 @@
 
 | Roof shape | Buildings |
 | --- | --- |
-| gabled | 332 |
-| flat | 209 |
+| gabled | 330 |
+| flat | 211 |
 | hipped | 105 |
 | dome | 8 |
 | skillion | 2 |
@@ -64,7 +64,7 @@
 | Metric | Value |
 | --- | --- |
 | Ground surface polygons | 484 |
-| Legacy road/rail polygons (rails only in 0.2.0) | 4 |
+| Legacy road/rail polygons (rails only in 0.2.0) | 0 |
 | OSM-mapped trees | 149 |
 | Heuristically placed trees | 8410 |
 
@@ -74,15 +74,15 @@ Non-overlapping surface partition + semantic network layer; see `docs/ROAD_NETWO
 
 | Metric | Value |
 | --- | --- |
-| Surface pieces (tile-split) | 1324 |
-| — by kind | {'drivable': 299, 'kerb': 435, 'median': 13, 'paving': 577} |
-| — by material | {'(kerb)': 435, '(median)': 13, '(paving)': 577, 'asphalt': 186, 'concrete': 2, 'stone': 111} |
-| Network pieces (centrelines) | 1075 |
-| Junction boxes | 520 |
-| Pedestrian crossings | 183 |
-| Named streets with a consistent width | 33 / 33 |
+| Surface pieces (tile-split) | 1321 |
+| — by kind | {'drivable': 295, 'kerb': 454, 'median': 20, 'paving': 552} |
+| — by material | {'(kerb)': 454, '(median)': 20, '(paving)': 552, 'asphalt': 183, 'concrete': 2, 'stone': 110} |
+| Network pieces (centrelines) | 1055 |
+| Junction boxes | 519 |
+| Pedestrian crossings | 180 |
+| Named streets with a consistent width | 43 / 43 |
 | OSM ways processed | 2843 |
-| Widths normalized | 96 |
+| Widths normalized | 70 |
 | Material overrides (curated) | 0 |
 | Materials (ways) | {'asphalt': 1761, 'stone': 1068, 'concrete': 4, 'unpaved': 10} |
 
@@ -95,24 +95,24 @@ Non-overlapping surface partition + semantic network layer; see `docs/ROAD_NETWO
 
 | Tile | Buildings | Surfaces | Rails | Road surfaces | Network | Junctions | Crossings | Trees | Bytes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| -2_-2 | 35 | 35 | 0 | 64 | 68 | 24 | 13 | 67 | 79,613 |
-| -2_-1 | 61 | 15 | 0 | 110 | 77 | 44 | 14 | 80 | 107,181 |
-| -2_0 | 77 | 28 | 0 | 96 | 82 | 36 | 7 | 3 | 127,615 |
-| -2_1 | 8 | 50 | 0 | 32 | 22 | 11 | 4 | 18 | 44,202 |
-| -1_-2 | 46 | 20 | 0 | 82 | 64 | 39 | 13 | 62 | 84,312 |
-| -1_-1 | 97 | 37 | 0 | 157 | 172 | 78 | 26 | 12 | 165,852 |
-| -1_0 | 93 | 95 | 0 | 160 | 114 | 56 | 27 | 84 | 233,298 |
-| -1_1 | 44 | 50 | 0 | 68 | 42 | 15 | 6 | 259 | 113,995 |
-| 0_-2 | 23 | 55 | 2 | 77 | 70 | 38 | 16 | 187 | 96,337 |
-| 0_-1 | 71 | 77 | 0 | 155 | 137 | 66 | 22 | 594 | 203,467 |
-| 0_0 | 29 | 53 | 0 | 103 | 76 | 43 | 16 | 1408 | 219,805 |
-| 0_1 | 3 | 26 | 0 | 24 | 21 | 1 | 4 | 2378 | 233,676 |
-| 1_-2 | 27 | 10 | 2 | 33 | 34 | 30 | 0 | 135 | 50,007 |
-| 1_-1 | 19 | 24 | 4 | 87 | 45 | 18 | 11 | 1017 | 144,822 |
-| 1_0 | 9 | 12 | 0 | 37 | 26 | 11 | 2 | 2033 | 210,012 |
-| 1_1 | 12 | 25 | 0 | 39 | 25 | 10 | 2 | 222 | 52,053 |
+| -2_-2 | 35 | 35 | 0 | 64 | 61 | 24 | 14 | 67 | 79,552 |
+| -2_-1 | 61 | 15 | 0 | 104 | 74 | 44 | 13 | 80 | 108,370 |
+| -2_0 | 77 | 28 | 0 | 103 | 82 | 36 | 7 | 3 | 129,921 |
+| -2_1 | 8 | 50 | 0 | 35 | 22 | 11 | 2 | 18 | 47,108 |
+| -1_-2 | 46 | 20 | 0 | 76 | 64 | 39 | 12 | 62 | 84,817 |
+| -1_-1 | 97 | 37 | 0 | 148 | 166 | 78 | 26 | 12 | 165,664 |
+| -1_0 | 93 | 95 | 0 | 173 | 112 | 56 | 27 | 84 | 240,499 |
+| -1_1 | 44 | 50 | 0 | 68 | 42 | 15 | 7 | 264 | 115,029 |
+| 0_-2 | 23 | 55 | 0 | 79 | 71 | 37 | 16 | 187 | 98,603 |
+| 0_-1 | 71 | 77 | 0 | 145 | 137 | 66 | 22 | 595 | 205,524 |
+| 0_0 | 29 | 53 | 0 | 104 | 74 | 43 | 16 | 1408 | 219,579 |
+| 0_1 | 3 | 26 | 0 | 29 | 20 | 1 | 3 | 2373 | 233,836 |
+| 1_-2 | 27 | 10 | 0 | 31 | 36 | 30 | 0 | 135 | 51,331 |
+| 1_-1 | 19 | 24 | 0 | 89 | 47 | 18 | 11 | 1016 | 152,197 |
+| 1_0 | 9 | 12 | 0 | 38 | 24 | 11 | 2 | 2033 | 209,676 |
+| 1_1 | 12 | 25 | 0 | 35 | 23 | 10 | 2 | 222 | 51,618 |
 
-Total payload: **2115 KiB** across 16 tiles (uncompressed JSON).
+Total payload: **2142 KiB** across 16 tiles (uncompressed JSON).
 
 ## Validation result
 

@@ -32,3 +32,6 @@ tmp_*.mjs
 tmp_*.py
 .agent-scratch/
 .dsh-browser-work/
+
+# DSH harness local plugin state
+.dsh-plugins/

@@ -46,6 +46,54 @@
 > without ramps (structural side skirts only; bridge sidewalks are flat slabs
 > on the deck), and lane paint stops at junction boxes and crossings — see
 > `docs/ROAD_NETWORK.md`.
+>
+> **Revision addendum — 2026-11-02 (road markings round 2, payload 0.2.0).**
+> The user reviewed the normalized-road render and sent seven annotated
+> screenshots: missing/wrong lane markings on several streets, missing double
+> solid centre on four-lane avenues, missing medians/islands, tram rails
+> stopping at a junction, and a paint/paving artifact at Bogdanovicha × Yanka
+> Kupala. Round 2 fixed each reported defect in the pipeline and/or renderer:
+> * renderer: full lane layout on **every asphalt class** driven by
+>   `width`/`lanes`/`oneway`/`class` — double solid centre from 12.5 m, dashed
+>   centre from 5.5 m, per-direction dividers (2 m/6 m/0.15 m), edge lines on
+>   motorway/trunk/primary/secondary, tagged lane counts clamped to a 2.4 m
+>   minimum pitch; paint on bridge decks raised by `BRIDGE_RAISE_M`; every paint
+>   type clipped out of junction boxes (radius+0.5 m) and crossings; zebra bars
+>   and stop lines require all corners inside asphalt/stone, stop lines are
+>   additionally dropped inside junctions and inset 0.4 m from the kerb; zebra
+>   0.0915 m / stop lines 0.0925 m / lane paint 0.09 m heights remove z-fighting.
+> * pipeline: direction-aware length-weighted street widths (70 ways
+>   normalized; a 1-lane one-way section no longer inherits a 4-lane width),
+>   opposite one-way pairs merged into 20 two-way corridor pieces when their
+>   buffers overlap (Double-solid centres: 13 on Independence Ave, plus
+>   Gorodskoy Val/Lenina/Sverdlova/Yanka Kupala/Hertsen/Svobody), medians
+>   computed **before** paving so dropped median fragments no longer leave
+>   paving holes, 0.15 m paving sliver closing, junction fillets (2 443 m²) that
+>   remove the crossing wedge/kerb line, crossing matching by the **widest
+>   carriageway that contains the node**, and tram rails as merged network
+>   centrelines (2 merged tram lines → 6 tile pieces; ballast + two heads;
+>   continuous through junctions and tile borders; legacy `roads` now empty).
+> * verification: `pnpm test` **364/364** (22 files), Python road tests
+>   **27/27**, `tsc --noEmit` clean, `data:validate` **PASSED**, road audit
+>   **PASSED** (same-layer overlap 0.0 m², tile-seam coverage gap 0.0 m, width
+>   spread 0.0 m, 15 082/15 082 road centreline samples inside the drivable
+>   surface), geometry audit **PASSED** (envTriangles 214 320). Payload
+>   2 142 KiB (**+1.3 %** vs 0.1.0); 1 321 surface pieces, 1 055 network pieces,
+>   519 junction boxes, 180 crossings (80 zebra / 88 signals / 12 unmarked),
+>   20 median tile pieces. Two normalize runs produce byte-identical tiles.
+>   Close-up verification screenshots: `screenshots/round2/` (dual carriageway,
+>   tram junction, the reported crossing; 0 console errors), plus the 20-shot
+>   `pnpm run qa:road-shots` sweep.
+> * residual limits (honest): paint lines are 0.15 m wide and can alias away in
+>   the 640×360 pixel-art pass at far zoom (they read correctly at close zoom,
+>   and 0.5 m dashes survive); bridge paint is raised with the deck but bridge
+>   ramps are still absent; rails are clipped per tile (matching cross-sections
+>   at seams) rather than whole-piece ownership; one user-reported street
+>   (Engels near Engels 25) is tagged `oneway lanes=1` in OSM, so after the
+>   width fix it renders as a 4 m single-lane one-way with crossings but no lane
+>   divider — data-driven, documented rather than invented; 51 crossing
+>   elements and 68 stop lines are intentionally dropped where containment or
+>   junction clearance rejects them.
 
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**
 **Author:** QA & Integration agent (qa-dev)

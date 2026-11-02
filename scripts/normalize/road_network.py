@@ -54,7 +54,12 @@ MAX_PATH_WIDTH_M = 10.0
 MIN_SURFACE_AREA_M2 = 0.5
 MIN_PAVING_AREA_M2 = 2.0
 MIN_KERB_AREA_M2 = 0.5
-MIN_MEDIAN_AREA_M2 = 3.0
+MIN_MEDIAN_AREA_M2 = 4.0
+
+# Junction corner fillets (payload 0.2.0 round 2): see build_road_network.
+JUNCTION_FILLET_RADIUS_M = 4.5
+JUNCTION_FILLET_CONTEXT_M = 6.0
+MIN_FILLET_AREA_M2 = 3.0
 
 # --- OSM -> normalized classes / widths / materials -------------------------
 
@@ -431,6 +436,20 @@ def prepare_ways(ways: list[dict], pilot_rect) -> tuple[list[RoadWay], Counter]:
     return out, stats
 
 
+def _weighted_median(values: list[tuple[float, float]]) -> float:
+    """Median weighted by segment length (longer OSM ways dominate)."""
+    items = sorted(values)
+    total = sum(weight for _, weight in items)
+    if total <= 0:
+        return items[-1][0] if items else 0.0
+    accumulated = 0.0
+    for value, weight in items:
+        accumulated += weight
+        if accumulated >= total / 2.0:
+            return value
+    return items[-1][0]
+
+
 def canonicalize(ways: list[RoadWay]) -> Counter:
     """One width and one material per street; drop near-duplicate ways."""
     stats = Counter()
@@ -459,22 +478,31 @@ def canonicalize(ways: list[RoadWay]) -> Counter:
         deduped.extend(kept)
     ways[:] = deduped
 
-    # 2. canonical width per street (median over segments)
+    # 2. canonical width per street AND direction. A street can be mapped as a
+    #    pair of one-way carriageways over part of its length and as a single
+    #    two-way road elsewhere; mixing both directions in one median makes a
+    #    1-lane one-way section as wide as a 4-lane two-way one (the user saw
+    #    exactly that on Engels Street). Group by `oneway` first.
     groups.clear()
     for way in ways:
         groups[way.group].append(way)
     for group, members in groups.items():
         road_members = [w for w in members if w.kind == "road"]
-        if len(road_members) >= 2:
-            widths = sorted(w.width_raw for w in road_members)
-            canonical = statistics.median(widths)
-            for way in road_members:
-                if abs(way.width - canonical) > 0.05:
-                    stats["widths_normalized"] += 1
-                way.width = round(canonical, 2)
-        else:
-            for way in members:
-                way.width = round(way.width_raw, 2)
+        path_members = [w for w in members if w.kind == "path"]
+        for direction in (True, False):
+            subset = [w for w in road_members if w.oneway == direction]
+            if len(subset) >= 2:
+                canonical = _weighted_median(
+                    [(w.width_raw, w.line.length) for w in subset]
+                )
+                for way in subset:
+                    if abs(way.width_raw - canonical) > 0.05:
+                        stats["widths_normalized"] += 1
+                    way.width = round(canonical, 2)
+            elif len(subset) == 1:
+                subset[0].width = round(subset[0].width_raw, 2)
+        for way in path_members:
+            way.width = round(way.width_raw, 2)
         stats["groups"] += 1
 
     # 3. material: explicit tags are authoritative, untagged ways inherit the
@@ -685,64 +713,181 @@ def _strip_for_pair(way_a: RoadWay, way_b: RoadWay) -> Polygon | None:
     return poly if not poly.is_empty else None
 
 
-def median_polygons(
-    ways: list[RoadWay],
-    drivable_geom,
-    paving_geom,
-    junction_clip,
-    crossings: list[dict],
-) -> tuple[list[Polygon], Counter]:
-    """Fill the gap between paired opposite one-way carriageways."""
+def derived_lanes(way: RoadWay) -> int:
+    """Lane count for marking layout: tagged lanes, else inferred from width."""
+    if way.lanes:
+        return max(1, min(int(way.lanes), 8))
+    return max(1, min(8, int(round((way.width - 0.6) / 3.0))))
+
+
+def _midline_between(way_a: RoadWay, way_b: RoadWay) -> LineString | None:
+    """Midline polyline between two near-coincident opposite carriageways."""
+    a, b = way_a.line, way_b.line
+    if a.length < b.length:
+        a, b = b, a
+    length = a.length
+    samples = max(3, int(round(length / 8.0)))
+    points: list[tuple[float, float]] = []
+    for step in range(samples + 1):
+        point = a.interpolate(length * step / samples)
+        try:
+            other = nearest_points(b, point)[0]
+        except Exception:
+            return None
+        if point.distance(other) > 25.0:
+            continue
+        points.append(((point.x + other.x) / 2.0, (point.y + other.y) / 2.0))
+    if len(points) < 2:
+        return None
+    line = LineString(points)
+    if line.length < 8.0:
+        return None
+    simplified = line.simplify(0.5, preserve_topology=False)
+    return simplified if simplified.length >= 8.0 else line
+
+
+def _parallel_fraction(way_a: RoadWay, way_b: RoadWay, max_distance: float = 20.0) -> float:
+    """Share of `way_a` that runs parallel to (and near) `way_b`."""
+    line_a, line_b = way_a.line, way_b.line
+    length = line_a.length
+    if length < 1.0:
+        return 0.0
+    samples = max(4, int(round(length / 10.0)))
+    good = 0
+    total = 0
+    for step in range(samples + 1):
+        point = line_a.interpolate(length * step / samples)
+        try:
+            other = nearest_points(line_b, point)[0]
+        except Exception:
+            continue
+        total += 1
+        if point.distance(other) > max_distance:
+            continue
+        tangent_a = _tangent_at(line_a, point)
+        tangent_b = _tangent_at(line_b, other)
+        if tangent_a is None or tangent_b is None:
+            continue
+        if tangent_a[0] * tangent_b[0] + tangent_a[1] * tangent_b[1] <= -0.2:
+            good += 1
+    return good / max(total, 1)
+
+
+def pair_analysis(ways: list[RoadWay]) -> dict:
+    """Analyse opposite one-way carriageway pairs of the same street.
+
+    Returns:
+      merged: pairs so close that the corridor is effectively one road; the
+              network layer emits a single two-way piece (double solid centre
+              line instead of two one-way dash columns), and the pair is
+              consumed from the per-way emission.
+      median_strips: gap polygons for pairs that stay two separate
+              carriageways with a physical median between them.
+      consumed: osm ids of the merged ways.
+    """
     stats = Counter()
-    candidates = [w for w in ways if w.kind == "road" and w.oneway and w.material in PAVED_MATERIALS]
-    if len(candidates) < 2:
-        return [], stats
+    candidates = [
+        w for w in ways if w.kind == "road" and w.oneway and w.material in PAVED_MATERIALS
+    ]
     groups: dict[tuple, list[RoadWay]] = defaultdict(list)
     for way in candidates:
         groups[way.group].append(way)
-    pair_strips: list[Polygon] = []
-    seen: set[tuple[int, int]] = set()
-    centres = [Point(c["x"], c["y"]) for c in crossings]
-    for group, members in groups.items():
+    merged: list[dict] = []
+    median_strips: list[Polygon] = []
+    consumed: set[int] = set()
+    for group, members in sorted(groups.items(), key=lambda item: str(item[0])):
         if len(members) < 2:
             continue
         tree = STRtree([w.line for w in members])
-        for i, way_a in enumerate(members):
-            for raw_index in tree.query(way_a.line.buffer(25.0, join_style=1)):
-                j = int(raw_index)
-                if j <= i:
+        pairs: list[tuple[float, float, int, int]] = []
+        for index, way_a in enumerate(members):
+            for raw_index in tree.query(way_a.line.buffer(23.0, join_style=1)):
+                other = int(raw_index)
+                if other <= index:
                     continue
-                way_b = members[j]
-                key = (min(way_a.osm_id, way_b.osm_id), max(way_a.osm_id, way_b.osm_id))
-                if key in seen:
+                way_b = members[other]
+                if way_a.bridge != way_b.bridge:
                     continue
-                seen.add(key)
-                if not way_a.oneway or not way_b.oneway:
+                distance = way_a.line.distance(way_b.line)
+                if distance > 22.0:
                     continue
-                gap = way_a.line.distance(way_b.line)
-                if not (2.0 <= gap <= 22.0):
+                # Both directions of one carriageway pair must run parallel
+                # along most of their length. Two opposite sides of a square or
+                # a loop sharing a name are not a dual carriageway.
+                if _parallel_fraction(way_a, way_b) < 0.7:
                     continue
-                ta = _tangent_at(way_a.line, way_a.line.interpolate(way_a.line.length / 2))
-                tb = _tangent_at(way_b.line, way_b.line.interpolate(way_b.line.length / 2))
-                if ta is None or tb is None:
+                length_ratio = way_a.line.length / max(way_b.line.length, 1e-6)
+                if length_ratio < 0.5 or length_ratio > 2.0:
                     continue
-                if ta[0] * tb[0] + ta[1] * tb[1] > -0.2:
+                inner_gap = distance - (way_a.width + way_b.width) / 2.0
+                pairs.append((inner_gap, distance, index, other))
+        pairs.sort(key=lambda item: (item[0], item[1]))
+        used: set[int] = set()
+        for inner_gap, distance, index, other in pairs:
+            if index in used or other in used:
+                continue
+            way_a, way_b = members[index], members[other]
+            if inner_gap <= 0.0:
+                # Carriageway buffers overlap: the corridor is one continuous
+                # asphalt surface, so the centre line can be painted as a double
+                # solid line without any paint-containment problem.
+                midline = _midline_between(way_a, way_b)
+                if midline is None:
                     continue
+                merged.append({
+                    "a": way_a,
+                    "b": way_b,
+                    "midline": midline,
+                    "width": round(distance + (way_a.width + way_b.width) / 2.0, 2),
+                    "lanes": max(2, derived_lanes(way_a) + derived_lanes(way_b)),
+                    "bridge": way_a.bridge,
+                })
+                consumed.add(way_a.osm_id)
+                consumed.add(way_b.osm_id)
+                used.add(index)
+                used.add(other)
+                stats["merged_pairs"] += 1
+            else:
                 strip = _strip_for_pair(way_a, way_b)
-                if strip is not None and strip.area >= MIN_MEDIAN_AREA_M2:
-                    pair_strips.append(strip)
-    if not pair_strips:
+                if strip is not None and strip.area >= 1.0:
+                    median_strips.append(strip)
+                    used.add(index)
+                    used.add(other)
+                    stats["median_pairs"] += 1
+    stats["median_strips"] = len(median_strips)
+    return {
+        "merged": merged,
+        "median_strips": median_strips,
+        "consumed": consumed,
+        "stats": stats,
+    }
+
+
+def median_polygons_from_zones(
+    zones,
+    drivable_geom,
+    junction_clip,
+    crossings: list[dict],
+) -> tuple[list[Polygon], Counter]:
+    """Turn median gap zones into renderable median surface pieces."""
+    stats = Counter()
+    if zones is None or zones.is_empty:
         return [], stats
-    median = _union(pair_strips)
-    subtractors = [drivable_geom, paving_geom]
-    if junction_clip is not None and not junction_clip.is_empty:
-        subtractors.append(junction_clip.buffer(1.0))
-    for centre in centres:
-        subtractors.append(centre.buffer(6.0))
     try:
-        median = median.difference(_union(subtractors))
+        median = zones.difference(drivable_geom)
     except Exception:
         stats["median_subtract_failed"] += 1
+        return [], stats
+    subtractors = []
+    if junction_clip is not None and not junction_clip.is_empty:
+        subtractors.append(junction_clip.buffer(1.0))
+    for crossing in crossings:
+        subtractors.append(Point(crossing["x"], crossing["y"]).buffer(6.0))
+    if subtractors:
+        try:
+            median = median.difference(_union(subtractors))
+        except Exception:
+            stats["median_subtract_failed"] += 1
     median = _clean(median, MIN_MEDIAN_AREA_M2)
     medians = [p for p in _iter_polys(median) if p.area >= MIN_MEDIAN_AREA_M2]
     stats["medians"] = len(medians)
@@ -761,16 +906,32 @@ def build_crossings(nodes: list[dict], ways: list[RoadWay]) -> tuple[list[dict],
     accepted: list[dict] = []
     for node in sorted(nodes, key=lambda item: item.get("osm_id", 0)):
         point = Point(node["x"], node["y"])
-        best: tuple[float, int] | None = None
+        # Prefer the most important road whose carriageway actually contains
+        # the crossing node; a nearest-centreline match used to snap pedestrian
+        # crossings of a big avenue onto a parallel service road, which then
+        # painted a stop line across the wrong street.
+        best_key: tuple[float, float] | None = None
+        best_index = -1
         for raw_index in tree.query(point.buffer(CROSSING_MATCH_RADIUS_M + 1.0)):
             index = int(raw_index)
+            candidate = drivable[index]
             distance = lines[index].distance(point)
-            if distance <= CROSSING_MATCH_RADIUS_M and (best is None or distance < best[0]):
-                best = (distance, index)
-        if best is None:
+            if distance > CROSSING_MATCH_RADIUS_M:
+                continue
+            # The node must actually lie on the carriageway; among the roads
+            # whose asphalt contains it, the widest one wins (a crossing of a
+            # 9.6 m street should not snap to a 4 m slip link that happens to be
+            # classed higher).
+            if distance > candidate.width / 2.0 + 1.0:
+                continue
+            key = (-candidate.width, distance)
+            if best_key is None or key < best_key:
+                best_key = key
+                best_index = index
+        if best_index < 0:
             stats["crossing_unmatched"] += 1
             continue
-        _, index = best
+        index = best_index
         way = drivable[index]
         station = way.line.project(point)
         on_line = way.line.interpolate(station)
@@ -874,6 +1035,13 @@ def build_road_network(
     stats["footways_over_water_dropped"] = len(path_ground) - len(path_ground_kept)
     path_ground = path_ground_kept
 
+    # Opposite one-way carriageways of one street: either merge them into one
+    # two-way corridor (when they practically touch, so a double solid centre
+    # line is the correct paint) or keep a median gap between them.
+    pair_info = pair_analysis(prepared)
+    stats.update(pair_info["stats"])
+    median_zones = _union(pair_info["median_strips"])
+
     # --- drivable surface ---------------------------------------------------
     zones, zone_stats = material_zones(drivable_ground)
     stats.update(zone_stats)
@@ -885,6 +1053,66 @@ def build_road_network(
         drivable_ground_geom = drivable_ground_geom.intersection(pilot_rect)
     if not drivable_bridge_geom.is_empty:
         drivable_bridge_geom = drivable_bridge_geom.intersection(pilot_rect)
+
+    # --- junction boxes -----------------------------------------------------
+    junctions, junction_geom, junction_stats = junction_boxes(drivable_ground)
+    stats.update(junction_stats)
+
+    # Corner fillets: roads meeting at shallow angles leave narrow unfilled
+    # notches between their buffers inside the junction mouth (visible as small
+    # wedges of paving cutting into the asphalt - the reported crossing
+    # artifact). A morphological closing limited to junction neighbourhoods
+    # fills those notches with asphalt; it is claimed only where no other
+    # material already covers it, so the surface partition stays disjoint.
+    fillet_extra = Polygon()
+    junction_polygons = junction_geom.get("polygons") if junction_geom else None
+    if (
+        not drivable_ground_geom.is_empty
+        and junction_polygons is not None
+        and not junction_polygons.is_empty
+    ):
+        try:
+            clip = junction_polygons.buffer(JUNCTION_FILLET_CONTEXT_M, join_style=2)
+            closed = drivable_ground_geom.buffer(
+                JUNCTION_FILLET_RADIUS_M, join_style=2
+            ).buffer(-JUNCTION_FILLET_RADIUS_M, join_style=2)
+            fillet_extra = closed.difference(drivable_ground_geom).intersection(clip)
+            if not median_zones.is_empty:
+                fillet_extra = fillet_extra.difference(median_zones.buffer(0.5, join_style=1))
+            fillet_extra = _clean(fillet_extra, MIN_FILLET_AREA_M2)
+        except Exception:
+            stats["junction_fillet_failed"] += 1
+            fillet_extra = Polygon()
+    if not fillet_extra.is_empty:
+        drivable_ground_geom = _union([drivable_ground_geom, fillet_extra])
+        other_materials = [
+            geom for material, geom in zones.items() if material != "asphalt"
+        ]
+        fillet_claim = fillet_extra
+        if other_materials:
+            fillet_claim = fillet_extra.difference(_union(other_materials))
+        fillet_claim = _clean(fillet_claim, MIN_FILLET_AREA_M2)
+        if not fillet_claim.is_empty:
+            asphalt_zone = zones.get("asphalt")
+            if asphalt_zone is not None and not asphalt_zone.is_empty:
+                zones["asphalt"] = _union([asphalt_zone, fillet_claim])
+            else:
+                zones["asphalt"] = fillet_claim
+        stats["junction_fillets"] = len(_iter_polys(fillet_claim))
+        stats["junction_fillet_area_m2"] = round(fillet_claim.area, 1)
+
+    # --- crossings / medians (before paving: paving fills every gap that is
+    # not asphalt and not an emitted median) ---------------------------------
+    crossings, crossing_stats = build_crossings(crossing_nodes, prepared)
+    stats.update(crossing_stats)
+    medians, median_stats = median_polygons_from_zones(
+        median_zones,
+        drivable_ground_geom,
+        junction_geom.get("polygons") if junction_geom else None,
+        crossings,
+    )
+    stats.update(median_stats)
+    median_union = _union(medians)
 
     # --- paving -------------------------------------------------------------
     def sidewalk_corridors(ways: list[RoadWay]) -> list:
@@ -915,8 +1143,30 @@ def build_road_network(
         ground_paving_union = ground_paving_union.difference(
             drivable_ground_geom.buffer(0.02, join_style=1)
         )
+        # Keep only the median pieces that are actually emitted: a sidewalk must
+        # never fill a median slot, but a median fragment that is later dropped
+        # must not leave an empty slit between asphalt pieces either.
+        if not median_union.is_empty:
+            ground_paving_union = ground_paving_union.difference(
+                median_union.buffer(0.02, join_style=1)
+            )
         ground_paving_union = ground_paving_union.intersection(pilot_rect)
     paving_ground = _clean(ground_paving_union, MIN_PAVING_AREA_M2)
+    if not paving_ground.is_empty:
+        # Close sub-decimetre slivers between paving components (measurement
+        # grid snapping can split a narrow sidewalk into two pieces). Then
+        # re-assert the asphalt/median margins so closing never eats into them.
+        paving_ground = paving_ground.buffer(0.15, join_style=2).buffer(
+            -0.15, join_style=2
+        )
+        paving_ground = paving_ground.difference(
+            drivable_ground_geom.buffer(0.02, join_style=1)
+        )
+        if not median_union.is_empty:
+            paving_ground = paving_ground.difference(
+                median_union.buffer(0.02, join_style=1)
+            )
+        paving_ground = _clean(paving_ground.intersection(pilot_rect), MIN_PAVING_AREA_M2)
 
     bridge_paving_union = _union(
         [w.line.buffer(w.width / 2.0, cap_style=2, join_style=2) for w in path_bridge]
@@ -944,20 +1194,6 @@ def build_road_network(
             kerb = Polygon()
     kerb = _clean(kerb, MIN_KERB_AREA_M2).simplify(0.2, preserve_topology=True)
     kerb = _clean(kerb, MIN_KERB_AREA_M2)
-
-    # --- junctions / crossings / medians -----------------------------------
-    junctions, junction_geom, junction_stats = junction_boxes(drivable_ground)
-    stats.update(junction_stats)
-    crossings, crossing_stats = build_crossings(crossing_nodes, prepared)
-    stats.update(crossing_stats)
-    medians, median_stats = median_polygons(
-        drivable_ground,
-        drivable_ground_geom,
-        ground_paving_union if not ground_paving_union.is_empty else paving_ground,
-        junction_geom.get("polygons") if junction_geom else None,
-        crossings,
-    )
-    stats.update(median_stats)
 
     # --- surface records ----------------------------------------------------
     def pieces_from(geom, kind: str, material: str | None, bridge: bool) -> list[dict]:
@@ -991,8 +1227,12 @@ def build_road_network(
     # --- network records ----------------------------------------------------
     # Only drivable ways are needed for markings (paths/stairs carry no paint).
     network: list[dict] = []
+    consumed = pair_info["consumed"]
     for way in prepared:
         if way.tunnel or way.kind != "road":
+            continue
+        if way.osm_id in consumed:
+            # merged into one two-way corridor piece below
             continue
         line = way.line
         if line.length < 1.0:
@@ -1029,6 +1269,33 @@ def build_road_network(
         if way.name:
             record["name"] = way.name
         network.append(record)
+
+    # Near-coincident opposite one-way carriageways become one two-way piece so
+    # the renderer paints a double solid centre line (Independence Ave,
+    # Pobediteley, Bogdanovicha) instead of two one-way dash columns.
+    for item in pair_info["merged"]:
+        way = item["a"]
+        points = list(item["midline"].coords)
+        if len(points) < 2:
+            continue
+        flat = []
+        for x, y in points:
+            flat.extend((round(float(x), 2), round(float(y), 2)))
+        record = {
+            "kind": "road",
+            "class": way.cls,
+            "width": item["width"],
+            "lanes": int(item["lanes"]),
+            "material": way.material or "asphalt",
+            "centerline": flat,
+            "centerlineOffset": 0.0,
+            "name": way.name,
+            "merged": True,
+        }
+        if item["bridge"]:
+            record["bridge"] = True
+        network.append(record)
+    stats["merged_network_pieces"] = len(pair_info["merged"])
 
     # --- coverage stats -----------------------------------------------------
     stats["surfaces"] = len(surfaces)
