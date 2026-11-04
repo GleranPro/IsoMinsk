@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "qa:capture": "node scripts/qa/capture.mjs",
     "qa:road-audit": ".venv\\Scripts\\python.exe scripts/qa/road-audit.py",
+    "qa:road-paint-audit": "tsx scripts/qa/road-paint-audit.ts",
     "qa:road-shots": "node scripts/qa/road-shots.mjs",
     "data:download": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ingest/download.ps1",
     "data:extract": ".venv\\Scripts\\python.exe scripts/ingest/extract.py --area pilot",

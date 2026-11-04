@@ -9,28 +9,34 @@
  * What is verified:
  *  - manifest schema, projection, tile range/bounds/pilotBounds and attribution;
  *  - every declared tile file exists, parses and agrees with its index entry;
- *  - manifest counts agree with the actual tile payloads (incl. the payload
- *    0.2.0 keys `roadSurfaces` / `roadNetwork` / `junctions` / `crossings`);
+ *  - manifest version is exactly 0.3.0 and counts agree with the actual tile
+ *    payloads (`roadSurfaces` / `roadNetwork` / `junctions` / `crossings`);
  *  - buildings: unique ids across ALL tiles (one owning tile per building),
  *    plain FeatureId format, 2..400 m heights, non-empty valid rings with
  *    >= 3 finite points, sane volume heights, known archetype / roof shape /
  *    height source values, optional `levels` omitted (not null) when unknown;
- *  - legacy `roads` (historically rail polygons; empty for new payload-0.2.0
- *    tiles, where rails live in `roadNetwork` as kind 'rail'), plus surfaces
- *    and trees: valid geometry, no NaN, known enum values;
- *  - payload 0.2.0 normalized roads:
+ *  - legacy `roads` (historically rail polygons; empty for payload-0.2.0+ tiles,
+ *    where rails live in `roadNetwork` as kind 'rail'), plus surfaces and trees:
+ *    valid geometry, no NaN, known enum values;
+ *  - payload 0.3.0 normalized roads:
  *      * `roadSurfaces`: kind enum, drivable material always present and known,
- *        valid polygons, boolean `bridge`; a sampling-based probe proves that
- *        drivable pieces of the same bridge layer inside one tile do not
- *        overlap (interior points of the smaller piece), exactly what the
- *        partition rewrite is for. Raised bridge decks may stack over the
- *        ground layer, so the probe groups by `bridge`;
+ *        valid polygons, boolean `bridge`; synthetic junction faces carry
+ *        boolean `junction` and must be paved drivable pieces; a sampling-based
+ *        probe proves that drivable pieces of the same bridge layer inside one
+ *        tile do not overlap (interior points of the smaller piece), exactly
+ *        what the partition rewrite is for. Raised bridge decks may stack over
+ *        the ground layer, so the probe groups by `bridge`;
  *      * `roadNetwork`: kind/class enums (kind 'rail' included), positive width,
  *        even/finite centreline with >= 2 points, finite non-negative dash
- *        offset, known material when present, boolean `merged` flag; one
- *        canonical width per named street AND direction (max-min <= 0.2 m),
- *        excluding synthetic `merged: true` whole-corridor pieces;
- *      * `junctions`: finite position, radius 3..30 m, integer approaches >= 2;
+ *        offset, known material when present, boolean `merged`/`link`/
+ *        `roundabout`, 0.3.0 lane metadata (`lanesForward`/`lanesBackward`/
+ *        `lanesSource`; tag-sourced lane counts must be self-consistent); one
+ *        canonical width per named street + direction + lane signature
+ *        (max-min <= 0.2 m), excluding `merged: true` corridors and rail;
+ *      * `junctions`: finite position, radius 3..30 m, integer approaches >= 2
+ *        (legacy clearance), plus 0.3.0 id, simple face `polygon` (area > 1 m²,
+ *        <= 96 vertices, overlapping its tile ±1 m), `approachEdges` metadata
+ *        (angle/width/lanes/oneway/link/stopLine) and boolean `fallback`;
  *      * `crossings`: enums, positive carriageway width, positive span, finite
  *        position/angle, known material when present;
  *      * materials: explicit OSM `surface=sett|cobblestone` ways never read as
@@ -101,15 +107,17 @@ interface DataAnalysis {
   crossingOwnershipViolations: string[];
   /** CrossingFeature record problems (payload 0.2.0). */
   crossingViolations: string[];
-  /** JunctionFeature record problems (payload 0.2.0). */
+  /** JunctionFeature record problems (payload 0.2.0 legacy + 0.3.0 faces). */
   junctionViolations: string[];
   /** RoadSurfacePiece record problems (payload 0.2.0). */
   roadSurfaceViolations: string[];
   /** RoadNetworkPiece record problems (payload 0.2.0). */
   roadNetworkViolations: string[];
+  /** RoadNetworkPiece lane metadata problems (payload 0.3.0). */
+  laneViolations: string[];
   /** Sampling-based drivable-piece overlap probe hits (payload 0.2.0). */
   overlapViolations: string[];
-  /** Named street+direction widths that disagree by more than 0.2 m (merged corridors excluded). */
+  /** Named street+direction+lane-signature widths that disagree by more than 0.2 m. */
   widthViolations: string[];
   /** Material contract problems (stone zone, Karl Marx, surfacing rules). */
   materialViolations: string[];
@@ -127,6 +135,13 @@ interface DataAnalysis {
     roadNetwork: number;
     junctions: number;
     crossings: number;
+    /** Payload 0.3.0 coverage counters. */
+    junctionPolygons: number;
+    junctionFallbacks: number;
+    junctionSurfacePieces: number;
+    approachEdges: number;
+    laneTagPieces: number;
+    laneDefaultPieces: number;
     drivableByMaterial: Record<string, number>;
     buildingsExplicitHeight: number;
     buildingsWithLevels: number;
@@ -200,6 +215,7 @@ const ROAD_MATERIALS: ReadonlySet<string> = new Set<RoadMaterial>([
 const ROAD_SURFACE_KINDS: ReadonlySet<string> = new Set(['drivable', 'paving', 'kerb', 'median']);
 const NETWORK_KINDS = ROAD_KINDS;
 const CROSSING_KINDS = new Set(['zebra', 'signals', 'unmarked']);
+const LANES_SOURCES = new Set(['tag', 'default']);
 
 /** Street whose material must keep its explicit OSM stone/cobblestone zone. */
 const KARL_MARX_NAME = 'вуліца Карла Маркса';
@@ -289,6 +305,58 @@ function polygonBoundaryDistance(point: [number, number], polygon: Polygon): num
     }
   }
   return best;
+}
+
+function orient(a: [number, number], b: [number, number], c: [number, number]): number {
+  return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+}
+
+function onSegment(a: [number, number], b: [number, number], p: [number, number]): boolean {
+  return (
+    Math.min(a[0], b[0]) - 1e-9 <= p[0] &&
+    p[0] <= Math.max(a[0], b[0]) + 1e-9 &&
+    Math.min(a[1], b[1]) - 1e-9 <= p[1] &&
+    p[1] <= Math.max(a[1], b[1]) + 1e-9
+  );
+}
+
+function segmentsIntersect(
+  a: [number, number],
+  b: [number, number],
+  c: [number, number],
+  d: [number, number],
+): boolean {
+  const o1 = orient(a, b, c);
+  const o2 = orient(a, b, d);
+  const o3 = orient(c, d, a);
+  const o4 = orient(c, d, b);
+  if (((o1 > 0 && o2 < 0) || (o1 < 0 && o2 > 0)) && ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0))) {
+    return true;
+  }
+  if (Math.abs(o1) < 1e-9 && onSegment(a, b, c)) return true;
+  if (Math.abs(o2) < 1e-9 && onSegment(a, b, d)) return true;
+  if (Math.abs(o3) < 1e-9 && onSegment(c, d, a)) return true;
+  if (Math.abs(o4) < 1e-9 && onSegment(c, d, b)) return true;
+  return false;
+}
+
+/** True when no pair of non-adjacent ring edges crosses or overlaps. */
+function ringIsSimple(ring: Ring): boolean {
+  const count = ring.length;
+  if (count < 3) return false;
+  for (let i = 0; i < count; i += 1) {
+    const a = ring[i];
+    const b = ring[(i + 1) % count];
+    for (let j = i + 1; j < count; j += 1) {
+      // Adjacent edges share one endpoint; the first/last pair also shares the
+      // closing vertex. Those are allowed for a valid ring.
+      if (j === i || j === (i + 1) % count || (i === 0 && j === count - 1)) continue;
+      const c = ring[j];
+      const d = ring[(j + 1) % count];
+      if (segmentsIntersect(a, b, c, d)) return false;
+    }
+  }
+  return true;
 }
 
 type BBox = { minX: number; minY: number; maxX: number; maxY: number; area: number };
@@ -421,6 +489,7 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     junctionViolations: [],
     roadSurfaceViolations: [],
     roadNetworkViolations: [],
+    laneViolations: [],
     overlapViolations: [],
     widthViolations: [],
     materialViolations: [],
@@ -436,6 +505,12 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       roadNetwork: 0,
       junctions: 0,
       crossings: 0,
+      junctionPolygons: 0,
+      junctionFallbacks: 0,
+      junctionSurfacePieces: 0,
+      approachEdges: 0,
+      laneTagPieces: 0,
+      laneDefaultPieces: 0,
       drivableByMaterial: {},
       buildingsExplicitHeight: 0,
       buildingsWithLevels: 0,
@@ -445,15 +520,15 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
 
   const owners = new Map<string, string[]>();
   /**
-   * (name, direction) -> widths of the roadNetwork pieces carrying that street
-   * name in that direction. Synthetic `merged: true` two-way corridors are
-   * excluded: they deliberately combine the two adjacent one-way carriageways
-   * into one wider piece (no `oneway` flag), so they are not comparable to a
-   * single carriageway.
+   * (name, direction, lane signature) -> widths of the roadNetwork pieces
+   * carrying that street/direction/lane configuration. Synthetic `merged: true`
+   * two-way corridors and `kind === 'rail'` pieces are excluded: merged pieces
+   * deliberately combine the two carriageways into one wider corridor, and rail
+   * pieces have no carriageway width comparable to a street.
    */
-  const widthsByStreetDirection = new Map<
+  const widthsByStreetLaneSignature = new Map<
     string,
-    { name: string; direction: string; widths: number[] }
+    { name: string; direction: string; signature: string; widths: number[] }
   >();
 
   for (const { entry, data } of tiles) {
@@ -654,6 +729,23 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       if (piece.bridge !== undefined && typeof piece.bridge !== 'boolean') {
         result.roadSurfaceViolations.push(`${label}: bridge is not a boolean (${String(piece.bridge)})`);
       }
+      // Payload 0.3.0: synthetic junction face piece; lane paint must stay off
+      // it and it must be a paved drivable face (asphalt or stone).
+      if (piece.junction !== undefined && typeof piece.junction !== 'boolean') {
+        result.roadSurfaceViolations.push(`${label}: junction is not a boolean (${String(piece.junction)})`);
+      }
+      if (piece.junction === true) {
+        result.counts.junctionSurfacePieces += 1;
+        if (piece.kind !== 'drivable') {
+          result.roadSurfaceViolations.push(
+            `${label}: junction face flag is only expected on drivable surface pieces, got kind ${String(piece.kind)}`,
+          );
+        } else if (piece.material !== 'asphalt' && piece.material !== 'stone') {
+          result.roadSurfaceViolations.push(
+            `${label}: junction drivable face must be paved (asphalt/stone), got ${String(piece.material)}`,
+          );
+        }
+      }
       const problem = polygonProblem(piece.polygon);
       if (problem) {
         result.roadSurfaceViolations.push(`${label}: ${problem}`);
@@ -727,14 +819,85 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       if (piece.merged !== undefined && typeof piece.merged !== 'boolean') {
         result.roadNetworkViolations.push(`${label}: merged is not a boolean (${String(piece.merged)})`);
       }
+      // Payload 0.3.0 lane metadata.
+      if (piece.link !== undefined && typeof piece.link !== 'boolean') {
+        result.roadNetworkViolations.push(`${label}: link is not a boolean (${String(piece.link)})`);
+      }
+      if (piece.roundabout !== undefined && typeof piece.roundabout !== 'boolean') {
+        result.roadNetworkViolations.push(`${label}: roundabout is not a boolean (${String(piece.roundabout)})`);
+      }
+      if (piece.lanesSource !== undefined && !LANES_SOURCES.has(piece.lanesSource)) {
+        result.roadNetworkViolations.push(`${label}: unknown lanesSource ${String(piece.lanesSource)}`);
+      }
+      for (const [field, value] of [
+        ['lanesForward', piece.lanesForward],
+        ['lanesBackward', piece.lanesBackward],
+      ] as const) {
+        if (value !== undefined && (!Number.isInteger(value) || value < 0 || value > 12)) {
+          result.roadNetworkViolations.push(`${label}: ${field} ${String(value)} is not an integer in 0..12`);
+        }
+      }
+      if (piece.lanesSource !== undefined) {
+        if (piece.lanesSource === 'tag') result.counts.laneTagPieces += 1;
+        else result.counts.laneDefaultPieces += 1;
+      }
+      if (piece.kind === 'road' && piece.lanesSource === 'tag') {
+        const forward = piece.lanesForward;
+        const backward = piece.lanesBackward;
+        const oneWay = piece.merged !== true && piece.oneway === true;
+        if (oneWay) {
+          if (!Number.isInteger(forward) || (forward as number) < 1) {
+            result.laneViolations.push(
+              `${label}: one-way laneSource='tag' requires lanesForward >= 1 (got ${String(forward)})`,
+            );
+          } else if (piece.lanes !== undefined && piece.lanes !== forward) {
+            result.laneViolations.push(
+              `${label}: one-way lanes=${String(piece.lanes)} != lanesForward=${String(forward)}`,
+            );
+          }
+          if (backward !== undefined && backward !== 0) {
+            result.laneViolations.push(
+              `${label}: one-way lanesBackward must be absent or 0 (got ${String(backward)})`,
+            );
+          }
+        } else {
+          if (!Number.isInteger(forward) || (forward as number) < 1) {
+            result.laneViolations.push(
+              `${label}: two-way laneSource='tag' requires integer lanesForward >= 1 (got ${String(forward)})`,
+            );
+          }
+          if (!Number.isInteger(backward) || (backward as number) < 1) {
+            result.laneViolations.push(
+              `${label}: two-way laneSource='tag' requires integer lanesBackward >= 1 (got ${String(backward)})`,
+            );
+          }
+          if (
+            piece.lanes !== undefined &&
+            Number.isInteger(forward) &&
+            Number.isInteger(backward) &&
+            piece.lanes !== (forward as number) + (backward as number)
+          ) {
+            result.laneViolations.push(
+              `${label}: two-way lanes=${String(piece.lanes)} != lanesForward+lanesBackward=` +
+                `${String(forward)}+${String(backward)}`,
+            );
+          }
+        }
+      }
 
       const name = typeof piece.name === 'string' ? piece.name.trim() : '';
-      if (name && piece.merged !== true) {
-        const direction = piece.oneway === true ? 'one-way' : 'two-way';
-        const key = `${name}\u0000${direction}`;
-        const group = widthsByStreetDirection.get(key) ?? { name, direction, widths: [] };
+      const direction = piece.oneway === true ? 'one-way' : 'two-way';
+      const signature =
+        `lanes=${piece.lanes ?? '-'}` +
+        `,forward=${piece.lanesForward ?? '-'}` +
+        `,backward=${piece.lanesBackward ?? '-'}` +
+        (piece.link === true ? ',link' : '') +
+        (piece.roundabout === true ? ',roundabout' : '');
+      if (name && piece.merged !== true && piece.kind !== 'rail') {
+        const key = `${name}\u0000${direction}\u0000${signature}`;
+        const group = widthsByStreetLaneSignature.get(key) ?? { name, direction, signature, widths: [] };
         if (isFiniteNumber(piece.width)) group.widths.push(piece.width);
-        widthsByStreetDirection.set(key, group);
+        widthsByStreetLaneSignature.set(key, group);
       }
 
       // Explicit OSM stone surfaces must never be rendered as asphalt: the
@@ -756,7 +919,8 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     }
 
     // ------------------------------------------------------------------
-    // payload 0.2.0 — junction boxes + pedestrian crossings
+    // payload 0.3.0 — junction faces (legacy radius/approaches retained) and
+    // pedestrian crossings
     // ------------------------------------------------------------------
     for (let index = 0; index < (data.junctions ?? []).length; index += 1) {
       const junction = data.junctions![index];
@@ -765,6 +929,7 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       if (!isFiniteNumber(junction.x) || !isFiniteNumber(junction.y)) {
         result.junctionViolations.push(`${label}: non-finite position (${String(junction.x)}, ${String(junction.y)})`);
       }
+      // Payload 0.2.0 legacy clearance fields stay valid.
       if (!isFiniteNumber(junction.radius) || junction.radius < 3 || junction.radius > 30) {
         result.junctionViolations.push(
           `${label}: radius ${String(junction.radius)} outside the documented 3..30 m range`,
@@ -774,6 +939,112 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
         result.junctionViolations.push(
           `${label}: approaches ${String(junction.approaches)} is not an integer >= 2`,
         );
+      }
+      // Payload 0.3.0 graph-junction metadata.
+      if (typeof junction.id !== 'string' || junction.id.length === 0) {
+        result.junctionViolations.push(`${label}: missing/non-string id (${String(junction.id)})`);
+      }
+      if (junction.fallback !== undefined && typeof junction.fallback !== 'boolean') {
+        result.junctionViolations.push(`${label}: fallback is not a boolean (${String(junction.fallback)})`);
+      }
+      if (junction.fallback === true) result.counts.junctionFallbacks += 1;
+      if (junction.polygon === undefined) {
+        if (junction.fallback !== true) {
+          result.junctionViolations.push(`${label}: missing polygon and fallback is not true`);
+        }
+      } else {
+        result.counts.junctionPolygons += 1;
+        const problem = polygonProblem(junction.polygon);
+        if (problem) {
+          result.junctionViolations.push(`${label}: polygon ${problem}`);
+        } else {
+          const exterior = junction.polygon[0] as Ring;
+          if (exterior.length > 96) {
+            result.junctionViolations.push(`${label}: polygon has ${exterior.length} vertices (> 96)`);
+          }
+          if (Math.abs(ringArea(exterior)) <= 1) {
+            result.junctionViolations.push(
+              `${label}: polygon area ${Math.abs(ringArea(exterior)).toFixed(3)} m² is not > 1 m²`,
+            );
+          }
+          if (!ringIsSimple(exterior)) {
+            result.junctionViolations.push(`${label}: polygon exterior ring is not simple (self-intersection)`);
+          }
+          const polygonBox = ringBBox(exterior);
+          const [minX, minY, maxX, maxY] = data.bounds;
+          const overlapsTile =
+            polygonBox.minX <= maxX + 1 &&
+            polygonBox.maxX >= minX - 1 &&
+            polygonBox.minY <= maxY + 1 &&
+            polygonBox.maxY >= minY - 1;
+          if (!overlapsTile) {
+            result.junctionViolations.push(
+              `${label}: polygon does not overlap the tile bounds ±1 m ` +
+                `(tile [${minX},${minY},${maxX},${maxY}])`,
+            );
+          }
+        }
+      }
+      if (junction.approachEdges === undefined) {
+        result.junctionViolations.push(`${label}: missing approachEdges array`);
+      } else if (!Array.isArray(junction.approachEdges)) {
+        result.junctionViolations.push(`${label}: approachEdges is not an array`);
+      } else {
+        for (let edgeIndex = 0; edgeIndex < junction.approachEdges.length; edgeIndex += 1) {
+          const edge = junction.approachEdges[edgeIndex];
+          const edgeLabel = `${label}.approachEdges[${edgeIndex}]`;
+          result.counts.approachEdges += 1;
+          if (!edge || typeof edge !== 'object') {
+            result.junctionViolations.push(`${edgeLabel}: not an object`);
+            continue;
+          }
+          if (!isFiniteNumber(edge.angle)) {
+            result.junctionViolations.push(`${edgeLabel}: angle is not finite (${String(edge.angle)})`);
+          }
+          if (!isFiniteNumber(edge.width) || edge.width <= 0) {
+            result.junctionViolations.push(`${edgeLabel}: width is not positive (${String(edge.width)})`);
+          }
+          if (!Number.isInteger(edge.lanesForward) || edge.lanesForward < 0) {
+            result.junctionViolations.push(
+              `${edgeLabel}: lanesForward is not an integer >= 0 (${String(edge.lanesForward)})`,
+            );
+          }
+          if (!Number.isInteger(edge.lanesBackward) || edge.lanesBackward < 0) {
+            result.junctionViolations.push(
+              `${edgeLabel}: lanesBackward is not an integer >= 0 (${String(edge.lanesBackward)})`,
+            );
+          }
+          if (typeof edge.oneway !== 'boolean') {
+            result.junctionViolations.push(`${edgeLabel}: oneway is not a boolean (${String(edge.oneway)})`);
+          }
+          if (typeof edge.link !== 'boolean') {
+            result.junctionViolations.push(`${edgeLabel}: link is not a boolean (${String(edge.link)})`);
+          }
+          if (edge.oneway === true && edge.lanesForward > 0 && edge.lanesBackward > 0) {
+            result.junctionViolations.push(
+              `${edgeLabel}: one-way approach must not have lanes in both directions ` +
+                `(forward=${String(edge.lanesForward)}, backward=${String(edge.lanesBackward)})`,
+            );
+          }
+          if (edge.stopLine !== undefined) {
+            const stopLine = edge.stopLine;
+            if (!stopLine || typeof stopLine !== 'object') {
+              result.junctionViolations.push(`${edgeLabel}.stopLine: not an object`);
+            } else {
+              if (!isFiniteNumber(stopLine.x) || !isFiniteNumber(stopLine.y)) {
+                result.junctionViolations.push(`${edgeLabel}.stopLine: non-finite position`);
+              }
+              if (!isFiniteNumber(stopLine.angle)) {
+                result.junctionViolations.push(`${edgeLabel}.stopLine: angle is not finite`);
+              }
+              if (!isFiniteNumber(stopLine.width) || stopLine.width <= 0) {
+                result.junctionViolations.push(
+                  `${edgeLabel}.stopLine: width is not positive (${String(stopLine.width)})`,
+                );
+              }
+            }
+          }
+        }
       }
     }
 
@@ -827,16 +1098,18 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     }
   }
 
-  // One canonical width per named street AND direction (payload 0.2.0
-  // contract). Directions are grouped separately because the two carriageways
-  // of a dual carriageway can legitimately have different widths; `merged`
-  // synthetic whole-corridor pieces are excluded entirely.
-  for (const { name, direction, widths } of widthsByStreetDirection.values()) {
+  // One canonical width per named street + direction + lane signature
+  // (payload 0.3.0 contract). Directions/lane configurations are grouped
+  // separately because a street may legitimately have asymmetric 1+2 and 2+2
+  // segments with different widths; `merged` synthetic whole-corridor pieces
+  // and `kind === 'rail'` pieces are excluded entirely.
+  for (const { name, direction, signature, widths } of widthsByStreetLaneSignature.values()) {
     if (widths.length < 2) continue;
     const spread = Math.max(...widths) - Math.min(...widths);
     if (spread > 0.2) {
       result.widthViolations.push(
-        `street ${JSON.stringify(name)} (${direction}): width spread ${spread.toFixed(3)} m > 0.2 m ` +
+        `street ${JSON.stringify(name)} (${direction}, ${signature}): width spread ` +
+          `${spread.toFixed(3)} m > 0.2 m ` +
           `(min ${Math.min(...widths)}, max ${Math.max(...widths)}, ${widths.length} pieces)`,
       );
     }
@@ -889,7 +1162,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     expect(manifest).not.toBeNull();
     if (!manifest) throw new Error('manifest missing');
     expect(typeof manifest.version).toBe('string');
-    expect(manifest.version.length).toBeGreaterThan(0);
+    expect(manifest.version, 'payload 0.3.0 required').toBe('0.3.0');
     expect(Number.isNaN(Date.parse(manifest.generatedAt)), 'generatedAt must be an ISO date').toBe(false);
     expect(manifest.epsg).toBe(EPSG_UTM35N);
     expect(manifest.tileSize).toBe(TILE_SIZE_M);
@@ -1100,7 +1373,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
   // payload 0.2.0 — normalized road layers
   // -------------------------------------------------------------------------
 
-  it('road surface pieces are valid (kinds, materials, rings, bridge flag)', () => {
+  it('road surface pieces are valid (kinds, materials, rings, bridge/junction flags)', () => {
     expect(
       analysis.roadSurfaceViolations.length,
       `${analysis.roadSurfaceViolations.length} road surface violation(s):\n` +
@@ -1135,7 +1408,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
-  it('road network pieces are valid (kind/class/width/centerline/offset/material/merged)', () => {
+  it('road network pieces are valid (kind/class/width/centerline/offset/material/merged/link/roundabout)', () => {
     expect(
       analysis.roadNetworkViolations.length,
       `${analysis.roadNetworkViolations.length} road network violation(s):\n` +
@@ -1143,7 +1416,19 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
-  it('named streets use one canonical width per direction (max-min <= 0.2 m, merged corridors excluded)', () => {
+  it('road network lane metadata is consistent (lanesForward/lanesBackward/lanesSource, tag counts)', () => {
+    expect(
+      analysis.laneViolations.length,
+      `${analysis.laneViolations.length} lane metadata violation(s):\n` +
+        formatProblems(analysis.laneViolations),
+    ).toBe(0);
+    expect(
+      analysis.counts.laneTagPieces,
+      'no roadNetwork piece carries lanesSource=tag — tag vs painted lane counts would be unverified',
+    ).toBeGreaterThan(0);
+  });
+
+  it('named streets use one canonical width per direction+lane signature (max-min <= 0.2 m, merged/rail excluded)', () => {
     expect(
       analysis.widthViolations.length,
       `${analysis.widthViolations.length} named street(s) with inconsistent width:\n` +
@@ -1168,12 +1453,20 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBeGreaterThanOrEqual(1);
   });
 
-  it('junction and crossing features are valid (finite, sane radius/approaches, positive width/span)', () => {
+  it('junction faces are valid (id, polygon, approachEdges) and crossing features are valid', () => {
     expect(
       analysis.junctionViolations.length,
       `${analysis.junctionViolations.length} junction violation(s):\n` +
         formatProblems(analysis.junctionViolations),
     ).toBe(0);
+    expect(
+      analysis.counts.junctionPolygons,
+      'payload 0.3.0 junction face polygons are missing',
+    ).toBeGreaterThan(0);
+    expect(
+      analysis.counts.approachEdges,
+      'payload 0.3.0 junction approachEdges are missing',
+    ).toBeGreaterThan(0);
     expect(
       analysis.crossingViolations.length,
       `${analysis.crossingViolations.length} crossing violation(s):\n` +

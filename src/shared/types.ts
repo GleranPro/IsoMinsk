@@ -188,6 +188,12 @@ export interface RoadSurfacePiece {
   polygon: Polygon;
   /** True for pieces on a raised bridge deck (renderer adds BRIDGE_RAISE_M). */
   bridge?: boolean;
+  /**
+   * True for the synthetic asphalt face of a junction (payload 0.3.0). The
+   * renderer paints no lane markings inside it; pavements/kerbs are cut around
+   * it by the offline pipeline.
+   */
+  junction?: boolean;
 }
 
 /**
@@ -206,8 +212,24 @@ export interface RoadNetworkPiece {
   width: number;
   /** Marked lanes: this direction for a one-way, total for a two-way. */
   lanes?: number;
+  /**
+   * Payload 0.3.0: lanes in the `centerline` direction for a two-way piece.
+   * For a one-way piece this equals `lanes` (the direction of travel).
+   */
+  lanesForward?: number;
+  /** Payload 0.3.0: lanes against the `centerline` direction (two-way only). */
+  lanesBackward?: number;
+  /** Payload 0.3.0: how the lane count was obtained (QA/transparency). */
+  lanesSource?: 'tag' | 'default';
   /** `oneway=yes/1/-1` or `junction=roundabout`. */
   oneway?: boolean;
+  /**
+   * Payload 0.3.0: slip/link road (`highway=*_link`). Rendered as a narrow
+   * connector with no centre line or lane dividers.
+   */
+  link?: boolean;
+  /** Payload 0.3.0: `junction=roundabout` ring (one-way, no centre line). */
+  roundabout?: boolean;
   /** Canonical material of the street. */
   material?: RoadMaterial;
   /** Raw OSM `surface` value (debug/QA only). */
@@ -229,16 +251,50 @@ export interface RoadNetworkPiece {
 }
 
 /**
- * A junction box derived from pairwise road-buffer intersections
- * (payload 0.2.0). The renderer keeps lane markings out of `radius`.
+ * One approach edge of a junction face (payload 0.3.0).
+ */
+export interface JunctionApproachFeature {
+  /** Direction of travel towards the junction, radians CCW from +X (east, north). */
+  angle: number;
+  /** Carriageway width of the approach, metres. */
+  width: number;
+  /** Lanes entering the junction along this approach. */
+  lanesForward: number;
+  /** Lanes leaving the junction along this approach (0 for a one-way street). */
+  lanesBackward: number;
+  oneway: boolean;
+  /** Slip/link approach (no lane paint). */
+  link: boolean;
+  /**
+   * Stop line across the entering lanes at the junction face boundary, in local
+   * metres. Present only where the approach is signalised or has a zebra.
+   */
+  stopLine?: { x: number; y: number; angle: number; width: number };
+}
+
+/**
+ * A junction derived from the OSM road graph (payload 0.3.0).
+ *
+ * `polygon` is the single asphalt face of the junction: no lane markings may be
+ * painted inside it. `radius`/`approaches:number` are kept for payload 0.2.0
+ * compatibility; a 0.3.0 renderer uses `polygon` when present and only falls
+ * back to the clearance radius when the face was dropped.
  */
 export interface JunctionFeature {
+  /** Stable id derived from the graph node (QA/debug). */
+  id?: string;
   x: number;
   y: number;
-  /** Conservative radius of the junction box, metres. */
+  /** Conservative radius of the junction box, metres (legacy clearance). */
   radius: number;
   /** Number of distinct streets meeting here. */
   approaches: number;
+  /** Junction face ring in local metres, exterior ring first (payload 0.3.0). */
+  polygon?: Polygon;
+  /** Approach metadata for paint clipping and stop lines (payload 0.3.0). */
+  approachEdges?: JunctionApproachFeature[];
+  /** True when the face polygon had to fall back to a clearance circle. */
+  fallback?: boolean;
 }
 
 /** A pedestrian crossing projected onto the road network (payload 0.2.0). */

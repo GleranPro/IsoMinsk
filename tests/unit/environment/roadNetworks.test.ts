@@ -108,6 +108,17 @@ function crossing(
   };
 }
 
+function junctionPolygon(ring: Ring, overrides: Record<string, unknown> = {}) {
+  return {
+    x: 50,
+    y: 50,
+    radius: 6,
+    approaches: 4,
+    polygon: [ring],
+    ...overrides,
+  };
+}
+
 function linearColor(hex: string): [number, number, number] {
   const color = new THREE.Color(hex).convertSRGBToLinear();
   return [color.r, color.g, color.b];
@@ -235,6 +246,14 @@ function lateralKeys(groups: Map<string, Quad[]>): string[] {
   return [...groups.keys()].sort((first, second) => Number(first) - Number(second));
 }
 
+/** Find the group whose lateral offset is within `tolerance` of `expected`. */
+function groupAt(groups: Map<string, Quad[]>, expected: number): Quad[] {
+  for (const [key, quads] of groups) {
+    if (Math.abs(Number(key) - expected) <= 0.02) return quads;
+  }
+  return [];
+}
+
 // ---------------------------------------------------------------------------
 // Lane-marking layout (pure)
 // ---------------------------------------------------------------------------
@@ -256,8 +275,8 @@ describe('lane-marking layout', () => {
   });
 
   it('keeps a narrow two-way street unpainted below 5.5 m', () => {
-    expect(laneMarkingLayout({ width: 5.4, class: 'service' })).toHaveLength(0);
-    const lines = laneMarkingLayout({ width: 5.5, class: 'service' });
+    expect(laneMarkingLayout({ width: 5.4, class: 'residential' })).toHaveLength(0);
+    const lines = laneMarkingLayout({ width: 5.5, class: 'residential' });
     expect(lines.filter((line) => line.kind === 'centre')).toHaveLength(1);
   });
 
@@ -272,9 +291,11 @@ describe('lane-marking layout', () => {
       expect(line.length).toBe(2);
     }
     const dividers = lines.filter((line) => line.kind === 'divider');
-    // lanesTotal = round(15/3) = 5 -> 2 lanes per direction.
+    // Width-derived split (no direction tags): 2 lanes per direction.
     expect(dividers).toHaveLength(2);
-    expect(dividers.map((line) => line.offset).sort((a, b) => a - b)).toEqual([-3.35, 3.35]);
+    const dividerOffsets = dividers.map((line) => line.offset).sort((a, b) => a - b);
+    expect(dividerOffsets[0]).toBeCloseTo(-3.4, 9);
+    expect(dividerOffsets[1]).toBeCloseTo(3.4, 9);
     for (const line of dividers) {
       expect(line.dashed).toBe(true);
       expect(line).toMatchObject({ length: 2, spacing: 6, width: 0.15 });
@@ -294,8 +315,32 @@ describe('lane-marking layout', () => {
     expect(offsets[1]).toBeCloseTo(1.7833, 3);
   });
 
-  it('uses the tagged lane count (Pobediteley, Bogdanovicha, merged Independence)', () => {
-    // 6.6 m / lanes=2 one-way: one divider (Pobediteley).
+  it('lays out asymmetric forward/backward lanes around an offset centre', () => {
+    // 1 lane forward + 2 lanes backward on a 9.6 m carriageway: lane = 3.0 m,
+    // the centre line moves -1.5 m and only the backward side gets a divider.
+    const lines = laneMarkingLayout({
+      width: 9.6,
+      class: 'primary',
+      lanesForward: 1,
+      lanesBackward: 2,
+    });
+    const centre = lines.filter((line) => line.kind === 'centre');
+    expect(centre).toHaveLength(1);
+    expect(centre[0].offset).toBeCloseTo(-1.5, 9);
+    expect(centre[0].dashed).toBe(true);
+    const dividers = lines.filter((line) => line.kind === 'divider');
+    expect(dividers).toHaveLength(1);
+    expect(dividers[0].offset).toBeCloseTo(1.5, 9);
+    const edges = lines
+      .filter((line) => line.kind === 'edge')
+      .map((line) => line.offset)
+      .sort((a, b) => a - b);
+    expect(edges[0]).toBeCloseTo(-4.4, 9);
+    expect(edges[1]).toBeCloseTo(4.4, 9);
+  });
+
+  it('uses tagged lane counts without clamping 3 lanes down to 2', () => {
+    // Pobediteley-style 6.6 m one-way / 2 lanes.
     const pobediteley = laneMarkingLayout({
       width: 6.6,
       class: 'primary',
@@ -305,7 +350,7 @@ describe('lane-marking layout', () => {
     expect(pobediteley).toHaveLength(1);
     expect(pobediteley[0].offset).toBeCloseTo(0, 9);
 
-    // 9.6 m / lanes=3 one-way: two dividers (Bogdanovicha).
+    // Bogdanovicha-style 9.6 m one-way / 3 lanes: two dividers.
     const bogdanovicha = laneMarkingLayout({
       width: 9.6,
       class: 'primary',
@@ -315,10 +360,11 @@ describe('lane-marking layout', () => {
       .filter((line) => line.kind === 'divider')
       .map((line) => line.offset)
       .sort((a, b) => a - b);
+    expect(bogdanovicha).toHaveLength(2);
     expect(bogdanovicha[0]).toBeCloseTo(-1.6, 9);
     expect(bogdanovicha[1]).toBeCloseTo(1.6, 9);
 
-    // 24 m merged corridor / lanes=8: double solid + 3 divider rows per side.
+    // 24 m merged corridor / 8 lanes: double solid + 3 divider rows per side.
     const independence = laneMarkingLayout({
       width: 24,
       class: 'primary',
@@ -331,7 +377,7 @@ describe('lane-marking layout', () => {
       .map((line) => line.offset)
       .sort((a, b) => a - b);
     expect(mergedDividers).toHaveLength(6);
-    [-8.4, -5.6, -2.8, 2.8, 5.6, 8.4].forEach((expected, index) => {
+    [-8.775, -5.85, -2.925, 2.925, 5.85, 8.775].forEach((expected, index) => {
       expect(mergedDividers[index]).toBeCloseTo(expected, 9);
     });
 
@@ -343,14 +389,29 @@ describe('lane-marking layout', () => {
       merged: true,
     });
     expect(forced.filter((line) => line.kind === 'centre')).toHaveLength(1);
-    expect(forced.filter((line) => line.kind === 'divider')).toHaveLength(0);
+    expect(forced.filter((line) => line.kind === 'divider')).toHaveLength(2);
 
-    // Absurd lane tags are capped by the minimum lane pitch.
+    // Absurd lane tags are capped at floor(width / 2.2) + 1 (4 here).
     expect(
       laneMarkingLayout({ width: 6.6, class: 'primary', oneway: true, lanes: 8 }).filter(
         (line) => line.kind === 'divider',
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(3);
+  });
+
+  it('gives slip links and service aisles no lane paint, roundabouts only edge lines', () => {
+    expect(laneMarkingLayout({ width: 15, class: 'primary', link: true })).toHaveLength(0);
+    expect(laneMarkingLayout({ width: 9, class: 'service' })).toHaveLength(0);
+    // Roundabout ring: no centre line, no dividers, but edge lines remain.
+    const roundabout = laneMarkingLayout({
+      width: 9,
+      class: 'primary',
+      oneway: true,
+      roundabout: true,
+    });
+    expect(roundabout.filter((line) => line.kind === 'centre')).toHaveLength(0);
+    expect(roundabout.filter((line) => line.kind === 'divider')).toHaveLength(0);
+    expect(roundabout.filter((line) => line.kind === 'edge')).toHaveLength(2);
   });
 
   it('adds edge lines only for the major classes at 7 m width or more', () => {
@@ -412,7 +473,11 @@ describe('lane paint geometry', () => {
       }),
     );
     const groups = quadsByLateral(result.quads, MARKING_COLOR);
-    expect(lateralKeys(groups)).toEqual(['-7.10', '-3.35', '-0.25', '0.25', '3.35', '7.10']);
+    const offsets = lateralKeys(groups).map(Number);
+    expect(offsets).toHaveLength(6);
+    [-7.1, -3.4, -0.25, 0.25, 3.4, 7.1].forEach((expected, index) => {
+      expect(offsets[index]).toBeCloseTo(expected, 4);
+    });
     for (const quads of groups.values()) {
       for (const quad of quads) {
         expect(quad.height).toBeCloseTo(ENV_LAYER_Y.markings, 6);
@@ -420,20 +485,49 @@ describe('lane paint geometry', () => {
       }
     }
     // Solid centre lines + both edge lines: 50 chunks each; dividers: 17 dashes.
-    expect(groups.get('0.25')).toHaveLength(50);
-    expect(groups.get('-0.25')).toHaveLength(50);
-    expect(groups.get('7.10')).toHaveLength(50);
-    expect(groups.get('-7.10')).toHaveLength(50);
-    expect(groups.get('3.35')).toHaveLength(17);
-    expect(groups.get('-3.35')).toHaveLength(17);
-    for (const lateral of ['3.35', '-3.35']) {
-      for (const quad of groups.get(lateral)!) {
+    expect(groupAt(groups, 0.25)).toHaveLength(50);
+    expect(groupAt(groups, -0.25)).toHaveLength(50);
+    expect(groupAt(groups, 7.1)).toHaveLength(50);
+    expect(groupAt(groups, -7.1)).toHaveLength(50);
+    expect(groupAt(groups, 3.4)).toHaveLength(17);
+    expect(groupAt(groups, -3.4)).toHaveLength(17);
+    for (const lateral of [3.4, -3.4]) {
+      for (const quad of groupAt(groups, lateral)) {
         expect(quad.maxY - quad.minY).toBeCloseTo(0.15, 4);
       }
     }
     expect(result.stats.solidChunks).toBe(200);
     expect(result.stats.dashes).toBe(34);
     expect(result.stats.markingTriangles).toBe(2 * (200 + 34));
+  });
+
+  it('paints an asymmetric 1+2 lane layout with an offset centre line', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 35, 110, 65))],
+        roadNetwork: [
+          networkPiece({
+            width: 9.6,
+            class: 'primary',
+            lanesForward: 1,
+            lanesBackward: 2,
+          }),
+        ],
+      }),
+    );
+    expect(result.stats.paintedPieces).toBe(1);
+    const groups = quadsByLateral(result.quads, MARKING_COLOR);
+    const offsets = lateralKeys(groups).map(Number);
+    expect(offsets).toHaveLength(4);
+    [-4.4, -1.5, 1.5, 4.4].forEach((expected, index) => {
+      expect(offsets[index]).toBeCloseTo(expected, 4);
+    });
+    expect(groupAt(groups, -1.5)).toHaveLength(14); // 3 m centre dashes
+    expect(groupAt(groups, 1.5)).toHaveLength(17); // 2 m backward divider dashes
+    expect(groupAt(groups, -4.4)).toHaveLength(50); // left edge line chunks
+    expect(groupAt(groups, 4.4)).toHaveLength(50); // right edge line chunks
+    expect(result.stats.dashes).toBe(14 + 17);
+    expect(result.stats.solidChunks).toBe(100);
   });
 
   it('paints merged two-way corridor lanes from the tagged lane count', () => {
@@ -446,18 +540,13 @@ describe('lane paint geometry', () => {
       }),
     );
     const groups = quadsByLateral(result.quads, MARKING_COLOR);
-    expect(lateralKeys(groups)).toEqual([
-      '-11.60',
-      '-8.40',
-      '-5.60',
-      '-2.80',
-      '-0.25',
-      '0.25',
-      '2.80',
-      '5.60',
-      '8.40',
-      '11.60',
-    ]);
+    const offsets = lateralKeys(groups).map(Number);
+    const expected = [-11.6, -8.775, -5.85, -2.925, -0.25, 0.25, 2.925, 5.85, 8.775, 11.6];
+    expect(offsets).toHaveLength(expected.length);
+    expected.forEach((value, index) => {
+      // float32 geometry quantises lateral offsets by a few millimetres.
+      expect(Math.abs(offsets[index] - value)).toBeLessThan(0.02);
+    });
     expect(result.stats.paintedPieces).toBe(1);
     expect(result.stats.dashes).toBe(6 * 17);
     expect(result.stats.solidChunks).toBe(4 * 50);
@@ -482,23 +571,53 @@ describe('lane paint geometry', () => {
     }
   });
 
-  it('paints residential, tertiary and service streets too', () => {
-    const cases: Array<[RoadNetworkPiece['class'], number, number]> = [
-      ['residential', 9, 14],
-      ['tertiary', 13, 34],
-      ['service', 5.5, 14],
-    ];
-    for (const [roadClass, width, expectedDashes] of cases) {
-      const result = emit(
+  it('paints residential and tertiary roads but never service aisles or links', () => {
+    const residential = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 35, 110, 65))],
+        roadNetwork: [networkPiece({ width: 9, class: 'residential' })],
+      }),
+    );
+    expect(residential.stats.paintedPieces).toBe(1);
+    expect(residential.stats.dashes).toBe(14);
+
+    const tertiary = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 35, 110, 65))],
+        roadNetwork: [networkPiece({ width: 13, class: 'tertiary' })],
+      }),
+    );
+    expect(tertiary.stats.paintedPieces).toBe(1);
+    expect(tertiary.stats.dashes).toBe(34);
+    expect(tertiary.stats.solidChunks).toBe(100);
+
+    for (const piece of [
+      networkPiece({ width: 5.5, class: 'service' }),
+      networkPiece({ width: 15, class: 'primary', link: true }),
+    ]) {
+      const suppressed = emit(
         makeTile({
           roadSurfaces: [drivable(rect(-10, 35, 110, 65))],
-          roadNetwork: [networkPiece({ width, class: roadClass })],
+          roadNetwork: [piece],
         }),
       );
-      expect(result.stats.paintedPieces, roadClass).toBe(1);
-      expect(result.stats.dashes, roadClass).toBe(expectedDashes);
-      expect(result.stats.markingTriangles, roadClass).toBeGreaterThan(0);
+      expect(suppressed.stats.dashes).toBe(0);
+      expect(suppressed.stats.solidChunks).toBe(0);
+      expect(suppressed.stats.paintedPieces).toBe(0);
     }
+
+    // A roundabout ring keeps its edge lines but gets no centre/divider paint.
+    const roundabout = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 35, 110, 65))],
+        roadNetwork: [
+          networkPiece({ width: 9, class: 'primary', oneway: true, roundabout: true }),
+        ],
+      }),
+    );
+    expect(roundabout.stats.dashes).toBe(0);
+    expect(roundabout.stats.solidChunks).toBe(100);
+    expect(roundabout.stats.paintedPieces).toBe(1);
   });
 
   it('raises bridge-deck paint by BRIDGE_RAISE_M and uses bridge asphalt pieces', () => {
@@ -515,7 +634,7 @@ describe('lane paint geometry', () => {
     }
   });
 
-  it('suppresses every paint type inside junction boxes', () => {
+  it('suppresses every paint type inside legacy junction radius circles', () => {
     const dashed = emit(
       makeTile({
         roadSurfaces: [drivable(rect(-10, 44, 110, 56))],
@@ -525,6 +644,7 @@ describe('lane paint geometry', () => {
     );
     expect(dashed.stats.dashes).toBe(12);
     expect(dashed.stats.junctionSkipped).toBe(2);
+    expect(dashed.stats.junctionFaceSkipped).toBe(0);
 
     const solid = emit(
       makeTile({
@@ -538,6 +658,135 @@ describe('lane paint geometry', () => {
     expect(solid.stats.solidChunks).toBe(92);
     expect(solid.stats.dashes).toBe(12);
     expect(solid.stats.junctionSkipped).toBe(8 + 2);
+  });
+
+  it('clips paint out of a 0.3.0 junction face polygon (+0.5 m buffer)', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 44, 110, 56))],
+        roadNetwork: [networkPiece({ width: 9, class: 'residential' })],
+        junctions: [
+          junctionPolygon(rect(44, 42, 58, 58), {
+            x: 51,
+            y: 50,
+            radius: 8,
+            approaches: 4,
+          }),
+        ],
+      }),
+    );
+    // Centre dashes at x = 4.5, 11.5, ..., 46.5, 53.5, 60.5 ... — the 46.5 and
+    // 53.5 dashes fall inside the face buffered by 0.5 m.
+    expect(result.stats.junctionFaceSkipped).toBe(2);
+    expect(result.stats.junctionSkipped).toBe(0);
+    expect(result.stats.dashes).toBe(12);
+    for (const quad of result.quads) {
+      const insideFace =
+        quad.centerX > 43.5 && quad.centerX < 58.5 && quad.centerY > 41.5 && quad.centerY < 58.5;
+      expect(insideFace, `dash at ${quad.centerX},${quad.centerY}`).toBe(false);
+    }
+  });
+
+  it('clears a junction face chunk-aware, not just by chunk centre', () => {
+    // Face x 44..58. Solid chunk centres are at x = 1, 3, ..., 99. With
+    // clearance 0.5 + half a chunk (1.0) = 1.5 m the chunks just outside the
+    // face (43 and 59) are dropped as well as the 7 whose centres are inside;
+    // dashes (clearance 0.5 + 1.5 = 2.0) lose their 3 in-face centres.
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 35, 110, 65))],
+        roadNetwork: [networkPiece({ width: 15, class: 'primary' })],
+        junctions: [junctionPolygon(rect(44, 42, 58, 58), { x: 51, y: 50 })],
+      }),
+    );
+    expect(result.stats.junctionFaceSkipped).toBe(42);
+    expect(result.stats.solidChunks).toBe(164);
+    expect(result.stats.dashes).toBe(28);
+  });
+
+  it('applies the chunk-aware clearance to crossing paint', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(20, 20, 100, 80))],
+        crossings: [crossing('zebra', { x: 62, y: 50 })],
+        junctions: [junctionPolygon(rect(40, 40, 60, 60))],
+      }),
+    );
+    // All 9 zebra bars are within their span/2 + 0.5 m clearance of the face;
+    // both legacy stop lines are also cleared by half their width.
+    expect(result.stats.zebraBars).toBe(0);
+    expect(result.stats.zebraJunctionSkipped).toBe(9);
+    expect(result.stats.stopLines).toBe(0);
+    expect(result.stats.stopLineJunctionSkipped).toBe(2);
+  });
+
+  it('uses a fallback union-of-mouth rectangle as a clip polygon', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 44, 110, 56))],
+        roadNetwork: [networkPiece({ width: 9, class: 'residential' })],
+        junctions: [
+          junctionPolygon(rect(44, 42, 58, 58), { x: 51, y: 50, radius: 8, fallback: true }),
+        ],
+      }),
+    );
+    // The fallback rectangle is still a face: polygon clipping applies, the
+    // legacy clearance radius is not needed.
+    expect(result.stats.junctionFaceSkipped).toBe(2);
+    expect(result.stats.junctionSkipped).toBe(0);
+    expect(result.stats.dashes).toBe(12);
+  });
+
+  it('never lets a junction surface piece host lane paint', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [
+          { ...drivable(rect(-10, 44, 110, 56)), junction: true },
+        ],
+        roadNetwork: [networkPiece({ width: 9, class: 'residential' })],
+      }),
+    );
+    expect(result.stats.paintedPieces).toBe(0);
+    expect(result.stats.dashes).toBe(0);
+    expect(result.stats.solidChunks).toBe(0);
+  });
+
+  it('clips lane paint out of a junction surface piece without a junction record', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [
+          drivable(rect(-10, 44, 110, 56)),
+          { ...drivable(rect(44, 44, 58, 56)), junction: true },
+        ],
+        roadNetwork: [networkPiece({ width: 9, class: 'residential' })],
+      }),
+    );
+    // Dash centres 46.5 / 53.5 are inside the junction surface; 39.5 and 60.5
+    // are 4.5 / 2.5 m away (outside the 0.5 + half-dash 1.5 m clearance).
+    expect(result.stats.junctionSurfaceSkipped).toBe(2);
+    expect(result.stats.junctionFaceSkipped).toBe(0);
+    expect(result.stats.dashes).toBe(12);
+    for (const quad of result.quads) {
+      const onSurface =
+        quad.centerX > 44 && quad.centerX < 58 && quad.centerY > 44 && quad.centerY < 56;
+      expect(onSurface, `dash at ${quad.centerX},${quad.centerY}`).toBe(false);
+    }
+  });
+
+  it('skips crossing paint that would sit on a junction surface piece', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [
+          drivable(rect(20, 20, 100, 80)),
+          { ...drivable(rect(40, 40, 60, 60)), junction: true },
+        ],
+        crossings: [crossing('zebra', { x: 50, y: 50 })],
+      }),
+    );
+    // 9 zebra bars + both legacy stop lines fall on the junction asphalt.
+    expect(result.stats.zebraBars).toBe(0);
+    expect(result.stats.stopLines).toBe(0);
+    expect(result.stats.junctionSurfaceSkipped).toBe(9 + 2);
   });
 
   it('skips paint for non-asphalt, non-road and too-narrow pieces', () => {
@@ -634,6 +883,25 @@ describe('lane paint geometry', () => {
       expect(centers[i] - centers[i - 1], `phase gap at ${i}`).toBeCloseTo(7, 4);
     }
     expect(centers[centers.length - 1]).toBeCloseTo(197.5, 4);
+  });
+
+  it('renders a 0.2.0 payload without the new fields exactly as before', () => {
+    // Legacy tile: junction radius only, no polygon/approach edges, no lane tags.
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(-10, 44, 110, 56))],
+        roadNetwork: [networkPiece({ width: 9, class: 'residential' })],
+        junctions: [{ x: 51.5, y: 50, radius: 5, approaches: 4 }],
+        crossings: [crossing('signals', { x: 80, y: 50, width: 10 })],
+      }),
+    );
+    expect(result.stats.dashes).toBe(11);
+    expect(result.stats.junctionSkipped).toBe(2);
+    expect(result.stats.junctionFaceSkipped).toBe(0);
+    expect(result.stats.crossingClearanceSkipped).toBe(1);
+    expect(result.stats.stopLines).toBe(2);
+    expect(result.stats.legacyStopLinesSuppressed).toBe(0);
+    expect(result.stats.approachStopLines).toBe(0);
   });
 });
 
@@ -781,7 +1049,7 @@ describe('crossing paint', () => {
     expect(result.stats.stopLines).toBe(2);
   });
 
-  it('drops a stop line whose centre falls inside a junction box', () => {
+  it('drops a stop line whose centre falls inside a legacy junction box', () => {
     const result = emit(
       makeTile({
         roadSurfaces: [drivable(rect(30, 40, 70, 60))],
@@ -793,6 +1061,31 @@ describe('crossing paint', () => {
     expect(result.stats.stopLineJunctionSkipped).toBe(1);
     expect(result.stats.zebraBars).toBe(0);
     expect(result.quads[0].centerX).toBeCloseTo(52.7, 4);
+  });
+
+  it('drops legacy stop lines inside a 0.3.0 junction face', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(20, 20, 80, 80))],
+        crossings: [crossing('signals')],
+        junctions: [junctionPolygon(rect(40, 40, 60, 60))],
+      }),
+    );
+    expect(result.stats.stopLines).toBe(0);
+    expect(result.stats.stopLineJunctionSkipped).toBe(2);
+  });
+
+  it('skips zebra bars inside a junction face polygon', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(20, 20, 80, 80))],
+        crossings: [crossing('zebra')],
+        junctions: [junctionPolygon(rect(40, 40, 60, 60))],
+      }),
+    );
+    expect(result.stats.zebraBars).toBe(0);
+    expect(result.stats.zebraJunctionSkipped).toBe(9);
+    expect(result.stats.stopLines).toBe(0);
   });
 
   it('caps zebra bars at 600 triangles per tile', () => {
@@ -810,6 +1103,141 @@ describe('crossing paint', () => {
     expect(result.stats.zebraBars).toBe(300);
     expect(result.stats.zebraTriangles).toBe(600);
     expect(result.stats.capped).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Junction approach stop lines
+// ---------------------------------------------------------------------------
+
+describe('junction approach stop lines', () => {
+  function approachEdge(
+    overrides: Partial<{
+      angle: number;
+      width: number;
+      lanesForward: number;
+      lanesBackward: number;
+      oneway: boolean;
+      link: boolean;
+      stopLine: { x: number; y: number; angle: number; width: number };
+    }> = {},
+  ) {
+    return {
+      angle: Math.PI,
+      width: 10,
+      lanesForward: 2,
+      lanesBackward: 0,
+      oneway: true,
+      link: false,
+      ...overrides,
+    };
+  }
+
+  it('paints the authoritative stop bar from junction approach edges', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(20, 40, 100, 60))],
+        junctions: [
+          junctionPolygon(rect(54, 40, 66, 60), {
+            x: 60,
+            y: 50,
+            radius: 7,
+            approaches: 3,
+            approachEdges: [
+              approachEdge({
+                stopLine: { x: 60, y: 50, angle: Math.PI, width: 10 },
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(result.stats.approachStopLines).toBe(1);
+    expect(result.stats.stopLines).toBe(0);
+    const bars = result.quads.filter((quad) => colorMatches(quad.color, MARKING_COLOR_DIM));
+    expect(bars).toHaveLength(1);
+    expect(bars[0].centerX).toBeCloseTo(60, 4);
+    expect(bars[0].centerY).toBeCloseTo(50, 4);
+    expect(bars[0].maxY - bars[0].minY).toBeCloseTo(9.2, 4);
+    expect(bars[0].height).toBeCloseTo(CROSSING_STOP_LINE_Y, 6);
+  });
+
+  it('suppresses the legacy crossing stop line where an approach stop bar exists', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(30, 40, 90, 60))],
+        crossings: [crossing('signals', { x: 66, y: 50, width: 10 })],
+        junctions: [
+          junctionPolygon(rect(40, 40, 60, 60), {
+            x: 60,
+            y: 50,
+            radius: 7,
+            approaches: 3,
+            approachEdges: [
+              approachEdge({
+                stopLine: { x: 60, y: 50, angle: Math.PI, width: 10 },
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(result.stats.approachStopLines).toBe(1);
+    expect(result.stats.legacyStopLinesSuppressed).toBe(2);
+    expect(result.stats.stopLines).toBe(0);
+  });
+
+  it('keeps the legacy stop lines where no approach bar exists', () => {
+    const result = emit(
+      makeTile({
+        roadSurfaces: [drivable(rect(30, 40, 90, 60))],
+        crossings: [crossing('signals', { x: 66, y: 50, width: 10 })],
+        junctions: [
+          junctionPolygon(rect(40, 40, 60, 60), {
+            x: 60,
+            y: 50,
+            radius: 7,
+            approaches: 3,
+            approachEdges: [approachEdge({ stopLine: undefined as never })],
+          }),
+        ],
+      }),
+    );
+    expect(result.stats.approachStopLines).toBe(0);
+    expect(result.stats.legacyStopLinesSuppressed).toBe(0);
+    // The approach-side legacy line is inside the chunk-aware face clearance
+    // (half the stop-line width + 0.5 m); the far one remains.
+    expect(result.stats.stopLineJunctionSkipped).toBe(1);
+    expect(result.stats.stopLines).toBe(1);
+  });
+
+  it('paints an approach bar from the junction-owning tile even when it overhangs', () => {
+    // The junction centre is inside the tile; the stop bar at its face boundary
+    // sits just across the tile border. The owning tile still paints it (its
+    // geometry may overhang like any other tile feature).
+    const result = emit(
+      makeTile({
+        bounds: [0, 0, 100, 100],
+        roadSurfaces: [drivable(rect(20, 40, 120, 60))],
+        junctions: [
+          junctionPolygon(rect(90, 40, 100, 60), {
+            x: 99,
+            y: 50,
+            radius: 7,
+            approaches: 3,
+            approachEdges: [
+              approachEdge({
+                stopLine: { x: 103, y: 50, angle: Math.PI, width: 10 },
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(result.stats.approachStopLines).toBe(1);
+    const bars = result.quads.filter((quad) => colorMatches(quad.color, MARKING_COLOR_DIM));
+    expect(bars).toHaveLength(1);
+    expect(bars[0].centerX).toBeCloseTo(103, 4);
   });
 });
 

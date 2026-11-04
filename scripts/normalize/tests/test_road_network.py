@@ -1,4 +1,4 @@
-"""Unit tests for the road network normalization (payload 0.2.0).
+﻿"""Unit tests for the road network normalization (payload 0.3.0).
 
 Run with:
     .venv\\Scripts\\python.exe scripts/normalize/tests/test_road_network.py -v
@@ -42,8 +42,13 @@ def build(ways, crossings=None, water=None):
 
 class WidthModelTests(unittest.TestCase):
     def test_explicit_width_tag_wins(self):
+        tags = {"width": "15", "lanes": "4"}
+        self.assertAlmostEqual(rn.carriageway_width(tags, "primary", False, False), 15.0)
+
+    def test_lanes_win_when_explicit_width_is_physically_impossible(self):
+        # 4 lanes need >= 10.4 m; a 7.5 m width is a mapping error, trust lanes.
         tags = {"width": "7.5", "lanes": "4"}
-        self.assertAlmostEqual(rn.carriageway_width(tags, "primary", False, False), 7.5)
+        self.assertAlmostEqual(rn.carriageway_width(tags, "primary", False, False), 12.6)
 
     def test_lanes_define_one_way_carriageway(self):
         tags = {"lanes": "4"}
@@ -54,9 +59,11 @@ class WidthModelTests(unittest.TestCase):
     def test_lanes_define_two_way_carriageway(self):
         self.assertAlmostEqual(rn.carriageway_width({"lanes": "2"}, "primary", False, False), 6.6)
 
-    def test_one_way_default_is_not_the_full_street(self):
-        self.assertAlmostEqual(rn.carriageway_width({}, "primary", True, False), 9.5)
-        self.assertAlmostEqual(rn.carriageway_width({}, "primary", False, False), 18.0)
+    def test_one_way_default_is_two_lanes_not_the_full_street(self):
+        # 2 lanes per direction is the primary default; the two-way default is
+        # 2+2. Neither is the old 18 m whole-street class default.
+        self.assertAlmostEqual(rn.carriageway_width({}, "primary", True, False), 6.6)
+        self.assertAlmostEqual(rn.carriageway_width({}, "primary", False, False), 12.6)
 
     def test_path_width_is_clamped(self):
         self.assertAlmostEqual(rn.carriageway_width({"width": "0.5"}, "footway", False, True), 1.0)
@@ -186,17 +193,63 @@ class PartitionTests(unittest.TestCase):
 
 
 class JunctionTests(unittest.TestCase):
-    def test_crossing_streets_create_one_junction_box(self):
+    def test_crossing_streets_get_a_graph_junction_face(self):
+        # The OSM topology gives both ways a shared node at the crossing.
         result = build(
             [
-                way(1, [(0, -300), (0, 300)], highway="primary", name="North"),
-                way(2, [(-300, 0), (300, 0)], highway="secondary", name="East"),
+                way(1, [(0, -300), (0, 0), (0, 300)], highway="primary", name="North"),
+                way(2, [(-300, 0), (0, 0), (300, 0)], highway="secondary", name="East"),
             ]
         )
         self.assertEqual(len(result["junctions"]), 1)
         junction = result["junctions"][0]
-        self.assertGreaterEqual(junction["approaches"], 2)
+        self.assertGreaterEqual(junction["approaches"], 3)
         self.assertGreaterEqual(junction["radius"], 3.0)
+        self.assertIsNotNone(junction.get("polygon"))
+        self.assertGreater(junction["polygon"].area, 4.0)
+        self.assertFalse(junction.get("fallback"))
+        self.assertEqual(len(junction.get("approachEdges") or []), junction["approaches"])
+        faces = [s for s in result["surfaces"] if s.get("junction")]
+        self.assertTrue(faces)
+
+    def test_asymmetric_two_way_lane_tags_are_preserved(self):
+        result = build(
+            [
+                way(
+                    1,
+                    [(0, -300), (0, 0), (0, 300)],
+                    highway="secondary",
+                    name="Lenina",
+                    lanes="3",
+                    **{"lanes:forward": "1", "lanes:backward": "2"},
+                ),
+            ]
+        )
+        roads = [p for p in result["network"] if p["kind"] == "road"]
+        self.assertTrue(roads)
+        piece = roads[0]
+        self.assertEqual(piece["lanesForward"], 1)
+        self.assertEqual(piece["lanesBackward"], 2)
+        self.assertEqual(piece["lanes"], 3)
+        self.assertEqual(piece["lanesSource"], "tag")
+
+    def test_link_road_is_not_emitted_as_a_marked_street(self):
+        result = build(
+            [
+                way(1, [(0, -300), (0, 0)], highway="primary", name="Main", lanes="2"),
+                way(
+                    2,
+                    [(0, 0), (160, 120)],
+                    highway="primary_link",
+                    oneway="yes",
+                ),
+            ]
+        )
+        network = [p for p in result["network"] if p["kind"] == "road"]
+        self.assertTrue(network)
+        self.assertTrue(all(not p.get("link") for p in network))
+        # the link asphalt still exists, but it is not a painted street piece
+        self.assertEqual(len(network), 1)
 
     def test_parallel_same_name_ways_are_not_a_junction(self):
         result = build(
@@ -210,8 +263,14 @@ class JunctionTests(unittest.TestCase):
     def test_bridge_way_does_not_create_a_ground_junction(self):
         result = build(
             [
-                way(1, [(0, -300), (0, 300)], highway="primary", name="North"),
-                way(2, [(-300, 0), (300, 0)], highway="secondary", name="East", bridge="yes"),
+                way(1, [(0, -300), (0, 0), (0, 300)], highway="primary", name="North"),
+                way(
+                    2,
+                    [(-300, 0), (0, 0), (300, 0)],
+                    highway="secondary",
+                    name="East",
+                    bridge="yes",
+                ),
             ]
         )
         self.assertEqual(result["junctions"], [])
@@ -341,3 +400,4 @@ class DeterminismTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

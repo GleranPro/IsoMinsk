@@ -130,21 +130,22 @@ From the generated milestone data:
 - No interiors, no boolean-cut openings, no stairs, no antennas/chimneys except as
   simplified roof volumes.
 - Road geometry is **buffered centrelines**, not surveyed carriageway edges.
-  Width is normalized per named street **and direction**: explicit `width`, else
-  `lanes × 3.0 m + 0.6 m` shoulders (one-way aware), else a class default,
-  combined with a length-weighted median; a 1-lane one-way section no longer
-  inherits a 4-lane two-way width (Engels Street near Engels 25 is tagged
-  `oneway lanes=1`, so it renders as a 4 m single carriageway with crossings
-  but no lane divider — data-driven, not an omission). Opposite one-way ways
-  are merged into one two-way corridor piece only when their buffers overlap;
-  pairs that stay apart keep separate carriageways and get a median strip
-  (gap strips smaller than 4 m² are dropped). Junctions receive a limited
-  corner fillet (4.5 m closing, only inside junction neighbourhoods, 2 443 m²
-  claimed as asphalt), which fills the small unfilled notches between roads
-  meeting at shallow angles; it is not a full surveyed kerb-radius model. The
-  payload 0.2.0 surface partition guarantees that drivable/paving/kerb/median
-  pieces never overlap, so the old per-polygon Y jitter and its "stacked
-  layers" are gone; see `docs/ROAD_NETWORK.md`.
+  Payload 0.3.0 builds an OSM topology graph from shared vertices: each junction
+  node with ≥3 distinct approaches gets one asphalt face polygon derived from
+  the approach cross-sections (corner ring or union of approach mouths); lane
+  tags are authoritative per way (`lanes:forward`/`lanes:backward`, else
+  `lanes`, else a class default), width is derived from the lanes, and an
+  explicit `width` is used only when physically compatible (≥2.6 m per lane).
+  A tagged segment keeps its own count — Ulyanovskaya renders 3 lanes, Lenina
+  renders 1+2 asymmetric. Unnamed short connectors that end at a junction,
+  `highway=*_link` roads and service aisles are **channelization**: their mouths
+  are part of the junction face but they render as paving (no asphalt fork, no
+  lane paint). Opposite one-way ways are merged into one two-way corridor only
+  when their buffers overlap and the lane counts/corridor width are consistent.
+  The partition guarantees drivable/paving/kerb/median pieces never overlap
+  above the 0.35 m² rounding tolerance (residual cm² slivers remain from the
+  1 cm payload grid), so the old per-polygon Y jitter is gone; see
+  `docs/ROAD_NETWORK.md`.
 - Road **material** comes from OSM `surface`, folded into
   `asphalt/stone/concrete/unpaved`. Explicit tags are authoritative; untagged
   segments inherit the street's length-weighted majority. OSM gaps or wrong
@@ -157,23 +158,25 @@ From the generated milestone data:
   where the deck is not adjacent to a ground road (bridge sidewalks are flat
   slabs on the deck). This reads as a stylised bridge at isometric zoom but is
   not a true approach ramp.
-- **Markings** are derived from normalized centrelines (paint only on
-  asphalt): two-way carriageways get a double solid centre from 12.5 m width or
-  a dashed centre from 5.5 m; lane dividers use the `lanes` tag when present
-  (clamped to a 2.4 m minimum pitch), else width; solid edge lines are drawn on
-  motorway/trunk/primary/secondary. OSM `highway=crossing` /
-  `highway=traffic_signals` nodes drive zebras and stop lines; a junction
-  without a mapped crossing gets no zebra. Signalised pedestrian crossings are
-  rendered as zebra bars + stop lines, a bare signal head gets a stop line only.
-  Dash phase is anchored per way, so it restarts at OSM way joins (most of which
-  are junctions, where markings stop anyway). Every paint type is clipped out
-  of junction boxes and dashes out of crossing spans; zebra bars and stop lines
-  must have all corners inside asphalt/stone, so a mis-projected crossing is
-  dropped rather than painted over paving (51 elements and 68 stop lines were
-  dropped in the pilot). Paint widths are 0.15–0.5 m: the 0.15 m lines (double
-  solids, dividers, edge lines) can alias away in the 640×360 pixel-art pass at
-  far zoom and read correctly at close zoom; this is a deliberate pixel-art
-  trade-off, not missing data. Bridge paint is raised with the deck.
+- **Markings** are derived from the network centrelines (paint only on
+  asphalt): two-way layouts are asymmetric from `lanesForward`/`lanesBackward`,
+  with double solid centre from 12.5 m or dashed centre from 5.5 m; one-way
+  roads get `lanes−1` dividers (the tagged count is not width-clamped); solid
+  edge lines are drawn on motorway/trunk/primary/secondary. `link`, service and
+  channelization pieces get no lane paint; roundabouts get edge lines only. OSM
+  `highway=crossing` / `highway=traffic_signals` nodes drive zebras and stop
+  lines; a junction without a mapped crossing gets no zebra. Signalised
+  pedestrian crossings are rendered as zebra bars + stop lines, a bare signal
+  head gets a stop line only. Dash phase is anchored per way, so it restarts at
+  OSM way joins (most of which are junctions, where markings stop anyway).
+  Every paint type is clipped out of the junction face polygons with
+  chunk-aware clearance and out of junction asphalt surface slivers; dashes are
+  clipped out of crossing spans. Zebra bars and stop lines must have all corners
+  inside asphalt/stone, so a mis-projected crossing is dropped rather than
+  painted over paving. Paint widths are 0.15–0.5 m: the 0.15 m lines can alias
+  away in the 640×360 pixel-art pass at far zoom and read correctly at close
+  zoom; this is a deliberate pixel-art trade-off, not missing data. Bridge paint
+  is raised with the deck.
 - **Tram/rail centrelines** are merged OSM lines rendered as a ballast strip and
   two 0.34 m rail heads by the network layer; near-duplicate parallel tracks of
   the same tram line are collapsed (Hausdorff ≤ 3.5 m), so a single-track tram

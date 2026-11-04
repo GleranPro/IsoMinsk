@@ -1,44 +1,58 @@
 /**
- * Semantic road markings and tram rails for payload 0.2.0.
+ * Semantic road markings and tram rails for payload 0.3.0.
  *
  * The pipeline gives real centrelines (`RoadNetworkPiece.centerline`, already
- * overhanging the tile by ~4 m), junction boxes and pedestrian crossings. This
- * module turns them into flat geometry just above the road surface:
+ * overhanging the tile by ~4 m), OSM-graph junctions with a single asphalt face
+ * polygon and pedestrian crossings. This module turns them into flat geometry
+ * just above the road surface:
  *
- *  - **lane markings** — a full layout derived from the piece width, direction,
- *    lane count and class (see `laneMarkingLayout`): double solid centre on wide
- *    two-way avenues, a dashed centre on narrower two-way streets, dashed lane
- *    dividers per direction, and solid edge lines on the major classes. Every
- *    drivable asphalt class is painted (residential / tertiary / service too),
- *    including bridge decks (raised by `BRIDGE_RAISE_M`). Dashes are phase
- *    anchored to the arc length along the source way (`centerlineOffset +
- *    station`) so their rhythm is continuous across tiles; solids are emitted as
- *    2 m chunks on the same global grid for the same reason. Every paint element
- *    is owned by the tile whose bounds contain its centre (half-open), so a
- *    paint element that straddles a tile border is emitted exactly once.
- *  - **zebra bars / stop lines** — crossing paint, clipped to the tile's
- *    drivable asphalt/stone pieces (bars whose corners would spill onto paving,
- *    a median or a junction wedge are dropped; stop lines are also dropped
- *    inside junction boxes).
+ *  - **lane markings** — a per-direction layout (`laneMarkingLayout`) driven by
+ *    tagged `lanesForward`/`lanesBackward` (asymmetric centre line), a double
+ *    solid centre on wide two-way roads, dashed lane dividers per direction and
+ *    solid edge lines on the major classes. Every drivable asphalt class is
+ *    painted except slip links (`link`), roundabout rings and service aisles,
+ *    which get no centre/divider paint at all. Bridge decks are raised by
+ *    `BRIDGE_RAISE_M` and use the tile's bridge asphalt pieces for containment.
+ *    Dashes are phase anchored to the arc length along the source way
+ *    (`centerlineOffset + station`) so their rhythm is continuous across tiles;
+ *    solids are emitted as 2 m chunks on the same global grid. Every paint
+ *    element is owned by the tile whose bounds contain its centre (half-open),
+ *    so an element straddling a tile border is emitted exactly once.
+ *  - **junction faces** — payload 0.3.0 junctions carry a polygon ring; paint is
+ *    clipped out of the polygon buffered by 0.5 m **plus half the paint
+ *    element's length** (bbox prefilter + point in polygon / boundary distance),
+ *    so the far half of a 2 m solid chunk or 3 m dash cannot reach the face.
+ *    This replaces the circle model for 0.3.0. Junctions without a usable face
+ *    polygon keep the radius clearance path (legacy 0.2.0 tiles); a
+ *    `fallback: true` union-of-mouth rectangle is still used as a clip polygon.
+ *    `junction: true` asphalt surface pieces are a **hard exclusion** as well:
+ *    paint is clipped chunk-aware against them even when their junction record
+ *    polygon was dropped (sub-1 m² face slivers).
+ *  - **zebra bars / stop lines** — crossing paint is clipped to the tile's
+ *    drivable asphalt/stone pieces; zebra bars are skipped where their centre
+ *    falls inside a junction face polygon. Stop lines come from the junction's
+ *    `approachEdges[].stopLine` bars when present (painted exactly once by the
+ *    owning tile); the legacy crossing-based stop lines are suppressed where an
+ *    explicit approach stop line exists and kept otherwise.
  *  - **tram rails** — `kind === 'rail'` network pieces become a ballast strip
  *    plus two rail heads. The strip geometry is clipped to the tile bounds, so
  *    the per-tile pieces (which overhang each other by 4 m) render exactly once
  *    and meet seamlessly at tile borders; rails get no junction/crossing
  *    clearance and no lane paint.
  *
- * Junction boxes suppress every paint type (`radius + 0.5 m`, plus half the
- * element length for dashes); crossings suppress dashed paint (and solid chunks
- * crossing their paint). Every paint corner inside the tile must lie in a
- * drivable asphalt piece — corners overhanging into the neighbouring tile are
- * ignored (their asphalt lives there), which keeps paint continuous across tile
- * seams. Hard per-tile budgets keep dense tiles cheap: 8192 triangles of lane
- * paint (dashes + solids + stop lines) and 600 triangles of zebra bars,
- * truncated deterministically in payload order.
+ * Junction faces and legacy junction circles suppress every paint type; crossings
+ * suppress dashed paint (and solid chunks crossing their paint). Every paint
+ * corner inside the tile must lie in a drivable asphalt piece — corners
+ * overhanging into the neighbouring tile are ignored (their asphalt lives
+ * there), which keeps paint continuous across tile seams. Hard per-tile budgets
+ * keep dense tiles cheap: 8192 triangles of lane/junction paint and 600 triangles
+ * of zebra bars, truncated deterministically in payload order.
  */
 
 import type {
   CrossingFeature,
   JunctionFeature,
+  Ring,
   RoadClass,
   RoadMaterial,
   RoadNetworkPiece,
@@ -78,6 +92,20 @@ const LANE_DASH_LENGTH_M = 2;
 const LANE_DASH_SPACING_M = 6;
 const LANE_DASH_WIDTH_M = 0.15;
 
+/**
+ * Lane pitch used to place dividers on an asymmetric piece: derive it from the
+ * verified carriageway width, clamped to a plausible passenger-car lane width.
+ */
+const LANE_WIDTH_M = 3.0;
+const LANE_WIDTH_MIN_M = 2.6;
+const LANE_WIDTH_MAX_M = 3.4;
+/** Width not available for lanes (kerb/shoulder allowance), metres. */
+const LANE_TOTAL_MARGIN_M = 0.6;
+/** Absolute lane-count guard: no piece may paint more than this per direction. */
+const ABS_MAX_LANES = 8;
+/** Upper lane-count sanity bound: one lane per 2.2 m of width, plus one. */
+const MIN_LANE_SPACE_M = 2.2;
+
 /** Edge lines: solid 0.15 m, 0.4 m inside each carriageway edge. */
 const EDGE_LINE_WIDTH_M = 0.15;
 const EDGE_LINE_INSET_M = 0.4;
@@ -90,16 +118,19 @@ const EDGE_LINE_CLASSES: ReadonlySet<RoadClass> = new Set<RoadClass>([
   'secondary',
 ]);
 
-/** Minimum lane pitch used to cap a tagged lane count, metres. */
-const MIN_LANE_PITCH_M = 2.4;
-
 /** Solid lines are emitted as short chunks on a global grid, metres. */
 const SOLID_CHUNK_M = 2;
 /** Solid chunks shorter than this at a piece end are dropped, metres. */
 const MIN_SOLID_CHUNK_M = 0.25;
 
-/** Junction clearance beyond the junction radius, metres. */
+/** Junction face paint clearance beyond the polygon, metres. */
+const JUNCTION_FACE_CLEARANCE_M = 0.5;
+/** Legacy junction radius clearance beyond the radius, metres. */
 const JUNCTION_CLEARANCE_M = 0.5;
+/** How close a crossing must be to a junction for stop-line matching, metres. */
+const APPROACH_STOP_LINE_MATCH_M = 30;
+/** Max angle difference for matching an explicit approach stop line, radians. */
+const APPROACH_STOP_LINE_ANGLE_RAD = (45 * Math.PI) / 180;
 /** Minimum dash clearance around a crossing of the same road, metres. */
 const CROSSING_CLEARANCE_MIN_M = 2.5;
 /** Clearance beyond the crossing half-span, metres. */
@@ -194,8 +225,16 @@ export interface RoadNetworkStats {
   solidChunks: number;
   /** Paint elements rejected because their centre is outside the tile. */
   boundsSkipped: number;
-  /** Paint elements rejected by a junction clearance circle. */
+  /** Paint elements rejected by a legacy junction clearance radius. */
   junctionSkipped: number;
+  /** Paint elements rejected inside a 0.3.0 junction face polygon (+0.5 m). */
+  junctionFaceSkipped: number;
+  /**
+   * Paint elements rejected inside a `junction: true` asphalt surface piece
+   * (chunk-aware). These are hard exclusions even when the junction record's
+   * face polygon was dropped by the pipeline.
+   */
+  junctionSurfaceSkipped: number;
   /** Paint elements rejected around a crossing of the same road. */
   crossingClearanceSkipped: number;
   /** Paint elements rejected because a corner left the drivable asphalt. */
@@ -207,12 +246,18 @@ export interface RoadNetworkStats {
   /** Crossings rejected because of missing/invalid data or material. */
   crossingsSkipped: number;
   zebraBars: number;
+  /** Zebra bars dropped because their centre is inside a junction face. */
+  zebraJunctionSkipped: number;
   stopLines: number;
+  /** Stop lines painted from `junction.approachEdges[].stopLine`. */
+  approachStopLines: number;
+  /** Legacy crossing stop lines suppressed by an explicit approach stop line. */
+  legacyStopLinesSuppressed: number;
   /** Zebra bars / stop lines dropped because a corner left the drivable pavement. */
   crossingContainmentSkipped: number;
-  /** Stop lines dropped because their centre is inside a junction box. */
+  /** Stop lines dropped because their centre is inside a junction. */
   stopLineJunctionSkipped: number;
-  /** Triangles of lane paint (dashes + solids + stop lines). */
+  /** Triangles of lane/junction paint (dashes + solids + stop lines). */
   markingTriangles: number;
   /** Triangles of zebra bars. */
   zebraTriangles: number;
@@ -235,13 +280,18 @@ export function createRoadNetworkStats(): RoadNetworkStats {
     solidChunks: 0,
     boundsSkipped: 0,
     junctionSkipped: 0,
+    junctionFaceSkipped: 0,
+    junctionSurfaceSkipped: 0,
     crossingClearanceSkipped: 0,
     containmentSkipped: 0,
     skippedPieces: 0,
     crossings: 0,
     crossingsSkipped: 0,
     zebraBars: 0,
+    zebraJunctionSkipped: 0,
     stopLines: 0,
+    approachStopLines: 0,
+    legacyStopLinesSuppressed: 0,
     crossingContainmentSkipped: 0,
     stopLineJunctionSkipped: 0,
     markingTriangles: 0,
@@ -278,17 +328,52 @@ interface PreparedPiece {
   bbox: Bounds4;
 }
 
-/** A junction clearance circle. */
-interface ClearanceCircle {
-  x: number;
-  y: number;
-  radius: number;
+/** A junction asphalt face prepared for paint clipping. */
+interface JunctionFace {
+  prepared: PreparedPolygon;
+  /** Exterior bounds (unexpanded; callers extend by their element clearance). */
+  bbox: Bounds4;
+  /** Exterior ring first, holes after; used for the boundary buffer test. */
+  rings: Ring[];
+}
+
+/** One junction record plus its prepared face (when the payload has one). */
+interface JunctionInfo {
+  feature: JunctionFeature;
+  face: JunctionFace | null;
+}
+
+/** All junction-derived data needed by one tile pass. */
+interface JunctionContext {
+  infos: JunctionInfo[];
+  /** Junction face polygons from the junction records. */
+  faces: JunctionFace[];
+  /**
+   * `junction: true` asphalt surface pieces. Hard paint exclusions even when no
+   * junction record polygon survived (e.g. sub-1 m² face slivers).
+   */
+  surfaces: JunctionFace[];
+  /** Junctions without a usable face polygon (legacy 0.2.0 tiles). */
+  legacy: JunctionFeature[];
+  /** Explicit approach stop bars from payload 0.3.0 (`approachEdges`). */
+  approachStopLines: Array<{
+    x: number;
+    y: number;
+    angle: number;
+    width: number;
+    /** Junction centre: the tile containing it paints all its approach bars. */
+    ownerX: number;
+    ownerY: number;
+  }>;
 }
 
 /** A crossing of this road, with the radius lane paint must keep clear of. */
-interface CrossingClearance extends ClearanceCircle {
+interface CrossingClearance {
+  x: number;
+  y: number;
   /** Road direction at the crossing, radians. */
   angle: number;
+  radius: number;
 }
 
 /** Paint containment sets, split by bridge flag. */
@@ -315,7 +400,7 @@ export function emitRoadNetwork(
   if (!tile) return;
 
   const containment = prepareContainment(tile.roadSurfaces);
-  const junctions = validJunctions(tile.junctions);
+  const junctions = prepareJunctions(tile.junctions, tile.roadSurfaces);
   const crossingClearances = prepareCrossingClearances(tile.crossings);
   const network = Array.isArray(tile.roadNetwork) ? tile.roadNetwork : [];
   for (let index = 0; index < network.length; index++) {
@@ -344,6 +429,14 @@ export function emitRoadNetwork(
     }
   }
 
+  // Explicit junction approach stop bars (payload 0.3.0). Emitted before the
+  // legacy crossing paint so the budget priority goes to the authoritative data.
+  try {
+    emitJunctionStopLines(sink, junctions, bounds, stats);
+  } catch {
+    // Defensive: a malformed stop bar must not break the tile.
+  }
+
   const crossings = Array.isArray(tile.crossings) ? tile.crossings : [];
   for (let index = 0; index < crossings.length; index++) {
     try {
@@ -366,7 +459,12 @@ function prepareContainment(pieces: TileData['roadSurfaces'] | null | undefined)
   };
 }
 
-/** Prepare the tile's drivable pieces of one bridge flag and material set. */
+/**
+ * Prepare the tile's drivable pieces of one bridge flag and material set.
+ * Junction asphalt faces (`junction: true`) are deliberately excluded from
+ * containment — paint can never be *contained* by a junction face — and they
+ * are also used as hard chunk-aware paint blockers (see prepareJunctionSurfaces).
+ */
 function prepareDrivablePieces(
   pieces: TileData['roadSurfaces'] | null | undefined,
   bridge: boolean,
@@ -376,6 +474,7 @@ function prepareDrivablePieces(
   if (!Array.isArray(pieces)) return out;
   for (const piece of pieces) {
     if (!piece || piece.kind !== 'drivable') continue;
+    if (piece.junction === true) continue;
     if ((piece.bridge === true) !== bridge) continue;
     if (!materials.includes(piece.material ?? 'asphalt')) continue;
     try {
@@ -389,24 +488,126 @@ function prepareDrivablePieces(
   return out;
 }
 
-function validJunctions(
+// ---------------------------------------------------------------------------
+// Junction preparation
+// ---------------------------------------------------------------------------
+
+function prepareJunctions(
   junctions: JunctionFeature[] | null | undefined,
-): JunctionFeature[] {
-  if (!Array.isArray(junctions)) return [];
-  const out: JunctionFeature[] = [];
+  surfaces: TileData['roadSurfaces'] | null | undefined,
+): JunctionContext {
+  const context: JunctionContext = {
+    infos: [],
+    faces: [],
+    surfaces: prepareJunctionSurfaces(surfaces),
+    legacy: [],
+    approachStopLines: [],
+  };
+  if (!Array.isArray(junctions)) return context;
+  const seenBars = new Set<string>();
   for (const junction of junctions) {
     if (!junction) continue;
     if (!Number.isFinite(junction.x) || !Number.isFinite(junction.y)) continue;
-    if (!Number.isFinite(junction.radius) || junction.radius < 0) continue;
-    out.push(junction);
+    const radiusOk = Number.isFinite(junction.radius) && junction.radius >= 0;
+    const hasPolygon = Array.isArray(junction.polygon) && junction.polygon.length > 0;
+    if (!radiusOk && !hasPolygon) continue;
+    const face = prepareJunctionFace(junction);
+    context.infos.push({ feature: junction, face });
+    if (face) {
+      context.faces.push(face);
+    } else if (radiusOk) {
+      context.legacy.push(junction);
+    }
+    const edges = junction.approachEdges;
+    if (Array.isArray(edges)) {
+      for (const edge of edges) {
+        const stopLine = edge?.stopLine;
+        if (!stopLine) continue;
+        if (
+          !Number.isFinite(stopLine.x) ||
+          !Number.isFinite(stopLine.y) ||
+          !Number.isFinite(stopLine.angle) ||
+          !Number.isFinite(stopLine.width) ||
+          !(stopLine.width > 0.5)
+        ) {
+          continue;
+        }
+        // Junction records are duplicated into every tile they touch; the
+        // ownership check at emit time dedupes across tiles, this dedupes a
+        // duplicated record inside one tile payload.
+        const key = `${stopLine.x.toFixed(2)},${stopLine.y.toFixed(2)},${stopLine.angle.toFixed(3)},${stopLine.width.toFixed(2)}`;
+        if (seenBars.has(key)) continue;
+        seenBars.add(key);
+        context.approachStopLines.push({
+          x: stopLine.x,
+          y: stopLine.y,
+          angle: stopLine.angle,
+          width: stopLine.width,
+          ownerX: junction.x,
+          ownerY: junction.y,
+        });
+      }
+    }
+  }
+  return context;
+}
+
+/**
+ * Prepare the `junction: true` asphalt surface pieces as paint blockers.
+ * These are a hard exclusion regardless of junction records: the pipeline can
+ * drop a record's face polygon (<1 m²) while the asphalt face sliver remains.
+ */
+function prepareJunctionSurfaces(
+  pieces: TileData['roadSurfaces'] | null | undefined,
+): JunctionFace[] {
+  const out: JunctionFace[] = [];
+  if (!Array.isArray(pieces)) return out;
+  for (const piece of pieces) {
+    if (!piece || piece.junction !== true) continue;
+    if (!Array.isArray(piece.polygon)) continue;
+    try {
+      const prepared = prepareFlatPolygon(piece.polygon, { minArea: 0.01 });
+      if (!prepared) continue;
+      out.push({
+        prepared,
+        bbox: ringBounds(prepared.exterior),
+        rings: [prepared.exterior, ...prepared.holes],
+      });
+    } catch {
+      // Ignore: a broken face simply provides no exclusion.
+    }
   }
   return out;
 }
 
 /**
+ * Prepare the authoritative asphalt face polygon of a 0.3.0 junction.
+ *
+ * Payload 0.3.0 junctions all carry a face polygon; a `fallback: true` face is
+ * the union-of-mouth rectangle approximation, which is still a usable clip
+ * polygon (not a circle). Only a missing/invalid polygon falls back to the
+ * legacy clearance radius.
+ */
+function prepareJunctionFace(junction: JunctionFeature): JunctionFace | null {
+  const polygon = junction.polygon;
+  if (!Array.isArray(polygon) || polygon.length === 0) return null;
+  try {
+    const prepared = prepareFlatPolygon(polygon, { minArea: 0.01 });
+    if (!prepared) return null;
+    return {
+      prepared,
+      bbox: ringBounds(prepared.exterior),
+      rings: [prepared.exterior, ...prepared.holes],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Precompute crossing clearance circles for lane-paint suppression. Any
  * crossing record with a finite position and angle participates; the centre
- * clearance is `max(2.5, span/2 + 1) + 1.5` metres (half a centre dash), so the
+ * clearance is `max(2.5, span/2 + 1) + 1.5` metres (half a centre dash) so the
  * dash body cannot touch the crossing paint either.
  */
 function prepareCrossingClearances(
@@ -442,117 +643,175 @@ function prepareCrossingClearances(
 /**
  * Derive the complete lane-marking layout for one normalized road piece.
  *
- * Two-way: double solid centre from 12.5 m width, else a 3 m/7 m dashed centre
- * from 5.5 m; one dashed lane-divider row per remaining lane on each side.
- * One-way: no centre line, dashed dividers between the lanes. Both get solid
- * edge lines on motorway/trunk/primary/secondary carriageways at least 7 m wide.
+ * Slip links (`link: true`), service aisles (`class: 'service'`) and roundabout
+ * rings get no centre line or lane dividers (links/service get no lane paint at
+ * all; roundabouts keep their edge lines).
  *
- * `piece.lanes` drives the divider count when present (a 6.6 m one-way street
- * tagged 2 lanes keeps its single divider; a 24 m merged two-way corridor tagged
- * 8 lanes gets 4 lanes per direction); without a tag it falls back to a width
- * estimate, and both paths are capped by a minimum lane pitch so odd tags cannot
- * produce dozens of dividers on a narrow piece. Merged corridors (two
- * overlapping opposite carriageways represented by one piece) are forced to the
- * two-way layout.
+ * Two-way pieces use the tagged `lanesForward`/`lanesBackward` counts when
+ * present: the centre line is offset from the geometric centre by
+ * `(f - b) / 2 * laneWidth`, lane dividers are placed at one lane pitch on each
+ * side, and the centre type follows the width thresholds (double solid from
+ * 12.5 m, dashed from 5.5 m). Tagged lane counts are never clamped down to a
+ * width-derived number; the only guards are an absolute cap of 8 lanes per
+ * direction and `floor(width / 2.2) + 1`, which stops nonsense tags from
+ * painting across a narrow road. One-way pieces use `lanes` for the divider
+ * count. Merged corridors stay two-way and split from the direction tags when
+ * present, otherwise symmetrically.
  */
 export function laneMarkingLayout(piece: {
   width: number;
   class: RoadClass;
   oneway?: boolean;
   lanes?: number;
+  lanesForward?: number;
+  lanesBackward?: number;
   merged?: boolean;
+  link?: boolean;
+  roundabout?: boolean;
 }): PaintLine[] {
   const width = Number.isFinite(piece.width) ? piece.width : 0;
   if (!(width > 0)) return [];
+  // Slip roads and service aisles are anonymous connectors with no lane paint.
+  if (piece.link === true || piece.class === 'service') return [];
+  const laneCap = maxLaneCountForWidth(width);
+  const roundabout = piece.roundabout === true;
   const lines: PaintLine[] = [];
   const oneWay = piece.merged !== true && piece.oneway === true;
 
   if (oneWay) {
-    // One carriageway direction: lanes divided evenly across the full width.
-    const inferred = Math.round((width - 0.8) / 3.0);
-    const maxLanes = Math.max(1, Math.floor((width - 0.4) / MIN_LANE_PITCH_M));
-    const laneCount = clampLaneCount(piece.lanes ?? inferred, 1, maxLanes);
-    for (let lane = 1; lane < laneCount; lane++) {
-      const offset = -width / 2 + (lane * width) / laneCount;
-      lines.push({
-        kind: 'divider',
-        offset,
-        dashed: true,
-        length: LANE_DASH_LENGTH_M,
-        spacing: LANE_DASH_SPACING_M,
-        width: LANE_DASH_WIDTH_M,
-      });
+    if (roundabout) {
+      // Roundabout rings keep their edge lines only.
+    } else {
+      // One carriageway direction: lanes divided evenly across the full width.
+      const inferred = Math.max(1, Math.round((width - 0.8) / LANE_WIDTH_M));
+      const laneCount = clampLaneCount(piece.lanes ?? inferred, 1, laneCap);
+      for (let lane = 1; lane < laneCount; lane++) {
+        lines.push(dividerLine(-width / 2 + (lane * width) / laneCount));
+      }
     }
   } else {
-    // Two-way centre line.
-    if (width >= DOUBLE_SOLID_MIN_WIDTH_M) {
-      lines.push({
-        kind: 'centre',
-        offset: DOUBLE_SOLID_OFFSET_M,
-        dashed: false,
-        length: SOLID_CHUNK_M,
-        spacing: SOLID_CHUNK_M,
-        width: DOUBLE_SOLID_WIDTH_M,
-      });
-      lines.push({
-        kind: 'centre',
-        offset: -DOUBLE_SOLID_OFFSET_M,
-        dashed: false,
-        length: SOLID_CHUNK_M,
-        spacing: SOLID_CHUNK_M,
-        width: DOUBLE_SOLID_WIDTH_M,
-      });
-    } else if (width >= TWO_WAY_CENTRE_MIN_WIDTH_M) {
-      lines.push({
-        kind: 'centre',
-        offset: 0,
-        dashed: true,
-        length: CENTRE_DASH_LENGTH_M,
-        spacing: CENTRE_DASH_SPACING_M,
-        width: CENTRE_DASH_WIDTH_M,
-      });
+    let forward: number;
+    let backward: number;
+    const fTag = finiteLaneCount(piece.lanesForward);
+    const bTag = finiteLaneCount(piece.lanesBackward);
+    const totalTag = finiteLaneCount(piece.lanes);
+    if (fTag !== null || bTag !== null) {
+      if (fTag !== null && bTag !== null) {
+        forward = fTag;
+        backward = bTag;
+      } else if (fTag !== null) {
+        forward = fTag;
+        backward = totalTag !== null ? Math.max(1, totalTag - fTag) : forward;
+      } else {
+        backward = bTag as number;
+        forward = totalTag !== null ? Math.max(1, totalTag - backward) : backward;
+      }
+    } else if (piece.merged === true) {
+      // Merged corridors are symmetric unless direction tags say otherwise.
+      const total = totalTag ?? Math.max(2, Math.round(width / LANE_WIDTH_M));
+      const perDir = Math.max(1, Math.round(total / 2));
+      forward = perDir;
+      backward = perDir;
+    } else if (totalTag !== null) {
+      forward = Math.max(1, Math.round(totalTag / 2));
+      backward = Math.max(1, totalTag - forward);
+    } else {
+      // Pre-0.3.0 payloads: infer one lane for each direction from the width.
+      const perDir = Math.max(1, Math.floor((width / 2 - 0.4) / LANE_WIDTH_M));
+      forward = perDir;
+      backward = perDir;
     }
+    forward = clampLaneCount(forward, 1, laneCap);
+    backward = clampLaneCount(backward, 1, laneCap);
 
-    // Lane dividers per direction, mirrored about the centreline.
-    const lanesTotal = piece.lanes ?? Math.round(width / 3.0);
-    const maxPerDir = Math.max(1, Math.floor((width / 2 - 0.4) / MIN_LANE_PITCH_M));
-    const lanesPerDir = clampLaneCount(Math.round(lanesTotal / 2), 1, maxPerDir);
-    for (let lane = 1; lane < lanesPerDir; lane++) {
-      const offset = (lane * (width / 2 - 0.8)) / lanesPerDir;
-      for (const side of [1, -1] as const) {
-        lines.push({
-          kind: 'divider',
-          offset: side * offset,
-          dashed: true,
-          length: LANE_DASH_LENGTH_M,
-          spacing: LANE_DASH_SPACING_M,
-          width: LANE_DASH_WIDTH_M,
-        });
+    if (roundabout) {
+      // Roundabout rings get edge lines only.
+    } else {
+      const laneWidth = clampNumber(
+        (width - LANE_TOTAL_MARGIN_M) / Math.max(1, forward + backward),
+        LANE_WIDTH_MIN_M,
+        LANE_WIDTH_MAX_M,
+      );
+      const centreOffset = ((forward - backward) / 2) * laneWidth;
+
+      if (width >= DOUBLE_SOLID_MIN_WIDTH_M) {
+        lines.push(solidLine('centre', centreOffset + DOUBLE_SOLID_OFFSET_M, DOUBLE_SOLID_WIDTH_M));
+        lines.push(solidLine('centre', centreOffset - DOUBLE_SOLID_OFFSET_M, DOUBLE_SOLID_WIDTH_M));
+      } else if (width >= TWO_WAY_CENTRE_MIN_WIDTH_M) {
+        lines.push(centreDashLine(centreOffset));
+      }
+      // Forward lanes are on the -n side (right of travel); backward on +n.
+      for (let lane = 1; lane < forward; lane++) {
+        lines.push(dividerLine(centreOffset - lane * laneWidth));
+      }
+      for (let lane = 1; lane < backward; lane++) {
+        lines.push(dividerLine(centreOffset + lane * laneWidth));
       }
     }
   }
 
   if (EDGE_LINE_CLASSES.has(piece.class) && width >= EDGE_LINE_MIN_WIDTH_M) {
     const offset = width / 2 - EDGE_LINE_INSET_M;
-    for (const side of [1, -1] as const) {
-      lines.push({
-        kind: 'edge',
-        offset: side * offset,
-        dashed: false,
-        length: SOLID_CHUNK_M,
-        spacing: SOLID_CHUNK_M,
-        width: EDGE_LINE_WIDTH_M,
-      });
-    }
+    lines.push(solidLine('edge', offset, EDGE_LINE_WIDTH_M));
+    lines.push(solidLine('edge', -offset, EDGE_LINE_WIDTH_M));
   }
 
   return lines;
+}
+
+function dividerLine(offset: number): PaintLine {
+  return {
+    kind: 'divider',
+    offset,
+    dashed: true,
+    length: LANE_DASH_LENGTH_M,
+    spacing: LANE_DASH_SPACING_M,
+    width: LANE_DASH_WIDTH_M,
+  };
+}
+
+function centreDashLine(offset: number): PaintLine {
+  return {
+    kind: 'centre',
+    offset,
+    dashed: true,
+    length: CENTRE_DASH_LENGTH_M,
+    spacing: CENTRE_DASH_SPACING_M,
+    width: CENTRE_DASH_WIDTH_M,
+  };
+}
+
+function solidLine(kind: PaintLine['kind'], offset: number, width: number): PaintLine {
+  return {
+    kind,
+    offset,
+    dashed: false,
+    length: SOLID_CHUNK_M,
+    spacing: SOLID_CHUNK_M,
+    width,
+  };
+}
+
+/** Absolute lane-count guard for one direction of a piece of this width. */
+function maxLaneCountForWidth(width: number): number {
+  // +1e-9 absorbs float division noise (6.6 / 2.2 = 2.9999999999999996).
+  return Math.min(ABS_MAX_LANES, Math.max(1, Math.floor(width / MIN_LANE_SPACE_M + 1e-9) + 1));
 }
 
 /** Round a lane count and clamp it into `[min, max]`; NaN falls back to min. */
 function clampLaneCount(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(Math.max(Math.round(value), min), max);
+}
+
+/** Finite non-negative lane count or null. */
+function finiteLaneCount(value: number | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
 }
 
 // ---------------------------------------------------------------------------
@@ -563,7 +822,7 @@ function emitLanePaint(
   sink: GeometrySink,
   piece: RoadNetworkPiece,
   bounds: Bounds4,
-  junctions: readonly JunctionFeature[],
+  junctions: JunctionContext,
   crossings: readonly CrossingClearance[],
   containment: ContainmentSets,
   stats: RoadNetworkStats,
@@ -580,6 +839,11 @@ function emitLanePaint(
     class: piece.class,
     oneway: piece.oneway,
     lanes: piece.lanes,
+    lanesForward: piece.lanesForward,
+    lanesBackward: piece.lanesBackward,
+    merged: piece.merged,
+    link: piece.link,
+    roundabout: piece.roundabout,
   });
   if (lines.length === 0) return;
 
@@ -636,7 +900,7 @@ function emitDashedLine(
   offset: number,
   line: PaintLine,
   bounds: Bounds4,
-  junctions: readonly JunctionFeature[],
+  junctions: JunctionContext,
   crossings: readonly CrossingClearance[],
   asphalt: readonly PreparedPiece[],
   paintY: number,
@@ -656,8 +920,18 @@ function emitDashedLine(
       stats.boundsSkipped++;
       continue;
     }
-    // Junction: the whole dash must stay clear, so use its half length.
-    if (insideJunctionClearance(centre[0], centre[1], junctions, line.length / 2)) {
+    if (insideAnyJunctionFace(centre[0], centre[1], junctions.faces, line.length / 2)) {
+      stats.junctionFaceSkipped++;
+      continue;
+    }
+    if (insideAnyJunctionFace(centre[0], centre[1], junctions.surfaces, line.length / 2)) {
+      stats.junctionSurfaceSkipped++;
+      continue;
+    }
+    // Legacy 0.2.0 junction: the whole dash must stay clear.
+    if (
+      insideJunctionClearance(centre[0], centre[1], junctions.legacy, line.length / 2)
+    ) {
       stats.junctionSkipped++;
       continue;
     }
@@ -698,7 +972,7 @@ function emitSolidLine(
   offset: number,
   line: PaintLine,
   bounds: Bounds4,
-  junctions: readonly JunctionFeature[],
+  junctions: JunctionContext,
   crossings: readonly CrossingClearance[],
   asphalt: readonly PreparedPiece[],
   paintY: number,
@@ -718,7 +992,29 @@ function emitSolidLine(
       stats.boundsSkipped++;
       continue;
     }
-    if (insideJunctionClearance(centre[0], centre[1], junctions, 0)) {
+    if (
+      insideAnyJunctionFace(
+        centre[0],
+        centre[1],
+        junctions.faces,
+        (span.s1 - span.s0) / 2,
+      )
+    ) {
+      stats.junctionFaceSkipped++;
+      continue;
+    }
+    if (
+      insideAnyJunctionFace(
+        centre[0],
+        centre[1],
+        junctions.surfaces,
+        (span.s1 - span.s0) / 2,
+      )
+    ) {
+      stats.junctionSurfaceSkipped++;
+      continue;
+    }
+    if (insideJunctionClearance(centre[0], centre[1], junctions.legacy, 0)) {
       stats.junctionSkipped++;
       continue;
     }
@@ -810,13 +1106,60 @@ function solidChunkSpans(total: number, offset: number, chunk: number): SolidSpa
 }
 
 // ---------------------------------------------------------------------------
+// Junction approach stop lines
+// ---------------------------------------------------------------------------
+
+/**
+ * Paint the authoritative stop bars supplied by junction approach edges
+ * (payload 0.3.0). The bar's `angle` is the approach travel direction (towards
+ * the junction), so the bar runs across it. The tile whose bounds contain the
+ * **junction centre** paints all of that junction's bars: junction records are
+ * duplicated into every tile they touch, so this keeps the bars exactly once
+ * per junction while still allowing a bar at the face boundary to overhang a
+ * tile border.
+ */
+function emitJunctionStopLines(
+  sink: GeometrySink,
+  junctions: JunctionContext,
+  bounds: Bounds4,
+  stats: RoadNetworkStats,
+): void {
+  for (const bar of junctions.approachStopLines) {
+    if (stats.markingTriangles + 2 > MAX_MARKING_TRIANGLES_PER_TILE) {
+      stats.capped = true;
+      break;
+    }
+    if (!insideBounds(bar.ownerX, bar.ownerY, bounds)) continue;
+    const ux = Math.cos(bar.angle);
+    const uy = Math.sin(bar.angle);
+    const nx = -uy;
+    const ny = ux;
+    const halfWidth = Math.max(0.1, bar.width / 2 - STOP_LINE_EDGE_INSET_M);
+    const corners = quadCorners(bar.x, bar.y, nx, ny, -ny, nx, halfWidth, STOP_LINE_WIDTH_M / 2);
+    if (
+      sink.addFlatQuad(
+        corners[0],
+        corners[1],
+        corners[2],
+        corners[3],
+        CROSSING_STOP_LINE_Y,
+        MARKING_COLOR_DIM,
+      )
+    ) {
+      stats.approachStopLines++;
+      stats.markingTriangles += 2;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Crossing paint
 // ---------------------------------------------------------------------------
 
 function emitCrossing(
   sink: GeometrySink,
   crossing: CrossingFeature | null | undefined,
-  junctions: readonly JunctionFeature[],
+  junctions: JunctionContext,
   containment: ContainmentSets,
   stats: RoadNetworkStats,
 ): void {
@@ -869,10 +1212,12 @@ function emitCrossing(
       width,
       span,
       pieces,
+      junctions.faces,
+      junctions.surfaces,
       stats,
     );
   }
-  emitStopLines(
+  emitLegacyStopLines(
     sink,
     crossing,
     ux,
@@ -899,9 +1244,10 @@ function emitZebraBars(
   width: number,
   span: number,
   pieces: readonly PreparedPiece[],
+  faces: readonly JunctionFace[],
+  surfaces: readonly JunctionFace[],
   stats: RoadNetworkStats,
 ): void {
-  if (pieces.length === 0) return;
   const usableHalf = width / 2 - ZEBRA_EDGE_INSET_M;
   if (!(usableHalf > ZEBRA_BAR_WIDTH_M / 2)) return;
   const count = Math.max(
@@ -918,6 +1264,18 @@ function emitZebraBars(
     const lateral = first + index * ZEBRA_STEP_M;
     const cx = x + nx * lateral;
     const cy = y + ny * lateral;
+    // Junction faces own their asphalt: no zebra paint may sit on the face or
+    // reach it with the bar's far half (chunk-aware clearance).
+    if (insideAnyJunctionFace(cx, cy, faces, span / 2)) {
+      stats.zebraJunctionSkipped++;
+      continue;
+    }
+    // Junction asphalt surface pieces are a hard exclusion even when no face
+    // record polygon survived for them.
+    if (insideAnyJunctionFace(cx, cy, surfaces, span / 2)) {
+      stats.junctionSurfaceSkipped++;
+      continue;
+    }
     const corners = quadCorners(cx, cy, ux, uy, nx, ny, span / 2, ZEBRA_BAR_WIDTH_M / 2);
     if (!cornersInsideSameFlagPieces(corners, pieces)) {
       stats.crossingContainmentSkipped++;
@@ -940,12 +1298,14 @@ function emitZebraBars(
 }
 
 /**
- * Stop line(s) across the carriageway, `span/2 + 0.7 m` before the crossing.
- * Both approaches unless the street is one-way (then the approach side only).
- * The line is inset from the kerbs so its corners stay on the drivable asphalt,
- * and it is dropped when its centre falls inside a junction box.
+ * Legacy crossing-based stop line(s), `span/2 + 0.7 m` before the crossing.
+ *
+ * They are only painted when the junction does not already provide an explicit
+ * approach stop bar for this road (payload 0.3.0), and they are clipped out of
+ * junction faces/circles. The line is inset from the kerbs so its corners stay
+ * on the drivable asphalt.
  */
-function emitStopLines(
+function emitLegacyStopLines(
   sink: GeometrySink,
   crossing: CrossingFeature,
   ux: number,
@@ -954,11 +1314,10 @@ function emitStopLines(
   ny: number,
   width: number,
   span: number,
-  junctions: readonly JunctionFeature[],
+  junctions: JunctionContext,
   pieces: readonly PreparedPiece[],
   stats: RoadNetworkStats,
 ): void {
-  if (pieces.length === 0) return;
   const along = span / 2 + STOP_LINE_GAP_M;
   // +u is the travel direction: its stop line sits before the crossing (-u
   // side) and the opposite approach's line sits on the +u side. A one-way
@@ -971,12 +1330,26 @@ function emitStopLines(
     }
     const cx = crossing.x + ux * along * direction;
     const cy = crossing.y + uy * along * direction;
-    if (insideJunctionClearance(cx, cy, junctions, 0)) {
+    // Long axis across the carriageway (inset from the kerbs), 0.5 m thick.
+    const halfWidth = Math.max(0.1, width / 2 - STOP_LINE_EDGE_INSET_M);
+    if (hasExplicitApproachStopLine(cx, cy, crossing.angle, junctions)) {
+      stats.legacyStopLinesSuppressed++;
+      continue;
+    }
+    // Chunk-aware face clearance: the bar's far (across-road) half must not
+    // reach the junction face either.
+    if (insideAnyJunctionFace(cx, cy, junctions.faces, halfWidth)) {
       stats.stopLineJunctionSkipped++;
       continue;
     }
-    // Long axis across the carriageway, 0.5 m thick along the road.
-    const halfWidth = Math.max(0.1, width / 2 - STOP_LINE_EDGE_INSET_M);
+    if (insideAnyJunctionFace(cx, cy, junctions.surfaces, halfWidth)) {
+      stats.junctionSurfaceSkipped++;
+      continue;
+    }
+    if (insideJunctionClearance(cx, cy, junctions.legacy, 0)) {
+      stats.stopLineJunctionSkipped++;
+      continue;
+    }
     const corners = quadCorners(cx, cy, nx, ny, -ny, nx, halfWidth, STOP_LINE_WIDTH_M / 2);
     if (!cornersInsideSameFlagPieces(corners, pieces)) {
       stats.crossingContainmentSkipped++;
@@ -996,6 +1369,37 @@ function emitStopLines(
       stats.markingTriangles += 2;
     }
   }
+}
+
+/**
+ * True when a junction's approach edges supply a stop bar for this road near the
+ * legacy stop-line position. The bar is the authoritative paint for that
+ * direction; painting both would double-stroke the same approach.
+ */
+function hasExplicitApproachStopLine(
+  x: number,
+  y: number,
+  roadAngle: number,
+  junctions: JunctionContext,
+): boolean {
+  const matchRadiusSq = APPROACH_STOP_LINE_MATCH_M * APPROACH_STOP_LINE_MATCH_M;
+  for (const info of junctions.infos) {
+    const edges = info.feature.approachEdges;
+    if (!Array.isArray(edges) || edges.length === 0) continue;
+    for (const edge of edges) {
+      const stopLine = edge?.stopLine;
+      if (!stopLine || !Number.isFinite(edge.angle)) continue;
+      const dx = stopLine.x - x;
+      const dy = stopLine.y - y;
+      if (dx * dx + dy * dy > matchRadiusSq) continue;
+      // The approach direction is parallel to the road line (mod 180°).
+      let delta = (edge.angle - roadAngle) % Math.PI;
+      if (delta < 0) delta += Math.PI;
+      if (delta > Math.PI - delta) delta = Math.PI - delta;
+      if (delta <= APPROACH_STOP_LINE_ANGLE_RAD) return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -1245,8 +1649,60 @@ function cornerBelongsToTile(x: number, y: number, bounds: Bounds4): boolean {
 }
 
 /**
- * True when (x, y) is inside the junction plus `extra` metres (the paint half
- * length for dashes, 0 for solid chunks and stop lines).
+ * True when (x, y) is inside a 0.3.0 junction face buffered by
+ * `JUNCTION_FACE_CLEARANCE_M + extraClearance`. Callers pass half the paint
+ * element's length as `extraClearance`, so a 2 m solid chunk or 3 m dash whose
+ * centre sits just outside the buffer still cannot reach the face with its far
+ * half. The bbox prefilter runs first; points inside the polygon are accepted
+ * directly, points outside are tested against the boundary distance (holes
+ * included).
+ */
+function insideAnyJunctionFace(
+  x: number,
+  y: number,
+  faces: readonly JunctionFace[],
+  extraClearance = 0,
+): boolean {
+  const clearance = JUNCTION_FACE_CLEARANCE_M + Math.max(0, extraClearance);
+  const clearanceSq = clearance * clearance;
+  for (const face of faces) {
+    const [minX, minY, maxX, maxY] = face.bbox;
+    if (x < minX - clearance || x > maxX + clearance) continue;
+    if (y < minY - clearance || y > maxY + clearance) continue;
+    if (pointInPreparedPolygon(face.prepared, x, y)) return true;
+    for (const ring of face.rings) {
+      for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
+        const a = ring[previous];
+        const b = ring[index];
+        if (distanceToSegmentSq(x, y, a[0], a[1], b[0], b[1]) <= clearanceSq) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Squared distance from a point to an axis segment (0..1 clamped projection). */
+function distanceToSegmentSq(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq > 1e-12 ? ((px - ax) * dx + (py - ay) * dy) / lengthSq : 0;
+  const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
+  const qx = ax + dx * clamped;
+  const qy = ay + dy * clamped;
+  return (px - qx) * (px - qx) + (py - qy) * (py - qy);
+}
+
+/**
+ * True when (x, y) is inside a legacy junction plus `extra` metres (the paint
+ * half length for dashes, 0 for solid chunks and stop lines).
  */
 function insideJunctionClearance(
   x: number,
@@ -1345,4 +1801,3 @@ function insidePreparedPiece(piece: PreparedPiece, x: number, y: number): boolea
   }
   return pointInPreparedPolygon(piece.prepared, x, y);
 }
-

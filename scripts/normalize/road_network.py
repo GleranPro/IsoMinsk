@@ -43,6 +43,14 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import nearest_points, unary_union
 from shapely.strtree import STRtree
 
+from road_graph import (  # noqa: E402
+    JunctionFace,
+    build_graph,
+    dual_carriageway_pairs,
+    face_material,
+    junction_faces,
+)
+
 # --- tuning constants -------------------------------------------------------
 
 LANE_WIDTH_M = 3.0
@@ -56,10 +64,26 @@ MIN_PAVING_AREA_M2 = 2.0
 MIN_KERB_AREA_M2 = 0.5
 MIN_MEDIAN_AREA_M2 = 4.0
 
-# Junction corner fillets (payload 0.2.0 round 2): see build_road_network.
-JUNCTION_FILLET_RADIUS_M = 4.5
-JUNCTION_FILLET_CONTEXT_M = 6.0
-MIN_FILLET_AREA_M2 = 3.0
+# Default lanes *per direction* when OSM has no lane tags at all. The graph
+# model never invents extra lanes from the buffered width: a 6.6 m residential
+# without tags is 1+1, not 2+2.
+DEFAULT_LANES_PER_DIRECTION = {
+    "motorway": 2,
+    "trunk": 2,
+    "primary": 2,
+    "secondary": 2,
+    "tertiary": 2,
+    "residential": 1,
+    "living_street": 1,
+    "service": 1,
+    "unclassified": 1,
+    "pedestrian": 1,
+    "unknown": 1,
+}
+MAX_LANES_PER_DIRECTION = 8
+# A tagged lane is at least this wide; a tagged width narrower than the tags
+# imply is treated as a mapping error and the lanes win.
+MIN_LANE_WIDTH_M = 2.6
 
 # --- OSM -> normalized classes / widths / materials -------------------------
 
@@ -222,6 +246,41 @@ def parse_lanes(tags: dict[str, str]) -> int | None:
     return None
 
 
+def parse_lane_directions(tags: dict[str, str], cls: str, oneway: bool) -> tuple[int, int, str]:
+    """Return ``(lanes_forward, lanes_backward, source)`` for one carriageway.
+
+    ``lanes_forward`` is the lane count in the OSM way direction. A two-way way
+    splits ``lanes`` into ``floor``/``ceil`` unless ``lanes:forward`` and
+    ``lanes:backward`` are mapped (the common case on Minsk secondary streets).
+    ``source`` is ``'tag'`` when any lane tag was present, ``'default'``
+    otherwise; the renderer uses it for QA and never invents extra lanes.
+    """
+    forward = _num(tags.get("lanes:forward"))
+    backward = _num(tags.get("lanes:backward"))
+    total = _num(tags.get("lanes"))
+    source = "tag" if any(value is not None for value in (forward, backward, total)) else "default"
+    if oneway:
+        lanes = total if total is not None else forward
+        lanes = int(round(lanes)) if lanes is not None else DEFAULT_LANES_PER_DIRECTION.get(cls, 1)
+        return max(1, min(MAX_LANES_PER_DIRECTION, lanes)), 0, source
+    if forward is not None or backward is not None:
+        fallback = int(round(total)) if total is not None else 2
+        forward_lanes = int(round(forward)) if forward is not None else max(1, fallback - 1)
+        backward_lanes = int(round(backward)) if backward is not None else max(1, fallback - 1)
+    elif total is not None:
+        total_lanes = max(2, int(round(total)))
+        forward_lanes = max(1, int(math.floor(total_lanes / 2)))
+        backward_lanes = max(1, total_lanes - forward_lanes)
+    else:
+        default = DEFAULT_LANES_PER_DIRECTION.get(cls, 1)
+        forward_lanes = backward_lanes = default
+    return (
+        max(1, min(MAX_LANES_PER_DIRECTION, forward_lanes)),
+        max(1, min(MAX_LANES_PER_DIRECTION, backward_lanes)),
+        source,
+    )
+
+
 def parse_oneway(tags: dict[str, str]) -> bool:
     value = (tags.get("oneway") or "").strip().lower()
     if value in ("yes", "true", "1", "-1"):
@@ -239,25 +298,39 @@ def parse_material(tags: dict[str, str]) -> tuple[str | None, str | None]:
     return SURFACE_MATERIAL.get(raw, "asphalt"), raw
 
 
-def carriageway_width(tags: dict[str, str], cls: str, oneway: bool, path: bool) -> float:
-    """Normalized carriageway width in metres.
+def carriageway_width(
+    tags: dict[str, str],
+    cls: str,
+    oneway: bool,
+    path: bool,
+    lanes_forward: int | None = None,
+    lanes_backward: int | None = None,
+) -> float:
+    """Normalized carriageway width in metres, driven by the lane model.
 
-    Explicit ``width`` is used as the carriageway width. Otherwise the lane
-    count wins; the class default is only a fallback and is *never* used as a
-    floor (that was the paired-one-way bug).
+    Explicit ``width`` always wins when it is physically compatible with the
+    tagged lanes (at least ``MIN_LANE_WIDTH_M`` per lane); otherwise the lane
+    count wins and the class default is only a fallback. The old class-default
+    floor and width-derived lane inference are gone.
     """
+    low, high = (MIN_PATH_WIDTH_M, MAX_PATH_WIDTH_M) if path else (MIN_ROAD_WIDTH_M, MAX_ROAD_WIDTH_M)
+    if path:
+        explicit = _num(tags.get("width"))
+        if explicit is not None and 0.5 <= explicit <= 60.0:
+            return min(max(explicit, low), high)
+        table = ROAD_WIDTH_ONE_WAY if oneway else ROAD_WIDTH_TWO_WAY
+        return min(max(table.get(cls, 2.0), low), high)
+    if lanes_forward is None or lanes_backward is None:
+        lanes_forward, lanes_backward, _ = parse_lane_directions(tags, cls, oneway)
+    total_lanes = max(1, int(lanes_forward) + int(lanes_backward))
+    lanes_width = total_lanes * LANE_WIDTH_M + SHOULDER_M
     explicit = _num(tags.get("width"))
     if explicit is not None and 0.5 <= explicit <= 60.0:
-        low, high = (MIN_PATH_WIDTH_M, MAX_PATH_WIDTH_M) if path else (MIN_ROAD_WIDTH_M, MAX_ROAD_WIDTH_M)
-        return min(max(explicit, low), high)
-    lanes = parse_lanes(tags)
-    if lanes is not None:
-        width = lanes * LANE_WIDTH_M + SHOULDER_M
-    else:
-        table = ROAD_WIDTH_ONE_WAY if oneway else ROAD_WIDTH_TWO_WAY
-        width = table.get(cls, 6.0)
-    low, high = (MIN_PATH_WIDTH_M, MAX_PATH_WIDTH_M) if path else (MIN_ROAD_WIDTH_M, MAX_ROAD_WIDTH_M)
-    return min(max(width, low), high)
+        if explicit >= total_lanes * MIN_LANE_WIDTH_M:
+            return min(max(explicit, low), high)
+        # Tagged width contradicts the tagged lane count: trust the lanes.
+        return min(max(lanes_width, low), high)
+    return min(max(lanes_width, low), high)
 
 
 def street_key(tags: dict[str, str], kind: str, osm_id: int) -> tuple:
@@ -299,6 +372,21 @@ def _iter_lines(geom) -> list[LineString]:
         for part in geom.geoms:
             out.extend(_iter_lines(part))
         return out
+    return []
+
+
+def _iter_points(geom) -> list[Point]:
+    if geom is None or geom.is_empty:
+        return []
+    if geom.geom_type == "Point":
+        return [geom]
+    if geom.geom_type in ("MultiPoint", "GeometryCollection"):
+        out: list[Point] = []
+        for part in geom.geoms:
+            out.extend(_iter_points(part))
+        return out
+    if geom.geom_type in ("LineString", "MultiLineString"):
+        return [Point(coord[0], coord[1]) for coord in geom.coords]
     return []
 
 
@@ -363,6 +451,13 @@ class RoadWay:
     material: str = "asphalt"
     surface: str | None = None
     width_raw: float = 0.0
+    lanes_forward: int = 1
+    lanes_backward: int = 0
+    lanes_source: str = "default"
+    link: bool = False
+    roundabout: bool = False
+    channelization: bool = False
+    explicit_width: bool = False
 
     @property
     def priority(self) -> tuple:
@@ -403,7 +498,15 @@ def prepare_ways(ways: list[dict], pilot_rect) -> tuple[list[RoadWay], Counter]:
                 continue
             oneway = parse_oneway(tags)
             kind = "path" if cls in PATH_CLASSES else "road"
-            width_raw = carriageway_width(tags, cls, oneway, path=(kind == "path"))
+            lanes_forward, lanes_backward, lanes_source = parse_lane_directions(tags, cls, oneway)
+            width_raw = carriageway_width(
+                tags,
+                cls,
+                oneway,
+                path=(kind == "path"),
+                lanes_forward=lanes_forward,
+                lanes_backward=lanes_backward,
+            )
             material, surface = parse_material(tags)
             override = SURFACE_OVERRIDES.get((entry.get("osm_type", "way"), int(entry["osm_id"])))
             if override is not None:
@@ -417,7 +520,7 @@ def prepare_ways(ways: list[dict], pilot_rect) -> tuple[list[RoadWay], Counter]:
                 cls=cls,
                 kind=kind,
                 width=width_raw,
-                lanes=parse_lanes(tags),
+                lanes=(lanes_forward if oneway else lanes_forward + lanes_backward),
                 oneway=oneway,
                 bridge=tags.get("bridge") == "yes",
                 tunnel=tags.get("tunnel") == "yes",
@@ -429,6 +532,12 @@ def prepare_ways(ways: list[dict], pilot_rect) -> tuple[list[RoadWay], Counter]:
                 material=material or "asphalt",
                 surface=surface,
                 width_raw=width_raw,
+                lanes_forward=lanes_forward,
+                lanes_backward=lanes_backward,
+                lanes_source=lanes_source,
+                link=raw_class.endswith("_link"),
+                roundabout=(tags.get("junction") or "").strip().lower() == "roundabout",
+                explicit_width=_num(tags.get("width")) is not None,
             )
             way.group = street_key(tags, kind, way.osm_id)
             out.append(way)
@@ -448,6 +557,16 @@ def _weighted_median(values: list[tuple[float, float]]) -> float:
         if accumulated >= total / 2.0:
             return value
     return items[-1][0]
+
+
+def _weighted_lane_mode(values: list[tuple[int, int, float]]) -> tuple[int, int]:
+    """Length-weighted mode of the ``(lanes_forward, lanes_backward)`` pair."""
+    weights: dict[tuple[int, int], float] = defaultdict(float)
+    for forward, backward, length in values:
+        weights[(int(forward), int(backward))] += max(0.1, float(length))
+    if not weights:
+        return 1, 0
+    return max(weights.items(), key=lambda item: (item[1], item[0][0] + item[0][1], item[0]))[0]
 
 
 def canonicalize(ways: list[RoadWay]) -> Counter:
@@ -478,31 +597,63 @@ def canonicalize(ways: list[RoadWay]) -> Counter:
         deduped.extend(kept)
     ways[:] = deduped
 
-    # 2. canonical width per street AND direction. A street can be mapped as a
-    #    pair of one-way carriageways over part of its length and as a single
-    #    two-way road elsewhere; mixing both directions in one median makes a
-    #    1-lane one-way section as wide as a 4-lane two-way one (the user saw
-    #    exactly that on Engels Street). Group by `oneway` first.
+    # 2. canonical lane pair per street AND direction. Lane counts win over
+    #    widths: a street tagged 3 lanes stays 3 lanes even if some segment is
+    #    tagged 2 (Ulyanovskaya), and a 1-lane one-way section is not widened by
+    #    a 4-lane two-way section (Engels Street). The width is then derived
+    #    from the canonical lane count so the paint always fits.
     groups.clear()
     for way in ways:
         groups[way.group].append(way)
     for group, members in groups.items():
         road_members = [w for w in members if w.kind == "road"]
-        path_members = [w for w in members if w.kind == "path"]
         for direction in (True, False):
-            subset = [w for w in road_members if w.oneway == direction]
-            if len(subset) >= 2:
-                canonical = _weighted_median(
-                    [(w.width_raw, w.line.length) for w in subset]
-                )
-                for way in subset:
-                    if abs(way.width_raw - canonical) > 0.05:
-                        stats["widths_normalized"] += 1
-                    way.width = round(canonical, 2)
-            elif len(subset) == 1:
-                subset[0].width = round(subset[0].width_raw, 2)
-        for way in path_members:
-            way.width = round(way.width_raw, 2)
+            subset = [
+                w
+                for w in road_members
+                if w.oneway == direction
+                and not w.link
+                and not w.roundabout
+                and w.cls != "service"
+            ]
+            if not subset:
+                continue
+            tagged = [w for w in subset if w.lanes_source == "tag"]
+            pool = tagged if tagged else subset
+            fallback_lanes = _weighted_lane_mode(
+                [(w.lanes_forward, w.lanes_backward, w.line.length) for w in pool]
+            )
+            for way in subset:
+                if way.lanes_source != "tag":
+                    # Only untagged segments inherit the street's direction
+                    # lane count. A tagged segment keeps its own OSM count: a
+                    # street legitimately widens from 3 to 5 lanes near the
+                    # station, and forcing the street-wide count onto it made
+                    # Lenina look like a 10-lane fork at Ulyanovskaya.
+                    way.lanes_forward, way.lanes_backward = fallback_lanes
+                    way.lanes = (
+                        fallback_lanes[0]
+                        if way.oneway
+                        else fallback_lanes[0] + fallback_lanes[1]
+                    )
+                explicit = _num(way.tags.get("width"))
+                total_lanes = way.lanes_forward + way.lanes_backward
+                if (
+                    explicit is not None
+                    and 0.5 <= explicit <= 60.0
+                    and explicit >= total_lanes * MIN_LANE_WIDTH_M
+                ):
+                    new_width = explicit
+                else:
+                    new_width = total_lanes * LANE_WIDTH_M + SHOULDER_M
+                new_width = min(max(float(new_width), MIN_ROAD_WIDTH_M), MAX_ROAD_WIDTH_M)
+                new_width = round(float(new_width), 2)
+                if abs(way.width - new_width) > 0.05:
+                    stats["widths_normalized"] += 1
+                way.width = new_width
+        for way in members:
+            if way.kind == "path" or way.link or way.roundabout or way.cls == "service":
+                way.width = round(float(way.width_raw), 2)
         stats["groups"] += 1
 
     # 3. material: explicit tags are authoritative, untagged ways inherit the
@@ -714,10 +865,9 @@ def _strip_for_pair(way_a: RoadWay, way_b: RoadWay) -> Polygon | None:
 
 
 def derived_lanes(way: RoadWay) -> int:
-    """Lane count for marking layout: tagged lanes, else inferred from width."""
-    if way.lanes:
-        return max(1, min(int(way.lanes), 8))
-    return max(1, min(8, int(round((way.width - 0.6) / 3.0))))
+    """Lane count for marking layout: OSM lanes, never inferred from width."""
+    total = int(way.lanes_forward) + int(way.lanes_backward)
+    return max(1, min(MAX_LANES_PER_DIRECTION * 2, total))
 
 
 def _midline_between(way_a: RoadWay, way_b: RoadWay) -> LineString | None:
@@ -787,7 +937,14 @@ def pair_analysis(ways: list[RoadWay]) -> dict:
     """
     stats = Counter()
     candidates = [
-        w for w in ways if w.kind == "road" and w.oneway and w.material in PAVED_MATERIALS
+        w
+        for w in ways
+        if w.kind == "road"
+        and w.oneway
+        and w.material in PAVED_MATERIALS
+        and not w.link
+        and not w.channelization
+        and w.cls != "service"
     ]
     groups: dict[tuple, list[RoadWay]] = defaultdict(list)
     for way in candidates:
@@ -828,6 +985,20 @@ def pair_analysis(ways: list[RoadWay]) -> dict:
                 continue
             way_a, way_b = members[index], members[other]
             if inner_gap <= 0.0:
+                lanes_a = derived_lanes(way_a)
+                lanes_b = derived_lanes(way_b)
+                lanes_total = lanes_a + lanes_b
+                corridor_width = round(distance + (way_a.width + way_b.width) / 2.0, 2)
+                # Only merge two directions of the *same* carriageway pair.
+                # Radically different lane counts (or a corridor too narrow for
+                # the lanes) mean these are not a dual carriageway: merging them
+                # produced the bogus 27 m / 10-lane Lenina corridor.
+                if (
+                    abs(lanes_a - lanes_b) > 1
+                    or lanes_total > 8
+                    or corridor_width < lanes_total * MIN_LANE_WIDTH_M + SHOULDER_M
+                ):
+                    continue
                 # Carriageway buffers overlap: the corridor is one continuous
                 # asphalt surface, so the centre line can be painted as a double
                 # solid line without any paint-containment problem.
@@ -838,8 +1009,11 @@ def pair_analysis(ways: list[RoadWay]) -> dict:
                     "a": way_a,
                     "b": way_b,
                     "midline": midline,
-                    "width": round(distance + (way_a.width + way_b.width) / 2.0, 2),
-                    "lanes": max(2, derived_lanes(way_a) + derived_lanes(way_b)),
+                    "width": corridor_width,
+                    "lanes": max(2, lanes_total),
+                    "lanes_forward": int(way_a.lanes_forward),
+                    "lanes_backward": int(way_b.lanes_forward),
+                    "lanes_source": "tag" if "tag" in (way_a.lanes_source, way_b.lanes_source) else "default",
                     "bridge": way_a.bridge,
                 })
                 consumed.add(way_a.osm_id)
@@ -1035,6 +1209,32 @@ def build_road_network(
     stats["footways_over_water_dropped"] = len(path_ground) - len(path_ground_kept)
     path_ground = path_ground_kept
 
+    # --- topology graph (payload 0.3.0) -------------------------------------
+    # Nodes/edges from the OSM geometry (shared vertices), junction faces from
+    # the approach cross-sections, and graph-level channelization detection for
+    # unnamed short slip connectors (which must not be painted as streets).
+    graph = build_graph(drivable_ground)
+    for way in drivable_ground:
+        if int(way.osm_id) in graph.channelization_ways:
+            way.channelization = True
+            way.width = min(way.width, 3.0)
+            way.lanes_backward = 0
+            way.lanes_forward = 1
+            way.lanes = 1
+    # Channelization connectors are paved, not asphalt streets: their mouths are
+    # covered by the junction face, the rest renders as paving so it cannot be
+    # mistaken for an anonymous roadway fork.
+    channelization_ways = [way for way in drivable_ground if way.channelization]
+    drivable_ground = [way for way in drivable_ground if not way.channelization]
+    ways_by_id = {int(way.osm_id): way for way in drivable_ground}
+    faces = junction_faces(graph, ways_by_id)
+    stats["junction_nodes"] = len({face.node for face in faces})
+    stats["junction_faces"] = len(faces)
+    stats["junction_faces_fallback"] = sum(1 for face in faces if face.fallback)
+    stats["channelization_ways"] = len(graph.channelization_ways)
+    stats["graph_nodes"] = len(graph.nodes)
+    stats["graph_edges"] = len(graph.edges)
+
     # Opposite one-way carriageways of one street: either merge them into one
     # two-way corridor (when they practically touch, so a double solid centre
     # line is the correct paint) or keep a median gap between them.
@@ -1054,52 +1254,113 @@ def build_road_network(
     if not drivable_bridge_geom.is_empty:
         drivable_bridge_geom = drivable_bridge_geom.intersection(pilot_rect)
 
-    # --- junction boxes -----------------------------------------------------
-    junctions, junction_geom, junction_stats = junction_boxes(drivable_ground)
-    stats.update(junction_stats)
+    # --- junction faces (graph topology) ------------------------------------
+    face_polygons: dict[str, list[Polygon]] = defaultdict(list)
+    for face in faces:
+        face_polygons[face_material(face)].append(face.polygon)
+    face_union = _union(
+        [polygon for polygons in face_polygons.values() for polygon in polygons]
+    )
+    junction_pieces: list[dict] = []
+    if not face_union.is_empty:
+        drivable_ground_geom = _union([drivable_ground_geom, face_union])
+        drivable_ground_geom = drivable_ground_geom.intersection(pilot_rect)
+        # Junction asphalt is its own surface piece family (`junction: true`):
+        # subtract it from every material zone first, then claim each face once
+        # in material-priority order so the drivable partition stays disjoint.
+        for material in list(zones):
+            zones[material] = zones[material].difference(face_union)
+        claimed = Polygon()
+        for material in sorted(face_polygons, key=lambda item: -MATERIAL_RANK.get(item, 0)):
+            own = _union(face_polygons[material]).difference(claimed)
+            claimed = _union([claimed, own])
+            own = _clean(own, MIN_SURFACE_AREA_M2)
+            for poly in _iter_polys(own):
+                if poly.is_empty or poly.area < MIN_SURFACE_AREA_M2:
+                    continue
+                junction_pieces.append({
+                    "kind": "drivable",
+                    "material": material,
+                    "bridge": False,
+                    "geom": poly,
+                    "junction": True,
+                })
 
-    # Corner fillets: roads meeting at shallow angles leave narrow unfilled
-    # notches between their buffers inside the junction mouth (visible as small
-    # wedges of paving cutting into the asphalt - the reported crossing
-    # artifact). A morphological closing limited to junction neighbourhoods
-    # fills those notches with asphalt; it is claimed only where no other
-    # material already covers it, so the surface partition stays disjoint.
-    fillet_extra = Polygon()
-    junction_polygons = junction_geom.get("polygons") if junction_geom else None
-    if (
-        not drivable_ground_geom.is_empty
-        and junction_polygons is not None
-        and not junction_polygons.is_empty
-    ):
-        try:
-            clip = junction_polygons.buffer(JUNCTION_FILLET_CONTEXT_M, join_style=2)
-            closed = drivable_ground_geom.buffer(
-                JUNCTION_FILLET_RADIUS_M, join_style=2
-            ).buffer(-JUNCTION_FILLET_RADIUS_M, join_style=2)
-            fillet_extra = closed.difference(drivable_ground_geom).intersection(clip)
-            if not median_zones.is_empty:
-                fillet_extra = fillet_extra.difference(median_zones.buffer(0.5, join_style=1))
-            fillet_extra = _clean(fillet_extra, MIN_FILLET_AREA_M2)
-        except Exception:
-            stats["junction_fillet_failed"] += 1
-            fillet_extra = Polygon()
-    if not fillet_extra.is_empty:
-        drivable_ground_geom = _union([drivable_ground_geom, fillet_extra])
-        other_materials = [
-            geom for material, geom in zones.items() if material != "asphalt"
-        ]
-        fillet_claim = fillet_extra
-        if other_materials:
-            fillet_claim = fillet_extra.difference(_union(other_materials))
-        fillet_claim = _clean(fillet_claim, MIN_FILLET_AREA_M2)
-        if not fillet_claim.is_empty:
-            asphalt_zone = zones.get("asphalt")
-            if asphalt_zone is not None and not asphalt_zone.is_empty:
-                zones["asphalt"] = _union([asphalt_zone, fillet_claim])
+    junctions: list[dict] = []
+    for face in faces:
+        radius = max(
+            math.hypot(point[0] - face.x, point[1] - face.y)
+            for point in face.polygon.exterior.coords
+        )
+        radius = max(3.0, min(30.0, radius))
+        approaches_meta: list[dict] = []
+        for approach in face.approaches:
+            way = approach["way"]
+            edge = graph.edge(approach["edge"])
+            direction = approach["direction"]
+            travel = (-direction[0], -direction[1])
+            angle = math.atan2(travel[1], travel[0])
+            entering_towards_way = edge.b == face.node
+            if entering_towards_way:
+                enter_lanes = int(way.lanes_forward)
+                exit_lanes = int(way.lanes_backward)
             else:
-                zones["asphalt"] = fillet_claim
-        stats["junction_fillets"] = len(_iter_polys(fillet_claim))
-        stats["junction_fillet_area_m2"] = round(fillet_claim.area, 1)
+                enter_lanes = int(way.lanes_backward)
+                exit_lanes = int(way.lanes_forward)
+            if way.oneway and not entering_towards_way:
+                enter_lanes = 0
+            record = {
+                "angle": round(angle, 4),
+                "width": round(float(approach["width"]), 2),
+                "lanesForward": enter_lanes,
+                "lanesBackward": exit_lanes,
+                "oneway": bool(way.oneway),
+                "link": bool(
+                    getattr(way, "link", False)
+                    or getattr(way, "channelization", False)
+                ),
+            }
+            # A one-way approach flowing into the junction gets a stop line at
+            # the face boundary; two-way approaches keep the crossing-derived
+            # stop lines (they are placed per crossing by the renderer).
+            if way.oneway and enter_lanes > 0:
+                ray = LineString([
+                    (face.x, face.y),
+                    (face.x + travel[0] * 60.0, face.y + travel[1] * 60.0),
+                ])
+                try:
+                    hit = face.polygon.boundary.intersection(ray)
+                    distance = min(
+                        math.hypot(point[0] - face.x, point[1] - face.y)
+                        for point in _iter_points(hit)
+                    )
+                except Exception:
+                    distance = radius
+                distance = max(2.0, distance + 2.0)
+                stop_width = min(
+                    float(approach["width"]) - 0.2,
+                    max(2.6, enter_lanes * LANE_WIDTH_M),
+                )
+                if stop_width > 2.0:
+                    record["stopLine"] = {
+                        "x": round(face.x + travel[0] * distance, 2),
+                        "y": round(face.y + travel[1] * distance, 2),
+                        "angle": round(angle, 4),
+                        "width": round(stop_width, 2),
+                    }
+            approaches_meta.append(record)
+        junctions.append({
+            "id": f"j{face.node}",
+            "x": round(face.x, 2),
+            "y": round(face.y, 2),
+            "radius": round(radius, 2),
+            "approaches": len(face.approaches),
+            "polygon": face.polygon,
+            "approachEdges": approaches_meta,
+            "fallback": bool(face.fallback),
+        })
+    stats["junctions"] = len(junctions)
+    junction_geom = {"polygons": face_union, "faces": faces}
 
     # --- crossings / medians (before paving: paving fills every gap that is
     # not asphalt and not an emitted median) ---------------------------------
@@ -1115,25 +1376,63 @@ def build_road_network(
     median_union = _union(medians)
 
     # --- paving -------------------------------------------------------------
-    def sidewalk_corridors(ways: list[RoadWay]) -> list:
-        corridors = []
+    def sidewalk_bands(ways: list[RoadWay]) -> list:
+        """Mapped/synthetic pavements as side bands, not buffer cap rings.
+
+        Buffer-cap corridors used to extend past the way ends and produced
+        pseudo-roads / wedges at junctions. Bands follow the carriageway edge
+        and are cut by the junction faces (through the drivable subtraction).
+        """
+        bands = []
         for way in ways:
             if way.cls not in SIDEWALK_CLASSES:
+                continue
+            if way.link or way.channelization or way.cls == "service":
                 continue
             sidewalk_tag = (way.tags.get("sidewalk") or "").strip().lower()
             if sidewalk_tag in ("no", "none", "separate"):
                 continue
+            width = (
+                _num(way.tags.get("sidewalk:width"))
+                or _num(way.tags.get("sidewalk:both:width"))
+                or SIDEWALK_DEFAULT_WIDTH_M
+            )
+            width = max(1.0, min(6.0, width))
+            if sidewalk_tag in ("left", "right"):
+                sides = (sidewalk_tag,)
+            else:
+                sides = ("both",)
             try:
-                corridors.append(
-                    way.line.buffer(way.width / 2.0 + SIDEWALK_DEFAULT_WIDTH_M, cap_style=2, join_style=2)
-                )
+                if sides == ("both",):
+                    outer = way.line.buffer(
+                        way.width / 2.0 + width, cap_style=2, join_style=2
+                    )
+                    inner = way.line.buffer(
+                        way.width / 2.0, cap_style=2, join_style=2
+                    )
+                    band = outer.difference(inner)
+                    if not band.is_empty:
+                        bands.append(band)
+                else:
+                    for side in sides:
+                        offset = (way.width / 2.0 + width / 2.0) * (1 if side == "left" else -1)
+                        edge_line = way.line.offset_curve(offset, join_style=2)
+                        band = edge_line.buffer(
+                            width / 2.0, cap_style=2, join_style=2
+                        )
+                        if not band.is_empty:
+                            bands.append(band)
             except Exception:
                 continue
-        return corridors
+        return bands
 
     ground_paving_union = _union(
         [w.line.buffer(w.width / 2.0, cap_style=2, join_style=2) for w in path_ground]
-        + sidewalk_corridors(drivable_ground)
+        + sidewalk_bands(drivable_ground)
+        + [
+            way.line.buffer(min(way.width, 3.0) / 2.0, cap_style=2, join_style=2)
+            for way in channelization_ways
+        ]
     )
     if not ground_paving_union.is_empty:
         # 2 cm margin: both layers are later snapped to the 1 cm payload grid
@@ -1170,7 +1469,7 @@ def build_road_network(
 
     bridge_paving_union = _union(
         [w.line.buffer(w.width / 2.0, cap_style=2, join_style=2) for w in path_bridge]
-        + sidewalk_corridors(drivable_bridge)
+        + sidewalk_bands(drivable_bridge)
     )
     if not bridge_paving_union.is_empty and not drivable_bridge_geom.is_empty:
         bridge_paving_union = bridge_paving_union.difference(
@@ -1223,16 +1522,24 @@ def build_road_network(
     surfaces.extend(pieces_from(kerb, "kerb", None, False))
     for median in medians:
         surfaces.extend(pieces_from(median, "median", None, False))
+    surfaces.extend(junction_pieces)
 
     # --- network records ----------------------------------------------------
-    # Only drivable ways are needed for markings (paths/stairs carry no paint).
+    # Only drivable, actually marked road classes are needed for markings.
+    # Slip/link roads, channelization loops and service aisles get asphalt from
+    # the surface pass but no network piece: painting them like streets is what
+    # produced the reported anonymous fork at Ulyanovskaya x Lenina.
     network: list[dict] = []
     consumed = pair_info["consumed"]
+    skipped_unmarked = Counter()
     for way in prepared:
         if way.tunnel or way.kind != "road":
             continue
         if way.osm_id in consumed:
             # merged into one two-way corridor piece below
+            continue
+        if way.link or way.channelization or way.cls in ("service", "unknown"):
+            skipped_unmarked["link" if way.link else ("channelization" if way.channelization else "service")] += 1
             continue
         line = way.line
         if line.length < 1.0:
@@ -1249,17 +1556,23 @@ def build_road_network(
         flat: list[float] = []
         for x, y in points:
             flat.extend((round(float(x), 2), round(float(y), 2)))
+        lanes_forward = int(way.lanes_forward)
+        lanes_backward = int(way.lanes_backward)
         record = {
-            "kind": "road" if way.kind == "road" else "footway",
+            "kind": "road",
             "class": way.cls,
             "width": round(way.width, 2),
+            "lanes": lanes_forward if way.oneway else lanes_forward + lanes_backward,
+            "lanesForward": lanes_forward,
+            "lanesBackward": lanes_backward,
+            "lanesSource": way.lanes_source,
             "centerline": flat,
             "centerlineOffset": round(float(offset), 2),
         }
-        if way.lanes:
-            record["lanes"] = int(way.lanes)
         if way.oneway:
             record["oneway"] = True
+        if way.roundabout:
+            record["roundabout"] = True
         if way.material:
             record["material"] = way.material
         if way.surface:
@@ -1269,6 +1582,7 @@ def build_road_network(
         if way.name:
             record["name"] = way.name
         network.append(record)
+    stats["network_skipped_unmarked"] = dict(skipped_unmarked)
 
     # Near-coincident opposite one-way carriageways become one two-way piece so
     # the renderer paints a double solid centre line (Independence Ave,
@@ -1286,6 +1600,9 @@ def build_road_network(
             "class": way.cls,
             "width": item["width"],
             "lanes": int(item["lanes"]),
+            "lanesForward": int(item["lanes_forward"]),
+            "lanesBackward": int(item["lanes_backward"]),
+            "lanesSource": item["lanes_source"],
             "material": way.material or "asphalt",
             "centerline": flat,
             "centerlineOffset": 0.0,

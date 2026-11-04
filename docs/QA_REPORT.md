@@ -94,6 +94,61 @@
 >   divider — data-driven, documented rather than invented; 51 crossing
 >   elements and 68 stop lines are intentionally dropped where containment or
 >   junction clearance rejects them.
+>
+> **Revision addendum — 2026-11-04 (road topology/lane-model rewrite, payload 0.3.0).**
+> The user rejected the round-2 result: the tram-junction screenshot still
+> showed an anonymous fork on the south-east side of Ulyanovskaya × Lenina, and
+> a road tagged `lanes=3` was painted as two lanes. Both were real: `*_link`
+> ways lost their link flag and were painted like streets; `lanes:forward/
+> backward` was collapsed to one number and the two-way layout was mirrored
+> symmetrically (`round(lanes/2)` per direction); and the pair of unnamed
+> secondary ways at the junction was a channelization connector, not a road.
+> Round 3 rebuilds the road model around an **OSM topology graph**:
+> * `scripts/normalize/road_graph.py`: shared projected OSM vertices become
+>   graph nodes/edges; nodes with ≥3 distinct approaches are junctions; unnamed
+>   short junction connectors are classified as channelization; dual-carriageway
+>   pairing moved to the graph.
+> * One asphalt **junction face** per graph node (corner-joined approach ring,
+>   or union of approach mouth rectangles when the ring is degenerate), emitted
+>   as `drivable` with `junction: true` and subtracted from the material zones
+>   (0 invalid rings, 8 mouth fallbacks). Faces supply the paint-clipping
+>   polygons; junction surfaces are also hard paint blockers.
+> * Lane tags are authoritative per way and direction (`lanes:forward/backward`,
+>   else `lanes`, else a per-class default). Width is derived from the lanes; an
+>   explicit width is used only when physically compatible. Tagged segments keep
+>   their own count, so Ulyanovskaya renders 3 one-way lanes and Lenina renders
+>   asymmetric 1+2. Slip/link/service/channelization ways keep only their
+>   junction mouth as asphalt and render the rest as paving, with no lane paint
+>   — removing the anonymous fork.
+> * Renderer: asymmetric two-way layout with a lane-count-aware centre offset,
+>   no width clamp on tagged lanes, link/service paint suppression, chunk-aware
+>   clearance against face polygons and junction surfaces (lane paint inside or
+>   within 0.45 m of a face = **0**, on junction surfaces = **0**), and 209
+>   authoritative approach stop bars emitted exactly once.
+> * Verification (final payload 0.3.0): `pnpm test` **382/382** (22 files),
+>   Python road tests **30/30**, `tsc --noEmit` clean, `data:validate`
+>   **PASSED**, road audit **PASSED** (same-layer overlaps above the 0.35 m²
+>   tolerance **0**, worst tile-seam coverage gap **0.01 m**, width spread
+>   **0.0 m**), paint audit **PASSED** (0 lane/zebra paint inside or near
+>   junction faces; lane-line counts match tags: Ulyanovskaya 15/15 dividers,
+>   Lenina 1+2 9/9, Independence 163/163), geometry audit **PASSED** (207 483
+>   env triangles). Payload: 16 tiles, 2 067 surface pieces (248 junction
+>   faces), 297 network pieces, 288 junction records/274 unique, 179 crossings,
+>   `roads: []`, **2 381 701 B**. 23/23 screenshots captured on hardware GPU,
+>   **0 console/page errors**, all shots 60 FPS (vsync); two normalize runs
+>   byte-identical.
+> * Verified visually: Ulyanovskaya × Lenina is a normal cross (the SE
+>   channelization apron is paving, no asphalt fork); Ulyanovskaya 3 lanes,
+>   Lenina 1+2 asymmetric; tram rails continuous through the face; Independence
+>   double solid; Pobediteley median/paint (round-1 deck wall gone);
+>   Bogdanovicha dividers; Engels 25 and Krasnoarmeyskaya paint contained;
+>   Bogdanovicha × Yanka junction artifact gone.
+> * Residual limits (honest): OSM has no `turn:lanes` in Minsk, so no lane
+>   arrows; service/residential lane tags are sparse, so those roads use the
+>   per-class default and get no invented extra lanes; 0.15 m paint lines can
+>   alias in the 640×360 far-zoom pixel pass; rails are clipped per tile
+>   (matching cross-sections) and need not be inside a junction face; merged
+>   corridors remain a stylised representation of dual carriageways.
 
 **Report time:** 2026-10-27 ~16:30 local (Europe/Warsaw) — **final verification round, data revision 16:13**
 **Author:** QA & Integration agent (qa-dev)

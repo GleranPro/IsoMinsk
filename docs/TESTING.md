@@ -5,16 +5,17 @@ Commands assume the repository root: `D:\Workk\VoxelMinsk`.
 
 | Suite | Command | What it covers | Typical time |
 | --- | --- | --- | --- |
-| Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync, real-data validation, the curated landmarks and 30 road marking/rail renderer tests (364 tests at the current milestone) | ~30 s |
+| Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync, real-data validation, the curated landmarks and 47 road marking/junction renderer tests (382 tests at the current milestone) | ~30 s |
 | Data pipeline | `pnpm run data:all` | download → extract → normalize (writes tiles + manifest) → coverage report | several minutes |
-| Road normalization unit | `pnpm run test:data` | 27 Python unittest cases for the width (incl. direction groups)/material/partition/junction/crossing (incl. widest-carriageway matching)/median/merged-corridor rules (`scripts/normalize/tests/test_road_network.py`) | ~1 s |
-| Road payload audit | `pnpm run qa:road-audit` | independent audit of the generated tiles: same-layer overlaps, tile-seam coverage gaps (all surface layers), street width spread (name+direction, merged pieces excluded), road centrelines inside the drivable surface (rails/merged excluded by design), junction/crossing sanity; writes `data/processed/road-audit.json` | ~5 s |
+| Road normalization unit | `pnpm run test:data` | 30 Python unittest cases for the lane/width model, topology-graph junction faces, asymmetric direction lanes, link suppression, material partition, crossings, medians and merged corridors (`scripts/normalize/tests/test_road_network.py`) | ~1 s |
+| Road payload audit | `pnpm run qa:road-audit` | independent audit of the generated tiles: same-layer overlaps, tile-seam coverage gaps (all surface layers), street width spread (name+direction+lane signature, merged pieces excluded), road centrelines inside the drivable surface (rails/merged excluded by design), junction/crossing sanity; writes `data/processed/road-audit.json` | ~5 s |
+| Road paint audit | `pnpm run qa:road-paint-audit` | renderer-level audit: no lane/zebra paint inside or near junction faces/surfaces, lane-line counts match the tagged lanes, rails continuous and paint-free; writes `screenshots/road-paint-audit.json` | ~10 s |
 | Geometry audit | `pnpm exec tsx scripts/qa/geometryAudit.ts` | builds building/environment meshes from the real tiles without a browser; writes `screenshots/geometry-audit.json`; exits 1 on invalid geometry | ~5 s |
 | QA unit only | `pnpm exec vitest run tests/unit/data tests/unit/tile_math.test.ts tests/unit/config_sync.test.ts` | QA-owned tests | ~1 s |
 | E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 12 browser tests against the real app + dev server, hardware WebGL | **~1 min** |
 | E2E (default software) | `pnpm exec playwright test` | same tests on SwiftShader (deterministic CI mode) | ~10 min |
 | Screenshots | `$env:QA_GPU='1'; pnpm run qa:capture` | 6 fixed screenshots + `screenshots/stats.json` + `screenshots/console.log` (waits for all 16 tiles) | ~45 s |
-| Road screenshots | `$env:QA_GPU='1'; pnpm run qa:road-shots` | 20 close-up shots: canonical junctions plus the seven user-reported places (Independence double solid, Pobediteley, Bogdanovicha, Engels 25, Krasnoarmeyskaya, Ulyanovskaya tram junction, Bogdanovicha × Yanka Kupala) into `screenshots/roads/` | ~2 min |
+| Road screenshots | `$env:QA_GPU='1'; pnpm run qa:road-shots` | 23 close-up shots: canonical junctions, the seven user-reported places, the Ulyanovskaya × Lenina face and the Lenina 1+2 approach into `screenshots/roads/` | ~2 min |
 | Screenshot metrics | `node scripts/qa/analyze-screenshots.mjs` | `screenshots/analysis.json` (colour / luminance / near-black share / content bbox) for the canonical 6 | ~5 s |
 | Tile cache freshness | `node scripts/qa/cache-check.mjs` | proves a changed tile payload is revalidated on reload instead of served stale from the HTTP cache (mutates + restores `city-tiles/-1_-2.json`; needs `?dataset=city`) | ~40 s |
 | Typecheck | `pnpm run typecheck` | `tsc --noEmit` over `src`, `tests`, `scripts` | ~10 s |

@@ -24,15 +24,14 @@ procedural facades, avenues, pavements, tram rails, parks, the Svislach river,
 deterministic vegetation, cast shadows, day/night lighting and building
 selection with OSM metadata.
 
-**Roads (payload 0.2.0)** are a non-overlapping surface partition
-(asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians) plus
-a semantic centreline network with junction boxes and OSM pedestrian crossings;
-lane markings, zebras and tram rails are derived from the network, never
-stacked over overlapping polygons. Marking round 2 paints every asphalt class
-(tagged lane counts), puts a double solid centre line on merged four-lane
-corridors, raises paint on bridge decks, clips every paint type out of junction
-boxes/crossings, and draws tram rails from merged network centrelines so they
-run through junctions and tile borders. See `docs/ROAD_NETWORK.md`.
+**Roads (payload 0.3.0)** are a non-overlapping surface partition
+(asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians and
+one asphalt face per graph junction) plus a semantic centreline network with an
+OSM topology graph, per-direction lane tags, junction faces and pedestrian
+crossings. Lane markings, zebras and tram rails are derived from the network;
+slip/link roads, service aisles and unnamed channelization connectors are
+paving (not painted streets), and junction paint is clipped by the face
+polygons. See `docs/ROAD_NETWORK.md`.
 
 **Curated landmarks** (`landmark` field in the data, dedicated geometry modules):
 «Ворота Минска» (clock/emblem towers), Национальная библиотека (rhombicuboctahedron
@@ -76,6 +75,7 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 | E — Streets and environment | ✅ | roads/pavements/kerbs/markings/tram rails/bridges, parks, water banding, deterministic trees; ≤10.7k env tris/tile; 67 unit tests |
 | E2 — Road network normalization (payload 0.2.0) | ✅ | non-overlapping surface partition (material zones/paving/kerb/median) + network centrelines + 520 junction records + 183 crossings (81 zebra/89 signals/13 unmarked) + 13 medians; same-layer overlaps 0.0 m² (was 73 994 m² stacked), tile-seam gaps 0.0 m, street width spread 0.0 m; 2 166 247 B payload (+1.4 % vs 0.1.0); envTriangles 164 832 (+5.7 %); 348 unit tests, 24 Python road tests; `docs/ROAD_NETWORK.md`; 13 road screenshots |
 | E3 — Road markings round 2 (payload 0.2.0) | ✅ | full lane layout on all asphalt classes (tagged `lanes`, clamped), double solid centre + dividers on 25 merged four-lane corridor pieces (20 area-global pairs, 13 on Independence Ave), edge lines, bridge paint raised; junction/crossing clipping for every paint type and asphalt containment for zebra bars/stop lines (51 + 68 dropped); tram rails from 2 merged network centrelines (6 tile pieces, ballast + 2 heads, continuous through junctions and tile borders); direction-aware length-weighted widths (70 ways normalized), medians computed before paving, 0.15 m paving sliver closing, junction fillets (2 443 m²) removing the Bogdanovicha × Yanka Kupala crossing artifact; 364 Vitest, 27 Python tests; road audit 0 same-layer overlaps / 0 seam gaps / 0 width spread; 2 142 KiB payload (+1.3 % vs the 0.1.0 baseline); 20-shot `qa:road-shots` sweep; `docs/ROAD_NETWORK.md` |
+| E4 — Road topology/lane-model rewrite (payload 0.3.0) | ✅ | OSM topology graph (`road_graph.py`) + one asphalt face per graph junction (corner ring or approach-mouth union; 288 tile records / 274 unique, 0 invalid rings); lane tags authoritative per way and direction (`lanesForward`/`lanesBackward`; Ulyanovskaya 3 lanes, Lenina 1+2), width derived from lanes with a physical-compatibility guard; link/service/channelization roads render as paving, not painted streets (anonymous fork removed); renderer asymmetric lane layout without width clamping, chunk-aware junction-face/junction-surface paint clipping (lane paint inside faces = 0, near-face = 0), authoritative approach stop bars (209 unique), 23-shot sweep; 382 Vitest, 30 Python tests; road audit 0 same-layer overlaps > tolerance / 0 seam gaps > 0.01 m / 0 width spread; 2 326 KiB payload; `docs/ROAD_NETWORK.md` |
 | F — User interaction | ✅ | pan/zoom/rotate/reset, picking + info panel with stable OSM ids, pixel toggle, facade toggle, wireframe, time-of-day slider, loading indicator, visible ODbL attribution |
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 783 buildings, 4.01 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
 | Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
@@ -126,16 +126,19 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 **General**
 * Day overview: mean luminance 108/255, 0 % near-black. Night (22:30): mean
   39/255 with sparse warm lit windows.
-* Tests: **364/364 unit** (Vitest, 22 files) including 30 road marking/rail
-  renderer tests, **27/27 Python** road network tests, **12/12 browser e2e**
-  (Playwright, software SwiftShader), `tsc --noEmit` clean, `vite build` ✓;
-  pilot captured on hardware GPU (RTX 3080, ANGLE/D3D11) at 60 FPS with
-  0 console errors.
-* Road payload (pilot): 1 321 surface pieces (incl. 20 median tile pieces),
-  1 055 network pieces (incl. 6 rail tile pieces and 25 merged-corridor tile
-  pieces), 519 junction boxes, 180 crossings, 2 142 KiB (+1.3 % vs 0.1.0);
-  0 same-layer overlaps, 0 tile-seam coverage gaps, 0 width spread; geometry
-  audit 214 320 env triangles.
+* Tests: **382/382 unit** (Vitest, 22 files) including 47 road marking/
+  junction-surface renderer tests, **30/30 Python** road network tests, **12/12
+  browser e2e** (Playwright, software SwiftShader), `tsc --noEmit` clean,
+  `vite build` ✓; pilot captured on hardware GPU (RTX 3080, ANGLE/D3D11) at
+  60 FPS with 0 console errors.
+* Road payload (pilot, 0.3.0): 2 067 surface pieces (incl. 248 junction-face
+  pieces), 297 network pieces (incl. 6 rail tile pieces and 25 merged-corridor
+  tile pieces), 288 junction tile records / 274 unique graph junctions,
+  179 crossings, `roads: []`, 2 326 KiB; 0 same-layer overlaps above the
+  0.35 m² rounding tolerance (residual cm² slivers total 2.7 m², max 0.061 m²),
+  0 tile-seam coverage gaps above 0.01 m, 0 width spread; geometry audit
+  207 483 env triangles; paint audit: 0 lane paint inside junction faces/on
+  junction surfaces/near faces, lane-line counts match the tagged lanes.
 * Data coverage (pilot): 8.7 % explicit `height`, 56 % from `building:levels`,
   35.3 % heuristic; 46.6 % explicit `roof:shape`. City belt: 1.7 % / 37.8 % /
   60.5 %, reflecting sparser tagging outside the centre.

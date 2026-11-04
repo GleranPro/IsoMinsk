@@ -120,7 +120,7 @@ def main() -> int:
     total_crossings = 0
     road_kind_counts: Counter[str] = Counter()
     road_material_counts: Counter[str] = Counter()
-    street_widths: dict[tuple[str, bool], list[float]] = defaultdict(list)
+    street_widths: dict[tuple, list[float]] = defaultdict(list)
     same_layer_overlap_total = 0.0
 
     for entry in tiles:
@@ -190,7 +190,7 @@ def main() -> int:
             total_surfaces += 1
             check_ring(surface.get("polygon", [[]])[0], f"{tile_path.name} surface")
 
-        # --- normalized road payload 0.2.0 --------------------------------
+        # --- normalized road payload 0.3.0 --------------------------------
         # The renderer relies on the surface partition being non-overlapping
         # and on the network centrelines carrying a positive normalized width.
         road_surface_polys: list[tuple[str, bool, Polygon]] = []
@@ -223,7 +223,7 @@ def main() -> int:
             except Exception:
                 fail(f"{tile_path.name}: {kind} surface cannot be parsed as a polygon")
         # Same-layer pieces must not overlap (this is the invariant the whole
-        # 0.2.0 rewrite exists for). Different layers (bridge deck over a road)
+        # 0.3.0 rewrite exists for). Different layers (bridge deck over a road)
         # and drivable x paving (different Y layers, sub-cm rounding) are not
         # checked here; scripts/qa/road-audit.py reports them separately.
         for i in range(len(road_surface_polys)):
@@ -279,10 +279,17 @@ def main() -> int:
                 and not piece.get("merged")
                 and isinstance(width, (int, float))
             ):
-                # One width per street *and direction*: a merged two-way
-                # corridor piece is derived from a pair of carriageways and is
-                # legitimately wider, so it is not part of this invariant.
-                street_widths[(name, bool(piece.get("oneway")))].append(float(width))
+                # One width per street, direction and lane signature: a 3-lane
+                # segment may legitimately be narrower than a 5-lane segment of
+                # the same street, and merged corridors are derived.
+                street_widths[
+                    (
+                        name,
+                        bool(piece.get("oneway")),
+                        piece.get("lanesForward"),
+                        piece.get("lanesBackward"),
+                    )
+                ].append(float(width))
 
         for junction in tile.get("junctions") or []:
             total_junctions += 1
@@ -429,11 +436,11 @@ def main() -> int:
         lines.append("| Metric | Value |")
         lines.append("| --- | --- |")
         lines.append(f"| Ground surface polygons | {e['surfacePolygons']} |")
-        lines.append(f"| Legacy road/rail polygons (rails only in 0.2.0) | {e['roadPolygons']} |")
+        lines.append(f"| Legacy road/rail polygons (rails only in legacy tiles) | {e['roadPolygons']} |")
         lines.append(f"| OSM-mapped trees | {e['treesMapped']} |")
         lines.append(f"| Heuristically placed trees | {e['treesHeuristic']} |")
         lines.append("")
-        lines.append("## Road network (payload 0.2.0)\n")
+        lines.append("## Road network (payload 0.3.0)\n")
         lines.append("Non-overlapping surface partition + semantic network layer; see "
                      "`docs/ROAD_NETWORK.md` for the width/material model.\n")
         lines.append("| Metric | Value |")

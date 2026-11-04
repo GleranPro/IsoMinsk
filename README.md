@@ -12,13 +12,15 @@ Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsa
 **Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
 tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
 generated offline, streamed and rendered in the browser. The road layer was
-rewritten to **payload 0.2.0**: a non-overlapping surface partition
-(asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians) plus
-a semantic network of centrelines, junction boxes and pedestrian crossings — so
-road seams, junction patchwork and stacked detail layers are gone. Lane
-markings, zebras and tram rails are derived from that network: double solid
-centres on merged four-lane corridors, per-lane dividers and edge lines on all
-asphalt classes, paint raised on bridge decks, junction/crossing clipping, and
+rewritten to **payload 0.3.0**: a non-overlapping surface partition
+(asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians and
+one asphalt face per graph junction) plus an **OSM topology graph** with
+per-direction lane tags, junction faces and pedestrian crossings — so road
+seams, junction patchwork and stacked detail layers are gone. Lane markings,
+zebras and tram rails are derived from that network: double solid centres on
+merged four-lane corridors, asymmetric per-direction lane layouts (a tagged
+3-lane street renders 3 lanes), link/service/channelization roads rendered as
+paving instead of painted streets, paint clipped out of junction faces, and
 rails that run continuously through junctions and tile borders (see
 `docs/ROAD_NETWORK.md`). See `docs/REQUIREMENTS_ORIGINAL.md` for the original
 brief, `docs/REQUIREMENTS.md` for the compliance matrix, `docs/PROGRESS.md` for

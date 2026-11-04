@@ -1,4 +1,4 @@
-"""Road network audit for payload 0.2.0.
+"""Road network audit for payload 0.3.0.
 
 Validates the generated tile payload independently of the renderer:
 
@@ -220,30 +220,33 @@ def check_material_coverage(tiles, violations, stats):
 
 
 def check_widths(tiles, violations, stats):
-    # One width per street *and direction*: a merged two-way corridor piece
-    # (double solid centre) is legitimately wider than a one-way carriageway of
-    # the same street, so directions are checked separately.
+    # One width per street, direction AND lane signature: a 3-lane segment may
+    # legitimately be narrower than a 5-lane segment of the same street, and
+    # merged corridors are derived from a pair of carriageways.
     by_name = defaultdict(list)
     unnamed = 0
     for tile in tiles:
         for piece in tile["data"].get("roadNetwork") or []:
             if piece.get("kind") != "road" or piece.get("merged"):
-                # Merged two-way corridor pieces are derived from a pair of
-                # carriageways and are legitimately wider than a carriageway;
-                # their width is checked by the renderer's lane layout instead.
                 continue
             name = piece.get("name")
             if not name:
                 unnamed += 1
                 continue
-            by_name[(name, bool(piece.get("oneway")))].append(
-                float(piece.get("width") or 0.0)
-            )
+            by_name[
+                (
+                    name,
+                    bool(piece.get("oneway")),
+                    piece.get("lanesForward"),
+                    piece.get("lanesBackward"),
+                )
+            ].append(float(piece.get("width") or 0.0))
     spreads = {
-        f"{name} ({'one-way' if oneway else 'two-way'})": round(
+        f"{name} ({'one-way' if oneway else 'two-way'}, "
+        f"{lane_f or 0}+{lane_b or 0} lanes)": round(
             max(values) - min(values), 2
         )
-        for (name, oneway), values in by_name.items()
+        for (name, oneway, lane_f, lane_b), values in by_name.items()
         if len(values) > 1
     }
     worst = sorted(spreads.items(), key=lambda item: -item[1])[:5]
@@ -463,8 +466,10 @@ def main() -> int:
     )
     violations: list[str] = []
     stats: dict = {"tiles": len(tiles), "manifestVersion": manifest.get("version")}
-    if manifest.get("version") != "0.2.0":
-        violations.append(f"manifest version {manifest.get('version')!r} != '0.2.0'")
+    if manifest.get("version") not in ("0.2.0", "0.3.0"):
+        violations.append(
+            f"manifest version {manifest.get('version')!r} is not a known road payload version"
+        )
     missing = [
         tile["name"]
         for tile in tiles
@@ -501,3 +506,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

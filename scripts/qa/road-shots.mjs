@@ -31,8 +31,9 @@
  *   QA_READY_TIMEOUT_MS=120000
  *   QA_ONLY=<substring> # capture only matching shot files, e.g. QA_ONLY=night
  *
- * Output: `screenshots/roads/*.png` (20 shots: 13 core road views + 7 targeted
- * close-ups for the user-reported marking/artifact places), `screenshots/roads/shots.json`
+ * Output: `screenshots/roads/*.png` (23 shots: 13 core road views + 7 targeted
+ * close-ups for the user-reported marking/artifact places + 3 payload-0.3.0
+ * junction/lane views), `screenshots/roads/shots.json`
  * (per-shot camera/time/pixel/stats evidence) and `screenshots/roads/console.log`.
  * Honesty contract: if the renderer never becomes ready or the full city never
  * streams in, no misleading screenshots are kept as success — the script writes
@@ -102,8 +103,16 @@ const ISO_ELEVATION = Math.atan(1 / Math.SQRT2);
  *   16 Bogdanovicha near (-273, 637) — lane dividers
  *   17 Engels 25 at (364, -462)
  *   18 Krasnoarmeyskaya at (300, -200)
- *   19 Ulyanovskaya tram junction near (241, -730) — rail pieces through the junction
+ *   19 Ulyanovskaya tram junction near (289, -719) — rails through the junction face
  *   20 Bogdanovicha × Yanka Kupala junction (-205, 783) — no paint/median artifacts
+ *
+ * Third round (payload 0.3.0 — OSM topology graph / junction faces):
+ * shot 19 is retargeted to the Ulyanovskaya × Lenina junction face centre
+ * (289, -719), and three focused views are added (23 shots total):
+ *   21 Lenina 1+2 asymmetric lane layout at (240, -690), zoom 55
+ *   22 Ulyanovskaya × Lenina junction face at (289, -719), zoom 75 — clean 3D
+ *      (`22-junction-face-ulyanovskaya-clean.png`) and pixel-art
+ *      (`22-junction-face-ulyanovskaya-pixel.png`) variants.
  */
 const SHOTS = [
   {
@@ -268,9 +277,9 @@ const SHOTS = [
   },
   {
     file: '19-ulyanovskaya-tram-junction.png',
-    note: 'Ulyanovskaya tram junction near (241, -730): rail pieces passing through the junction',
-    fx: 241,
-    fy: -730,
+    note: 'Ulyanovskaya × Lenina tram junction (289, -719): rails and paint through the junction face',
+    fx: 289,
+    fy: -719,
     zoom: 65,
     time: 13,
     pixel: 1,
@@ -281,6 +290,33 @@ const SHOTS = [
     fx: -205,
     fy: 783,
     zoom: 70,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '21-lenina-1plus2-lanes.png',
+    note: 'Lenina asymmetric 1+2 lane layout near (240, -690): one divider on the two-lane side only',
+    fx: 240,
+    fy: -690,
+    zoom: 55,
+    time: 13,
+    pixel: 1,
+  },
+  {
+    file: '22-junction-face-ulyanovskaya-clean.png',
+    note: 'Ulyanovskaya × Lenina junction face (289, -719), clean 3D: no paint inside the face, no anonymous fork',
+    fx: 289,
+    fy: -719,
+    zoom: 75,
+    time: 13,
+    pixel: 0,
+  },
+  {
+    file: '22-junction-face-ulyanovskaya-pixel.png',
+    note: 'Ulyanovskaya × Lenina junction face (289, -719), pixel-art variant',
+    fx: 289,
+    fy: -719,
+    zoom: 75,
     time: 13,
     pixel: 1,
   },

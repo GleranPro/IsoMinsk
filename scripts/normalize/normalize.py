@@ -1,4 +1,4 @@
-﻿"""Normalise the raw OSM extract into renderer-ready city data.
+"""Normalise the raw OSM extract into renderer-ready city data.
 
 Pipeline
 --------
@@ -1809,7 +1809,8 @@ def main() -> int:
             geom = repair(geom)
         if geom is None or geom.is_empty:
             continue
-        for (tx, ty), piece in split_polygon(geom, min_area=0.005):            # Snap to the 1 cm payload grid BEFORE serialising: rounding raw
+        for (tx, ty), piece in split_polygon(geom, min_area=0.005):
+            # Snap to the 1 cm payload grid BEFORE serialising: rounding raw
             # shapely output independently per ring can create self-touching
             # polygons, and invalid pieces broke exact tile-seam matching and
             # the audit's boolean operations.
@@ -1818,18 +1819,28 @@ def main() -> int:
             except Exception:
                 snapped = repair(piece)
             if snapped is None or snapped.is_empty:
-                continue
-            for part in iter_polygons(snapped):
+                snapped = piece
+            parts = iter_polygons(snapped)
+            if not parts:
+                parts = iter_polygons(piece)
+            for part in parts:
                 if part.area < 0.005:
+                    continue
+                rings = payload_rings(part)
+                if not rings or len(rings[0]) < 3:
+                    continue
+                if ring_area_abs(rings[0]) < 0.01:
                     continue
                 record = {
                     "kind": surface["kind"],
-                    "polygon": payload_rings(part),
+                    "polygon": rings,
                 }
                 if surface.get("material"):
                     record["material"] = surface["material"]
                 if surface.get("bridge"):
                     record["bridge"] = True
+                if surface.get("junction"):
+                    record["junction"] = True
                 tiles[(tx, ty)]["roadSurfaces"].append(record)
 
     # Network centrelines overhang the tile by 4 m so a dash that straddles a
@@ -1868,16 +1879,51 @@ def main() -> int:
                     record["centerlineOffset"] = round(float(offset), 2)
                     tiles[(tx, ty)]["roadNetwork"].append(record)
 
-    # A junction is attached to every tile its clearance circle touches, so
-    # markings near a tile border still know about a junction centred in the
-    # neighbouring tile. Duplicated small records are intentional.
+    # Junction faces are clipped per tile (payload 0.3.0). A junction is attached
+    # to every tile its face touches, so markings near a tile border still know
+    # about a junction centred in the neighbouring tile. Duplicated small
+    # records are intentional (same as the legacy clearance circles).
     for junction in junction_features:
+        polygon = junction.get("polygon")
+        base = {key: value for key, value in junction.items() if key != "polygon"}
+        attached = 0
+        if polygon is not None and hasattr(polygon, "is_empty") and not polygon.is_empty:
+            for (tx, ty), piece in split_polygon(polygon, min_area=1.0):
+                if piece.is_empty or piece.area < 1.0:
+                    continue
+                piece = repair(piece)
+                if piece is None or piece.is_empty or piece.area < 1.0:
+                    continue
+                try:
+                    piece = set_precision(piece, 0.01)
+                except Exception:
+                    piece = repair(piece)
+                if piece is None or piece.is_empty or piece.area < 1.0:
+                    continue
+                for part in iter_polygons(piece):
+                    if part.area < 1.0:
+                        continue
+                    rings = payload_rings(part)
+                    if not rings:
+                        continue
+                    try:
+                        check = Polygon(rings[0], rings[1:])
+                    except Exception:
+                        continue
+                    if not check.is_valid or check.area < 1.0:
+                        continue
+                    record = dict(base)
+                    record["polygon"] = rings
+                    tiles[(tx, ty)]["junctions"].append(record)
+                    attached += 1
+        if attached:
+            continue
         radius = float(junction["radius"])
         x, y = float(junction["x"]), float(junction["y"])
         for tx in range(math.floor((x - radius - 1.0) / tile_size), math.floor((x + radius + 1.0) / tile_size) + 1):
             for ty in range(math.floor((y - radius - 1.0) / tile_size), math.floor((y + radius + 1.0) / tile_size) + 1):
                 if (tx, ty) in tiles:
-                    tiles[(tx, ty)]["junctions"].append(junction)
+                    tiles[(tx, ty)]["junctions"].append(base)
 
     for crossing in crossing_features:
         owner = tile_of_point(crossing["x"], crossing["y"])
@@ -1921,7 +1967,7 @@ def main() -> int:
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
     manifest = {
-        "version": "0.2.0",
+        "version": "0.3.0",
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
         "epsg": EPSG_UTM35N,
         "originUtm": [round(ORIGIN_X, 3), round(ORIGIN_Y, 3)],
@@ -2069,7 +2115,17 @@ def main() -> int:
                     for surface in road_surfaces
                 ],
                 "roadNetwork": network_pieces,
-                "junctions": junction_features,
+                "junctions": [
+                    {
+                        **{key: value for key, value in junction.items() if key != "polygon"},
+                        **(
+                            {"polygon": payload_rings(junction["polygon"])}
+                            if junction.get("polygon") is not None
+                            else {}
+                        ),
+                    }
+                    for junction in junction_features
+                ],
                 "crossings": crossing_features,
                 "trees": trees,
                 "attractions": attractions,

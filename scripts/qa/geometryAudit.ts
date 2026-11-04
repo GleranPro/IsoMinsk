@@ -1,4 +1,4 @@
-// Lead's building-geometry audit: validates the real tile payload through the
+﻿// Lead's building-geometry audit: validates the real tile payload through the
 // building mesh builder (no browser needed). Run with: pnpm exec tsx scripts/qa/geometryAudit.ts
 import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,7 +22,7 @@ interface Audit {
   nanCount: number;
   envTriangles: number;
   trees: number;
-  /** Payload 0.2.0 road layer counts (per tile). */
+  /** Payload 0.3.0 road layer counts (per tile). */
   roadSurfaces: number;
   roadNetwork: number;
   junctions: number;
@@ -79,7 +79,7 @@ for (const entry of manifest.tiles) {
   if (result.triangleCount === 0 && tile.buildings.length > 0) invalid.push('no triangles emitted');
   if (minY < -0.01) invalid.push(`geometry below ground: ${minY.toFixed(2)}`);
 
-  // Payload 0.2.0: the normalized surface partition always accompanies the
+  // Payload 0.3.0: the normalized surface partition always accompanies the
   // semantic network layer; a tile with centrelines but no rendered surface
   // would generate markings over the ground plate.
   const roadSurfaces = tile.roadSurfaces ?? [];
@@ -157,3 +157,4 @@ if (globalIssues.length) {
 
 mkdirSync('screenshots', { recursive: true });
 writeFileSync('screenshots/geometry-audit.json', JSON.stringify({ totals, results }, null, 1));
+
