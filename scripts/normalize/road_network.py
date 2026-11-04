@@ -33,6 +33,7 @@ tile grid.
 from __future__ import annotations
 
 import math
+import os
 import statistics
 import time
 from collections import Counter, defaultdict
@@ -656,6 +657,32 @@ def canonicalize(ways: list[RoadWay]) -> Counter:
                 way.width = round(float(way.width_raw), 2)
         stats["groups"] += 1
 
+    # 2b. One width per street, direction and lane signature. OSM sometimes
+    # tags different explicit widths on consecutive segments of the same street
+    # with the same lane count; that produced up to 2.4 m width jumps in the
+    # city dataset. Paint and kerbs read better with one width per signature.
+    width_groups: dict[tuple, list[RoadWay]] = defaultdict(list)
+    for way in ways:
+        if (
+            way.kind != "road"
+            or way.link
+            or way.roundabout
+            or way.cls == "service"
+        ):
+            continue
+        width_groups[
+            (way.group, way.oneway, way.lanes_forward, way.lanes_backward)
+        ].append(way)
+    for members in width_groups.values():
+        if len(members) < 2:
+            continue
+        canonical = _weighted_median([(w.width, w.line.length) for w in members])
+        canonical = round(min(max(float(canonical), MIN_ROAD_WIDTH_M), MAX_ROAD_WIDTH_M), 2)
+        for way in members:
+            if abs(way.width - canonical) > 0.01:
+                stats["widths_normalized"] += 1
+            way.width = canonical
+
     # 3. material: explicit tags are authoritative, untagged ways inherit the
     #    street majority (weighted by length). Genuine long material changes
     #    survive as separate zones with a crisp shared edge.
@@ -1173,10 +1200,15 @@ def build_road_network(
     started = time.time()
     stats = Counter()
 
+    def _lap(label: str) -> None:
+        if os.environ.get("ROAD_TIMING"):
+            print(f"[road-timing] {label}: {time.time() - started:.1f}s", flush=True)
+
     prepared, prepare_stats = prepare_ways(ways, pilot_rect)
     stats.update(prepare_stats)
     canonical_stats = canonicalize(prepared)
     stats.update(canonical_stats)
+    _lap("prepare+canonicalize")
 
     drivable_ground = [w for w in prepared if w.kind == "road" and not w.bridge]
     drivable_bridge = [w for w in prepared if w.kind == "road" and w.bridge]
@@ -1214,6 +1246,7 @@ def build_road_network(
     # the approach cross-sections, and graph-level channelization detection for
     # unnamed short slip connectors (which must not be painted as streets).
     graph = build_graph(drivable_ground)
+    _lap("graph")
     for way in drivable_ground:
         if int(way.osm_id) in graph.channelization_ways:
             way.channelization = True
@@ -1228,6 +1261,7 @@ def build_road_network(
     drivable_ground = [way for way in drivable_ground if not way.channelization]
     ways_by_id = {int(way.osm_id): way for way in drivable_ground}
     faces = junction_faces(graph, ways_by_id)
+    _lap("junction_faces")
     stats["junction_nodes"] = len({face.node for face in faces})
     stats["junction_faces"] = len(faces)
     stats["junction_faces_fallback"] = sum(1 for face in faces if face.fallback)
@@ -1240,6 +1274,7 @@ def build_road_network(
     # line is the correct paint) or keep a median gap between them.
     pair_info = pair_analysis(prepared)
     stats.update(pair_info["stats"])
+    _lap("pair_analysis")
     median_zones = _union(pair_info["median_strips"])
 
     # --- drivable surface ---------------------------------------------------
@@ -1253,6 +1288,7 @@ def build_road_network(
         drivable_ground_geom = drivable_ground_geom.intersection(pilot_rect)
     if not drivable_bridge_geom.is_empty:
         drivable_bridge_geom = drivable_bridge_geom.intersection(pilot_rect)
+    _lap("zones+drivable_union")
 
     # --- junction faces (graph topology) ------------------------------------
     face_polygons: dict[str, list[Polygon]] = defaultdict(list)
@@ -1285,6 +1321,7 @@ def build_road_network(
                     "geom": poly,
                     "junction": True,
                 })
+    _lap("junction_zone_integration")
 
     junctions: list[dict] = []
     for face in faces:
@@ -1374,6 +1411,7 @@ def build_road_network(
     )
     stats.update(median_stats)
     median_union = _union(medians)
+    _lap("crossings+medians")
 
     # --- paving -------------------------------------------------------------
     def sidewalk_bands(ways: list[RoadWay]) -> list:
@@ -1451,6 +1489,7 @@ def build_road_network(
             )
         ground_paving_union = ground_paving_union.intersection(pilot_rect)
     paving_ground = _clean(ground_paving_union, MIN_PAVING_AREA_M2)
+    _lap("paving")
     if not paving_ground.is_empty:
         # Close sub-decimetre slivers between paving components (measurement
         # grid snapping can split a narrow sidewalk into two pieces). Then
@@ -1493,6 +1532,7 @@ def build_road_network(
             kerb = Polygon()
     kerb = _clean(kerb, MIN_KERB_AREA_M2).simplify(0.2, preserve_topology=True)
     kerb = _clean(kerb, MIN_KERB_AREA_M2)
+    _lap("kerb")
 
     # --- surface records ----------------------------------------------------
     def pieces_from(geom, kind: str, material: str | None, bridge: bool) -> list[dict]:
@@ -1525,6 +1565,7 @@ def build_road_network(
     surfaces.extend(junction_pieces)
 
     # --- network records ----------------------------------------------------
+    _lap("before_network")
     # Only drivable, actually marked road classes are needed for markings.
     # Slip/link roads, channelization loops and service aisles get asphalt from
     # the surface pass but no network piece: painting them like streets is what
@@ -1615,6 +1656,7 @@ def build_road_network(
     stats["merged_network_pieces"] = len(pair_info["merged"])
 
     # --- coverage stats -----------------------------------------------------
+    _lap("network")
     stats["surfaces"] = len(surfaces)
     stats["surface_drivable"] = sum(1 for s in surfaces if s["kind"] == "drivable")
     stats["surface_paving"] = sum(1 for s in surfaces if s["kind"] == "paving")
