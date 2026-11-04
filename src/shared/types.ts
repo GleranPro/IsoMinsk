@@ -329,6 +329,8 @@ export type SurfaceKind =
   | 'industrial'
   | 'commercial'
   | 'construction'
+  /** amenity=parking areas (payload 0.4.1). */
+  | 'parking'
   | 'unknown';
 
 export interface SurfacePolygon {
@@ -381,6 +383,97 @@ export interface AttractionFeature {
   rotation: number;
 }
 
+/** Stroke family of the raster ground compositor (payload 0.4.0). */
+export type GroundStrokeKind =
+  | 'road'
+  | 'path'
+  | 'cycle'
+  | 'steps'
+  | 'ped'
+  | 'track'
+  | 'tram'
+  | 'rail';
+
+/**
+ * One OSM centreline painted into the ground texture (payload 0.4.0).
+ *
+ * Strokes are clipped per tile with a 64 m margin, so caps created by the clip
+ * stay outside the tile and neighbouring tiles paint identical border texels.
+ */
+export interface GroundStroke {
+  k: GroundStrokeKind;
+  /** Road class. */
+  c: RoadClass;
+  /** Carriageway / path width, metres. */
+  w: number;
+  /** Flat centreline [x0, y0, x1, y1, ...] in local metres. */
+  p: number[];
+  /** Arc length of p[0] along the source way, metres (dash phase). */
+  s0: number;
+  /** Fill rank: lower ranks are painted first (major street owns a junction). */
+  r: number;
+  /** Surface material when not asphalt. */
+  mat?: RoadMaterial;
+  /** 1 on a bridge deck (rendered as a raised deck, not into the ground). */
+  b?: 1;
+  /** Synthetic sidewalk width [left, right] of the centreline, metres. */
+  sw?: [number, number];
+  /** 1 when the carriageway gets a kerb casing. */
+  kb?: 1;
+  /** Lanes along / against the centreline direction. */
+  lf?: number;
+  lb?: number;
+  /** 1 for one-way carriageways. */
+  ow?: 1;
+  /** 1 for link / channelization connectors (no lane paint). */
+  ln?: 1;
+  /** 1: a multi-lane link / connector whose lane dividers are painted (0.4.1). */
+  pl?: 1;
+  /** On-street parking strip width per side [left, right], metres (0.4.1). */
+  pk?: [number, number];
+  /** Parking orientation per side: 0 none, 1 parallel, 2 diagonal, 3 perpendicular. */
+  po?: [number, number];
+  /** 1 for roundabout rings. */
+  ra?: 1;
+  /**
+   * Junction paint trims: flat [a0, b0, a1, b1, ...] arc-length intervals
+   * (metres, same frame as `s0`) where no lane paint is drawn.
+   */
+  nj?: number[];
+  /** Source OSM way id (diagnostics). */
+  id?: number;
+}
+
+export interface GroundLayer {
+  version: number;
+  strokes: GroundStroke[];
+  /** Crossings within 12 m of the tile (border-straddling zebras paint twice). */
+  crossings?: CrossingFeature[];
+  /**
+   * Payload 0.4.1: polygons painted with the strokes — the gap between the two
+   * halves of a dual carriageway (`asphalt`, or `tram` track bed when a tram
+   * runs in it) and tram stop platforms (`platform`). Whole shapes, attached to
+   * every tile they come within 64 m of.
+   */
+  fills?: GroundFill[];
+  /** Payload 0.4.1: solid divider lines between dual-carriageway halves (flat x,y). */
+  dividers?: number[][];
+  /** Payload 0.4.1: data extent [minX, minY, maxX, maxY]; ground outside stays base. */
+  clip?: [number, number, number, number];
+}
+
+export interface GroundFill {
+  m: 'asphalt' | 'tram' | 'platform';
+  /** Road class of the carriageway an asphalt fill belongs to (colour). */
+  c?: RoadClass;
+  /** Closed ring, flat [x0, y0, x1, y1, …], local metres. */
+  p: number[];
+  /** Holes of the polygon (flat rings), painted evenodd. */
+  h?: number[][];
+  /** 1: draw a kerb along the outline (carriageway-closing fills). */
+  kb?: 1;
+}
+
 /** Everything needed to render one tile. */
 export interface TileData {
   tileX: number;
@@ -403,6 +496,11 @@ export interface TileData {
   junctions?: JunctionFeature[];
   /** Pedestrian crossings projected onto the road network (payload 0.2.0). */
   crossings?: CrossingFeature[];
+  /**
+   * Painter's-order ground strokes for the raster ground compositor (payload
+   * 0.4.0, see docs/ROAD_NETWORK.md). Independent of the vector partition.
+   */
+  ground?: GroundLayer;
   trees: TreeInstance[];
   /** Non-building park attractions (ferris wheels). Optional for old tiles. */
   attractions?: AttractionFeature[];

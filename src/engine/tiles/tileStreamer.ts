@@ -24,11 +24,13 @@ import {
   TILE_SIZE_M,
 } from '../../shared/config';
 import { ENV_PALETTE } from '../materials/palette';
+import { createGroundMaterial, createGroundQuad, createGroundTexture } from '../materials/groundMaterial';
 import { tileBounds, tileKey, tilesInRect } from '../../shared/tileMath';
 import type { TileData, TileIndexEntry, TileManifest, BuildingFeature, FeatureId } from '../../shared/types';
 import type { IsometricCameraRig } from '../camera/isometricCamera';
 import { buildTilePayload } from './tileBuild';
 import {
+  type GroundBuildMode,
   unpackGeometry,
   wireMeshBytes,
   type TileWirePayload,
@@ -45,6 +47,8 @@ export interface TileEntry {
   buildingMesh: THREE.Mesh | null;
   environmentMesh: THREE.Mesh | null;
   treeMesh: THREE.Mesh | null;
+  /** Raster ground quad (payload 0.4.0) with its own texture/material. */
+  groundMesh: THREE.Mesh | null;
   buildings: Map<FeatureId, BuildingFeature>;
   buildingIds: FeatureId[];
   triangleOwner: Uint32Array | null;
@@ -68,6 +72,10 @@ export interface TileStreamerOptions {
   manifestUrl?: string;
   /** Override the tile payload base URL. */
   dataBaseUrl?: string;
+  /** Ground build mode: 'raster' (default) or the legacy 'vector' partition. */
+  groundMode?: GroundBuildMode;
+  /** Ground texel size override, metres. */
+  groundRes?: number;
   /** Ready after this many (nearest) visible tiles instead of all of them. */
   initialTileTarget?: number;
   /** Keep the ground plate visible to cover tiles skipped by the resident budget. */
@@ -709,6 +717,8 @@ export class TileStreamer {
           url: task.url,
           facadeDetail: true,
           trees: true,
+          groundMode: this.options.groundMode,
+          groundRes: this.options.groundRes,
         });
         task.requestId = job.id;
         payload = await job.promise;
@@ -784,7 +794,12 @@ export class TileStreamer {
           // Yield once so the loading indicator can paint before the
           // synchronous geometry build.
           await nextTick();
-          const payload = buildTilePayload(data, { facadeDetail: true, trees: true });
+          const payload = buildTilePayload(data, {
+            facadeDetail: true,
+            trees: true,
+            groundMode: this.options.groundMode,
+            groundRes: this.options.groundRes,
+          });
           job.resolve(payload);
         } catch (error) {
           job.reject(error instanceof Error ? error : new Error(String(error)));
@@ -895,6 +910,27 @@ export class TileStreamer {
       bytes += wireMeshBytes(payload.environment);
     }
 
+    let groundMesh: THREE.Mesh | null = null;
+    if (payload.ground && payload.ground.data.byteLength > 0) {
+      const texture = createGroundTexture(
+        payload.ground.data,
+        payload.ground.width,
+        payload.ground.height,
+      );
+      const material = createGroundMaterial(texture);
+      groundMesh = new THREE.Mesh(
+        createGroundQuad(payload.ground.bounds, GROUND_LAYER_Y.base),
+        material,
+      );
+      groundMesh.receiveShadow = true;
+      groundMesh.castShadow = false;
+      groundMesh.matrixAutoUpdate = false;
+      groundMesh.name = `ground-${payload.key}`;
+      group.add(groundMesh);
+      triangles += 2;
+      bytes += payload.ground.data.byteLength;
+    }
+
     let treeMesh: THREE.Mesh | null = null;
     if (payload.trees && payload.trees.triangleCount > 0) {
       const geometry = unpackGeometry(payload.trees);
@@ -920,6 +956,7 @@ export class TileStreamer {
       buildingMesh,
       environmentMesh,
       treeMesh,
+      groundMesh,
       buildings,
       buildingIds: payload.buildingIds,
       triangleOwner,
@@ -947,6 +984,11 @@ export class TileStreamer {
         object.geometry.dispose();
       }
     });
+    if (entry.groundMesh) {
+      const material = entry.groundMesh.material as THREE.MeshLambertMaterial;
+      material.map?.dispose();
+      material.dispose();
+    }
     entry.group.clear();
     this.buildingCount = Math.max(0, this.buildingCount - entry.buildings.size);
     this.geometryBytes = Math.max(0, this.geometryBytes - entry.bytes);

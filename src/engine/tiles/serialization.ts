@@ -78,6 +78,20 @@ export interface WireMesh {
   bytes: number;
 }
 
+/** RGBA8 ground texture of one tile; row 0 is the north edge. */
+export interface WireGroundTexture {
+  width: number;
+  height: number;
+  /** Metres per texel. */
+  res: number;
+  bounds: [number, number, number, number];
+  /** Owned ArrayBuffer (RGBA8), transferable. */
+  data: ArrayBuffer;
+}
+
+/** How the flat ground of a tile is built. */
+export type GroundBuildMode = 'raster' | 'vector';
+
 export interface TileWirePayload {
   key: string;
   x: number;
@@ -91,6 +105,8 @@ export interface TileWirePayload {
   buildingIds: FeatureId[];
   environment: WireMesh | null;
   trees: WireMesh | null;
+  /** Raster ground texture (payload 0.4.0), or null for the vector ground. */
+  ground?: WireGroundTexture | null;
   triangleCount: number;
   bytes: number;
   /** Worker-side timings, milliseconds. */
@@ -268,6 +284,9 @@ export interface TileWorkerLoadRequest {
   url: string;
   facadeDetail: boolean;
   trees: boolean;
+  groundMode?: GroundBuildMode;
+  /** Ground texel size override, metres (default: by tile size). */
+  groundRes?: number;
 }
 
 export interface TileWorkerCancelRequest {
@@ -310,6 +329,7 @@ export function collectTransferables(payload: TileWirePayload): ArrayBuffer[] {
   addMesh(payload.buildingGeometry);
   addMesh(payload.environment);
   addMesh(payload.trees);
+  if (payload.ground?.data) buffers.push(payload.ground.data);
   if (payload.triangleOwner) buffers.push(payload.triangleOwner);
   return buffers;
 }
@@ -319,6 +339,7 @@ export function payloadBytes(payload: TileWirePayload): number {
     wireMeshBytes(payload.buildingGeometry) +
     wireMeshBytes(payload.environment) +
     wireMeshBytes(payload.trees) +
+    (payload.ground?.data.byteLength ?? 0) +
     (payload.triangleOwner ? payload.triangleOwner.byteLength : 0)
   );
 }

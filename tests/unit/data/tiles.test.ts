@@ -184,6 +184,7 @@ const SURFACE_KINDS = new Set([
   'industrial',
   'commercial',
   'construction',
+  'parking',
   'unknown',
 ]);
 const ROAD_CLASSES = new Set([
@@ -1162,7 +1163,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     expect(manifest).not.toBeNull();
     if (!manifest) throw new Error('manifest missing');
     expect(typeof manifest.version).toBe('string');
-    expect(manifest.version, 'payload 0.3.0 required').toBe('0.3.0');
+    expect(manifest.version, 'payload 0.4.0 required').toBe('0.4.1');
     expect(Number.isNaN(Date.parse(manifest.generatedAt)), 'generatedAt must be an ISO date').toBe(false);
     expect(manifest.epsg).toBe(EPSG_UTM35N);
     expect(manifest.tileSize).toBe(TILE_SIZE_M);

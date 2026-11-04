@@ -13,6 +13,7 @@ import type {
   TileWirePayload,
   TileWorkerLoadRequest,
   TileWorkerCancelRequest,
+  GroundBuildMode,
 } from './serialization';
 
 export interface TileWorkerJobInput {
@@ -20,6 +21,8 @@ export interface TileWorkerJobInput {
   url: string;
   facadeDetail: boolean;
   trees: boolean;
+  groundMode?: GroundBuildMode;
+  groundRes?: number;
 }
 
 export interface TileWorkerPoolOptions {
@@ -234,6 +237,8 @@ export class TileWorkerPool {
         url: job.input.url,
         facadeDetail: job.input.facadeDetail,
         trees: job.input.trees,
+        groundMode: job.input.groundMode,
+        groundRes: job.input.groundRes,
       };
       try {
         worker.postMessage(message);

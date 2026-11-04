@@ -44,6 +44,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import nearest_points, unary_union
 from shapely.strtree import STRtree
 
+from ground_strokes import build_ground_strokes  # noqa: E402
 from road_graph import (  # noqa: E402
     JunctionFace,
     build_graph,
@@ -1239,6 +1240,8 @@ def build_road_network(
 
     path_ground_kept = [w for w in path_ground if not mostly_over_water(w)]
     stats["footways_over_water_dropped"] = len(path_ground) - len(path_ground_kept)
+    kept_path_ids = {int(w.osm_id) for w in path_ground_kept}
+    dropped_path_ids = {int(w.osm_id) for w in path_ground} - kept_path_ids
     path_ground = path_ground_kept
 
     # --- topology graph (payload 0.3.0) -------------------------------------
@@ -1247,8 +1250,10 @@ def build_road_network(
     # unnamed short slip connectors (which must not be painted as streets).
     graph = build_graph(drivable_ground)
     _lap("graph")
+    channelization_widths: dict[int, float] = {}
     for way in drivable_ground:
         if int(way.osm_id) in graph.channelization_ways:
+            channelization_widths[int(way.osm_id)] = float(way.width)
             way.channelization = True
             way.width = min(way.width, 3.0)
             way.lanes_backward = 0
@@ -1655,6 +1660,22 @@ def build_road_network(
         network.append(record)
     stats["merged_network_pieces"] = len(pair_info["merged"])
 
+    # --- ground strokes (payload 0.4.0) -------------------------------------
+    # Painter's-order centrelines for the raster ground compositor; see
+    # scripts/normalize/ground_strokes.py. Independent of the partition above.
+    ground_strokes, ground_stats = build_ground_strokes(
+        prepared,
+        dropped_path_ids,
+        class_rank=CLASS_RANK,
+        material_rank=MATERIAL_RANK,
+        sidewalk_classes=SIDEWALK_CLASSES,
+        kerb_classes=KERB_CLASSES,
+        sidewalk_default_width=SIDEWALK_DEFAULT_WIDTH_M,
+        channelization_widths=channelization_widths,
+    )
+    stats.update({f"ground_{k}": v for k, v in ground_stats.items()})
+    _lap("ground_strokes")
+
     # --- coverage stats -----------------------------------------------------
     _lap("network")
     stats["surfaces"] = len(surfaces)
@@ -1672,6 +1693,7 @@ def build_road_network(
     return {
         "surfaces": surfaces,
         "network": network,
+        "ground_strokes": ground_strokes,
         "junctions": junctions,
         "crossings": crossings,
         "stats": dict(stats),

@@ -125,6 +125,7 @@ export function surfaceTier(kind: SurfaceKind | undefined): SurfaceTier {
     case 'pitch':
     case 'plaza':
     case 'sand':
+    case 'parking':
       // Specific features often drawn inside a park/landuse polygon in OSM:
       // they need to sit above it to remain visible.
       return 'feature';

@@ -1,4 +1,148 @@
-# Road network normalization (payload 0.3.0)
+# Road network normalization (payload 0.4.0: raster ground compositor)
+
+## Payload 0.4.0 — the ground is painted, not partitioned
+
+**Why.** Rounds 1–3 (sections below) modelled roads as a *vector boolean
+partition* (material zones → junction faces → median slots → sidewalk bands →
+kerbs, all shapely `union/difference`). Each layer depended on the invariants
+of the previous one, so every fix created a new edge case (a hole, a sliver, a
+fork, paint inside a junction). The Isometric Warsaw reference does not build
+road polygons at all: its tile worker paints the ground into a per-chunk
+texture with `OffscreenCanvas` in strict cartographic order (verified by reading
+its shipped `chunk-worker` bundle; the source is not public).
+
+**How.** `TileData.ground.strokes` (`scripts/normalize/ground_strokes.py`) lists
+every surface road/path/rail as a centreline with its width (same lane model as
+below), material, rank, synthetic sidewalk widths `sw=[left,right]`, kerb flag,
+lane counts and junction paint trims `nj`. The renderer
+(`src/city/ground/groundRaster.ts`, in the tile worker) paints one RGBA texture
+per tile:
+
+```
+base → landcover (landuse → grass → feature → water)
+→ synthetic sidewalks (stroke w + 2·(kerb + sw))
+→ paths (track → path → steps → pedestrian → cycle)
+→ kerb casing of EVERY road (w + 2·0.6 m) → asphalt fill of EVERY road, lowest rank first
+→ heavy-rail ballast/ties
+→ hard paint layer: lane lines (1-texel Bresenham, dashed = 60 % dimmer), junction
+  faces erased, crossings (erase box, zebra bars, stop lines)
+→ hard rail-head layer (1-texel Bresenham)
+```
+
+Painting a colour over the same colour is idempotent, so overlapping ways,
+multi-way junctions and twin carriageways merge into one surface; the kerb
+survives only on the outer contour of the union and a junction needs no polygon.
+A data error degrades into a slightly irregular edge, never a hole or a stacked
+layer. Rules that remain:
+
+* **Sidewalks** — `sidewalk=no/none/separate` (also per side) → none; a mapped
+  `footway=sidewalk` within ~4 m of a side suppresses that side; the inner (left)
+  side of a one-way carriageway with an opposite carriageway of the same street
+  on its left gets none (dual carriageways get no pavement in the median).
+* **Junction trims `nj`** — at a shared OSM vertex with ≥ 3 approaches, each way's
+  paint is cut by `max_k(hw_k / max(sin θ_k, 0.3)) + 1 m`, clamped to 3–30 m,
+  stored as absolute arc-length intervals (same frame as `s0`). The old junction
+  faces (`tile.junctions`) are additionally erased from the paint layer.
+* **Tile seams** — strokes are clipped per tile with a 64 m margin (> any
+  half-width + sidewalk), the texel grid is anchored to world coordinates, dash
+  phase follows `s0` (arc length along the source way). Crossings are attached to
+  every tile within 12 m (`ground.crossings`).
+* **Colour** — the vector path stores `new THREE.Color(hex).convertSRGBToLinear()`
+  (linearised twice; the art direction is tuned to that). The texture is uploaded
+  as sRGB, so the canvas paints the once-linearised value (`canvasColor`).
+* **Texture** — 0.5 m/texel for 512 m tiles, 1 m/texel for 1024 m tiles
+  (`groundResolutionFor`, `?groundRes=` override); paint only at ≤ 1 m/texel.
+  Magnification nearest, minification trilinear + anisotropy 8 (nearest
+  minification broke 1-texel dashes into glyphs along the foreshortened axis).
+* **Bridges** are still the vector decks of the 0.3.0 partition
+  (`emitRoadSurfaces(..., { bridgesOnly: true })`); bridge strokes (`b: 1`) are not
+  painted into the ground.
+
+`?ground=vector` renders the legacy 0.3.0 partition for A/B comparison; both
+layers are still emitted.
+
+### Payload 0.4.1 — dual-carriageway gaps, tram reservations, tram stops
+
+Measured on the pilot (probe every 5 m to the left of each one-way carriageway,
+nearest opposite one-way): ~1 150 samples had a *bare* 0–5 m gap between the two
+halves of a divided street (painted widths from the lane model rarely equal the
+distance between the OSM centrelines), so bare ground, kerbs and even a synthetic
+pavement showed as a fake island or a fake fork (Lenina south of Ulyanovskaya:
+11.7 m between centrelines, 4.8 + 3.3 m painted half-widths). Tram tracks sat in
+4–11 m gaps on bare ground; bare gaps above 8 m are real green medians.
+`median_fills()` (`ground_strokes.py`) therefore emits:
+
+* `ground.fills` `{m: 'asphalt'}` — gap ≤ 6 m: asphalt, painted after the
+  carriageway fills, plus `ground.dividers` (solid line on the gap centre, also for
+  overlapping halves, cut out of junction trims `nj`);
+* `ground.fills` `{m: 'tram'}` — a tram in a gap ≤ 14 m: track bed, painted
+  before kerbs (the carriageway kerb separates road and reservation);
+* nothing for wider gaps.
+
+Every tram stroke also gets a 3.4 m bed under the kerbs/asphalt: on its own
+reservation the bed stays visible, embedded in the road it disappears and only the
+rails show. `railway=tram_stop` / `public_transport=stop_position|platform`
+(`tram=yes`) nodes are now extracted (`transit_stop`); `tram_platforms()` turns
+each stop into a 32 × 2.6 m platform beside its track (side of the mapped
+platform node, else away from the parallel track, else right). The inner-side
+pavement rule no longer requires the same street name. All carriageway classes
+share one asphalt tone (only service / living streets are lighter): per-class
+shades turned dense junctions into a patchwork. `ground.clip` (data extent) is
+repainted with the base colour, so ways cut at the pilot border end straight.
+
+**Carriageway closing.** The gap fill above only handled opposite halves; the
+gore between a carriageway and a diverging slip road (Lenina × Ulyanovskaya) and
+the triangles between turn links inside a junction (Bogdanovicha × Yanki Kupaly)
+still showed ground, while in reality they are asphalt (often with chevrons).
+`carriageway_closing()` unions the carriageway ribbons once per tile window
+(tile + 64 m), closes the union with r = 3 m (buffer +r, −r: gaps < 6 m become
+asphalt, junction corners get a 3 m kerb radius) and fills enclosed holes up to
+40 m across / 400 m², minus protected ground (tram beds, platforms, grass / water
+/ pitch / plaza polygons, buildings). The parts are emitted as
+`ground.fills {m: 'asphalt', kb: 1, h?}` clipped to tile + 2 m (tiny-part filter
+before the clip, so neighbours keep identical parts). The renderer kerbs their
+outline before the carriageway fills and fills them after, so the kerb survives
+only where added asphalt meets ground. Pilot: 1 256 parts, 10 500 m², 21 islands
+filled, 8 protected, 1.2 s offline; render cost unchanged (median ~33 ms/tile).
+A raster (morphological) closing in the worker was tried first and measured at
+~250–390 ms per tile, hence offline. Multi-lane links / connectors (`lanes ≥ 2`,
+≥ 25 m) now keep their tagged lane count and get lane dividers (`pl: 1`).
+
+**Parking.** `amenity=parking` areas (surface / street_side / lane; not
+underground, multi-storey or rooftop) are extracted and painted as surface kind
+`parking` (light asphalt). On-street parking tags (`parking:left|right|both` =
+lane / street_side with `…:orientation`, or the legacy `parking:lane:*`) give a
+stroke `pk = [left, right]` strip width (parallel 2.3 m, diagonal 4.6 m,
+perpendicular 5.0 m) and `po` orientation codes. The strip is fitted to the room
+before the mapped pavement on that side, sampled every 5 m (diagonal narrowed
+down to 3.6 m, then parallel, then none; per-side runs ≥ 25 m); a way whose
+parking changes along its length is split into pieces with their own `s0`, like
+the tile clipping. The renderer paints asphalt, kerb and pavement from the
+kerb-to-kerb band (`kerbBand`), lane paint stays on the OSM centre line, and
+diagonal / perpendicular bays get a line every 2.9 / 2.5 m. OSM has no parking
+tags on Internatsionalnaya (one-way, `lanes=1`, angled parking on both kerbs in
+reality): `ROAD_TAG_OVERRIDES` in `normalize.py` adds
+`parking:both=lane + diagonal` to its six ways and the coverage report lists it
+(`curation.roadTagOverrides`) — the proper fix is the same tags in OSM.
+
+Debug helpers: `node scripts/qa/ground-dump.mjs <x> <y> [half] [res]` writes the
+raw ground texture of a window to `screenshots/ground/`;
+`QA_FOCUS="x,y,zoom,name" node scripts/qa/road-shots.mjs` takes one ad-hoc shot.
+
+**Verification (pilot):** `pnpm run test:data` (incl. 12 stroke tests),
+`pnpm test` (incl. 15 compositor tests), `node scripts/qa/ground-seam-audit.mjs`
+(real OffscreenCanvas in Chromium: 24/24 tile borders with no visible
+strokes-only difference, 40–140 ms per tile), and
+`QA_SHOTS_DIR=screenshots/ab/raster node scripts/qa/road-shots.mjs` vs
+`QA_QUERY=ground=vector` for the side-by-side.
+
+**Not done yet:** 3D bridge ribbons from strokes (with ramps), texture LOD tiers
+and a GPU memory budget for the 144-tile city dataset, removal of the vector
+partition.
+
+---
+
+# Payload 0.3.0 and earlier (vector partition, kept for `?ground=vector`)
 
 Status: implemented in the offline pipeline and consumed by the renderer. This
 document is the contract for the normalized road payload; the geometry code

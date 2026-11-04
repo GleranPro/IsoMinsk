@@ -30,6 +30,8 @@
  *   QA_PORT=5174        # start/reuse a different port
  *   QA_READY_TIMEOUT_MS=120000
  *   QA_ONLY=<substring> # capture only matching shot files, e.g. QA_ONLY=night
+ *   QA_SHOTS_DIR=dir    # output directory (default screenshots/roads)
+ *   QA_QUERY=ground=vector  # extra page query (legacy vector ground for A/B)
  *
  * Output: `screenshots/roads/*.png` (23 shots: 13 core road views + 7 targeted
  * close-ups for the user-reported marking/artifact places + 3 payload-0.3.0
@@ -48,7 +50,11 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const SHOTS_DIR = path.join(ROOT, 'screenshots', 'roads');
+const SHOTS_DIR = process.env.QA_SHOTS_DIR
+  ? path.resolve(ROOT, process.env.QA_SHOTS_DIR)
+  : path.join(ROOT, 'screenshots', 'roads');
+/** Extra query string, e.g. QA_QUERY='ground=vector' for the legacy ground. */
+const QUERY = process.env.QA_QUERY?.trim() || '';
 const DATA_DIR = path.join(ROOT, 'public', 'data', 'tiles');
 const PORT = Number(process.env.QA_PORT || 5173);
 const EXTERNAL_URL = process.env.QA_BASE_URL?.trim() || '';
@@ -657,7 +663,16 @@ async function run() {
   await mkdir(SHOTS_DIR, { recursive: true });
 
   const only = process.env.QA_ONLY?.trim();
-  const shots = only ? SHOTS.filter((shot) => shot.file.includes(only)) : SHOTS;
+  // QA_FOCUS="x,y,zoom[,name]" adds one ad-hoc pixel-art shot at that focus.
+  const focus = process.env.QA_FOCUS?.trim();
+  const adhoc = focus
+    ? (() => {
+        const [fx, fy, zoom, name] = focus.split(',');
+        return [{ file: `${name || 'focus'}.png`, note: 'ad-hoc focus', fx: Number(fx), fy: Number(fy), zoom: Number(zoom) || 60, time: 13, pixel: 1 }];
+      })()
+    : [];
+  const listed = only ? SHOTS.filter((shot) => only.split(',').some((part) => shot.file.includes(part.trim()))) : focus ? [] : SHOTS;
+  const shots = [...listed, ...adhoc];
   if (shots.length === 0) throw new Error(`QA_ONLY="${only}" matched no shot`);
 
   let browser = null;
@@ -688,8 +703,9 @@ async function run() {
       });
     });
 
-    console.log(`[browser] navigating to ${BASE_URL}`);
-    const response = await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+    const pageUrl = QUERY ? `${BASE_URL}/?${QUERY}` : BASE_URL;
+    console.log(`[browser] navigating to ${pageUrl}`);
+    const response = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
     if (!response || !response.ok()) {
       throw new Error(`page.goto returned HTTP ${response?.status() ?? 'no response'}`);
     }

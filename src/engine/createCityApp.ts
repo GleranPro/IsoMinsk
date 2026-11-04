@@ -429,6 +429,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     topUpStepTiles: datasetConfig.topUpStepTiles,
     maxTopUpGeometryMB: datasetConfig.maxTopUpGeometryMB,
     tileLayout: datasetConfig.tileLayout,
+    // Raster ground compositor (payload 0.4.0) by default; `?ground=vector`
+    // keeps the legacy polygon partition for A/B comparison.
+    groundMode: params.get('ground') === 'vector' ? 'vector' : 'raster',
+    groundRes: Number(params.get('groundRes')) > 0 ? Number(params.get('groundRes')) : undefined,
     onError: recordError,
     onWarning: recordDiagnostic,
     onLoadingChange: (loading, progress) => {

@@ -14,6 +14,14 @@ import { buildBuildingsMesh } from '../../city/buildings/buildingsMesh';
 import { buildEnvironmentMeshes } from '../../city/environment/environmentMeshes';
 import type { TileData } from '../../shared/types';
 import {
+  groundRasterAvailable,
+  groundResolutionFor,
+  hasGroundLayer,
+  rasterizeGround,
+} from '../../city/ground/groundRaster';
+import {
+  type GroundBuildMode,
+  type WireGroundTexture,
   packGeometry,
   packUint32Array,
   payloadBytes,
@@ -24,6 +32,10 @@ import {
 export interface TileBuildOptions {
   facadeDetail: boolean;
   trees: boolean;
+  /** 'raster' (default) paints the flat ground into a texture when possible. */
+  groundMode?: GroundBuildMode;
+  /** Ground texel size override, metres. */
+  groundRes?: number;
 }
 
 interface ExtractedPart {
@@ -161,11 +173,39 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
   const startedAt = now();
   let buildingsError = '';
 
+  // Raster ground (payload 0.4.0): one texture for base/landcover/roads/paths.
+  let ground: WireGroundTexture | null = null;
+  if (
+    (options.groundMode ?? 'raster') === 'raster' &&
+    hasGroundLayer(data) &&
+    groundRasterAvailable()
+  ) {
+    try {
+      const size = Math.max(1, data.bounds[2] - data.bounds[0]);
+      const raster = rasterizeGround(data, data.bounds, groundResolutionFor(size, options.groundRes));
+      if (raster) {
+        const copy = new Uint8Array(raster.data.byteLength);
+        copy.set(raster.data);
+        ground = {
+          width: raster.width,
+          height: raster.height,
+          res: raster.res,
+          bounds: raster.bounds,
+          data: copy.buffer,
+        };
+      }
+    } catch (error) {
+      buildingsError = `ground raster: ${String(error)}`;
+      ground = null;
+    }
+  }
+
   const environment = (() => {
     try {
       const result = buildEnvironmentMeshes(data, {
         tileBounds: data.bounds,
         trees: options.trees,
+        rasterGround: ground !== null,
       });
       const merged = mergeEnvironmentGeometries([result.ground, result.roads]);
       // Trees and park props (ferris wheels) share the same vertex-coloured
@@ -231,6 +271,7 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
     buildingIds,
     environment: environmentMesh,
     trees: treeMesh,
+    ground,
     triangleCount,
     bytes: 0,
     fetchMs: 0,

@@ -105,6 +105,8 @@ SURFACE_VALUES = {
     "residential", "industrial", "commercial", "construction", "orchard",
     "meadow", "village_green", "recreation_ground", "school", "university",
     "hospital", "theatre", "museum", "fountain", "garden", "fitness_station",
+    # amenity=parking areas (payload 0.4.1: painted as asphalt).
+    "parking",
 }
 
 HIGHWAY_VALUES = {
@@ -117,7 +119,7 @@ HIGHWAY_VALUES = {
 RAILWAY_VALUES = {"rail", "tram", "light_rail", "subway", "narrow_gauge", "monorail"}
 WATERWAY_VALUES = {"river", "stream", "canal", "drain", "ditch"}
 
-KEEP_TAG_PREFIXES = ("building", "roof", "addr", "height", "min_height", "levels")
+KEEP_TAG_PREFIXES = ("building", "roof", "addr", "height", "min_height", "levels", "parking:")
 KEEP_TAGS = {
     "name", "name:ru", "name:be", "name:en", "amenity", "tourism", "landuse",
     "leisure", "natural", "waterway", "highway", "railway", "shop", "office",
@@ -134,6 +136,8 @@ KEEP_TAGS = {
     "lanes:forward", "lanes:backward",
     "sidewalk:width", "sidewalk:both:width", "sidewalk:left:width",
     "sidewalk:right:width",
+    # Tram stop / platform nodes (payload 0.4.1).
+    "tram",
 }
 MAX_TAGS = 48
 
@@ -373,7 +377,16 @@ class CrossingCollector:
 
     def node(self, node) -> None:
         tags = {t.k: t.v for t in node.tags}
-        if tags.get("highway") not in {"crossing", "traffic_signals"}:
+        kind = None
+        if tags.get("highway") in {"crossing", "traffic_signals"}:
+            kind = "crossing"
+        elif tags.get("railway") == "tram_stop" or (
+            tags.get("tram") == "yes"
+            and tags.get("public_transport") in {"stop_position", "platform"}
+        ):
+            # Tram stops / platform nodes → synthetic platforms (payload 0.4.1).
+            kind = "transit_stop"
+        if kind is None:
             return
         if not node.location.valid():
             return
@@ -381,7 +394,7 @@ class CrossingCollector:
         if not inside_window(lat, lon):
             return
         self.features.append({
-            "kind": "crossing",
+            "kind": kind,
             "osm_type": "node",
             "osm_id": node.id,
             "tags": filter_tags(tags),
@@ -593,7 +606,13 @@ def main() -> int:
     t4 = time.time()
     cc = CrossingCollector()
     fp = osmium.FileProcessor(str(pbf)).with_filter(
-        osmium.filter.TagFilter(("highway", "crossing"), ("highway", "traffic_signals"))
+        osmium.filter.TagFilter(
+            ("highway", "crossing"),
+            ("highway", "traffic_signals"),
+            ("railway", "tram_stop"),
+            ("public_transport", "stop_position"),
+            ("public_transport", "platform"),
+        )
     )
     for obj in fp:
         if isinstance(obj, osmium.osm.Node):
@@ -612,6 +631,7 @@ def main() -> int:
         "surfaces": sum(1 for f in kept if f["kind"] == "surface"),
         "attractions": sum(1 for f in kept if f["kind"] == "attraction"),
         "crossings": sum(1 for f in kept if f["kind"] == "crossing"),
+        "transit_stops": sum(1 for f in kept if f["kind"] == "transit_stop"),
         "trees": len(tc.trees),
     }
 

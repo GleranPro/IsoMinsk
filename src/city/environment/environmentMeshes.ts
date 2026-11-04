@@ -38,12 +38,20 @@ import {
 import { buildTreeGeometry, type TreeDetailTier } from './treeMeshes';
 import { emitAttractions, type AttractionEmitStats } from './ferrisWheel';
 import { createRoadStats, emitRoadLayer, type RoadBuildStats } from '../roads/roadMeshes';
+import { emitRoadSurfaces } from '../roads/surfaceMeshes';
 
 export interface EnvironmentMeshOptions {
   /** Ground rectangle of the tile in local metres [minX, minY, maxX, maxY]. */
   tileBounds: [number, number, number, number];
   /** Emit trees (disabled at low quality). */
   trees: boolean;
+  /**
+   * Raster ground mode (payload 0.4.0): the flat ground — base, landcover,
+   * water and every ground-level road/path — is painted into a texture by
+   * `src/city/ground/groundRaster.ts`, so only raised bridge decks are emitted
+   * as geometry here.
+   */
+  rasterGround?: boolean;
 }
 
 /** Diagnostic counters; optional so the renderer contract stays unchanged. */
@@ -94,15 +102,16 @@ export function buildEnvironmentMeshes(
   const groundSink = new GeometrySink();
   const roadsSink = new GeometrySink();
 
+  const raster = options?.rasterGround === true;
   try {
-    emitBaseGround(groundSink, bounds);
+    if (!raster) emitBaseGround(groundSink, bounds);
   } catch {
     // The base quad is a single guarded quad; a failure here is unrecoverable
     // but must not take the process down.
   }
 
   try {
-    emitSurfacePolygons(groundSink, tile?.surfaces, bounds, surfaceStats);
+    if (!raster) emitSurfacePolygons(groundSink, tile?.surfaces, bounds, surfaceStats);
   } catch {
     // Emit what we have; one malformed category must not break the tile.
   }
@@ -110,7 +119,13 @@ export function buildEnvironmentMeshes(
   try {
     // Payload 0.2.0: normalized surface partition + network paint + legacy rail.
     // Demo/old tiles: legacy buffered road polygons. Same single merged sink.
-    emitRoadLayer(roadsSink, tile, bounds, roadStats);
+    if (raster) {
+      emitRoadSurfaces(roadsSink, tile?.roadSurfaces, bounds, roadStats.surfaces, {
+        bridgesOnly: true,
+      });
+    } else {
+      emitRoadLayer(roadsSink, tile, bounds, roadStats);
+    }
   } catch {
     // Same as above.
   }

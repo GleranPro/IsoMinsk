@@ -237,6 +237,9 @@ export function surfaceColor(kind: SurfaceKind): Hex {
       return ENV_PALETTE.river;
     case 'railway':
       return ENV_PALETTE.railway;
+    case 'parking':
+      // Parking lots: asphalt, a touch lighter than the carriageways.
+      return ROAD_PALETTE.service;
     default:
       return ENV_PALETTE.unknown;
   }

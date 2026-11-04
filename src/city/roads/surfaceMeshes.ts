@@ -155,6 +155,7 @@ export function emitRoadSurfaces(
   pieces: RoadSurfacePiece[] | null | undefined,
   bounds: Bounds4,
   stats: RoadSurfaceStats,
+  options: { bridgesOnly?: boolean } = {},
 ): void {
   if (!Array.isArray(pieces) || pieces.length === 0) return;
   const context: SurfaceEmitContext = { pieces, groundDrivable: null };
@@ -164,6 +165,9 @@ export function emitRoadSurfaces(
       stats.skippedPieces++;
       continue;
     }
+    // Raster ground mode: the flat ground (incl. all ground-level road
+    // surfaces) is a texture; only raised bridge decks remain geometry.
+    if (options.bridgesOnly && piece.bridge !== true) continue;
     if (!isSurfaceKind(piece.kind)) {
       stats.skippedPieces++;
       continue;

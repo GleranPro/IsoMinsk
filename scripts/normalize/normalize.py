@@ -72,6 +72,16 @@ from geo_config import (  # noqa: E402
     TILE_SIZE_M,
 )
 from road_network import build_road_network  # noqa: E402
+from ground_strokes import (  # noqa: E402
+    assign_fills_to_tiles,
+    carriageway_closing,
+    assign_strokes_to_tiles,
+    median_fills,
+    rail_strokes,
+    tram_platforms,
+)
+
+GROUND_STROKE_MARGIN_M = 64.0
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data/interim/minsk_raw.geojson"
@@ -673,6 +683,10 @@ def surface_kind_from_tags(tags: dict[str, str]) -> str:
         return "construction"
     if amenity in {"school", "university", "hospital"}:
         return "plaza"
+    if amenity == "parking" and (tags.get("parking") or "surface") not in {
+        "underground", "multi-storey", "rooftop", "garage_boxes", "carports",
+    } and tags.get("location") not in {"underground", "roof", "rooftop"}:
+        return "parking"
     return "unknown"
 
 
@@ -713,7 +727,26 @@ def surface_kind_from_tags(tags: dict[str, str]) -> str:  # noqa: F811
         return "construction"
     if amenity in {"school", "university", "hospital"}:
         return "plaza"
+    if amenity == "parking" and (tags.get("parking") or "surface") not in {
+        "underground", "multi-storey", "rooftop", "garage_boxes", "carports",
+    } and tags.get("location") not in {"underground", "roof", "rooftop"}:
+        return "parking"
     return "unknown"
+
+
+# --- curated road tag fixes (payload 0.4.1) ---------------------------------
+# Street properties OSM does not carry yet, verified against aerial imagery.
+# Merged into the way's tags before the lane/width/parking model runs and listed
+# in the coverage report (`curation.roadTagOverrides`); the proper fix is the
+# same tags in OSM itself, after which an entry can be dropped.
+ROAD_TAG_OVERRIDES: dict[tuple[str, int], dict[str, str]] = {
+    # Internatsionalnaya (one-way, lanes=1): angled parking on both kerbs makes
+    # the carriageway ~3 lanes wide, but the ways have no parking:* tags.
+    **{
+        ("way", way_id): {"parking:both": "lane", "parking:both:orientation": "diagonal"}
+        for way_id in (38664566, 1426373454, 1426373455, 1426373456, 1426373457, 38664567)
+    },
+}
 
 
 # --- curated landmark fixes -------------------------------------------------
@@ -971,6 +1004,10 @@ def main() -> int:
                 continue
             if kind == "highway":
                 if tags.get("highway") in ROAD_WIDTH:
+                    road_override = ROAD_TAG_OVERRIDES.get((feature.get("osm_type", "way"), int(feature["osm_id"])))
+                    if road_override:
+                        tags = {**tags, **road_override}
+                        stats["road_tag_overrides"] += 1
                     roads_raw.append(({"tags": tags, "feature": feature}, line))
             elif kind == "railway":
                 if tags.get("railway") in {"rail", "tram", "light_rail", "subway"}:
@@ -1478,6 +1515,48 @@ def main() -> int:
     network_pieces.extend(rail_pieces)
     stats["rail_pieces"] = len(rail_pieces)
 
+    # --- ground strokes (payload 0.4.0) ------------------------------------
+    # Painter's-order centrelines rasterised by the renderer into one ground
+    # texture per tile (scripts/normalize/ground_strokes.py).
+    ground_strokes = list(road_result.get("ground_strokes") or []) + rail_strokes(rail_pieces)
+    stats["ground_strokes"] = len(ground_strokes)
+    tram_lines = [
+        LineString(list(zip(s["p"][0::2], s["p"][1::2])))
+        for s in ground_strokes
+        if s.get("k") == "tram" and len(s.get("p") or []) >= 4
+    ]
+    # Dual-carriageway gaps: asphalt + divider, or tram track bed (0.4.1).
+    ground_fills, ground_dividers, median_stats = median_fills(ground_strokes, tram_lines)
+    stats.update(median_stats)
+    for stroke in ground_strokes:
+        stroke.pop("_lk", None)
+    # Tram stops → platforms beside the track (0.4.1).
+    tram_stop_points: list[tuple[float, float]] = []
+    tram_platform_points: list[tuple[float, float]] = []
+    for feature in features:
+        if feature["kind"] != "transit_stop":
+            continue
+        coords = feature.get("geometry", {}).get("coordinates")
+        if not isinstance(coords, (list, tuple)) or len(coords) < 2:
+            continue
+        x, y = to_local(coords[0], coords[1])
+        if not (-half - 64.0 <= x <= half + 64.0 and -half - 64.0 <= y <= half + 64.0):
+            continue
+        tags = feature.get("tags", {})
+        if tags.get("railway") == "tram_stop" or tags.get("public_transport") == "stop_position":
+            tram_stop_points.append((x, y))
+        else:
+            tram_platform_points.append((x, y))
+    platforms, platform_stats = tram_platforms(tram_stop_points, tram_platform_points, tram_lines)
+    stats.update(platform_stats)
+    ground_fills.extend(platforms)
+    print(f"Ground: {median_stats.get('median_asphalt_runs', 0)} asphalt median run(s) "
+          f"({median_stats.get('median_asphalt_m', 0)} m), "
+          f"{median_stats.get('median_tram_runs', 0)} tram reservation run(s) "
+          f"({median_stats.get('median_tram_m', 0)} m), {len(ground_dividers)} divider(s), "
+          f"{platform_stats.get('tram_platforms', 0)} tram platform(s) from "
+          f"{len(tram_stop_points)} stop node(s)")
+
     # Payload 0.2.0 keeps no legacy buffered road/rail polygons: the legacy
     # `roads` array is empty for new tiles (older tiles still render via the
     # legacy path).
@@ -1736,6 +1815,7 @@ def main() -> int:
                 "roadNetwork": [],
                 "junctions": [],
                 "crossings": [],
+                "ground": {"version": 1, "strokes": []},
                 "trees": [],
                 "crossingBuildingIds": [],
             }
@@ -1925,6 +2005,86 @@ def main() -> int:
                 if (tx, ty) in tiles:
                     tiles[(tx, ty)]["junctions"].append(base)
 
+    # Ground strokes: clipped per tile with a 64 m margin (> any half-width +
+    # sidewalk), so stroke caps created by clipping stay outside the tile.
+    for key, strokes in assign_strokes_to_tiles(
+        ground_strokes, tile_size, tiles.keys(), GROUND_STROKE_MARGIN_M
+    ).items():
+        tiles[key]["ground"]["strokes"] = strokes
+    for key, fills in assign_fills_to_tiles(
+        ground_fills, tile_size, tiles.keys(), GROUND_STROKE_MARGIN_M
+    ).items():
+        if fills:
+            tiles[key]["ground"]["fills"] = fills
+    # Carriageway closing: gores, junction islands and slivers between ribbons
+    # become asphalt (ground_strokes.carriageway_closing).
+    protected_geoms: list = []
+    for stroke in ground_strokes:
+        if stroke.get("k") in ("tram", "rail") and len(stroke.get("p") or []) >= 4:
+            protected_geoms.append(
+                LineString(list(zip(stroke["p"][0::2], stroke["p"][1::2]))).buffer(
+                    (float(stroke["w"]) + 1.2) / 2.0, quad_segs=4
+                )
+            )
+    for fill in ground_fills:
+        if fill.get("m") in ("tram", "platform"):
+            ring = list(zip(fill["p"][0::2], fill["p"][1::2]))
+            if len(ring) >= 3:
+                protected_geoms.append(repair(Polygon(ring)))
+    protected_kinds = {"grass", "park", "forest", "scrub", "cemetery", "water", "river", "pitch", "plaza", "sand"}
+    for surface in surface_features:
+        if surface["kind"] not in protected_kinds:
+            continue
+        rings = surface["polygon"]
+        try:
+            protected_geoms.append(repair(Polygon(rings[0], [Polygon(r).exterior.coords for r in rings[1:]])))
+        except Exception:
+            continue
+    for building in buildings:
+        for volume in building.get("volumes", []):
+            footprint = volume.get("footprint") or []
+            if footprint and len(footprint[0]) >= 3:
+                try:
+                    protected_geoms.append(repair(Polygon(footprint[0])))
+                except Exception:
+                    continue
+    t_close = time.time()
+    closing_fills, closing_stats = carriageway_closing(
+        ground_strokes,
+        [fill for fill in ground_fills if fill.get("m") == "asphalt"],
+        protected_geoms,
+        tile_size,
+        tiles.keys(),
+        GROUND_STROKE_MARGIN_M,
+    )
+    stats.update(closing_stats)
+    for key, fills in closing_fills.items():
+        if fills:
+            tiles[key]["ground"].setdefault("fills", []).extend(fills)
+    print(f"Carriageway closing: {closing_stats.get('close_fill_parts', 0)} fill part(s), "
+          f"{closing_stats.get('close_fill_m2', 0)} m2; holes filled "
+          f"{closing_stats.get('close_holes_filled', 0)} ({closing_stats.get('close_holes_filled_m2', 0)} m2), "
+          f"protected {closing_stats.get('close_holes_protected', 0)}, "
+          f"large {closing_stats.get('close_holes_large', 0)} in {time.time() - t_close:.1f}s")
+    for key, dividers in assign_fills_to_tiles(
+        ground_dividers, tile_size, tiles.keys(), GROUND_STROKE_MARGIN_M
+    ).items():
+        if dividers:
+            tiles[key]["ground"]["dividers"] = dividers
+    # Data extent: the renderer clips the ground to it, so ways cut at the area
+    # border end in a straight edge instead of round stroke caps.
+    for key in tiles:
+        tiles[key]["ground"]["clip"] = [-half, -half, half, half]
+
+    # Ground compositor crossings: attached to every tile within 12 m so a zebra
+    # straddling a tile border is painted identically on both sides.
+    for crossing in crossing_features:
+        cx, cy = float(crossing["x"]), float(crossing["y"])
+        for tx in range(math.floor((cx - 12.0) / tile_size), math.floor((cx + 12.0) / tile_size) + 1):
+            for ty in range(math.floor((cy - 12.0) / tile_size), math.floor((cy + 12.0) / tile_size) + 1):
+                if (tx, ty) in tiles:
+                    tiles[(tx, ty)]["ground"].setdefault("crossings", []).append(crossing)
+
     for crossing in crossing_features:
         owner = tile_of_point(crossing["x"], crossing["y"])
         if owner is not None:
@@ -1967,7 +2127,7 @@ def main() -> int:
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
     manifest = {
-        "version": "0.3.0",
+        "version": "0.4.1",
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
         "epsg": EPSG_UTM35N,
         "originUtm": [round(ORIGIN_X, 3), round(ORIGIN_Y, 3)],
@@ -2054,6 +2214,11 @@ def main() -> int:
             "nearMissCollisionsKeptApart": near_misses_kept,
         },
         "curation": {
+            "roadTagOverrides": [
+                {"id": f"{osm_type[0]}{osm_id}", **override}
+                for (osm_type, osm_id), override in ROAD_TAG_OVERRIDES.items()
+            ],
+            "roadTagOverridesApplied": stats.get("road_tag_overrides", 0),
             "landmarkOverrides": [
                 {"id": f"{osm_type[0]}{osm_id}", **override}
                 for (osm_type, osm_id), override in LANDMARK_OVERRIDES.items()
