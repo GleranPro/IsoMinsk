@@ -11,7 +11,8 @@ to Python. Cheap passes over the file:
      remember the way ids that form their rings.
   B. ways (with node locations): buildings, roads, rails, waterways, land
      surfaces, plus the ring geometries of the relations collected in pass A.
-  C. tag-filtered pass: individually mapped trees (natural=tree).
+  C. tag-filtered pass: individually mapped trees (natural=tree) and tree rows
+     (natural=tree_row, emitted as lines; payload 0.4.3).
   D. tag-filtered pass: non-building attractions (ferris wheels).
   E. tag-filtered pass: pedestrian crossings and traffic-signal nodes
      (payload 0.2.0 road network; see docs/ROAD_NETWORK.md).
@@ -36,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import osmium  # noqa: E402
+from pyproj import Transformer  # noqa: E402
 from shapely.geometry import LineString, Polygon, mapping  # noqa: E402
 from shapely.ops import polygonize, unary_union  # noqa: E402
 
@@ -290,9 +292,26 @@ class WayCollector:
 
 # --- pass C: trees ----------------------------------------------------------
 
+_TREE_ROW_TRANSFORMER = Transformer.from_crs(EPSG_WGS84, EPSG_UTM35N, always_xy=True)
+
+
+def _tree_row_length_m(coords: list[list[float]]) -> float:
+    """Metres along a lon/lat polyline (UTM 35N, accurate enough for a log line)."""
+    return LineString([_TREE_ROW_TRANSFORMER.transform(c[0], c[1]) for c in coords]).length
+
+
 class TreeCollector:
+    """Collect individually mapped trees (nodes) and tree rows (ways).
+
+    Tree rows are the OSM `natural=tree_row` ways: real avenues and cemetery
+    alleys. They are kept as lon/lat lines (`coords`) and turned into points by
+    the normaliser (7 m spacing), so the extraction stays cheap and the spacing
+    rule lives in one place (`scripts/normalize/trees.py`).
+    """
+
     def __init__(self) -> None:
         self.trees: list[dict] = []
+        self.rows: list[dict] = []
 
     def node(self, node) -> None:
         tags = {t.k: t.v for t in node.tags}
@@ -313,7 +332,28 @@ class TreeCollector:
         })
 
     def way(self, way) -> None:
-        pass
+        tags = {t.k: t.v for t in way.tags}
+        if tags.get("natural") != "tree_row":
+            return
+        coords: list[tuple[float, float]] = []
+        any_inside = False
+        for n in way.nodes:
+            if not n.location.valid():
+                continue
+            lat, lon = n.location.lat, n.location.lon
+            coords.append((lon, lat))
+            if inside_window(lat, lon):
+                any_inside = True
+        if len(coords) < 2 or not any_inside:
+            return
+        # A row that runs out of the window is kept whole: the normaliser clips
+        # it to the area when it turns the line into points.
+        self.rows.append({
+            "osm_id": way.id,
+            "coords": round_coords(coords),
+            "leaf_type": tags.get("leaf_type"),
+            "height": tags.get("height"),
+        })
 
     def relation(self, rel) -> None:
         pass
@@ -584,16 +624,24 @@ def main() -> int:
           f"empty {relation_stats['empty']:,}; "
           f"missing node locations: {wc.missing_locations:,}) in {time.time() - t1:.1f}s")
 
-    # pass C вЂ” trees
+    # pass C — trees and tree rows
     t2 = time.time()
     tc = TreeCollector()
-    fp = osmium.FileProcessor(str(pbf)).with_filter(
-        osmium.filter.TagFilter(("natural", "tree"))
+    fp = (
+        osmium.FileProcessor(str(pbf))
+        .with_locations("flex_mem")
+        .with_filter(osmium.filter.TagFilter(("natural", "tree"), ("natural", "tree_row")))
     )
     for obj in fp:
         if isinstance(obj, osmium.osm.Node):
             tc.node(obj)
-    print(f"[pass C] {len(tc.trees):,} mapped trees in {time.time() - t2:.1f}s")
+        elif isinstance(obj, osmium.osm.Way):
+            tc.way(obj)
+    row_km = sum(
+        _tree_row_length_m(row["coords"]) for row in tc.rows if len(row["coords"]) >= 2
+    ) / 1e3
+    print(f"[pass C] {len(tc.trees):,} mapped trees, {len(tc.rows):,} tree rows "
+          f"(~{row_km:.1f} km) in {time.time() - t2:.1f}s")
 
     # pass D вЂ” non-building attractions (ferris wheels)
     t3 = time.time()
@@ -635,6 +683,7 @@ def main() -> int:
         "crossings": sum(1 for f in kept if f["kind"] == "crossing"),
         "transit_stops": sum(1 for f in kept if f["kind"] == "transit_stop"),
         "trees": len(tc.trees),
+        "tree_rows": len(tc.rows),
     }
 
     doc = {
@@ -659,7 +708,7 @@ def main() -> int:
     with out.open("w", encoding="utf-8") as fh:
         json.dump(doc, fh, ensure_ascii=False, separators=(",", ":"))
     with trees_out.open("w", encoding="utf-8") as fh:
-        json.dump({"trees": tc.trees}, fh, ensure_ascii=False, separators=(",", ":"))
+        json.dump({"trees": tc.trees, "rows": tc.rows}, fh, ensure_ascii=False, separators=(",", ":"))
     print(f"Wrote {out.name} ({out.stat().st_size / 1e6:.2f} MB) and {trees_out.name}")
     print(f"Counts: {counts}")
     print(f"Total time: {time.time() - t0:.1f}s")

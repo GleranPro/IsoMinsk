@@ -41,8 +41,12 @@ export const TREE_FULL_MAX = 160;
 export const TREE_LOD_MAX = 320;
 export const TREE_SIMPLE_MAX = 600;
 
-/** Hard safety cap so a pathological tile cannot explode the geometry. */
-const MAX_TREES_PER_TILE = 4000;
+/**
+ * Hard safety cap so a pathological tile cannot explode the geometry. Mirrors
+ * `MAX_TREES_PER_TILE` in scripts/normalize/trees.py, which thins tiles before
+ * they get here; the densest city tile holds ~12 200 trees at full density.
+ */
+const MAX_TREES_PER_TILE = 16000;
 
 const MIN_TREE_HEIGHT_M = 2;
 const MAX_TREE_HEIGHT_M = 40;

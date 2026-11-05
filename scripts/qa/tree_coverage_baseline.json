@@ -1,0 +1,907 @@
+{
+ "payload": "0.4.2",
+ "date": "2026-11-05",
+ "total": {
+  "trees": 140000,
+  "mapped": 2427,
+  "heuristic": 137573,
+  "triangles": 1603664,
+  "max_tile_triangles": 48000,
+  "max_tile_trees": 12657,
+  "client_dropped": 21575
+ },
+ "classes": {
+  "forest/wood": {
+   "polygons": 1120,
+   "area_ha": 1112.9,
+   "raw_mapped": 90,
+   "mapped": 65,
+   "heuristic": 85370,
+   "empty_over_02ha": 295
+  },
+  "park": {
+   "polygons": 200,
+   "area_ha": 1549.6,
+   "raw_mapped": 795,
+   "mapped": 626,
+   "heuristic": 78817,
+   "empty_over_02ha": 83
+  },
+  "cemetery": {
+   "polygons": 12,
+   "area_ha": 31.1,
+   "raw_mapped": 12,
+   "mapped": 6,
+   "heuristic": 195,
+   "empty_over_02ha": 8
+  },
+  "recreation_ground": {
+   "polygons": 48,
+   "area_ha": 15.3,
+   "raw_mapped": 7,
+   "mapped": 7,
+   "heuristic": 14,
+   "empty_over_02ha": 8
+  },
+  "garden": {
+   "polygons": 32,
+   "area_ha": 100.6,
+   "raw_mapped": 3,
+   "mapped": 3,
+   "heuristic": 0,
+   "empty_over_02ha": 15
+  }
+ },
+ "places": {
+  "w23554339": {
+   "mapped": 7,
+   "heuristic": 1297,
+   "raw_mapped": 7
+  },
+  "w23554990": {
+   "mapped": 0,
+   "heuristic": 403,
+   "raw_mapped": 0
+  },
+  "w23557064": {
+   "mapped": 0,
+   "heuristic": 159,
+   "raw_mapped": 0
+  },
+  "w23558822": {
+   "mapped": 1,
+   "heuristic": 2429,
+   "raw_mapped": 1
+  },
+  "w23558836": {
+   "mapped": 0,
+   "heuristic": 153,
+   "raw_mapped": 0
+  },
+  "w23585757": {
+   "mapped": 0,
+   "heuristic": 116,
+   "raw_mapped": 0
+  },
+  "w23586619": {
+   "mapped": 0,
+   "heuristic": 349,
+   "raw_mapped": 0
+  },
+  "w23586637": {
+   "mapped": 5,
+   "heuristic": 0,
+   "raw_mapped": 11
+  },
+  "w23973853": {
+   "mapped": 0,
+   "heuristic": 3302,
+   "raw_mapped": 0
+  },
+  "w25377355": {
+   "mapped": 0,
+   "heuristic": 853,
+   "raw_mapped": 0
+  },
+  "w25867405": {
+   "mapped": 3,
+   "heuristic": 55,
+   "raw_mapped": 5
+  },
+  "w27135507": {
+   "mapped": 0,
+   "heuristic": 196,
+   "raw_mapped": 0
+  },
+  "w30182591": {
+   "mapped": 3,
+   "heuristic": 240,
+   "raw_mapped": 4
+  },
+  "w30951233": {
+   "mapped": 0,
+   "heuristic": 4425,
+   "raw_mapped": 0
+  },
+  "w34482472": {
+   "mapped": 0,
+   "heuristic": 102,
+   "raw_mapped": 0
+  },
+  "w36129498": {
+   "mapped": 0,
+   "heuristic": 105,
+   "raw_mapped": 0
+  },
+  "w39428317": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w39428442": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w41179005": {
+   "mapped": 0,
+   "heuristic": 449,
+   "raw_mapped": 0
+  },
+  "w41181176": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w41181177": {
+   "mapped": 0,
+   "heuristic": 122,
+   "raw_mapped": 0
+  },
+  "w41181179": {
+   "mapped": 0,
+   "heuristic": 135,
+   "raw_mapped": 0
+  },
+  "w41181295": {
+   "mapped": 1,
+   "heuristic": 154,
+   "raw_mapped": 1
+  },
+  "w41386253": {
+   "mapped": 8,
+   "heuristic": 321,
+   "raw_mapped": 8
+  },
+  "w42329118": {
+   "mapped": 0,
+   "heuristic": 179,
+   "raw_mapped": 0
+  },
+  "w42466290": {
+   "mapped": 0,
+   "heuristic": 79,
+   "raw_mapped": 0
+  },
+  "w43065734": {
+   "mapped": 0,
+   "heuristic": 29,
+   "raw_mapped": 0
+  },
+  "w46387750": {
+   "mapped": 0,
+   "heuristic": 189,
+   "raw_mapped": 0
+  },
+  "w46387753": {
+   "mapped": 0,
+   "heuristic": 129,
+   "raw_mapped": 0
+  },
+  "w46402805": {
+   "mapped": 0,
+   "heuristic": 363,
+   "raw_mapped": 0
+  },
+  "w61750189": {
+   "mapped": 0,
+   "heuristic": 563,
+   "raw_mapped": 0
+  },
+  "w64192856": {
+   "mapped": 0,
+   "heuristic": 259,
+   "raw_mapped": 0
+  },
+  "w66832236": {
+   "mapped": 0,
+   "heuristic": 418,
+   "raw_mapped": 0
+  },
+  "w80243457": {
+   "mapped": 6,
+   "heuristic": 1636,
+   "raw_mapped": 6
+  },
+  "w82464354": {
+   "mapped": 0,
+   "heuristic": 13,
+   "raw_mapped": 0
+  },
+  "w85666957": {
+   "mapped": 19,
+   "heuristic": 585,
+   "raw_mapped": 19
+  },
+  "w85693965": {
+   "mapped": 5,
+   "heuristic": 2552,
+   "raw_mapped": 5
+  },
+  "w95616800": {
+   "mapped": 6,
+   "heuristic": 742,
+   "raw_mapped": 7
+  },
+  "w99871532": {
+   "mapped": 16,
+   "heuristic": 204,
+   "raw_mapped": 19
+  },
+  "w99875677": {
+   "mapped": 0,
+   "heuristic": 112,
+   "raw_mapped": 0
+  },
+  "w99876761": {
+   "mapped": 0,
+   "heuristic": 1118,
+   "raw_mapped": 0
+  },
+  "w99877375": {
+   "mapped": 0,
+   "heuristic": 1038,
+   "raw_mapped": 0
+  },
+  "w99877866": {
+   "mapped": 3,
+   "heuristic": 671,
+   "raw_mapped": 4
+  },
+  "w99881325": {
+   "mapped": 51,
+   "heuristic": 20345,
+   "raw_mapped": 53
+  },
+  "w99883134": {
+   "mapped": 0,
+   "heuristic": 131,
+   "raw_mapped": 0
+  },
+  "w99883885": {
+   "mapped": 0,
+   "heuristic": 158,
+   "raw_mapped": 0
+  },
+  "w99884355": {
+   "mapped": 0,
+   "heuristic": 706,
+   "raw_mapped": 0
+  },
+  "w99885181": {
+   "mapped": 0,
+   "heuristic": 885,
+   "raw_mapped": 0
+  },
+  "w99886657": {
+   "mapped": 0,
+   "heuristic": 173,
+   "raw_mapped": 0
+  },
+  "w99886662": {
+   "mapped": 0,
+   "heuristic": 255,
+   "raw_mapped": 0
+  },
+  "w100139141": {
+   "mapped": 24,
+   "heuristic": 64,
+   "raw_mapped": 26
+  },
+  "w100144265": {
+   "mapped": 0,
+   "heuristic": 2145,
+   "raw_mapped": 0
+  },
+  "w100144576": {
+   "mapped": 0,
+   "heuristic": 410,
+   "raw_mapped": 0
+  },
+  "w101783526": {
+   "mapped": 0,
+   "heuristic": 101,
+   "raw_mapped": 0
+  },
+  "w101783862": {
+   "mapped": 0,
+   "heuristic": 209,
+   "raw_mapped": 0
+  },
+  "w101784050": {
+   "mapped": 0,
+   "heuristic": 83,
+   "raw_mapped": 0
+  },
+  "w101784051": {
+   "mapped": 0,
+   "heuristic": 13,
+   "raw_mapped": 0
+  },
+  "w101784445": {
+   "mapped": 0,
+   "heuristic": 47,
+   "raw_mapped": 0
+  },
+  "w101785316": {
+   "mapped": 0,
+   "heuristic": 146,
+   "raw_mapped": 0
+  },
+  "w102306995": {
+   "mapped": 0,
+   "heuristic": 58,
+   "raw_mapped": 0
+  },
+  "w102311586": {
+   "mapped": 9,
+   "heuristic": 240,
+   "raw_mapped": 9
+  },
+  "w107747929": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 1
+  },
+  "w112761003": {
+   "mapped": 0,
+   "heuristic": 183,
+   "raw_mapped": 0
+  },
+  "w115713504": {
+   "mapped": 0,
+   "heuristic": 486,
+   "raw_mapped": 0
+  },
+  "w144310151": {
+   "mapped": 0,
+   "heuristic": 334,
+   "raw_mapped": 0
+  },
+  "w167405369": {
+   "mapped": 1,
+   "heuristic": 34,
+   "raw_mapped": 1
+  },
+  "w168686337": {
+   "mapped": 3,
+   "heuristic": 319,
+   "raw_mapped": 3
+  },
+  "w172615283": {
+   "mapped": 0,
+   "heuristic": 1596,
+   "raw_mapped": 0
+  },
+  "w173141246": {
+   "mapped": 1,
+   "heuristic": 3009,
+   "raw_mapped": 1
+  },
+  "w173144420": {
+   "mapped": 22,
+   "heuristic": 1473,
+   "raw_mapped": 22
+  },
+  "w173830769": {
+   "mapped": 4,
+   "heuristic": 10427,
+   "raw_mapped": 5
+  },
+  "w178179368": {
+   "mapped": 0,
+   "heuristic": 222,
+   "raw_mapped": 0
+  },
+  "w194185323": {
+   "mapped": 1,
+   "heuristic": 0,
+   "raw_mapped": 1
+  },
+  "w206516350": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w244053458": {
+   "mapped": 36,
+   "heuristic": 75,
+   "raw_mapped": 86
+  },
+  "w245834861": {
+   "mapped": 0,
+   "heuristic": 227,
+   "raw_mapped": 0
+  },
+  "w256078918": {
+   "mapped": 6,
+   "heuristic": 95,
+   "raw_mapped": 6
+  },
+  "w256756113": {
+   "mapped": 2,
+   "heuristic": 0,
+   "raw_mapped": 2
+  },
+  "w260749529": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w276072092": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w294007929": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w303065799": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w305118621": {
+   "mapped": 1,
+   "heuristic": 0,
+   "raw_mapped": 1
+  },
+  "w321301072": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w335326413": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w385096018": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w387307838": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w387307839": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w404070811": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w426295339": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w464722322": {
+   "mapped": 0,
+   "heuristic": 169,
+   "raw_mapped": 0
+  },
+  "w469113370": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w476890170": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w501231562": {
+   "mapped": 8,
+   "heuristic": 0,
+   "raw_mapped": 10
+  },
+  "w503424089": {
+   "mapped": 4,
+   "heuristic": 0,
+   "raw_mapped": 4
+  },
+  "w526180349": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w541971140": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w547236793": {
+   "mapped": 53,
+   "heuristic": 6,
+   "raw_mapped": 54
+  },
+  "w549356028": {
+   "mapped": 17,
+   "heuristic": 0,
+   "raw_mapped": 17
+  },
+  "w550454929": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w551728865": {
+   "mapped": 12,
+   "heuristic": 9,
+   "raw_mapped": 12
+  },
+  "w554108106": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w576853650": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w602166015": {
+   "mapped": 0,
+   "heuristic": 202,
+   "raw_mapped": 0
+  },
+  "w602166019": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w602166020": {
+   "mapped": 4,
+   "heuristic": 0,
+   "raw_mapped": 4
+  },
+  "w605670717": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w607422993": {
+   "mapped": 1,
+   "heuristic": 7,
+   "raw_mapped": 2
+  },
+  "w607422994": {
+   "mapped": 0,
+   "heuristic": 90,
+   "raw_mapped": 0
+  },
+  "w607422995": {
+   "mapped": 0,
+   "heuristic": 162,
+   "raw_mapped": 0
+  },
+  "w607422998": {
+   "mapped": 11,
+   "heuristic": 8,
+   "raw_mapped": 12
+  },
+  "w653246662": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w653247011": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w653303653": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w653304354": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w653338120": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w653343295": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w653511089": {
+   "mapped": 0,
+   "heuristic": 4,
+   "raw_mapped": 0
+  },
+  "w654207173": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w689138689": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w689138698": {
+   "mapped": 2,
+   "heuristic": 0,
+   "raw_mapped": 2
+  },
+  "w689164356": {
+   "mapped": 0,
+   "heuristic": 58,
+   "raw_mapped": 0
+  },
+  "w689164358": {
+   "mapped": 0,
+   "heuristic": 5,
+   "raw_mapped": 0
+  },
+  "w690555696": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w715431693": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w715431694": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w847909646": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w847909647": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w847909649": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w868135784": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w986263837": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w986263858": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w991966409": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w1143706656": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w1181754845": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w1237761790": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w1237761791": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w1309486884": {
+   "mapped": 0,
+   "heuristic": 122,
+   "raw_mapped": 0
+  },
+  "w1312689109": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w1455902799": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "w1504557599": {
+   "mapped": 32,
+   "heuristic": 0,
+   "raw_mapped": 44
+  },
+  "w1517884499": {
+   "mapped": 14,
+   "heuristic": 0,
+   "raw_mapped": 26
+  },
+  "r222265": {
+   "mapped": 2,
+   "heuristic": 0,
+   "raw_mapped": 2
+  },
+  "r3801160": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r5696921": {
+   "mapped": 3,
+   "heuristic": 0,
+   "raw_mapped": 3
+  },
+  "r6661315": {
+   "mapped": 5,
+   "heuristic": 44,
+   "raw_mapped": 5
+  },
+  "r6993221": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r7311395": {
+   "mapped": 10,
+   "heuristic": 0,
+   "raw_mapped": 10
+  },
+  "r8410919": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r8432410": {
+   "mapped": 13,
+   "heuristic": 53,
+   "raw_mapped": 13
+  },
+  "r8433815": {
+   "mapped": 73,
+   "heuristic": 0,
+   "raw_mapped": 86
+  },
+  "r8975495": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r9576974": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r9576975": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r9577158": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r9577160": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r9577161": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r9577162": {
+   "mapped": 5,
+   "heuristic": 0,
+   "raw_mapped": 5
+  },
+  "r9577334": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r9577335": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r10750311": {
+   "mapped": 95,
+   "heuristic": 6344,
+   "raw_mapped": 110
+  },
+  "r11630343": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r12328571": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r14531592": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r14605047": {
+   "mapped": 4,
+   "heuristic": 0,
+   "raw_mapped": 4
+  },
+  "r14620332": {
+   "mapped": 10,
+   "heuristic": 0,
+   "raw_mapped": 10
+  },
+  "r14753807": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r15326935": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 0
+  },
+  "r18652352": {
+   "mapped": 0,
+   "heuristic": 498,
+   "raw_mapped": 0
+  },
+  "r18796687": {
+   "mapped": 0,
+   "heuristic": 0,
+   "raw_mapped": 1
+  }
+ }
+}

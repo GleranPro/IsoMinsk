@@ -73,6 +73,7 @@ from geo_config import (  # noqa: E402
 )
 from road_network import build_road_network  # noqa: E402
 from bridge_decks import bridge_decks, stroke_footprint  # noqa: E402
+from trees import build_trees  # noqa: E402
 from ground_strokes import (  # noqa: E402
     assign_fills_to_tiles,
     carriageway_closing,
@@ -860,6 +861,12 @@ def main() -> int:
                         help="pilot (1.6 km central area) or city (12 km belt)")
     parser.add_argument("--raw", default=None)
     parser.add_argument("--trees-raw", default=None)
+    parser.add_argument("--max-trees", type=int, default=None,
+                        help="city-wide safety cap on trees (default 600000 city / 90000 pilot)")
+    parser.add_argument("--tree-triangle-budget", type=int, default=None,
+                        help="optional tiered tree-triangle budget (default: off; 0.4.2 used 1603664)")
+    parser.add_argument("--max-trees-per-tile", type=int, default=None,
+                        help="per-tile tree cap (default trees.MAX_TREES_PER_TILE, mirrors treeMeshes.ts)")
     parser.add_argument("--out", default=None)
     parser.add_argument("--tiles-dir", default=None)
     parser.add_argument("--tile-size", type=float, default=None)
@@ -886,8 +893,8 @@ def main() -> int:
     )
     tile_size = args.tile_size if args.tile_size else (CITY_TILE_SIZE_M if is_city else TILE_SIZE_M)
     pilot_size = args.pilot_size if args.pilot_size else (CITY_SIZE_M if is_city else PILOT_SIZE_M)
-    # city has ~40x the green area; cap the tree payload deterministically
-    max_total_trees = 140000 if is_city else 90000
+    # Full density (B-1): the cap is only a safety net; the city needs ~317 000.
+    max_total_trees = args.max_trees or (600000 if is_city else 90000)
 
     if not raw_path.exists():
         print(f"ERROR: raw data not found: {raw_path}\n"
@@ -1632,42 +1639,37 @@ def main() -> int:
     print(f"Ground surfaces: {len(surface_features):,}")
 
     # --- trees ------------------------------------------------------------
-    import random
-
-    trees: list[dict] = []
+    # Placement lives in scripts/normalize/trees.py (payload 0.4.3): the pure
+    # functions there are unit-tested on synthetic data in
+    # scripts/normalize/tests/test_trees.py. This block only loads the input,
+    # builds the exclusion geometry and reports statistics. W4-W6 (disjoint
+    # vegetation zones, cemetery grid, budget scale and per-tile/triangle caps)
+    # all live in the module.
+    tree_doc: dict = {}
     if trees_raw_path.exists():
         with trees_raw_path.open(encoding="utf-8") as fh:
             tree_doc = json.load(fh)
-        for tree in tree_doc.get("trees", []):
-            x, y = to_local(tree["lon"], tree["lat"])
-            if not (-half <= x <= half and -half <= y <= half):
-                continue
-            seed = int(tree.get("osm_id", 0)) % 1000 / 1000.0
-            height = parse_number(tree.get("height"))
-            if height is None or not (2 <= height <= 40):
-                height = 7.0 + seed * 8.0
-            crown = parse_number(tree.get("crown"))
-            radius = crown / 2 if crown and 0.5 <= crown <= 25 else height * 0.32
-            trees.append({
-                "x": round(x, 2),
-                "y": round(y, 2),
-                "height": round(height, 2),
-                "radius": round(radius, 2),
-                "variation": round(seed, 3),
-                "mapped": True,
-            })
-        print(f"Mapped trees: {len(trees):,}")
+        print(f"Mapped tree input: {len(tree_doc.get('trees', [])):,} points, "
+              f"{len(tree_doc.get('rows', [])):,} rows")
     else:
         warnings.append("Mapped tree data missing (data/interim/minsk_trees.json).")
 
-    # deterministic vegetation in suitable land-use polygons
-    rng = random.Random(20261027)
+    # Exclusion masks. Mapped trees (nodes and tree rows) are authoritative and
+    # are dropped only on hard surfaces: buildings, water, rail and the
+    # carriageway (W3). Heuristic trees stay clear of every paved / open
+    # surface, as before.
+    hard_mask_geoms: list[Polygon] = []
+    soft_mask_geoms: list[Polygon] = []
 
-    # --- exclusion masks ---------------------------------------------------
-    # Trees must never stand inside buildings, on roads/pavements, on rail
-    # tracks, in water, on pitches/plazas/construction sites. An STRtree keeps
-    # the point tests cheap even for the whole city.
-    exclude_geoms: list[Polygon] = []
+    def add_mask_geom(target: list[Polygon], geom) -> None:
+        if geom is None or geom.is_empty:
+            return
+        if not geom.is_valid:
+            geom = repair(geom)
+        for mask_piece in iter_polygons(geom):
+            if not mask_piece.is_empty:
+                target.append(mask_piece)
+
     for building in buildings:
         for volume in building["volumes"]:
             footprint = volume["footprint"]
@@ -1675,32 +1677,58 @@ def main() -> int:
                 poly = Polygon(footprint[0], [Polygon(ring).exterior.coords for ring in footprint[1:]])
             except Exception:
                 continue
-            if not poly.is_empty:
-                exclude_geoms.append(poly)
-    if road_result["drivable_geom"] is None:
-        # No vector partition: the stroke footprints (carriageway + kerb +
-        # pavement, path widths) keep trees off roads; no union needed for an
-        # STRtree point query.
+            add_mask_geom(hard_mask_geoms, poly)
+            add_mask_geom(soft_mask_geoms, poly)
+
+    drivable_geom = road_result["drivable_geom"]
+    paving_geom = road_result["paving_geom"]
+    add_mask_geom(hard_mask_geoms, drivable_geom)
+    add_mask_geom(soft_mask_geoms, drivable_geom)
+    add_mask_geom(soft_mask_geoms, paving_geom)
+    if drivable_geom is None:
+        # No vector partition: derive the carriageway band from the road
+        # strokes themselves (sidewalks and pavements are not hard surfaces).
         for stroke in ground_strokes:
             try:
-                exclude_geoms.append(stroke_footprint(stroke))
+                footprint = stroke_footprint(stroke)
             except Exception:
                 continue
-    for road_geom in (road_result["drivable_geom"], road_result["paving_geom"]):
-        if road_geom is None or road_geom.is_empty:
-            continue
-        if not road_geom.is_valid:
-            road_geom = repair(road_geom)
-        if road_geom is not None and not road_geom.is_empty:
-            exclude_geoms.append(road_geom)
-    for surface in surface_features:
-        if surface["kind"] in {"water", "river", "pitch", "plaza", "construction", "railway", "sand"}:
+            add_mask_geom(soft_mask_geoms, footprint)
+            if stroke.get("k") != "road" or len(stroke.get("p") or []) < 4:
+                continue
             try:
-                poly = Polygon(surface["polygon"][0], [Polygon(ring).exterior.coords for ring in surface["polygon"][1:]])
+                line = LineString(list(zip(stroke["p"][0::2], stroke["p"][1::2])))
+                carriageway = line.buffer(float(stroke["w"]) / 2.0, cap_style="flat")
             except Exception:
                 continue
-            if not poly.is_empty:
-                exclude_geoms.append(poly)
+            add_mask_geom(hard_mask_geoms, carriageway)
+
+    for surface in surface_features:
+        kind = surface["kind"]
+        if kind not in {"water", "river", "pitch", "plaza", "construction", "railway", "sand"}:
+            continue
+        try:
+            poly = Polygon(surface["polygon"][0], [Polygon(ring).exterior.coords for ring in surface["polygon"][1:]])
+        except Exception:
+            continue
+        add_mask_geom(soft_mask_geoms, poly)
+        if kind in {"water", "river", "railway"}:
+            add_mask_geom(hard_mask_geoms, poly)
+
+    # Rail centrelines are rails too: mapped trees do not stand on them, and
+    # heuristic trees keep the wider margin as before.
+    for piece in rail_pieces:
+        centerline = piece.get("centerline") or []
+        if len(centerline) < 4:
+            continue
+        try:
+            line = LineString(list(zip(centerline[0::2], centerline[1::2])))
+            band = line.buffer(float(piece["width"]) / 2.0, cap_style="flat")
+        except Exception:
+            continue
+        add_mask_geom(hard_mask_geoms, band)
+        add_mask_geom(soft_mask_geoms, band)
+
     # Keep the ground under a park attraction clear of heuristic trees: the real
     # ferris wheels stand on an open plaza, and tree canopies would hide them.
     for attraction in attractions:
@@ -1710,108 +1738,58 @@ def main() -> int:
             )
         except Exception:
             continue
-        if not clearing.is_empty:
-            exclude_geoms.append(clearing)
-    exclusion_tree = STRtree(exclude_geoms) if exclude_geoms else None
+        add_mask_geom(soft_mask_geoms, clearing)
 
-    def vegetation_blocked(x: float, y: float, margin: float = 2.5) -> bool:
-        if exclusion_tree is None:
-            return False
-        point = Point(x, y)
-        for index in exclusion_tree.query(point, predicate="dwithin", distance=margin):
-            return True
-        return False
-
-    # Mapped OSM trees are authoritative unless they land on a hard surface
-    # (bad mapping) вЂ” those are dropped instead of being drawn inside a wall.
-    mapped_kept = 0
-    mapped_dropped = 0
-    for tree in trees:
-        if vegetation_blocked(tree["x"], tree["y"], 1.5):
-            mapped_dropped += 1
-            continue
-        mapped_kept += 1
-    trees = [tree for tree in trees if not vegetation_blocked(tree["x"], tree["y"], 1.5)] if mapped_dropped else trees
-    print(f"Mapped trees: {mapped_kept:,} kept, {mapped_dropped:,} dropped (inside buildings/roads/water)")
-
-    # Density per land-use class (one tree per N square metres) and the minimum
-    # polygon area that justifies vegetation at all.
-    TREE_DENSITY = {"forest": 55.0, "park": 125.0, "scrub": 180.0, "grass": 650.0}
-    MIN_POLY_AREA = {"forest": 180.0, "park": 220.0, "scrub": 260.0, "grass": 900.0}
-    TREE_HEIGHT = {
-        "forest": (9.0, 17.0),
-        "park": (6.5, 13.5),
-        "scrub": (4.0, 9.0),
-        "grass": (5.5, 11.0),
-    }
-    MAX_TOTAL_TREES = max_total_trees
-    placed = 0
-    skipped_narrow = 0
+    tree_surfaces: list[tuple[str, Polygon]] = []
     for surface in surface_features:
-        kind = surface["kind"]
-        if kind not in TREE_DENSITY:
-            continue
         try:
             poly = Polygon(surface["polygon"][0], [Polygon(ring).exterior.coords for ring in surface["polygon"][1:]])
         except Exception:
             continue
-        if not poly.is_valid:
-            poly = repair(poly)
-            if poly is None:
-                continue
-        for piece in iter_polygons(poly):
-            if piece.area < MIN_POLY_AREA[kind]:
-                continue
-            # reject narrow strips: road medians, verges, river banks
-            rect = piece.minimum_rotated_rectangle
-            if rect.geom_type == "Polygon" and len(rect.exterior.coords) >= 5:
-                sides = [
-                    math.dist(rect.exterior.coords[i], rect.exterior.coords[i + 1])
-                    for i in range(4)
-                ]
-                if min(sides) < 7.0:
-                    skipped_narrow += 1
-                    continue
-            minx, miny, maxx, maxy = piece.bounds
-            target = int(piece.area / TREE_DENSITY[kind])
-            if target <= 0:
-                continue
-            placed_here = 0
-            attempts = 0
-            max_attempts = target * 14 + 20
-            low, high = TREE_HEIGHT[kind]
-            while placed_here < target and attempts < max_attempts:
-                attempts += 1
-                x = rng.uniform(minx, maxx)
-                y = rng.uniform(miny, maxy)
-                if not piece.contains(Point(x, y)):
-                    continue
-                if vegetation_blocked(x, y, 3.0):
-                    continue
-                seed = rng.random()
-                height = low + seed * (high - low)
-                trees.append({
-                    "x": round(x, 2),
-                    "y": round(y, 2),
-                    "height": round(height, 2),
-                    "radius": round(height * (0.26 + 0.12 * seed), 2),
-                    "variation": round(seed, 3),
-                    "mapped": False,
-                })
-                placed += 1
-                placed_here += 1
-                if len(trees) >= MAX_TOTAL_TREES:
-                    break
-            if len(trees) >= MAX_TOTAL_TREES:
-                break
-        if len(trees) >= MAX_TOTAL_TREES:
-            break
-    stats["trees_mapped"] = sum(1 for tree in trees if tree["mapped"])
-    stats["trees_heuristic"] = sum(1 for tree in trees if not tree["mapped"])
-    stats["trees_narrow_skipped"] = skipped_narrow
+        if not poly.is_empty:
+            tree_surfaces.append((surface["kind"], poly))
+
+    trees, tree_stats = build_trees(
+        surfaces=tree_surfaces,
+        mapped_raw=tree_doc.get("trees", []),
+        row_raw=tree_doc.get("rows", []),
+        hard_masks=hard_mask_geoms,
+        soft_masks=soft_mask_geoms,
+        to_local=to_local,
+        half=half,
+        max_total_trees=max_total_trees,
+        tile_size=tile_size,
+        **({"triangle_budget": args.tree_triangle_budget} if args.tree_triangle_budget else {}),
+        **({"max_trees_per_tile": args.max_trees_per_tile} if args.max_trees_per_tile else {}),
+    )
+    # `stats` is a Counter: only numbers merge (the triangle budget is None
+    # when it is off).
+    stats.update({
+        key: value for key, value in tree_stats.items()
+        if isinstance(value, (int, float))
+    })
+    print(f"Mapped trees: {tree_stats['trees_mapped_points']:,} points and "
+          f"{tree_stats['trees_mapped_rows']:,} tree-row points kept "
+          f"({tree_stats['trees_mapped_points_dropped']:,} points + "
+          f"{tree_stats['trees_mapped_rows_dropped_mask']:,} row points on hard surfaces, "
+          f"{tree_stats['trees_mapped_rows_dropped_duplicate']:,} row duplicates dropped)")
+    print(f"Vegetation: {tree_stats['trees_zones']:,} zone(s), "
+          f"{tree_stats['trees_narrow_skipped']:,} narrow / "
+          f"{tree_stats['trees_zones_skipped_small']:,} too-small pieces skipped, "
+          f"budget scale {tree_stats['trees_budget_scale']:.3f} of "
+          f"{tree_stats['trees_budget_target_total']:,} target(s); "
+          f"{len(hard_mask_geoms):,} hard / {len(soft_mask_geoms):,} exclusion polygons")
     print(f"Trees: {len(trees):,} ({stats['trees_mapped']:,} mapped, "
-          f"{stats['trees_heuristic']:,} heuristic, {skipped_narrow:,} narrow strips skipped, "
-          f"{len(exclude_geoms):,} exclusion polygons)")
+          f"{stats['trees_heuristic']:,} heuristic; "
+          f"{tree_stats['trees_tile_thinned']:,} thinned by the per-tile cap, "
+          f"triangle scale {tree_stats['trees_triangle_scale']:.3f}, "
+          f"{tree_stats['trees_triangle_thinned']:,} thinned by the triangle budget)")
+    print("Trees per class: " + ", ".join(
+        f"{kind} {count:,}" for kind, count in tree_stats["trees_heuristic_by_class"].items()
+    ))
+    print(f"Trees: max {tree_stats['trees_max_per_tile']:,} per tile, "
+          f"{tree_stats['trees_triangles']:,} triangles total, "
+          f"max {tree_stats['trees_max_triangles_per_tile']:,} per tile")
 
     # --- tile assignment --------------------------------------------------
     min_tx = math.floor(-half / tile_size)
@@ -2163,7 +2141,7 @@ def main() -> int:
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
     manifest = {
-        "version": "0.4.2",
+        "version": "0.4.3",
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
         "epsg": EPSG_UTM35N,
         "originUtm": [round(ORIGIN_X, 3), round(ORIGIN_Y, 3)],
@@ -2283,7 +2261,22 @@ def main() -> int:
             "crossings": len(crossing_features),
             "roadNormalization": road_stats,
             "treesMapped": stats["trees_mapped"],
+            "treesMappedPoints": stats["trees_mapped_points"],
+            "treesMappedRows": stats["trees_mapped_rows"],
             "treesHeuristic": stats["trees_heuristic"],
+            "treesBudgetScale": tree_stats["trees_budget_scale"],
+            "treesBudgetTargetTotal": tree_stats["trees_budget_target_total"],
+            "treesHeuristicByClass": tree_stats["trees_heuristic_by_class"],
+            "treesZones": tree_stats["trees_zones"],
+            "treesZonesByClass": tree_stats["trees_zones_by_class"],
+            "treesZoneAreaM2ByClass": tree_stats["trees_zone_area_m2_by_class"],
+            "treesTileThinned": tree_stats["trees_tile_thinned"],
+            "treesTilesWithTrees": tree_stats["trees_tiles_with_trees"],
+            "treesMaxPerTile": tree_stats["trees_max_per_tile"],
+            "treesTriangles": tree_stats["trees_triangles"],
+            "treesMaxTrianglesPerTile": tree_stats["trees_max_triangles_per_tile"],
+            "treesTriangleScale": tree_stats["trees_triangle_scale"],
+            "treesTriangleThinned": tree_stats["trees_triangle_thinned"],
             "attractions": len(attractions),
         },
         "externalHeightData": {
