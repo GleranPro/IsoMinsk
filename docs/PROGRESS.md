@@ -7,6 +7,7 @@ Original project brief: [`docs/REQUIREMENTS_ORIGINAL.md`](REQUIREMENTS_ORIGINAL.
 (verbatim). Compliance matrix and change-request log:
 [`docs/REQUIREMENTS.md`](REQUIREMENTS.md).
 Next iterations: see the [roadmap](#roadmap-next-iterations) at the bottom.
+Planned but not started work: [`docs/BACKLOG.md`](BACKLOG.md).
 
 ## Current state
 

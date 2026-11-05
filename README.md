@@ -159,6 +159,7 @@ docs/         requirements, architecture, data sources, roadmap/progress,
 See `docs/REQUIREMENTS_ORIGINAL.md` (original brief, verbatim),
 `docs/REQUIREMENTS.md` (compliance matrix and change requests),
 `docs/PROGRESS.md` for the roadmap and verified numbers,
+`docs/BACKLOG.md` for the planned work backlog,
 `docs/ROAD_NETWORK.md` for the road width/material/junction model, and
 `docs/ARCHITECTURE.md` for the coordinate conventions, tile payload schema,
 renderer pipeline and module ownership.
