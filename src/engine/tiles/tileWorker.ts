@@ -58,6 +58,7 @@ async function handleLoad(request: Extract<TileWorkerRequest, { type: 'load' }>)
       trees: request.trees,
       groundMode: request.groundMode,
       groundRes: request.groundRes,
+      groundOnly: request.groundOnly,
     });
     payload.fetchMs = fetchMs;
     if (controller.signal.aborted) {

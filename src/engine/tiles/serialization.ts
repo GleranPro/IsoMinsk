@@ -107,6 +107,8 @@ export interface TileWirePayload {
   trees: WireMesh | null;
   /** Raster ground texture (payload 0.4.0), or null for the vector ground. */
   ground?: WireGroundTexture | null;
+  /** Bridge deck tops (payload 0.4.2): textured mesh + its atlas. */
+  decks?: { mesh: WireMesh; texture: WireGroundTexture } | null;
   triangleCount: number;
   bytes: number;
   /** Worker-side timings, milliseconds. */
@@ -287,6 +289,8 @@ export interface TileWorkerLoadRequest {
   groundMode?: GroundBuildMode;
   /** Ground texel size override, metres (default: by tile size). */
   groundRes?: number;
+  /** Build only the ground texture and bridge decks (ground LOD upgrade). */
+  groundOnly?: boolean;
 }
 
 export interface TileWorkerCancelRequest {
@@ -330,6 +334,10 @@ export function collectTransferables(payload: TileWirePayload): ArrayBuffer[] {
   addMesh(payload.environment);
   addMesh(payload.trees);
   if (payload.ground?.data) buffers.push(payload.ground.data);
+  if (payload.decks) {
+    addMesh(payload.decks.mesh);
+    buffers.push(payload.decks.texture.data);
+  }
   if (payload.triangleOwner) buffers.push(payload.triangleOwner);
   return buffers;
 }
@@ -340,6 +348,7 @@ export function payloadBytes(payload: TileWirePayload): number {
     wireMeshBytes(payload.environment) +
     wireMeshBytes(payload.trees) +
     (payload.ground?.data.byteLength ?? 0) +
+    (payload.decks ? wireMeshBytes(payload.decks.mesh) + payload.decks.texture.data.byteLength : 0) +
     (payload.triangleOwner ? payload.triangleOwner.byteLength : 0)
   );
 }

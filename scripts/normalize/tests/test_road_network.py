@@ -37,7 +37,8 @@ def way(osm_id: int, coords, **tags) -> dict:
 
 
 def build(ways, crossings=None, water=None):
-    return rn.build_road_network(ways, crossings or [], PILOT, water or [])
+    # These tests cover the 0.3.0 vector partition, which is opt-in since 0.4.2.
+    return rn.build_road_network(ways, crossings or [], PILOT, water or [], legacy_partition=True)
 
 
 class WidthModelTests(unittest.TestCase):

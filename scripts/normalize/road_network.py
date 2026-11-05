@@ -471,6 +471,23 @@ class RoadWay:
         )
 
 
+def construction_class(tags: dict) -> str:
+    """Class of a ``highway=construction`` way: what is being built.
+
+    ``construction=*`` names it; without it a ``footway=*`` tag means a
+    pavement (the Independence Avenue bridge sidewalks over the Svislach are
+    mapped as ``highway=construction`` + ``footway=sidewalk`` and were drawn as
+    6.6 m carriageways). Anything else stays an anonymous road.
+    """
+    target = (tags.get("construction") or "").strip().lower()
+    target = ROAD_CLASS_NORMALISE.get(target, target)
+    if target in ROAD_WIDTH_TWO_WAY and target != "unknown":
+        return target
+    if (tags.get("footway") or "").strip():
+        return "footway"
+    return "unknown"
+
+
 def prepare_ways(ways: list[dict], pilot_rect) -> tuple[list[RoadWay], Counter]:
     """Project/validate raw ways and derive per-way width, direction, material."""
     stats = Counter()
@@ -479,6 +496,8 @@ def prepare_ways(ways: list[dict], pilot_rect) -> tuple[list[RoadWay], Counter]:
         tags = entry["tags"]
         raw_class = (tags.get("highway") or "unknown").strip().lower()
         cls = ROAD_CLASS_NORMALISE.get(raw_class, raw_class)
+        if raw_class == "construction":
+            cls = construction_class(tags)
         if cls not in ROAD_WIDTH_TWO_WAY:
             stats["skipped_class"] += 1
             continue
@@ -1191,6 +1210,7 @@ def build_road_network(
     crossing_nodes: list[dict],
     pilot_rect,
     water_areas: list[Polygon] | None = None,
+    legacy_partition: bool = False,
 ) -> dict:
     """Normalize the whole road network for one area.
 
@@ -1280,53 +1300,59 @@ def build_road_network(
     pair_info = pair_analysis(prepared)
     stats.update(pair_info["stats"])
     _lap("pair_analysis")
-    median_zones = _union(pair_info["median_strips"])
+    if legacy_partition:
+        median_zones = _union(pair_info["median_strips"])
 
-    # --- drivable surface ---------------------------------------------------
-    zones, zone_stats = material_zones(drivable_ground)
-    stats.update(zone_stats)
-    bridge_zones, bridge_zone_stats = material_zones(drivable_bridge)
-    stats.update({f"bridge_{k}": v for k, v in bridge_zone_stats.items()})
-    drivable_ground_geom = _clean(_union(way_buffers(drivable_ground)), MIN_SURFACE_AREA_M2)
-    drivable_bridge_geom = _clean(_union(way_buffers(drivable_bridge)), MIN_SURFACE_AREA_M2)
-    if not drivable_ground_geom.is_empty:
-        drivable_ground_geom = drivable_ground_geom.intersection(pilot_rect)
-    if not drivable_bridge_geom.is_empty:
-        drivable_bridge_geom = drivable_bridge_geom.intersection(pilot_rect)
-    _lap("zones+drivable_union")
+        # --- drivable surface ---------------------------------------------------
+        zones, zone_stats = material_zones(drivable_ground)
+        stats.update(zone_stats)
+        bridge_zones, bridge_zone_stats = material_zones(drivable_bridge)
+        stats.update({f"bridge_{k}": v for k, v in bridge_zone_stats.items()})
+        drivable_ground_geom = _clean(_union(way_buffers(drivable_ground)), MIN_SURFACE_AREA_M2)
+        drivable_bridge_geom = _clean(_union(way_buffers(drivable_bridge)), MIN_SURFACE_AREA_M2)
+        if not drivable_ground_geom.is_empty:
+            drivable_ground_geom = drivable_ground_geom.intersection(pilot_rect)
+        if not drivable_bridge_geom.is_empty:
+            drivable_bridge_geom = drivable_bridge_geom.intersection(pilot_rect)
+        _lap("zones+drivable_union")
 
-    # --- junction faces (graph topology) ------------------------------------
-    face_polygons: dict[str, list[Polygon]] = defaultdict(list)
-    for face in faces:
-        face_polygons[face_material(face)].append(face.polygon)
-    face_union = _union(
-        [polygon for polygons in face_polygons.values() for polygon in polygons]
-    )
-    junction_pieces: list[dict] = []
-    if not face_union.is_empty:
-        drivable_ground_geom = _union([drivable_ground_geom, face_union])
-        drivable_ground_geom = drivable_ground_geom.intersection(pilot_rect)
-        # Junction asphalt is its own surface piece family (`junction: true`):
-        # subtract it from every material zone first, then claim each face once
-        # in material-priority order so the drivable partition stays disjoint.
-        for material in list(zones):
-            zones[material] = zones[material].difference(face_union)
-        claimed = Polygon()
-        for material in sorted(face_polygons, key=lambda item: -MATERIAL_RANK.get(item, 0)):
-            own = _union(face_polygons[material]).difference(claimed)
-            claimed = _union([claimed, own])
-            own = _clean(own, MIN_SURFACE_AREA_M2)
-            for poly in _iter_polys(own):
-                if poly.is_empty or poly.area < MIN_SURFACE_AREA_M2:
-                    continue
-                junction_pieces.append({
-                    "kind": "drivable",
-                    "material": material,
-                    "bridge": False,
-                    "geom": poly,
-                    "junction": True,
-                })
-    _lap("junction_zone_integration")
+        # --- junction faces (graph topology) ------------------------------------
+        face_polygons: dict[str, list[Polygon]] = defaultdict(list)
+        for face in faces:
+            face_polygons[face_material(face)].append(face.polygon)
+        face_union = _union(
+            [polygon for polygons in face_polygons.values() for polygon in polygons]
+        )
+        junction_pieces: list[dict] = []
+        if not face_union.is_empty:
+            drivable_ground_geom = _union([drivable_ground_geom, face_union])
+            drivable_ground_geom = drivable_ground_geom.intersection(pilot_rect)
+            # Junction asphalt is its own surface piece family (`junction: true`):
+            # subtract it from every material zone first, then claim each face once
+            # in material-priority order so the drivable partition stays disjoint.
+            for material in list(zones):
+                zones[material] = zones[material].difference(face_union)
+            claimed = Polygon()
+            for material in sorted(face_polygons, key=lambda item: -MATERIAL_RANK.get(item, 0)):
+                own = _union(face_polygons[material]).difference(claimed)
+                claimed = _union([claimed, own])
+                own = _clean(own, MIN_SURFACE_AREA_M2)
+                for poly in _iter_polys(own):
+                    if poly.is_empty or poly.area < MIN_SURFACE_AREA_M2:
+                        continue
+                    junction_pieces.append({
+                        "kind": "drivable",
+                        "material": material,
+                        "bridge": False,
+                        "geom": poly,
+                        "junction": True,
+                    })
+        _lap("junction_zone_integration")
+    else:
+        # Payload 0.4.x: the raster ground needs no partition (strokes only).
+        zones, bridge_zones, junction_pieces = {}, {}, []
+        drivable_ground_geom = drivable_bridge_geom = None
+        face_union = _union([face.polygon for face in faces])
 
     junctions: list[dict] = []
     for face in faces:
@@ -1408,257 +1434,265 @@ def build_road_network(
     # not asphalt and not an emitted median) ---------------------------------
     crossings, crossing_stats = build_crossings(crossing_nodes, prepared)
     stats.update(crossing_stats)
-    medians, median_stats = median_polygons_from_zones(
-        median_zones,
-        drivable_ground_geom,
-        junction_geom.get("polygons") if junction_geom else None,
-        crossings,
-    )
-    stats.update(median_stats)
-    median_union = _union(medians)
+    if legacy_partition:
+        medians, median_stats = median_polygons_from_zones(
+            median_zones,
+            drivable_ground_geom,
+            junction_geom.get("polygons") if junction_geom else None,
+            crossings,
+        )
+        stats.update(median_stats)
+        median_union = _union(medians)
+    else:
+        medians, median_union = [], Polygon()
     _lap("crossings+medians")
 
-    # --- paving -------------------------------------------------------------
-    def sidewalk_bands(ways: list[RoadWay]) -> list:
-        """Mapped/synthetic pavements as side bands, not buffer cap rings.
+    if legacy_partition:
+        # --- paving -------------------------------------------------------------
+        def sidewalk_bands(ways: list[RoadWay]) -> list:
+            """Mapped/synthetic pavements as side bands, not buffer cap rings.
 
-        Buffer-cap corridors used to extend past the way ends and produced
-        pseudo-roads / wedges at junctions. Bands follow the carriageway edge
-        and are cut by the junction faces (through the drivable subtraction).
-        """
-        bands = []
-        for way in ways:
-            if way.cls not in SIDEWALK_CLASSES:
-                continue
-            if way.link or way.channelization or way.cls == "service":
-                continue
-            sidewalk_tag = (way.tags.get("sidewalk") or "").strip().lower()
-            if sidewalk_tag in ("no", "none", "separate"):
-                continue
-            width = (
-                _num(way.tags.get("sidewalk:width"))
-                or _num(way.tags.get("sidewalk:both:width"))
-                or SIDEWALK_DEFAULT_WIDTH_M
-            )
-            width = max(1.0, min(6.0, width))
-            if sidewalk_tag in ("left", "right"):
-                sides = (sidewalk_tag,)
-            else:
-                sides = ("both",)
-            try:
-                if sides == ("both",):
-                    outer = way.line.buffer(
-                        way.width / 2.0 + width, cap_style=2, join_style=2
-                    )
-                    inner = way.line.buffer(
-                        way.width / 2.0, cap_style=2, join_style=2
-                    )
-                    band = outer.difference(inner)
-                    if not band.is_empty:
-                        bands.append(band)
+            Buffer-cap corridors used to extend past the way ends and produced
+            pseudo-roads / wedges at junctions. Bands follow the carriageway edge
+            and are cut by the junction faces (through the drivable subtraction).
+            """
+            bands = []
+            for way in ways:
+                if way.cls not in SIDEWALK_CLASSES:
+                    continue
+                if way.link or way.channelization or way.cls == "service":
+                    continue
+                sidewalk_tag = (way.tags.get("sidewalk") or "").strip().lower()
+                if sidewalk_tag in ("no", "none", "separate"):
+                    continue
+                width = (
+                    _num(way.tags.get("sidewalk:width"))
+                    or _num(way.tags.get("sidewalk:both:width"))
+                    or SIDEWALK_DEFAULT_WIDTH_M
+                )
+                width = max(1.0, min(6.0, width))
+                if sidewalk_tag in ("left", "right"):
+                    sides = (sidewalk_tag,)
                 else:
-                    for side in sides:
-                        offset = (way.width / 2.0 + width / 2.0) * (1 if side == "left" else -1)
-                        edge_line = way.line.offset_curve(offset, join_style=2)
-                        band = edge_line.buffer(
-                            width / 2.0, cap_style=2, join_style=2
+                    sides = ("both",)
+                try:
+                    if sides == ("both",):
+                        outer = way.line.buffer(
+                            way.width / 2.0 + width, cap_style=2, join_style=2
                         )
+                        inner = way.line.buffer(
+                            way.width / 2.0, cap_style=2, join_style=2
+                        )
+                        band = outer.difference(inner)
                         if not band.is_empty:
                             bands.append(band)
-            except Exception:
-                continue
-        return bands
+                    else:
+                        for side in sides:
+                            offset = (way.width / 2.0 + width / 2.0) * (1 if side == "left" else -1)
+                            edge_line = way.line.offset_curve(offset, join_style=2)
+                            band = edge_line.buffer(
+                                width / 2.0, cap_style=2, join_style=2
+                            )
+                            if not band.is_empty:
+                                bands.append(band)
+                except Exception:
+                    continue
+            return bands
 
-    ground_paving_union = _union(
-        [w.line.buffer(w.width / 2.0, cap_style=2, join_style=2) for w in path_ground]
-        + sidewalk_bands(drivable_ground)
-        + [
-            way.line.buffer(min(way.width, 3.0) / 2.0, cap_style=2, join_style=2)
-            for way in channelization_ways
-        ]
-    )
-    if not ground_paving_union.is_empty:
-        # 2 cm margin: both layers are later snapped to the 1 cm payload grid
-        # independently, and a snapped paving edge could otherwise creep up to
-        # 1 cm into the asphalt (statistically ~5 m2 across the pilot). The gap
-        # sits under the kerb strip, so it is never visible.
-        ground_paving_union = ground_paving_union.difference(
-            drivable_ground_geom.buffer(0.02, join_style=1)
+        ground_paving_union = _union(
+            [w.line.buffer(w.width / 2.0, cap_style=2, join_style=2) for w in path_ground]
+            + sidewalk_bands(drivable_ground)
+            + [
+                way.line.buffer(min(way.width, 3.0) / 2.0, cap_style=2, join_style=2)
+                for way in channelization_ways
+            ]
         )
-        # Keep only the median pieces that are actually emitted: a sidewalk must
-        # never fill a median slot, but a median fragment that is later dropped
-        # must not leave an empty slit between asphalt pieces either.
-        if not median_union.is_empty:
+        if not ground_paving_union.is_empty:
+            # 2 cm margin: both layers are later snapped to the 1 cm payload grid
+            # independently, and a snapped paving edge could otherwise creep up to
+            # 1 cm into the asphalt (statistically ~5 m2 across the pilot). The gap
+            # sits under the kerb strip, so it is never visible.
             ground_paving_union = ground_paving_union.difference(
-                median_union.buffer(0.02, join_style=1)
+                drivable_ground_geom.buffer(0.02, join_style=1)
             )
-        ground_paving_union = ground_paving_union.intersection(pilot_rect)
-    paving_ground = _clean(ground_paving_union, MIN_PAVING_AREA_M2)
-    _lap("paving")
-    if not paving_ground.is_empty:
-        # Close sub-decimetre slivers between paving components (measurement
-        # grid snapping can split a narrow sidewalk into two pieces). Then
-        # re-assert the asphalt/median margins so closing never eats into them.
-        paving_ground = paving_ground.buffer(0.15, join_style=2).buffer(
-            -0.15, join_style=2
-        )
-        paving_ground = paving_ground.difference(
-            drivable_ground_geom.buffer(0.02, join_style=1)
-        )
-        if not median_union.is_empty:
+            # Keep only the median pieces that are actually emitted: a sidewalk must
+            # never fill a median slot, but a median fragment that is later dropped
+            # must not leave an empty slit between asphalt pieces either.
+            if not median_union.is_empty:
+                ground_paving_union = ground_paving_union.difference(
+                    median_union.buffer(0.02, join_style=1)
+                )
+            ground_paving_union = ground_paving_union.intersection(pilot_rect)
+        paving_ground = _clean(ground_paving_union, MIN_PAVING_AREA_M2)
+        _lap("paving")
+        if not paving_ground.is_empty:
+            # Close sub-decimetre slivers between paving components (measurement
+            # grid snapping can split a narrow sidewalk into two pieces). Then
+            # re-assert the asphalt/median margins so closing never eats into them.
+            paving_ground = paving_ground.buffer(0.15, join_style=2).buffer(
+                -0.15, join_style=2
+            )
             paving_ground = paving_ground.difference(
-                median_union.buffer(0.02, join_style=1)
+                drivable_ground_geom.buffer(0.02, join_style=1)
             )
-        paving_ground = _clean(paving_ground.intersection(pilot_rect), MIN_PAVING_AREA_M2)
+            if not median_union.is_empty:
+                paving_ground = paving_ground.difference(
+                    median_union.buffer(0.02, join_style=1)
+                )
+            paving_ground = _clean(paving_ground.intersection(pilot_rect), MIN_PAVING_AREA_M2)
 
-    bridge_paving_union = _union(
-        [w.line.buffer(w.width / 2.0, cap_style=2, join_style=2) for w in path_bridge]
-        + sidewalk_bands(drivable_bridge)
-    )
-    if not bridge_paving_union.is_empty and not drivable_bridge_geom.is_empty:
-        bridge_paving_union = bridge_paving_union.difference(
-            drivable_bridge_geom.buffer(0.02, join_style=1)
+        bridge_paving_union = _union(
+            [w.line.buffer(w.width / 2.0, cap_style=2, join_style=2) for w in path_bridge]
+            + sidewalk_bands(drivable_bridge)
         )
-        bridge_paving_union = bridge_paving_union.intersection(pilot_rect)
-    paving_bridge = _clean(bridge_paving_union, MIN_PAVING_AREA_M2)
+        if not bridge_paving_union.is_empty and not drivable_bridge_geom.is_empty:
+            bridge_paving_union = bridge_paving_union.difference(
+                drivable_bridge_geom.buffer(0.02, join_style=1)
+            )
+            bridge_paving_union = bridge_paving_union.intersection(pilot_rect)
+        paving_bridge = _clean(bridge_paving_union, MIN_PAVING_AREA_M2)
 
-    # --- kerbs --------------------------------------------------------------
-    kerb_ways = [
-        w for w in drivable_ground if w.cls in KERB_CLASSES and w.material in PAVED_MATERIALS
-    ]
-    kerb = Polygon()
-    if kerb_ways and not ground_paving_union.is_empty:
-        try:
-            paved_union = _union(way_buffers(kerb_ways))
-            kerb = paved_union.buffer(0.6, join_style=1).difference(drivable_ground_geom)
-            kerb = kerb.intersection(ground_paving_union)
-        except Exception:
-            stats["kerb_failed"] += 1
-            kerb = Polygon()
-    kerb = _clean(kerb, MIN_KERB_AREA_M2).simplify(0.2, preserve_topology=True)
-    kerb = _clean(kerb, MIN_KERB_AREA_M2)
-    _lap("kerb")
+        # --- kerbs --------------------------------------------------------------
+        kerb_ways = [
+            w for w in drivable_ground if w.cls in KERB_CLASSES and w.material in PAVED_MATERIALS
+        ]
+        kerb = Polygon()
+        if kerb_ways and not ground_paving_union.is_empty:
+            try:
+                paved_union = _union(way_buffers(kerb_ways))
+                kerb = paved_union.buffer(0.6, join_style=1).difference(drivable_ground_geom)
+                kerb = kerb.intersection(ground_paving_union)
+            except Exception:
+                stats["kerb_failed"] += 1
+                kerb = Polygon()
+        kerb = _clean(kerb, MIN_KERB_AREA_M2).simplify(0.2, preserve_topology=True)
+        kerb = _clean(kerb, MIN_KERB_AREA_M2)
+        _lap("kerb")
 
-    # --- surface records ----------------------------------------------------
-    def pieces_from(geom, kind: str, material: str | None, bridge: bool) -> list[dict]:
-        # No simplification here: these pieces form an exact partition and are
-        # split per tile afterwards. Simplifying each piece independently moves
-        # shared material/kerb edges and breaks the "no overlap, no seam"
-        # invariant (measured: 2 m tile-seam gaps and drivable/paving overlaps).
-        out: list[dict] = []
-        for poly in _iter_polys(geom):
-            if poly.is_empty or poly.area < MIN_SURFACE_AREA_M2:
+        # --- surface records ----------------------------------------------------
+        def pieces_from(geom, kind: str, material: str | None, bridge: bool) -> list[dict]:
+            # No simplification here: these pieces form an exact partition and are
+            # split per tile afterwards. Simplifying each piece independently moves
+            # shared material/kerb edges and breaks the "no overlap, no seam"
+            # invariant (measured: 2 m tile-seam gaps and drivable/paving overlaps).
+            out: list[dict] = []
+            for poly in _iter_polys(geom):
+                if poly.is_empty or poly.area < MIN_SURFACE_AREA_M2:
+                    continue
+                record = {"kind": kind, "bridge": bridge, "geom": poly}
+                if material is not None:
+                    record["material"] = material
+                out.append(record)
+            return out
+
+        surfaces: list[dict] = []
+        for material, geom in zones.items():
+            clipped = geom.intersection(pilot_rect)
+            surfaces.extend(pieces_from(clipped, "drivable", material, False))
+        for material, geom in bridge_zones.items():
+            clipped = geom.intersection(pilot_rect)
+            surfaces.extend(pieces_from(clipped, "drivable", material, True))
+        surfaces.extend(pieces_from(paving_ground, "paving", None, False))
+        surfaces.extend(pieces_from(paving_bridge, "paving", None, True))
+        surfaces.extend(pieces_from(kerb, "kerb", None, False))
+        for median in medians:
+            surfaces.extend(pieces_from(median, "median", None, False))
+        surfaces.extend(junction_pieces)
+
+        # --- network records ----------------------------------------------------
+        _lap("before_network")
+        # Only drivable, actually marked road classes are needed for markings.
+        # Slip/link roads, channelization loops and service aisles get asphalt from
+        # the surface pass but no network piece: painting them like streets is what
+        # produced the reported anonymous fork at Ulyanovskaya x Lenina.
+        network: list[dict] = []
+        consumed = pair_info["consumed"]
+        skipped_unmarked = Counter()
+        for way in prepared:
+            if way.tunnel or way.kind != "road":
                 continue
-            record = {"kind": kind, "bridge": bridge, "geom": poly}
-            if material is not None:
-                record["material"] = material
-            out.append(record)
-        return out
-
-    surfaces: list[dict] = []
-    for material, geom in zones.items():
-        clipped = geom.intersection(pilot_rect)
-        surfaces.extend(pieces_from(clipped, "drivable", material, False))
-    for material, geom in bridge_zones.items():
-        clipped = geom.intersection(pilot_rect)
-        surfaces.extend(pieces_from(clipped, "drivable", material, True))
-    surfaces.extend(pieces_from(paving_ground, "paving", None, False))
-    surfaces.extend(pieces_from(paving_bridge, "paving", None, True))
-    surfaces.extend(pieces_from(kerb, "kerb", None, False))
-    for median in medians:
-        surfaces.extend(pieces_from(median, "median", None, False))
-    surfaces.extend(junction_pieces)
-
-    # --- network records ----------------------------------------------------
-    _lap("before_network")
-    # Only drivable, actually marked road classes are needed for markings.
-    # Slip/link roads, channelization loops and service aisles get asphalt from
-    # the surface pass but no network piece: painting them like streets is what
-    # produced the reported anonymous fork at Ulyanovskaya x Lenina.
-    network: list[dict] = []
-    consumed = pair_info["consumed"]
-    skipped_unmarked = Counter()
-    for way in prepared:
-        if way.tunnel or way.kind != "road":
-            continue
-        if way.osm_id in consumed:
-            # merged into one two-way corridor piece below
-            continue
-        if way.link or way.channelization or way.cls in ("service", "unknown"):
-            skipped_unmarked["link" if way.link else ("channelization" if way.channelization else "service")] += 1
-            continue
-        line = way.line
-        if line.length < 1.0:
-            continue
-        simplified = line.simplify(0.5, preserve_topology=False)
-        points = list(simplified.coords)
-        if len(points) < 2:
-            continue
-        offset = 0.0
-        try:
-            offset = line.project(Point(points[0][0], points[0][1]))
-        except Exception:
+            if way.osm_id in consumed:
+                # merged into one two-way corridor piece below
+                continue
+            if way.link or way.channelization or way.cls in ("service", "unknown"):
+                skipped_unmarked["link" if way.link else ("channelization" if way.channelization else "service")] += 1
+                continue
+            line = way.line
+            if line.length < 1.0:
+                continue
+            simplified = line.simplify(0.5, preserve_topology=False)
+            points = list(simplified.coords)
+            if len(points) < 2:
+                continue
             offset = 0.0
-        flat: list[float] = []
-        for x, y in points:
-            flat.extend((round(float(x), 2), round(float(y), 2)))
-        lanes_forward = int(way.lanes_forward)
-        lanes_backward = int(way.lanes_backward)
-        record = {
-            "kind": "road",
-            "class": way.cls,
-            "width": round(way.width, 2),
-            "lanes": lanes_forward if way.oneway else lanes_forward + lanes_backward,
-            "lanesForward": lanes_forward,
-            "lanesBackward": lanes_backward,
-            "lanesSource": way.lanes_source,
-            "centerline": flat,
-            "centerlineOffset": round(float(offset), 2),
-        }
-        if way.oneway:
-            record["oneway"] = True
-        if way.roundabout:
-            record["roundabout"] = True
-        if way.material:
-            record["material"] = way.material
-        if way.surface:
-            record["surface"] = way.surface
-        if way.bridge:
-            record["bridge"] = True
-        if way.name:
-            record["name"] = way.name
-        network.append(record)
-    stats["network_skipped_unmarked"] = dict(skipped_unmarked)
+            try:
+                offset = line.project(Point(points[0][0], points[0][1]))
+            except Exception:
+                offset = 0.0
+            flat: list[float] = []
+            for x, y in points:
+                flat.extend((round(float(x), 2), round(float(y), 2)))
+            lanes_forward = int(way.lanes_forward)
+            lanes_backward = int(way.lanes_backward)
+            record = {
+                "kind": "road",
+                "class": way.cls,
+                "width": round(way.width, 2),
+                "lanes": lanes_forward if way.oneway else lanes_forward + lanes_backward,
+                "lanesForward": lanes_forward,
+                "lanesBackward": lanes_backward,
+                "lanesSource": way.lanes_source,
+                "centerline": flat,
+                "centerlineOffset": round(float(offset), 2),
+            }
+            if way.oneway:
+                record["oneway"] = True
+            if way.roundabout:
+                record["roundabout"] = True
+            if way.material:
+                record["material"] = way.material
+            if way.surface:
+                record["surface"] = way.surface
+            if way.bridge:
+                record["bridge"] = True
+            if way.name:
+                record["name"] = way.name
+            network.append(record)
+        stats["network_skipped_unmarked"] = dict(skipped_unmarked)
 
-    # Near-coincident opposite one-way carriageways become one two-way piece so
-    # the renderer paints a double solid centre line (Independence Ave,
-    # Pobediteley, Bogdanovicha) instead of two one-way dash columns.
-    for item in pair_info["merged"]:
-        way = item["a"]
-        points = list(item["midline"].coords)
-        if len(points) < 2:
-            continue
-        flat = []
-        for x, y in points:
-            flat.extend((round(float(x), 2), round(float(y), 2)))
-        record = {
-            "kind": "road",
-            "class": way.cls,
-            "width": item["width"],
-            "lanes": int(item["lanes"]),
-            "lanesForward": int(item["lanes_forward"]),
-            "lanesBackward": int(item["lanes_backward"]),
-            "lanesSource": item["lanes_source"],
-            "material": way.material or "asphalt",
-            "centerline": flat,
-            "centerlineOffset": 0.0,
-            "name": way.name,
-            "merged": True,
-        }
-        if item["bridge"]:
-            record["bridge"] = True
-        network.append(record)
-    stats["merged_network_pieces"] = len(pair_info["merged"])
+        # Near-coincident opposite one-way carriageways become one two-way piece so
+        # the renderer paints a double solid centre line (Independence Ave,
+        # Pobediteley, Bogdanovicha) instead of two one-way dash columns.
+        for item in pair_info["merged"]:
+            way = item["a"]
+            points = list(item["midline"].coords)
+            if len(points) < 2:
+                continue
+            flat = []
+            for x, y in points:
+                flat.extend((round(float(x), 2), round(float(y), 2)))
+            record = {
+                "kind": "road",
+                "class": way.cls,
+                "width": item["width"],
+                "lanes": int(item["lanes"]),
+                "lanesForward": int(item["lanes_forward"]),
+                "lanesBackward": int(item["lanes_backward"]),
+                "lanesSource": item["lanes_source"],
+                "material": way.material or "asphalt",
+                "centerline": flat,
+                "centerlineOffset": 0.0,
+                "name": way.name,
+                "merged": True,
+            }
+            if item["bridge"]:
+                record["bridge"] = True
+            network.append(record)
+        stats["merged_network_pieces"] = len(pair_info["merged"])
+
+    else:
+        surfaces, network = [], []
+        paving_ground = None
 
     # --- ground strokes (payload 0.4.0) -------------------------------------
     # Painter's-order centrelines for the raster ground compositor; see

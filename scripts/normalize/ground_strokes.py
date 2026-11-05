@@ -357,6 +357,8 @@ def build_ground_strokes(
             record["mat"] = way.material
         if way.bridge:
             record["b"] = 1
+            # Bridge layer (deck height); stripped by bridge_decks.
+            record["_ly"] = int(max(1, min(2, _num(way.tags.get("layer")) or 1)))
         if way.kind == "road":
             sw = sidewalk_widths(way, sidewalk_tree, sidewalk_lines,
                                  sidewalk_default_width, sidewalk_classes,
@@ -495,7 +497,12 @@ def median_fills(strokes: list[dict], tram_lines: list[LineString]) -> tuple[lis
     stats: Counter = Counter()
     candidates = [
         s for s in strokes
-        if s.get("k") == "road" and s.get("ow") and not s.get("b") and not s.get("ra")
+        # Bridge halves take part: where one half is already on the deck and
+        # the other still on the ground (they leave a bridge at different
+        # points), the ground gap between them must be asphalt too — it showed
+        # as a hole at the deck end (Kastrychnitskaya 5A). Pairs with both
+        # halves on the bridge are skipped below: the deck paints its own fill.
+        if s.get("k") == "road" and s.get("ow") and not s.get("ra")
         and not s.get("_lk") and len(s.get("p") or []) >= 4
     ]
     if not candidates:
@@ -549,6 +556,9 @@ def median_fills(strokes: list[dict], tram_lines: list[LineString]) -> tuple[lis
                 samples.append(None)
                 continue
             distance, other, _ = best
+            if stroke.get("b") and other.get("b"):
+                samples.append(None)
+                continue
             # Each pair is filled once, from the half with the smaller id.
             if int(other.get("id", 0)) < int(stroke.get("id", 0)):
                 samples.append(None)
@@ -1040,7 +1050,14 @@ def carriageway_closing(
                 p for p in getattr(clipped, "geoms", [clipped]) if p.geom_type == "Polygon" and p.area > 0
             )
         for poly in clipped_parts:
-            record: dict = {"m": "asphalt", "c": "primary", "p": _flat_ring(poly.exterior.coords), "kb": 1}
+            ring = _flat_ring(poly.exterior.coords)
+            if _ring_area(ring) < CLOSE_MIN_RING_M2:
+                # A sliver that collapses on the 1 cm grid has nothing to fill
+                # but would still draw a 1.2 m kerb line along itself — in this
+                # tile only (city seam -5_0 | -5_1).
+                stats["close_slivers_dropped"] += 1
+                continue
+            record: dict = {"m": "asphalt", "c": "primary", "p": ring, "kb": 1}
             holes = [_flat_ring(ring.coords) for ring in poly.interiors if Polygon(ring).area >= CLOSE_MIN_PART_M2]
             if holes:
                 record["h"] = holes
@@ -1048,6 +1065,21 @@ def carriageway_closing(
             stats["close_fill_parts"] += 1
             stats["close_fill_m2"] += round(poly.area)
     return out, stats
+
+
+CLOSE_MIN_RING_M2 = 0.05
+
+
+def _ring_area(flat: list[float]) -> float:
+    """Shoelace area of a flat x,y ring (implicitly closed)."""
+    n = len(flat) // 2
+    if n < 3:
+        return 0.0
+    total = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        total += flat[2 * i] * flat[2 * j + 1] - flat[2 * j] * flat[2 * i + 1]
+    return abs(total) / 2.0
 
 
 def assign_fills_to_tiles(
@@ -1088,6 +1120,8 @@ def rail_strokes(rail_pieces: list[dict]) -> list[dict]:
             "s0": 0.0,
             "r": 0,
         })
+        if piece.get("bridge"):
+            out[-1]["b"] = 1
     return out
 
 

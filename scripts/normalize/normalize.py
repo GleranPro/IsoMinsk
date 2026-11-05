@@ -72,6 +72,7 @@ from geo_config import (  # noqa: E402
     TILE_SIZE_M,
 )
 from road_network import build_road_network  # noqa: E402
+from bridge_decks import bridge_decks, stroke_footprint  # noqa: E402
 from ground_strokes import (  # noqa: E402
     assign_fills_to_tiles,
     carriageway_closing,
@@ -863,6 +864,9 @@ def main() -> int:
     parser.add_argument("--tiles-dir", default=None)
     parser.add_argument("--tile-size", type=float, default=None)
     parser.add_argument("--pilot-size", type=float, default=None)
+    parser.add_argument("--legacy-roads", action="store_true",
+                        help="also build the 0.3.0 vector road partition (roadSurfaces/roadNetwork, "
+                             "for ?ground=vector); ~15 min extra on the city")
     args = parser.parse_args()
 
     is_city = args.area == "city"
@@ -1426,7 +1430,8 @@ def main() -> int:
         for entry, line in roads_raw
     ]
     road_result = build_road_network(
-        road_way_entries, crossing_nodes, pilot_rect, mapped_water_areas
+        road_way_entries, crossing_nodes, pilot_rect, mapped_water_areas,
+        legacy_partition=args.legacy_roads,
     )
     road_stats = road_result["stats"]
     road_surfaces = road_result["surfaces"]
@@ -1473,10 +1478,12 @@ def main() -> int:
             continue
         # Tram rails are embedded in the carriageway: thin strip, heavy rail wider.
         width = 2.2 if railway == "tram" else 3.4
-        rail_groups[(railway, width)].append(line)
+        # Bridge rails are merged separately: they become deck strokes (0.4.2).
+        on_bridge = tags.get("bridge") not in (None, "", "no")
+        rail_groups[(railway, width, on_bridge)].append(line)
 
     rail_pieces: list[dict] = []
-    for (railway, width), lines in sorted(rail_groups.items()):
+    for (railway, width, on_bridge), lines in sorted(rail_groups.items()):
         # Both directions of one track are frequently mapped as two nearly
         # identical ways; render a single rail pair for them, not four rails.
         representatives: list[LineString] = []
@@ -1511,8 +1518,10 @@ def main() -> int:
                     "width": round(width, 2),
                     "centerline": flat,
                     "centerlineOffset": 0.0,
+                    **({"bridge": True} if on_bridge else {}),
                 })
-    network_pieces.extend(rail_pieces)
+    if args.legacy_roads:
+        network_pieces.extend(rail_pieces)
     stats["rail_pieces"] = len(rail_pieces)
 
     # --- ground strokes (payload 0.4.0) ------------------------------------
@@ -1668,6 +1677,15 @@ def main() -> int:
                 continue
             if not poly.is_empty:
                 exclude_geoms.append(poly)
+    if road_result["drivable_geom"] is None:
+        # No vector partition: the stroke footprints (carriageway + kerb +
+        # pavement, path widths) keep trees off roads; no union needed for an
+        # STRtree point query.
+        for stroke in ground_strokes:
+            try:
+                exclude_geoms.append(stroke_footprint(stroke))
+            except Exception:
+                continue
     for road_geom in (road_result["drivable_geom"], road_result["paving_geom"]):
         if road_geom is None or road_geom.is_empty:
             continue
@@ -1815,7 +1833,7 @@ def main() -> int:
                 "roadNetwork": [],
                 "junctions": [],
                 "crossings": [],
-                "ground": {"version": 1, "strokes": []},
+                "ground": {"version": 2, "strokes": []},
                 "trees": [],
                 "crossingBuildingIds": [],
             }
@@ -2005,6 +2023,24 @@ def main() -> int:
                 if (tx, ty) in tiles:
                     tiles[(tx, ty)]["junctions"].append(base)
 
+    # Bridge decks (0.4.2): b-strokes become raised 3D slabs with their own
+    # texture strokes; tiny bridge bits stay on the ground, flattened.
+    t_decks = time.time()
+    decks_by_tile, deck_shadows, ground_strokes, deck_stats = bridge_decks(
+        ground_strokes, tile_size, tiles.keys()
+    )
+    stats.update(deck_stats)
+    for key, decks in decks_by_tile.items():
+        if decks:
+            tiles[key]["ground"]["decks"] = decks
+    for key, shades in assign_fills_to_tiles(deck_shadows, tile_size, tiles.keys(), GROUND_STROKE_MARGIN_M).items():
+        if shades:
+            tiles[key]["ground"]["shadows"] = shades
+    print(f"Bridge decks: {deck_stats.get('decks', 0)} deck(s), {deck_stats.get('deck_chunks', 0)} chunk(s), "
+          f"{deck_stats.get('deck_m2', 0)} m2, {deck_stats.get('deck_ends', 0)} end(s), "
+          f"{deck_stats.get('deck_no_ends', 0)} without ends, {deck_stats.get('deck_flattened', 0)} flattened, "
+          f"{deck_stats.get('deck_too_small', 0)} too small in {time.time() - t_decks:.1f}s")
+
     # Ground strokes: clipped per tile with a 64 m margin (> any half-width +
     # sidewalk), so stroke caps created by clipping stay outside the tile.
     for key, strokes in assign_strokes_to_tiles(
@@ -2127,7 +2163,7 @@ def main() -> int:
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
     manifest = {
-        "version": "0.4.1",
+        "version": "0.4.2",
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
         "epsg": EPSG_UTM35N,
         "originUtm": [round(ORIGIN_X, 3), round(ORIGIN_Y, 3)],

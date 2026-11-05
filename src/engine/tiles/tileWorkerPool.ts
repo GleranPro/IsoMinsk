@@ -23,6 +23,7 @@ export interface TileWorkerJobInput {
   trees: boolean;
   groundMode?: GroundBuildMode;
   groundRes?: number;
+  groundOnly?: boolean;
 }
 
 export interface TileWorkerPoolOptions {
@@ -239,6 +240,7 @@ export class TileWorkerPool {
         trees: job.input.trees,
         groundMode: job.input.groundMode,
         groundRes: job.input.groundRes,
+        groundOnly: job.input.groundOnly,
       };
       try {
         worker.postMessage(message);

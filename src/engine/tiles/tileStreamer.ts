@@ -17,6 +17,7 @@
  */
 
 import * as THREE from 'three';
+import { groundResolutionFor } from '../../city/ground/groundRaster';
 import {
   DATA_BASE_URL,
   GROUND_LAYER_Y,
@@ -49,6 +50,10 @@ export interface TileEntry {
   treeMesh: THREE.Mesh | null;
   /** Raster ground quad (payload 0.4.0) with its own texture/material. */
   groundMesh: THREE.Mesh | null;
+  /** Bridge deck tops (payload 0.4.2) with their own atlas texture/material. */
+  deckMesh: THREE.Mesh | null;
+  /** Texel size of the ground texture currently shown, metres (ground LOD). */
+  groundRes: number;
   buildings: Map<FeatureId, BuildingFeature>;
   buildingIds: FeatureId[];
   triangleOwner: Uint32Array | null;
@@ -138,6 +143,32 @@ const TILE_LOAD_MARGIN_TILES = 1;
  * than this much ground (world metres per pixel). Above it, the window pattern
  * would alias into a dark smear, so far tiles use flat, detailed-off walls. */
 const DETAIL_WORLD_PER_PIXEL = 1.0;
+/**
+ * Ground texture LOD tiers and GPU budget. Each tile shows ONE ground texture:
+ *
+ *  - fine   (base / 2, min 0.25 m): the MAX_FINE_GROUND_TILES visible tiles
+ *    nearest the camera target while a render pixel is under ~0.6 m — at the
+ *    base 1 m (city) lane dashes become blobs;
+ *  - base   (0.5 m pilot / 1 m city): the MAX_BASE_GROUND_TILES nearest visible
+ *    tiles while a render pixel is under ~3 m;
+ *  - coarse (base × 4, no paint): everything else — the whole-city overview
+ *    keeps all 144 tiles resident, and 1024² textures for each (≈770 MB with
+ *    mips) would be pointless at 14 m per pixel.
+ *
+ * Budget: 6 × 21 MB + 24 × 5.3 MB + rest × 0.35 MB ≈ 300 MB for the city.
+ * A tile keeps showing its current texture until the re-rasterised one (ground
+ * and bridge decks only, in a worker) arrives; hysteresis avoids churn.
+ */
+const GROUND_FINE_ENTER_WPP = 0.6;
+const GROUND_FINE_EXIT_WPP = 0.8;
+const GROUND_BASE_ENTER_WPP = 3.0;
+const GROUND_BASE_EXIT_WPP = 4.0;
+const MAX_FINE_GROUND_TILES = 6;
+const MAX_BASE_GROUND_TILES = 24;
+const GROUND_FINE_MIN_RES = 0.25;
+const GROUND_COARSE_FACTOR = 4;
+const MAX_GROUND_JOBS = 2;
+type GroundTier = 'fine' | 'base' | 'coarse';
 const MAX_ADDS_PER_FRAME = 2;
 const TILE_FETCH_TIMEOUT_GUARD_MS = 35_000;
 const BASE_PLANE_SIZE = 12_000;
@@ -172,6 +203,12 @@ export class TileStreamer {
   private readonly options: TileStreamerOptions;
   private readonly tiles = new Map<string, TileEntry>();
   private readonly inflight = new Map<string, InflightTask>();
+  /** URL each resident tile was loaded from (ground LOD re-requests). */
+  private readonly tileUrls = new Map<string, string>();
+  /** Pending ground re-raster jobs by tile key. */
+  private readonly groundUpgrades = new Map<string, { id: number; res: number; cancelled: boolean }>();
+  private groundFineActive = false;
+  private groundBaseActive = true;
   private readonly failedKeys = new Set<string>();
   private readonly tileIndex = new Map<string, TileIndexEntry>();
   private readonly payloadQueue: TileWirePayload[] = [];
@@ -472,6 +509,8 @@ export class TileStreamer {
     this.maybeTopUpIdle(performance.now());
     this.beginInitialPhaseIfNeeded();
     this.touchAndEvict();
+    // Ground LOD tier state first: new tiles are requested at the current tier.
+    this.updateGroundTierState((2 * orthoHeight) / Math.max(1, renderHeightPx));
     this.requestMissingTiles();
     this.processPayloadQueue();
     // City dataset: the ground plate covers the parts of the city that are not
@@ -718,7 +757,7 @@ export class TileStreamer {
           facadeDetail: true,
           trees: true,
           groundMode: this.options.groundMode,
-          groundRes: this.options.groundRes,
+          groundRes: this.options.groundRes ?? this.groundResFor(this.groundBaseActive ? 'base' : 'coarse'),
         });
         task.requestId = job.id;
         payload = await job.promise;
@@ -730,6 +769,7 @@ export class TileStreamer {
       }
       this.finishTask(task);
       if (!payload) return;
+      this.tileUrls.set(task.key, task.url);
       this.enqueuePayload(payload);
     } catch (error) {
       if (this.disposed || task.cancelled) {
@@ -931,6 +971,13 @@ export class TileStreamer {
       bytes += payload.ground.data.byteLength;
     }
 
+    const deckMesh = createDeckMesh(payload);
+    if (deckMesh && payload.decks) {
+      group.add(deckMesh);
+      triangles += payload.decks.mesh.triangleCount;
+      bytes += wireMeshBytes(payload.decks.mesh) + payload.decks.texture.data.byteLength;
+    }
+
     let treeMesh: THREE.Mesh | null = null;
     if (payload.trees && payload.trees.triangleCount > 0) {
       const geometry = unpackGeometry(payload.trees);
@@ -957,6 +1004,8 @@ export class TileStreamer {
       environmentMesh,
       treeMesh,
       groundMesh,
+      deckMesh,
+      groundRes: payload.ground?.res ?? 0,
       buildings,
       buildingIds: payload.buildingIds,
       triangleOwner,
@@ -984,9 +1033,19 @@ export class TileStreamer {
         object.geometry.dispose();
       }
     });
-    if (entry.groundMesh) {
-      const material = entry.groundMesh.material as THREE.MeshLambertMaterial;
-      material.map?.dispose();
+    const upgrade = this.groundUpgrades.get(key);
+    if (upgrade) {
+      upgrade.cancelled = true;
+      this.pool.cancel(upgrade.id);
+      this.groundUpgrades.delete(key);
+    }
+    this.tileUrls.delete(key);
+    const materials = new Set<THREE.Material>();
+    for (const textured of [entry.groundMesh, entry.deckMesh]) {
+      if (textured) materials.add(textured.material as THREE.Material);
+    }
+    for (const material of materials) {
+      (material as THREE.MeshLambertMaterial).map?.dispose();
       material.dispose();
     }
     entry.group.clear();
@@ -1006,6 +1065,7 @@ export class TileStreamer {
   private updateLod(renderHeightPx: number, rig: IsometricCameraRig): void {
     const orthoHeight = rig.getOrthoHeight();
     const worldPerPixel = (2 * orthoHeight) / Math.max(1, renderHeightPx);
+    this.updateGroundLod(worldPerPixel, rig);
     const wantNear = worldPerPixel <= DETAIL_WORLD_PER_PIXEL || this.nightFactor > 0.35;
     for (const key of this.visibleKeys) {
       const entry = this.tiles.get(key);
@@ -1018,6 +1078,141 @@ export class TileStreamer {
           ? this.options.facadeMaterialNear
           : this.options.facadeMaterialFar;
     }
+  }
+
+  /** Texel size of a ground LOD tier for this dataset's tiles. */
+  private groundResFor(tier: GroundTier): number {
+    const base = groundResolutionFor(this.tileSize);
+    if (tier === 'fine') return Math.max(GROUND_FINE_MIN_RES, base / 2);
+    if (tier === 'coarse') return base * GROUND_COARSE_FACTOR;
+    return base;
+  }
+
+  /** Zoom-driven tier switches, with hysteresis. */
+  private updateGroundTierState(worldPerPixel: number): void {
+    if (!Number.isFinite(worldPerPixel)) return;
+    this.groundFineActive = this.groundFineActive
+      ? worldPerPixel <= GROUND_FINE_EXIT_WPP
+      : worldPerPixel <= GROUND_FINE_ENTER_WPP;
+    this.groundBaseActive = this.groundBaseActive
+      ? worldPerPixel <= GROUND_BASE_EXIT_WPP
+      : worldPerPixel <= GROUND_BASE_ENTER_WPP;
+  }
+
+  /** Choose every tile's ground tier and re-rasterise the ones that differ. */
+  private updateGroundLod(worldPerPixel: number, rig: IsometricCameraRig): void {
+    if (this.options.groundRes || this.inlineMode || !this.pool.available) return;
+    this.updateGroundTierState(worldPerPixel);
+    const target = rig.getTargetLocal();
+    const ranked: { entry: TileEntry; distance: number }[] = [];
+    for (const key of this.visibleKeys) {
+      const entry = this.tiles.get(key);
+      if (!entry?.groundMesh) continue;
+      const [x0, y0, x1, y1] = entry.bounds;
+      const dx = Math.max(x0 - target.x, 0, target.x - x1);
+      const dy = Math.max(y0 - target.y, 0, target.y - y1);
+      ranked.push({ entry, distance: Math.hypot(dx, dy) });
+    }
+    ranked.sort((a, b) => a.distance - b.distance);
+    const wanted = new Map<string, number>();
+    ranked.forEach(({ entry }, index) => {
+      const tier: GroundTier =
+        this.groundFineActive && index < MAX_FINE_GROUND_TILES
+          ? 'fine'
+          : this.groundBaseActive && index < MAX_BASE_GROUND_TILES
+            ? 'base'
+            : 'coarse';
+      wanted.set(entry.key, this.groundResFor(tier));
+    });
+    // Nearest first, so the tiles under the camera upgrade before the rest.
+    const order = [...ranked.map((item) => item.entry)];
+    for (const entry of this.tiles.values()) if (!wanted.has(entry.key)) order.push(entry);
+    for (const entry of order) {
+      if (!entry.groundMesh) continue;
+      const res = wanted.get(entry.key) ?? this.groundResFor('coarse');
+      const pending = this.groundUpgrades.get(entry.key);
+      if (Math.abs(res - entry.groundRes) < 1e-6) {
+        if (pending) this.cancelGroundJob(entry.key);
+        continue;
+      }
+      if (pending) {
+        if (Math.abs(pending.res - res) < 1e-6) continue;
+        this.cancelGroundJob(entry.key);
+      }
+      if (this.groundUpgrades.size >= MAX_GROUND_JOBS) continue;
+      this.requestGround(entry, res);
+    }
+  }
+
+  private cancelGroundJob(key: string): void {
+    const pending = this.groundUpgrades.get(key);
+    if (!pending) return;
+    pending.cancelled = true;
+    this.pool.cancel(pending.id);
+    this.groundUpgrades.delete(key);
+  }
+
+  private requestGround(entry: TileEntry, res: number): void {
+    const url = this.tileUrls.get(entry.key);
+    if (!url) return;
+    const job = this.pool.load({
+      key: entry.key,
+      url,
+      facadeDetail: false,
+      trees: false,
+      groundMode: this.options.groundMode,
+      groundRes: res,
+      groundOnly: true,
+    });
+    const record = { id: job.id, res, cancelled: false };
+    this.groundUpgrades.set(entry.key, record);
+    job.promise
+      .then((payload) => {
+        if (record.cancelled || this.disposed || !payload) return;
+        if (this.tiles.get(entry.key) !== entry) return;
+        this.applyGround(entry, payload);
+      })
+      .catch((error) => {
+        this.diagnostics.push(`tile ${entry.key}: ground LOD failed: ${String(error)}`);
+      })
+      .finally(() => {
+        if (this.groundUpgrades.get(entry.key) === record) this.groundUpgrades.delete(entry.key);
+      });
+  }
+
+  /** Swap in a re-rasterised ground texture (and deck atlas); dispose the old. */
+  private applyGround(entry: TileEntry, payload: TileWirePayload): void {
+    if (!entry.groundMesh || !payload.ground || payload.ground.data.byteLength === 0) return;
+    const texture = createGroundTexture(payload.ground.data, payload.ground.width, payload.ground.height);
+    const old = entry.groundMesh.material as THREE.MeshLambertMaterial;
+    entry.groundMesh.material = createGroundMaterial(texture);
+    old.map?.dispose();
+    old.dispose();
+    const decks = createDeckMesh(payload);
+    if (entry.deckMesh) {
+      entry.group.remove(entry.deckMesh);
+      entry.deckMesh.geometry.dispose();
+      const deckMaterial = entry.deckMesh.material as THREE.MeshLambertMaterial;
+      deckMaterial.map?.dispose();
+      deckMaterial.dispose();
+    }
+    if (decks) {
+      entry.group.add(decks);
+      decks.updateMatrixWorld(true);
+    }
+    entry.deckMesh = decks;
+    entry.groundRes = payload.ground.res;
+  }
+
+  /** Resident ground textures per texel size (diagnostics / QA). */
+  get groundTiers(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const entry of this.tiles.values()) {
+      if (!entry.groundMesh) continue;
+      const key = String(entry.groundRes);
+      out[key] = (out[key] ?? 0) + 1;
+    }
+    return out;
   }
 
   private updateLoadingProgress(): void {
@@ -1161,4 +1356,22 @@ export class TileStreamer {
     }
     return null;
   }
+}
+
+/** Textured bridge-deck mesh of a payload (payload 0.4.2), or null. */
+function createDeckMesh(payload: TileWirePayload): THREE.Mesh | null {
+  if (!payload.decks || payload.decks.mesh.triangleCount <= 0) return null;
+  const texture = createGroundTexture(
+    payload.decks.texture.data,
+    payload.decks.texture.width,
+    payload.decks.texture.height,
+  );
+  const material = createGroundMaterial(texture);
+  material.name = 'IsometricMinskBridgeDeck';
+  const mesh = new THREE.Mesh(unpackGeometry(payload.decks.mesh), material);
+  mesh.receiveShadow = true;
+  mesh.castShadow = false;
+  mesh.matrixAutoUpdate = false;
+  mesh.name = `decks-${payload.key}`;
+  return mesh;
 }

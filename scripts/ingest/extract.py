@@ -138,6 +138,8 @@ KEEP_TAGS = {
     "sidewalk:right:width",
     # Tram stop / platform nodes (payload 0.4.1).
     "tram",
+    # What a highway=construction way will become (payload 0.4.2).
+    "construction",
 }
 MAX_TAGS = 48
 

@@ -25,6 +25,7 @@
  */
 
 import * as THREE from 'three';
+import { emitDeckSides, tileDecks, usesGroundDecks } from '../ground/groundDecks';
 import { TILE_SIZE_M } from '../../shared/config';
 import type { TileData } from '../../shared/types';
 import type { Bounds4 } from './envLayers';
@@ -119,7 +120,11 @@ export function buildEnvironmentMeshes(
   try {
     // Payload 0.2.0: normalized surface partition + network paint + legacy rail.
     // Demo/old tiles: legacy buffered road polygons. Same single merged sink.
-    if (raster) {
+    if (raster && usesGroundDecks(tile)) {
+      // Payload 0.4.2: deck tops are a textured mesh (tile build); the
+      // vertex-coloured structure (fascia, parapets) joins the roads sink.
+      emitDeckSides(roadsSink, tileDecks(tile));
+    } else if (raster) {
       emitRoadSurfaces(roadsSink, tile?.roadSurfaces, bounds, roadStats.surfaces, {
         bridgesOnly: true,
       });

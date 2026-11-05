@@ -31,6 +31,7 @@ class RecordingContext implements GroundContext2D {
   fillStyle: string | CanvasGradient | CanvasPattern = '';
   strokeStyle: string | CanvasGradient | CanvasPattern = '';
   lineWidth = 1;
+  lineDashOffset = 0;
   lineCap: CanvasLineCap = 'butt';
   lineJoin: CanvasLineJoin = 'miter';
   strokes: Array<{ color: string; width: number; start: [number, number] }> = [];

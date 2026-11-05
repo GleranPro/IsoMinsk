@@ -44,7 +44,13 @@
  *        (>= 2 stone network pieces) while its asphalt continuation also does
  *        (>= 1 asphalt piece); at least one stone drivable zone exists;
  *  - crossingBuildingIds point at buildings that are owned elsewhere;
- *  - every tile near the pilot centre carries roads or normalized surfaces.
+ *  - every tile near the pilot centre carries roads or normalized surfaces;
+ *  - payload 0.4.x ground layer: every tile has `ground` (version >= 2),
+ *    strokes with known kinds, positive widths, flat even centrelines,
+ *    finite `s0`, known materials, integer lane counts; bridge decks pass
+ *    `isValidDeck`; road strokes include both stone and asphalt.
+ *    The legacy partition checks (`roadSurfaces` / `roadNetwork`) run only
+ *    when the data was built with `normalize.py --legacy-roads`.
  *
  * Run: pnpm test -- tests/unit/data
  */
@@ -53,6 +59,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { isValidDeck } from '../../../src/city/ground/groundDecks';
 import {
   EPSG_UTM35N,
   MAX_BUILDING_HEIGHT_M,
@@ -62,6 +69,7 @@ import {
 } from '../../../src/shared/config';
 import { ringArea, tileBounds } from '../../../src/shared/tileMath';
 import type {
+  GroundStrokeKind,
   Polygon,
   Ring,
   RoadMaterial,
@@ -119,6 +127,8 @@ interface DataAnalysis {
   overlapViolations: string[];
   /** Named street+direction+lane-signature widths that disagree by more than 0.2 m. */
   widthViolations: string[];
+  /** Payload 0.4.x ground layer problems (strokes, decks). */
+  groundViolations: string[];
   /** Material contract problems (stone zone, Karl Marx, surfacing rules). */
   materialViolations: string[];
   treeViolations: string[];
@@ -146,7 +156,13 @@ interface DataAnalysis {
     buildingsExplicitHeight: number;
     buildingsWithLevels: number;
     buildingsWithRoofShape: number;
+    groundStrokes: number;
+    groundDecks: number;
+    /** Road strokes by material (no `mat` = asphalt). */
+    groundRoadByMaterial: Record<string, number>;
   };
+  /** True when the tiles carry the legacy vector partition (`--legacy-roads`). */
+  legacyPartition: boolean;
 }
 
 let analysis: DataAnalysis;
@@ -207,6 +223,17 @@ const ROAD_CLASSES = new Set([
 const ROAD_KINDS = new Set(['road', 'footway', 'rail']);
 
 /** Payload 0.2.0 enums (src/shared/types.ts). */
+const GROUND_STROKE_KINDS: ReadonlySet<string> = new Set<GroundStrokeKind>([
+  'road',
+  'path',
+  'cycle',
+  'steps',
+  'ped',
+  'track',
+  'tram',
+  'rail',
+]);
+
 const ROAD_MATERIALS: ReadonlySet<string> = new Set<RoadMaterial>([
   'asphalt',
   'stone',
@@ -493,6 +520,7 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     laneViolations: [],
     overlapViolations: [],
     widthViolations: [],
+    groundViolations: [],
     materialViolations: [],
     treeViolations: [],
     overlapProbe: { pairs: 0, samples: 0 },
@@ -516,7 +544,11 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       buildingsExplicitHeight: 0,
       buildingsWithLevels: 0,
       buildingsWithRoofShape: 0,
+      groundStrokes: 0,
+      groundDecks: 0,
+      groundRoadByMaterial: {},
     },
+    legacyPartition: false,
   };
 
   const owners = new Map<string, string[]>();
@@ -688,6 +720,57 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
       }
       if (typeof tree.mapped !== 'boolean') {
         result.treeViolations.push(`${label}: mapped is not a boolean`);
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // payload 0.4.x — ground layer (strokes painted by the raster compositor)
+    // ------------------------------------------------------------------
+    const ground = data.ground;
+    if (!ground || !Array.isArray(ground.strokes)) {
+      result.groundViolations.push(`${tileName}: no ground layer`);
+    } else {
+      if (!(Number(ground.version) >= 2)) {
+        result.groundViolations.push(`${tileName}: ground version ${String(ground.version)} < 2 (no bridge decks)`);
+      }
+      result.counts.groundStrokes += ground.strokes.length;
+      ground.strokes.forEach((stroke, index) => {
+        const label = `${tileName}/ground.strokes[${index}](${String(stroke.k)})`;
+        if (!GROUND_STROKE_KINDS.has(stroke.k)) result.groundViolations.push(`${label}: unknown kind`);
+        if (!(Number.isFinite(stroke.w) && stroke.w > 0)) {
+          result.groundViolations.push(`${label}: width ${String(stroke.w)}`);
+        }
+        if (
+          !Array.isArray(stroke.p) ||
+          stroke.p.length < 4 ||
+          stroke.p.length % 2 !== 0 ||
+          !stroke.p.every(Number.isFinite)
+        ) {
+          result.groundViolations.push(`${label}: centreline is not a flat even number[] with >= 2 points`);
+        }
+        if (!(Number.isFinite(stroke.s0) && stroke.s0 >= 0)) {
+          result.groundViolations.push(`${label}: s0 ${String(stroke.s0)}`);
+        }
+        if (stroke.mat !== undefined && !ROAD_MATERIALS.has(stroke.mat)) {
+          result.groundViolations.push(`${label}: unknown material ${String(stroke.mat)}`);
+        }
+        for (const field of ['lf', 'lb'] as const) {
+          const value = stroke[field];
+          if (value !== undefined && !(Number.isInteger(value) && value >= 0 && value <= 12)) {
+            result.groundViolations.push(`${label}: ${field} ${String(value)} is not an integer in 0..12`);
+          }
+        }
+        if (stroke.b !== undefined && Number(ground.version) >= 2) {
+          result.groundViolations.push(`${label}: bridge stroke left in the ground (decks own bridges)`);
+        }
+        if (stroke.k === 'road') {
+          const material = stroke.mat ?? 'asphalt';
+          result.counts.groundRoadByMaterial[material] = (result.counts.groundRoadByMaterial[material] ?? 0) + 1;
+        }
+      });
+      for (const [index, deck] of (ground.decks ?? []).entries()) {
+        result.counts.groundDecks += 1;
+        if (!isValidDeck(deck)) result.groundViolations.push(`${tileName}/ground.decks[${index}]: invalid deck`);
       }
     }
 
@@ -1116,12 +1199,22 @@ function analyse(manifest: TileManifest, tiles: LoadedTile[]): DataAnalysis {
     }
   }
 
+  result.legacyPartition = result.counts.roadSurfaces + result.counts.roadNetwork > 0;
   // Material sanity: the dataset must contain a genuine stone zone …
-  if ((result.counts.drivableByMaterial.stone ?? 0) === 0) {
+  if (!result.legacyPartition) {
+    // strokes-only data (0.4.x default): the material rule lives on the strokes
+    for (const material of ['stone', 'asphalt']) {
+      if ((result.counts.groundRoadByMaterial[material] ?? 0) === 0) {
+        result.materialViolations.push(`no road ground stroke with material ${material}`);
+      }
+    }
+  } else if ((result.counts.drivableByMaterial.stone ?? 0) === 0) {
     result.materialViolations.push('no drivable surface piece with material stone');
   }
   // … and Karl Marx Street keeps its explicit stone + asphalt zones.
-  if (result.karlMarx.total === 0) {
+  if (!result.legacyPartition) {
+    // strokes carry no street names; covered by the stone/asphalt stroke check
+  } else if (result.karlMarx.total === 0) {
     result.materialViolations.push(`no roadNetwork pieces named ${JSON.stringify(KARL_MARX_NAME)}`);
   } else {
     if (result.karlMarx.stone < 2) {
@@ -1163,7 +1256,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     expect(manifest).not.toBeNull();
     if (!manifest) throw new Error('manifest missing');
     expect(typeof manifest.version).toBe('string');
-    expect(manifest.version, 'payload 0.4.0 required').toBe('0.4.1');
+    expect(manifest.version, 'payload 0.4.0 required').toBe('0.4.2');
     expect(Number.isNaN(Date.parse(manifest.generatedAt)), 'generatedAt must be an ISO date').toBe(false);
     expect(manifest.epsg).toBe(EPSG_UTM35N);
     expect(manifest.tileSize).toBe(TILE_SIZE_M);
@@ -1211,8 +1304,8 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
       'counts.roads may be 0 for payload 0.2.0 (legacy road polygons moved to roadSurfaces/roadNetwork)',
     ).toBeGreaterThanOrEqual(0);
     expect(
-      (counts.roadSurfaces ?? 0) + (counts.roadNetwork ?? 0) + counts.roads,
-      'manifest must contain at least one road representation (roads, roadSurfaces or roadNetwork)',
+      (counts.roadSurfaces ?? 0) + (counts.roadNetwork ?? 0) + counts.roads + analysis.counts.groundStrokes,
+      'manifest must contain at least one road representation (roads, roadSurfaces, roadNetwork or ground strokes)',
     ).toBeGreaterThan(0);
     expect(counts.trees, 'manifest must contain trees').toBeGreaterThan(0);
     expect(counts.buildingsWithExplicitHeight).toBeLessThanOrEqual(counts.buildings);
@@ -1310,8 +1403,10 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
           (payloadSum > 0 && declared === undefined ? ' — the 0.2.0 payload requires this count key' : ''),
       ).toBe(payloadSum);
     }
-    expect(analysis.counts.roadSurfaces, 'payload 0.2.0 road surface partition is missing').toBeGreaterThan(0);
-    expect(analysis.counts.roadNetwork, 'payload 0.2.0 road network layer is missing').toBeGreaterThan(0);
+    if (analysis.legacyPartition) {
+      expect(analysis.counts.roadSurfaces, 'payload 0.2.0 road surface partition is missing').toBeGreaterThan(0);
+      expect(analysis.counts.roadNetwork, 'payload 0.2.0 road network layer is missing').toBeGreaterThan(0);
+    }
     expect(analysis.counts.junctions, 'payload 0.2.0 junction boxes are missing').toBeGreaterThan(0);
     expect(analysis.counts.crossings, 'payload 0.2.0 pedestrian crossings are missing').toBeGreaterThan(0);
   });
@@ -1374,7 +1469,8 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
   // payload 0.2.0 — normalized road layers
   // -------------------------------------------------------------------------
 
-  it('road surface pieces are valid (kinds, materials, rings, bridge/junction flags)', () => {
+  it('road surface pieces are valid (kinds, materials, rings, bridge/junction flags)', (ctx) => {
+    if (!analysis.legacyPartition) ctx.skip(); // built without --legacy-roads
     expect(
       analysis.roadSurfaceViolations.length,
       `${analysis.roadSurfaceViolations.length} road surface violation(s):\n` +
@@ -1390,7 +1486,8 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBeGreaterThan(0);
   });
 
-  it('drivable surface pieces of the same bridge layer do not overlap (sampled interior probe)', () => {
+  it('drivable surface pieces of the same bridge layer do not overlap (sampled interior probe)', (ctx) => {
+    if (!analysis.legacyPartition) ctx.skip(); // built without --legacy-roads
     expect(
       analysis.overlapProbe.pairs,
       'the overlap probe found no bbox-intersecting drivable pair — it would be vacuous',
@@ -1409,7 +1506,8 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
-  it('road network pieces are valid (kind/class/width/centerline/offset/material/merged/link/roundabout)', () => {
+  it('road network pieces are valid (kind/class/width/centerline/offset/material/merged/link/roundabout)', (ctx) => {
+    if (!analysis.legacyPartition) ctx.skip(); // built without --legacy-roads
     expect(
       analysis.roadNetworkViolations.length,
       `${analysis.roadNetworkViolations.length} road network violation(s):\n` +
@@ -1417,7 +1515,8 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
-  it('road network lane metadata is consistent (lanesForward/lanesBackward/lanesSource, tag counts)', () => {
+  it('road network lane metadata is consistent (lanesForward/lanesBackward/lanesSource, tag counts)', (ctx) => {
+    if (!analysis.legacyPartition) ctx.skip(); // built without --legacy-roads
     expect(
       analysis.laneViolations.length,
       `${analysis.laneViolations.length} lane metadata violation(s):\n` +
@@ -1429,7 +1528,8 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBeGreaterThan(0);
   });
 
-  it('named streets use one canonical width per direction+lane signature (max-min <= 0.2 m, merged/rail excluded)', () => {
+  it('named streets use one canonical width per direction+lane signature (max-min <= 0.2 m, merged/rail excluded)', (ctx) => {
+    if (!analysis.legacyPartition) ctx.skip(); // built without --legacy-roads
     expect(
       analysis.widthViolations.length,
       `${analysis.widthViolations.length} named street(s) with inconsistent width:\n` +
@@ -1442,6 +1542,7 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
       analysis.materialViolations.length,
       `${analysis.materialViolations.length} material violation(s):\n${formatProblems(analysis.materialViolations)}`,
     ).toBe(0);
+    if (!analysis.legacyPartition) return; // strokes-only: checked above via the ground strokes
     const stoneZones = analysis.counts.drivableByMaterial.stone ?? 0;
     expect(stoneZones, 'at least one stone drivable surface zone must exist').toBeGreaterThan(0);
     expect(
@@ -1475,6 +1576,15 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     ).toBe(0);
   });
 
+  it('payload 0.4.x ground layer is valid (strokes, bridge decks)', () => {
+    expect(
+      analysis.groundViolations.length,
+      `${analysis.groundViolations.length} ground violation(s):\n${formatProblems(analysis.groundViolations)}`,
+    ).toBe(0);
+    expect(analysis.counts.groundStrokes, 'no ground strokes').toBeGreaterThan(0);
+    expect(analysis.counts.groundDecks, 'no bridge decks (payload 0.4.2)').toBeGreaterThan(0);
+  });
+
   it('every tile near the pilot centre contains roads or surfaces', () => {
     const manifest = store.manifest;
     if (!manifest) throw new Error('manifest missing');
@@ -1489,7 +1599,11 @@ describe.skipIf(!DATA_AVAILABLE)('generated city data — manifest and tile inde
     const emptyCentralTiles = centralTiles
       .filter(
         ({ data }) =>
-          data.roads.length + data.surfaces.length + (data.roadSurfaces?.length ?? 0) === 0,
+          data.roads.length +
+            data.surfaces.length +
+            (data.roadSurfaces?.length ?? 0) +
+            (data.ground?.strokes?.length ?? 0) ===
+          0,
       )
       .map(({ entry }) => `${entry.x}_${entry.y}`);
     expect(

@@ -31,6 +31,7 @@
  *   QA_READY_TIMEOUT_MS=120000
  *   QA_ONLY=<substring> # capture only matching shot files, e.g. QA_ONLY=night
  *   QA_SHOTS_DIR=dir    # output directory (default screenshots/roads)
+ *   QA_SETTLE_MS=ms     # extra wait after each camera move (ground LOD upgrades)
  *   QA_QUERY=ground=vector  # extra page query (legacy vector ground for A/B)
  *
  * Output: `screenshots/roads/*.png` (23 shots: 13 core road views + 7 targeted
@@ -55,6 +56,12 @@ const SHOTS_DIR = process.env.QA_SHOTS_DIR
   : path.join(ROOT, 'screenshots', 'roads');
 /** Extra query string, e.g. QA_QUERY='ground=vector' for the legacy ground. */
 const QUERY = process.env.QA_QUERY?.trim() || '';
+/** Extra wait after each camera move (async ground LOD upgrades), ms. */
+const SETTLE_MS = Number(process.env.QA_SETTLE_MS || 0);
+/** Manifest of the dataset the page shows (`QA_QUERY=dataset=city`). */
+const MANIFEST_URL = /(^|&)dataset=city(&|$)/.test(QUERY)
+  ? '/data/city-tiles/manifest.json'
+  : '/data/tiles/manifest.json';
 const DATA_DIR = path.join(ROOT, 'public', 'data', 'tiles');
 const PORT = Number(process.env.QA_PORT || 5173);
 const EXTERNAL_URL = process.env.QA_BASE_URL?.trim() || '';
@@ -517,16 +524,16 @@ async function waitForRenderedGeometry(page) {
     stats = await readStats(page);
     if (stats && stats.loadedTiles > 0 && stats.triangles > 5000) {
       const expectedTiles = await page
-        .evaluate(async () => {
+        .evaluate(async (manifestUrl) => {
           try {
-            const response = await fetch('/data/tiles/manifest.json');
+            const response = await fetch(manifestUrl);
             if (!response.ok) return 0;
             const manifest = await response.json();
             return Array.isArray(manifest.tiles) ? manifest.tiles.length : 0;
           } catch {
             return 0;
           }
-        })
+        }, MANIFEST_URL)
         .catch(() => 0);
       if (expectedTiles > 0 && stats.loadedTiles >= expectedTiles) {
         console.log(
@@ -634,6 +641,7 @@ async function captureShot(page, shot, index) {
   await settle(page);
   // Let the camera controller and streamer finish their instant-move frames.
   await settle(page, 300);
+  if (SETTLE_MS > 0) await sleep(SETTLE_MS);
   const stats = await readStats(page);
   const file = path.join(SHOTS_DIR, shot.file);
   await page.screenshot({ path: file, fullPage: false });

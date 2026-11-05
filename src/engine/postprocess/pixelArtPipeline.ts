@@ -163,8 +163,21 @@ float edgeGradient(vec2 uv) {
   return max(gxAt(uv), gyAt(uv)) + diagonalAt(uv) * 0.35;
 }
 
+// Second difference of the view depth: ~0 on ANY plane (orthographic
+// camera), large at a real silhouette or crease. A smooth slope facing away
+// from the camera (a bridge ramp, a roof pitch) has a steep but constant depth
+// gradient and must not be outlined.
+float curvatureAt(vec2 uv) {
+  float centre = 2.0 * viewDepthAt(uv);
+  vec2 texel = uTexelSize;
+  float cx = abs(viewDepthAt(uv + vec2(texel.x, 0.0)) + viewDepthAt(uv - vec2(texel.x, 0.0)) - centre);
+  float cy = abs(viewDepthAt(uv + vec2(0.0, texel.y)) + viewDepthAt(uv - vec2(0.0, texel.y)) - centre);
+  return max(cx, cy);
+}
+
 float edgeStrength(vec2 uv) {
-  return smoothstep(uEdgeLow, uEdgeHigh, edgeGradient(uv));
+  float plane = smoothstep(uEdgeLow * 0.15, uEdgeLow * 0.4, curvatureAt(uv));
+  return smoothstep(uEdgeLow, uEdgeHigh, edgeGradient(uv)) * plane;
 }
 
 // --- ACES filmic (three.js implementation) --------------------------------

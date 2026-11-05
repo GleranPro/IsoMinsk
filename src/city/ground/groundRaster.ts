@@ -118,6 +118,7 @@ export interface GroundContext2D {
   lineJoin: CanvasLineJoin;
   setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
   setLineDash(segments: number[]): void;
+  lineDashOffset: number;
   beginPath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
@@ -179,7 +180,43 @@ export function rasterizeGround(
   paintGround(ctx as unknown as GroundContext2D, tile, bounds, res, width, height, {
     crispRails: crisp,
   });
-  if (crisp) {
+  if (crisp) paintCrispOverlays(ctx, tile, bounds, res, width, height);
+  paintDeckShadows(ctx as unknown as GroundContext2D, tile, bounds, res);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const image = ctx.getImageData(0, 0, width, height);
+  return { width, height, res, bounds, data: image.data };
+}
+
+/** Under-deck shade: bridges are geometry, the ground below them darkens. */
+export const DECK_SHADOW_RGBA = 'rgba(10, 12, 18, 0.34)';
+
+function paintDeckShadows(ctx: GroundContext2D, tile: TileData, bounds: Bounds4, res: number): void {
+  const shadows = tile.ground?.shadows;
+  if (!Array.isArray(shadows) || shadows.length === 0) return;
+  ctx.setTransform(1 / res, 0, 0, -1 / res, -bounds[0] / res, bounds[3] / res);
+  ctx.fillStyle = DECK_SHADOW_RGBA;
+  for (const shadow of shadows) {
+    if (!shadow || !Array.isArray(shadow.p) || shadow.p.length < 6) continue;
+    traceFill(ctx, { m: 'asphalt', p: shadow.p, h: shadow.h });
+    ctx.fill('evenodd');
+  }
+  maskOutsideClip(ctx, tile, bounds);
+}
+
+/**
+ * Hard-edged overlays at marking resolution: lane paint, parking bays,
+ * dividers, zebras and stop lines, then rail heads. Shared by the ground
+ * texture and the bridge deck textures.
+ */
+export function paintCrispOverlays(
+  ctx: OffscreenCanvasRenderingContext2D,
+  tile: TileData,
+  bounds: Bounds4,
+  res: number,
+  width: number,
+  height: number,
+): void {
+  {
     const strokes = (tile.ground?.strokes ?? []).filter((s) => isValidStroke(s) && s.b !== 1);
     const grid: PaintGrid = { width, height, x0: bounds[0], y1: bounds[3], res };
     const solid = canvasRgb(MARKING_COLOR);
@@ -221,9 +258,6 @@ export function rasterizeGround(
     ctx.setTransform(1 / res, 0, 0, -1 / res, -bounds[0] / res, bounds[3] / res);
     maskOutsideClip(ctx as unknown as GroundContext2D, tile, bounds);
   }
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const image = ctx.getImageData(0, 0, width, height);
-  return { width, height, res, bounds, data: image.data };
 }
 
 /** Paint into a scratch layer, threshold it to a hard mask, composite on top. */
@@ -259,7 +293,14 @@ export function paintGround(
   res: number,
   width: number,
   height: number,
-  options: { crispRails?: boolean } = {},
+  options: {
+    crispRails?: boolean;
+    /** Base colour; null leaves the canvas transparent (bridge deck textures). */
+    base?: string | null;
+    /** Rings filled (and dilated by a texel) in `underlayColor` before the strokes. */
+    underlay?: number[][];
+    underlayColor?: string;
+  } = {},
 ): GroundPaintStats {
   const stats: GroundPaintStats = {
     surfaces: 0,
@@ -276,14 +317,34 @@ export function paintGround(
 
   // Pixel space: base fill.
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = canvasColor(ENV_PALETTE.ground);
-  ctx.fillRect(0, 0, width, height);
+  const base = options.base === undefined ? ENV_PALETTE.ground : options.base;
+  if (base !== null) {
+    ctx.fillStyle = canvasColor(base);
+    ctx.fillRect(0, 0, width, height);
+  }
 
   // World space from here on: x east, y north → texel column/row.
   ctx.setTransform(1 / res, 0, 0, -1 / res, -x0 / res, y1 / res);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.setLineDash([]);
+
+  if (options.underlay && options.underlay.length > 0) {
+    const color = canvasColor(options.underlayColor ?? GROUND_COLORS.sidewalk);
+    for (const ring of options.underlay) {
+      if (!Array.isArray(ring) || ring.length < 6) continue;
+      ctx.beginPath();
+      ctx.moveTo(ring[0], ring[1]);
+      for (let i = 2; i + 1 < ring.length; i += 2) ctx.lineTo(ring[i], ring[i + 1]);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill('nonzero');
+      // Dilate: mesh edges sample the outermost texels, never transparent ones.
+      ctx.lineWidth = 3 * res;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    }
+  }
 
   paintSurfaces(ctx, tile.surfaces, stats);
 
@@ -400,8 +461,12 @@ export function paintGround(
       strokeLine(ctx, stroke.p, stroke.w, GROUND_COLORS.railBallast);
       ctx.lineCap = 'butt';
       ctx.setLineDash([0.6, 0.9]);
+      // Tie phase anchored to the way's arc length: tile-clipped pieces of one
+      // track must put their sleepers on the same texels at a tile border.
+      ctx.lineDashOffset = Number.isFinite(stroke.s0) ? stroke.s0 : 0;
       strokeLine(ctx, stroke.p, Math.min(2.6, stroke.w * 0.8), GROUND_COLORS.railTie);
       ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
       ctx.lineCap = 'round';
       if (!options.crispRails) {
         for (const side of [-0.72, 0.72]) {

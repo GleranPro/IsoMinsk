@@ -1,4 +1,4 @@
-# Road network normalization (payload 0.4.0: raster ground compositor)
+# Road network normalization (payload 0.4.x: raster ground compositor)
 
 ## Payload 0.4.0 — the ground is painted, not partitioned
 
@@ -54,12 +54,14 @@ layer. Rules that remain:
   (`groundResolutionFor`, `?groundRes=` override); paint only at ≤ 1 m/texel.
   Magnification nearest, minification trilinear + anisotropy 8 (nearest
   minification broke 1-texel dashes into glyphs along the foreshortened axis).
-* **Bridges** are still the vector decks of the 0.3.0 partition
-  (`emitRoadSurfaces(..., { bridgesOnly: true })`); bridge strokes (`b: 1`) are not
-  painted into the ground.
+* **Bridges** are 3D decks (payload 0.4.2, below); bridge strokes (`b: 1`) are
+  never painted into the ground.
 
-`?ground=vector` renders the legacy 0.3.0 partition for A/B comparison; both
-layers are still emitted.
+The legacy 0.3.0 vector partition (material zones, junction-zone integration,
+medians, paving, kerbs → `roadSurfaces` / `roadNetwork`) is **no longer built by
+default**; `normalize.py --legacy-roads` builds it again so `?ground=vector`
+has something to render for an A/B comparison. Junction records and crossings
+are always built (the strokes use them).
 
 ### Payload 0.4.1 — dual-carriageway gaps, tram reservations, tram stops
 
@@ -136,13 +138,109 @@ strokes-only difference, 40–140 ms per tile), and
 `QA_SHOTS_DIR=screenshots/ab/raster node scripts/qa/road-shots.mjs` vs
 `QA_QUERY=ground=vector` for the side-by-side.
 
-**Not done yet:** 3D bridge ribbons from strokes (with ramps), texture LOD tiers
-and a GPU memory budget for the 144-tile city dataset, removal of the vector
-partition.
+### Payload 0.4.2 — bridge decks
+
+`scripts/normalize/bridge_decks.py` turns the `b: 1` strokes into deck chunks
+(`ground.decks`, ground `version: 2`); the ground keeps no bridge strokes.
+
+* **Footprint** — union of each bridge stroke's full cross-section (kerb band +
+  kerb + synthetic pavement, or the path width), closed by 3 m (gaps < 6 m,
+  same as the ground median fill) so a separately mapped footway and the
+  carriageway become one slab — with 2 m a footway 3.4–4.2 m off its
+  carriageway (Kastrychnitskaya) left a walled notch. Every bridge kind gets a
+  deck (`ped` / `track` were missing: the Kanatny lane footbridge vanished);
+  any bridge stroke too small for a deck is flattened onto the ground, never
+  left with `b`.
+* **Divided streets** — on the deck the gap between carriageways is asphalt
+  (closed union of the road footprints minus the roads, `f`) with the solid
+  divider from the median sampler (`dv`). On the ground the median sampler
+  also pairs a bridge half with a ground half, so where the halves leave the
+  bridge at different points the ground gap beside the deck is asphalt too
+  (it showed as a hole at Kastrychnitskaya 5A); pairs with both halves on the
+  bridge are left to the deck. An outline edge is an end when the end lines
+  cover at least half of it (a midpoint test left a 1.4 m parapet stub).
+* **Ends** — only where a ground stroke *connected* to a bridge way (shares its
+  end node, ≤ 1 m) touches the outline. A road passing under an overpass is
+  never an end. Also ends: outline running *alongside* a connected ground
+  continuation within 3 m (the halves of a divided street leave the bridge at
+  different points — the step between them is not a wall), and side runs
+  ≤ 6 m between two end runs (the closed gap where both halves meet the street).
+* **Height** — 0 at the ends, `3 m × layer` (max 2) on the span; smoothstep
+  ramp of `min(15 m, 0.8 × distance to the farthest point)`, slope capped at
+  0.22, so a 20 m bridge rises less than an 80 m one. Heights are baked into the
+  top triangles (the deck is sliced into 1.5 m iso-distance bands).
+* **Edges** — per outline edge: `1` side (fascia + parapet), `0` end (the deck
+  runs into the street), `2` chunk cut. Chunks are cut on a 128 m world grid
+  (always inside one tile) to keep every deck texture small.
+* **Texture** — each deck carries its strokes (`s`); the renderer paints them
+  with the ground compositor itself (`paintGround` on a transparent canvas over
+  a paving underlay, plus the crisp overlays) into one atlas per tile, texel
+  grid anchored to world coordinates — the bridge has the asphalt, kerbs,
+  pavements and lane paint of its street (`src/city/ground/groundDecks.ts`).
+* **Structure** — light concrete fascia under side edges, `DECK_SLAB_M` (1.1 m)
+  deep under the span (water / the road below stays visible) and down to the
+  ground where the deck is low; a 1.1 m parapet on top. Deck tops are shaded
+  with up normals, like the flat ground.
+* **Shadow** — `ground.shadows` (deck minus the first 35 % of each ramp) is
+  darkened in the ground texture.
+* `highway=construction` takes its class from `construction=*`, or becomes a
+  footway when it has `footway=*` (the Independence Avenue bridge pavements).
+
+The pixel-art outline pass gates its depth-gradient outline by the depth
+*second difference*: any plane — a ramp or a roof pitch facing away from the
+camera — has a steep but constant gradient and is no longer filled with the
+outline colour; silhouettes and creases keep their outline.
+
+### Ground texture LOD and GPU budget
+
+Every tile shows one ground texture; the streamer (`tileStreamer.ts`,
+`updateGroundLod`) picks its texel size from the zoom and re-rasterises it in a
+worker (`groundOnly` jobs: ground + bridge decks, no buildings):
+
+| tier | texel (pilot / city) | when | how many |
+| --- | --- | --- | --- |
+| fine | 0.25 / 0.5 m | render pixel ≤ 0.6 m (exit 0.8) | 6 nearest visible |
+| base | 0.5 / 1 m | render pixel ≤ 3 m (exit 4) | 24 nearest visible |
+| coarse | 2 / 4 m, no paint | otherwise | the rest |
+
+New tiles load at the current tier; a tile keeps its texture until the new one
+arrives (no flash). Measured with `node scripts/qa/ground-lod-check.mjs`
+(`QA_DATASET=city`): city overview ≈48 MB of ground textures (was ≈770 MB with
+1024² for all 144 tiles), close-up ≈189 MB; pilot ≈85 MB / 146 MB.
+`?groundRes=` pins one texel size and disables the LOD.
+
+Rail tie dashes are phased by `s0` and collapsed closing slivers (< 0.05 m²
+after the 1 cm rounding) are dropped — both were city seam mismatches.
+
+### Dropping the vector partition (measured)
+
+With the 3D decks in place nothing in the raster path reads the partition, so it
+became opt-in (`--legacy-roads`). Trees are excluded from the ground-stroke
+footprints instead of the drivable union.
+
+| | with partition | strokes only |
+| --- | --- | --- |
+| pilot road network | 4.2 s | 0.83 s |
+| pilot tiles | 3.63 MB | 2.86 MB |
+| pilot trees | 8 569 | 8 567 |
+| city road network (paving + kerb alone ≈ 800 s) | 908 s | 32 s |
+| city normalize total | 2 118 s | 303 s |
+| city tiles (144) | 103.7 MB | 76.2 MB |
+
+City after the switch: ground seam audit 0 failing pairs (worst 0.000 %),
+175 decks / 325 chunks, ground texture peak ≈189 MB (LOD check).
+
+Control shots against the pre-change renders differ only in heuristic tree
+placement once the ground texel size is pinned (`QA_QUERY=groundRes=0.5`); the
+rest of the difference is the fine LOD tier.
+
+**Not done yet:** deleting the TypeScript vector renderer (`networkMeshes.ts`,
+`surfaceMeshes.ts`, `bridgeSides.ts`) and the Python partition code, piers under
+long spans.
 
 ---
 
-# Payload 0.3.0 and earlier (vector partition, kept for `?ground=vector`)
+# Payload 0.3.0 and earlier (vector partition, built only with `--legacy-roads`)
 
 Status: implemented in the offline pipeline and consumed by the renderer. This
 document is the contract for the normalized road payload; the geometry code

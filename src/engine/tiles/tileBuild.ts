@@ -20,6 +20,12 @@ import {
   rasterizeGround,
 } from '../../city/ground/groundRaster';
 import {
+  buildDeckTopGeometry,
+  rasterizeDecks,
+  tileDecks,
+  usesGroundDecks,
+} from '../../city/ground/groundDecks';
+import {
   type GroundBuildMode,
   type WireGroundTexture,
   packGeometry,
@@ -36,6 +42,8 @@ export interface TileBuildOptions {
   groundMode?: GroundBuildMode;
   /** Ground texel size override, metres. */
   groundRes?: number;
+  /** Ground texture + bridge decks only (ground LOD upgrade of a loaded tile). */
+  groundOnly?: boolean;
 }
 
 interface ExtractedPart {
@@ -200,6 +208,59 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
     }
   }
 
+  // Bridge decks (payload 0.4.2): textured top surface, painted like the ground.
+  let decks: TileWirePayload['decks'] = null;
+  if (ground && usesGroundDecks(data)) {
+    try {
+      const list = tileDecks(data);
+      const atlas = rasterizeDecks(list, ground.res);
+      const geometry = atlas ? buildDeckTopGeometry(list, atlas) : null;
+      if (atlas && geometry) {
+        const copy = new Uint8Array(atlas.data.byteLength);
+        copy.set(atlas.data);
+        decks = {
+          mesh: packGeometry(geometry),
+          texture: {
+            width: atlas.width,
+            height: atlas.height,
+            res: atlas.res,
+            bounds: data.bounds,
+            data: copy.buffer,
+          },
+        };
+      }
+    } catch (error) {
+      buildingsError = `bridge decks: ${String(error)}`;
+      decks = null;
+    }
+  }
+
+  if (options.groundOnly) {
+    const groundPayload: TileWirePayload = {
+      key: `${data.tileX}_${data.tileY}`,
+      x: data.tileX,
+      y: data.tileY,
+      bounds: data.bounds,
+      buildings: [],
+      buildingGeometry: null,
+      triangleOwner: null,
+      triangleOwnerLength: 0,
+      buildingIds: [],
+      environment: null,
+      trees: null,
+      ground,
+      decks,
+      triangleCount: decks ? decks.mesh.triangleCount : 0,
+      bytes: 0,
+      fetchMs: 0,
+      buildMs: 0,
+    };
+    groundPayload.bytes = payloadBytes(groundPayload);
+    groundPayload.buildMs = now() - startedAt;
+    if (buildingsError) groundPayload.buildWarning = buildingsError;
+    return groundPayload;
+  }
+
   const environment = (() => {
     try {
       const result = buildEnvironmentMeshes(data, {
@@ -272,6 +333,7 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
     environment: environmentMesh,
     trees: treeMesh,
     ground,
+    decks,
     triangleCount,
     bytes: 0,
     fetchMs: 0,

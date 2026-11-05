@@ -640,6 +640,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         visibleTilesLoaded: streamer.visibleTileCount,
         loadedTiles: streamer.loadedTileCount,
         buildings: streamer.loadedBuildingCount,
+        /** Ground LOD: resident ground textures per texel size (metres). */
+        groundTiers: streamer.groundTiers,
         tiles: tiles.slice(0, 32),
       };
     },

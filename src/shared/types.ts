@@ -460,6 +460,42 @@ export interface GroundLayer {
   dividers?: number[][];
   /** Payload 0.4.1: data extent [minX, minY, maxX, maxY]; ground outside stays base. */
   clip?: [number, number, number, number];
+  /**
+   * Payload 0.4.2 (ground version 2): raised bridge decks owned by this tile
+   * (one chunk of at most 128 m; see scripts/normalize/bridge_decks.py).
+   */
+  decks?: GroundDeck[];
+  /** Payload 0.4.2: under-deck shadow polygons painted into the ground texture. */
+  shadows?: { p: number[]; h?: number[][] }[];
+}
+
+/** One outline ring of a deck chunk: flat x,y; height per vertex; edge kind per edge. */
+export interface GroundDeckRing {
+  p: number[];
+  /** Deck height above the ground at each vertex, metres. */
+  z: number[];
+  /** Per edge i (vertex i → i+1): 1 side (fascia + parapet), 0 end (meets the street), 2 chunk cut. */
+  e: number[];
+}
+
+/** A raised bridge deck chunk (payload 0.4.2). */
+export interface GroundDeck {
+  /** OSM id of the first bridge way (diagnostics). */
+  id: number;
+  /** Bounds [minX, minY, maxX, maxY] of the deck chunk, metres. */
+  bb: [number, number, number, number];
+  /** Span height (plateau) above the ground, metres. */
+  hz: number;
+  /** Top surface triangles: flat [x, y, z] × 3 per triangle, CCW seen from above. */
+  t: number[];
+  /** Outline rings (exterior CCW, holes CW). */
+  r: GroundDeckRing[];
+  /** The bridge strokes painted onto the deck texture (no `b` flag). */
+  s: GroundStroke[];
+  /** Gap fills between the halves of a divided street on the deck. */
+  f?: GroundFill[];
+  /** Solid divider lines between those halves (flat x, y). */
+  dv?: number[][];
 }
 
 export interface GroundFill {
