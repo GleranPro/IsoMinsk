@@ -1,5 +1,24 @@
 # QA Report — Isometric Minsk
 
+> **Latest checkpoint — 2026-11-06, rail LOD.** TypeScript/production build
+> passed; **440 Vitest passed, 5 skipped; 14/14 hardware-WebGL Playwright passed**.
+> Ground and bridge rail heads keep their family palette and 0.15 m physical
+> width across tiers. Same-camera OSM and synthetic captures plus pixel/coverage
+> checks: [RAIL_LOD_2026-11-06.md](RAIL_LOD_2026-11-06.md).
+
+> **Earlier checkpoint — 2026-11-06, tree instancing / style C.** TypeScript and
+> production build passed; Vitest **434 passed, 5 skipped**; hardware-WebGL
+> Playwright **13/13 passed**, including workers and inline fallback. All
+> **316 704 trees / 144 city tiles** are retained. Tree buffers **−87.95%**;
+> resident-buffer counter **731.20 → 378.42 MiB**. Overview mean/p95 frame time
+> **4.70/6.10 → 6.46/8.10 ms** on the same RTX 3080: more detailed crowns cost
+> extra overview rendering time. This does not verify phones or full seasons.
+> [Detailed results and source JSON](TREE_INSTANCING_2026-11-06.md).
+>
+> The dated addenda/body below preserve historical results, not current default
+> render counts. The rail-colour mismatch identified during documentation
+> reconciliation was subsequently fixed in the rail LOD checkpoint above.
+
 > **Revision addendum — 2026-10-28 (post-landmark round).** The report body below
 > documents the 2026-10-27 16:30 QA round. Since then the data pipeline gained
 > curated landmark fixes (Minsk Gate, National Library, Victory obelisk, Red

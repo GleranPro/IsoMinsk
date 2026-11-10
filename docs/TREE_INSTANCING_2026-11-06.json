@@ -1,0 +1,209 @@
+{
+  "date": "2026-11-06",
+  "selectedStyle": "asymmetric",
+  "memoryAudit": {
+    "dataset": "city",
+    "tiles": 144,
+    "legacy": {
+      "count": 316704,
+      "bytes": 420601248,
+      "triangles": 3894456
+    },
+    "styles": [
+      {
+        "style": "faceted",
+        "count": 316704,
+        "instanceBytes": 50672640,
+        "templateBytes": 8624,
+        "triangles": 5192172,
+        "batches": 358,
+        "reductionPercent": 87.95
+      },
+      {
+        "style": "clustered",
+        "count": 316704,
+        "instanceBytes": 50672640,
+        "templateBytes": 10616,
+        "triangles": 7747656,
+        "batches": 358,
+        "reductionPercent": 87.95
+      },
+      {
+        "style": "asymmetric",
+        "count": 316704,
+        "instanceBytes": 50672640,
+        "templateBytes": 10712,
+        "triangles": 8976604,
+        "batches": 358,
+        "reductionPercent": 87.95
+      }
+    ]
+  },
+  "baseline": {
+    "label": "legacy-comparable",
+    "url": "http://127.0.0.1:5174/?dataset=city&nolimit=1&treeStyle=legacy",
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3080 Laptop GPU (0x000024DC) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "loadS": 18.599,
+    "heap": 1020,
+    "tiles": 144,
+    "trees": {
+      "style": "legacy",
+      "count": 0,
+      "instanceBytes": 0,
+      "templateBytes": 0,
+      "batches": 0
+    },
+    "results": [
+      {
+        "view": "overview",
+        "frames": 850,
+        "meanMs": 4.7,
+        "p95Ms": 6.1,
+        "fps": 212.7,
+        "triangles": 4040521,
+        "drawCalls": 422,
+        "geometryMB": 731.2
+      },
+      {
+        "view": "gorky-park",
+        "frames": 2037,
+        "meanMs": 1.96,
+        "p95Ms": 3.1,
+        "fps": 509.4,
+        "triangles": 505767,
+        "drawCalls": 46,
+        "geometryMB": 731.2
+      },
+      {
+        "view": "chelyuskintsev-park",
+        "frames": 1187,
+        "meanMs": 3.37,
+        "p95Ms": 4.4,
+        "fps": 296.9,
+        "triangles": 882996,
+        "drawCalls": 61,
+        "geometryMB": 731.2
+      },
+      {
+        "view": "kalvaria-cemetery",
+        "frames": 1268,
+        "meanMs": 3.15,
+        "p95Ms": 4.2,
+        "fps": 317.1,
+        "triangles": 318031,
+        "drawCalls": 39,
+        "geometryMB": 731.2
+      },
+      {
+        "view": "loshitsa-park",
+        "frames": 1214,
+        "meanMs": 3.3,
+        "p95Ms": 4.2,
+        "fps": 303.4,
+        "triangles": 534947,
+        "drawCalls": 49,
+        "geometryMB": 731.2
+      },
+      {
+        "view": "victory-park",
+        "frames": 1310,
+        "meanMs": 3.05,
+        "p95Ms": 4.1,
+        "fps": 327.7,
+        "triangles": 720967,
+        "drawCalls": 73,
+        "geometryMB": 731.2
+      }
+    ],
+    "errors": []
+  },
+  "instanced": {
+    "label": "asymmetric-indexed",
+    "url": "http://127.0.0.1:5174/?dataset=city&nolimit=1&treeStyle=asymmetric",
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3080 Laptop GPU (0x000024DC) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "loadS": 13.539,
+    "heap": 670,
+    "tiles": 144,
+    "trees": {
+      "style": "asymmetric",
+      "count": 316704,
+      "instanceBytes": 50672640,
+      "templateBytes": 10712,
+      "batches": 358
+    },
+    "results": [
+      {
+        "view": "overview",
+        "frames": 618,
+        "meanMs": 6.46,
+        "p95Ms": 8.1,
+        "fps": 154.8,
+        "triangles": 7875933,
+        "drawCalls": 593,
+        "geometryMB": 378.42
+      },
+      {
+        "view": "gorky-park",
+        "frames": 1670,
+        "meanMs": 2.39,
+        "p95Ms": 3.1,
+        "fps": 417.6,
+        "triangles": 765427,
+        "drawCalls": 56,
+        "geometryMB": 378.42
+      },
+      {
+        "view": "chelyuskintsev-park",
+        "frames": 1212,
+        "meanMs": 3.3,
+        "p95Ms": 4.2,
+        "fps": 303.1,
+        "triangles": 1750418,
+        "drawCalls": 87,
+        "geometryMB": 378.42
+      },
+      {
+        "view": "kalvaria-cemetery",
+        "frames": 1360,
+        "meanMs": 2.94,
+        "p95Ms": 3.9,
+        "fps": 340.2,
+        "triangles": 485499,
+        "drawCalls": 55,
+        "geometryMB": 378.42
+      },
+      {
+        "view": "loshitsa-park",
+        "frames": 1428,
+        "meanMs": 2.8,
+        "p95Ms": 3.8,
+        "fps": 357.4,
+        "triangles": 1164191,
+        "drawCalls": 65,
+        "geometryMB": 378.42
+      },
+      {
+        "view": "victory-park",
+        "frames": 1400,
+        "meanMs": 2.86,
+        "p95Ms": 3.7,
+        "fps": 350.2,
+        "triangles": 1253227,
+        "drawCalls": 100,
+        "geometryMB": 378.42
+      }
+    ],
+    "errors": []
+  },
+  "validation": {
+    "typecheck": "passed",
+    "build": "passed",
+    "vitestPassed": 434,
+    "vitestSkipped": 5,
+    "playwrightHardwareWebGLPassed": 13
+  },
+  "limitations": [
+    "One GPU benchmark run per variant, not a phone test.",
+    "More detailed crowns increase overview frame time; full seasons and mobile controls are not implemented."
+  ]
+}

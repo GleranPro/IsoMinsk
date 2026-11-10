@@ -11,11 +11,12 @@
  *                and crossings derived from `roadNetwork`/`junctions`/`crossings`;
  *                old tiles fall back to the legacy buffered `roads` polygons.
  *                Either way this is one merged geometry / one draw call.
- *   - `trees`  : one merged stylised tree geometry, or null.
+ *   - `treeInstances`: compact stem/crown batches (default).
+ *   - `trees`: merged geometry only for the explicit legacy QA reference.
  *
- * Each category is a single indexed `BufferGeometry` in renderer world space
- * (`world = [localX, height, -localY]`) with vertex colours, so the tile costs
- * at most three draw calls for the entire environment.
+ * Ground/roads/attractions are BufferGeometries; vegetation uses shared indexed
+ * templates and instance transforms. All use renderer world space
+ * (`world = [localX, height, -localY]`).
  *
  * Layering uses `GROUND_LAYER_Y` from `src/shared/config.ts` plus a few local
  * offsets (see envLayers.ts). Nothing is ever coplanar with another category.
@@ -37,6 +38,7 @@ import {
   type SurfaceBuildStats,
 } from './surfaceMeshes';
 import { buildTreeGeometry, type TreeDetailTier } from './treeMeshes';
+import { buildTreeInstances, type TreeInstances, type TreeRenderStyle } from './treeInstances';
 import { emitAttractions, type AttractionEmitStats } from './ferrisWheel';
 import { createRoadStats, emitRoadLayer, type RoadBuildStats } from '../roads/roadMeshes';
 import { emitRoadSurfaces } from '../roads/surfaceMeshes';
@@ -46,6 +48,8 @@ export interface EnvironmentMeshOptions {
   tileBounds: [number, number, number, number];
   /** Emit trees (disabled at low quality). */
   trees: boolean;
+  /** Selected asymmetric style by default; legacy is explicit QA only. */
+  treeStyle?: TreeRenderStyle;
   /**
    * Raster ground mode (payload 0.4.0): the flat ground — base, landcover,
    * water and every ground-level road/path — is painted into a texture by
@@ -64,7 +68,7 @@ export interface EnvironmentMeshCounts {
   roads: RoadBuildStats;
   trees: number;
   treeLod: boolean;
-  /** Detail tier used for the merged tree geometry. */
+  /** Detail tier used for vegetation. */
   treeTier?: TreeDetailTier;
   /** Number of park attractions (ferris wheels) emitted. */
   attractions: number;
@@ -79,12 +83,13 @@ export interface EnvironmentMeshResult {
   ground: THREE.BufferGeometry;
   /** Roads, footways, rail surfaces. */
   roads: THREE.BufferGeometry;
-  /** Tree instances (merged trunk+crown geometry) or null. */
+  /** Legacy QA geometry only; null in the default instanced path. */
   trees: THREE.BufferGeometry | null;
+  /** Compact vegetation for the new renderer; mutually exclusive with trees. */
+  treeInstances?: TreeInstances | null;
   /**
    * Park attractions (ferris wheels) as one merged geometry, or null.
-   * The renderer merges this with the tree geometry (same material) — the
-   * dedicated field keeps the existing ground/roads/trees contract intact.
+   * Rendered separately so seasonal foliage changes cannot affect attractions.
    */
   attractions?: THREE.BufferGeometry | null;
   triangleCount: number;
@@ -136,6 +141,7 @@ export function buildEnvironmentMeshes(
   }
 
   let treeGeometry: THREE.BufferGeometry | null = null;
+  let treeInstances: TreeInstances | null = null;
   let treeTriangles = 0;
   let treeCount = 0;
   let treeLod = false;
@@ -143,12 +149,14 @@ export function buildEnvironmentMeshes(
   const wantTrees = options?.trees !== false;
   if (wantTrees && Array.isArray(tile?.trees) && tile.trees.length > 0) {
     try {
-      const treeResult = buildTreeGeometry(tile.trees);
+      const style = options.treeStyle ?? 'asymmetric';
+      const treeResult = style === 'legacy' ? buildTreeGeometry(tile.trees) : buildTreeInstances(tile.trees, style);
       if (treeResult) {
-        treeGeometry = treeResult.geometry;
+        if ('geometry' in treeResult) treeGeometry = treeResult.geometry;
+        else treeInstances = treeResult;
         treeTriangles = treeResult.triangleCount;
         treeCount = treeResult.count;
-        treeLod = treeResult.lod;
+        treeLod = treeResult.tier !== 'full';
         treeTier = treeResult.tier;
       }
     } catch {
@@ -157,8 +165,7 @@ export function buildEnvironmentMeshes(
     }
   }
 
-  // Park attractions (ferris wheels) — merged separately from the trees so the
-  // renderer can combine them into one draw call with the tree material.
+  // Park attractions have their own mesh and material, independent of foliage.
   let attractionGeometry: THREE.BufferGeometry | null = null;
   let attractionStats: AttractionEmitStats = { attractions: 0, triangles: 0, skipped: 0 };
   if (Array.isArray(tile?.attractions) && tile.attractions.length > 0) {
@@ -196,7 +203,7 @@ export function buildEnvironmentMeshes(
     skippedPolygons: surfaceStats.skippedPolygons + roadStats.skippedPolygons,
   };
 
-  return { ground, roads, trees: treeGeometry, attractions: attractionGeometry, triangleCount, counts };
+  return { ground, roads, trees: treeGeometry, treeInstances, attractions: attractionGeometry, triangleCount, counts };
 }
 
 /**

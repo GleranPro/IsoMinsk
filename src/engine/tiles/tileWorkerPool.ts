@@ -15,12 +15,14 @@ import type {
   TileWorkerCancelRequest,
   GroundBuildMode,
 } from './serialization';
+import type { TreeRenderStyle } from '../../city/environment/treeInstances';
 
 export interface TileWorkerJobInput {
   key: string;
   url: string;
   facadeDetail: boolean;
   trees: boolean;
+  treeStyle?: TreeRenderStyle;
   groundMode?: GroundBuildMode;
   groundRes?: number;
   groundOnly?: boolean;
@@ -238,6 +240,7 @@ export class TileWorkerPool {
         url: job.input.url,
         facadeDetail: job.input.facadeDetail,
         trees: job.input.trees,
+        treeStyle: job.input.treeStyle,
         groundMode: job.input.groundMode,
         groundRes: job.input.groundRes,
         groundOnly: job.input.groundOnly,

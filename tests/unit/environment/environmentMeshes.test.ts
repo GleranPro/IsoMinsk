@@ -182,7 +182,7 @@ function richTile(): TileData {
 
 describe('buildEnvironmentMeshes — empty / minimal tiles', () => {
   it('always emits the base ground quad covering the tile', () => {
-    const result = buildEnvironmentMeshes(makeTile(), { tileBounds: BOUNDS, trees: true });
+    const result = buildEnvironmentMeshes(makeTile(), { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' });
     expect(result.trees).toBeNull();
     expect(result.triangleCount).toBe(2);
     expect(result.counts!.groundTriangles).toBe(2);
@@ -228,7 +228,7 @@ describe('buildEnvironmentMeshes — empty / minimal tiles', () => {
 
 describe('buildEnvironmentMeshes — full environment', () => {
   it('emits every category in its band and keeps the geometry valid', () => {
-    const result = buildEnvironmentMeshes(richTile(), { tileBounds: BOUNDS, trees: true });
+    const result = buildEnvironmentMeshes(richTile(), { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' });
     assertValidGeometry(result.ground, 'ground');
     assertValidGeometry(result.roads, 'roads');
     expect(result.trees).not.toBeNull();
@@ -338,8 +338,8 @@ describe('buildEnvironmentMeshes — full environment', () => {
   });
 
   it('is deterministic across builds', () => {
-    const first = buildEnvironmentMeshes(richTile(), { tileBounds: BOUNDS, trees: true });
-    const second = buildEnvironmentMeshes(richTile(), { tileBounds: BOUNDS, trees: true });
+    const first = buildEnvironmentMeshes(richTile(), { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' });
+    const second = buildEnvironmentMeshes(richTile(), { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' });
     expect(second.triangleCount).toBe(first.triangleCount);
     expect(second.counts).toEqual(first.counts);
     const positions = (geometry: THREE.BufferGeometry): number[] =>
@@ -376,8 +376,8 @@ describe('buildEnvironmentMeshes — robustness', () => {
         makeTree(1100, -450),
       ],
     });
-    expect(() => buildEnvironmentMeshes(malformed, { tileBounds: BOUNDS, trees: true })).not.toThrow();
-    const result = buildEnvironmentMeshes(malformed, { tileBounds: BOUNDS, trees: true });
+    expect(() => buildEnvironmentMeshes(malformed, { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' })).not.toThrow();
+    const result = buildEnvironmentMeshes(malformed, { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' });
     assertValidGeometry(result.ground, 'ground');
     assertValidGeometry(result.roads, 'roads');
     assertValidGeometry(result.trees!, 'trees');
@@ -390,7 +390,7 @@ describe('buildEnvironmentMeshes — robustness', () => {
       surfaces: [surface('grass', [[0, 0], [1, 1]])],
       roads: [{ kind: 'road', class: 'primary', polygon: [[[0, 0], [10, 0], [20, 0]]], width: 18 }],
     });
-    const result = buildEnvironmentMeshes(tile, { tileBounds: BOUNDS, trees: true });
+    const result = buildEnvironmentMeshes(tile, { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' });
     expect(result.counts!.groundTriangles).toBe(2); // base quad only
     expect(result.counts!.roadTriangles).toBe(0);
     expect(result.triangleCount).toBe(2);
@@ -399,8 +399,8 @@ describe('buildEnvironmentMeshes — robustness', () => {
 
   it('survives tile-like garbage (missing arrays) without throwing', () => {
     const garbage = { tileX: 2, tileY: -1 } as unknown as TileData;
-    expect(() => buildEnvironmentMeshes(garbage, { tileBounds: BOUNDS, trees: true })).not.toThrow();
-    const result = buildEnvironmentMeshes(garbage, { tileBounds: BOUNDS, trees: true });
+    expect(() => buildEnvironmentMeshes(garbage, { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' })).not.toThrow();
+    const result = buildEnvironmentMeshes(garbage, { tileBounds: BOUNDS, trees: true, treeStyle: 'legacy' });
     expect(result.triangleCount).toBe(2);
   });
 });
@@ -456,6 +456,7 @@ describe('buildEnvironmentMeshes — performance budget', () => {
     const result = buildEnvironmentMeshes(makeTile({ surfaces, roads, trees }), {
       tileBounds: BOUNDS,
       trees: true,
+      treeStyle: 'legacy',
     });
     expect(result.counts!.groundTriangles + result.counts!.roadTriangles).toBeLessThan(3000);
     expect(result.triangleCount).toBeLessThan(12000);

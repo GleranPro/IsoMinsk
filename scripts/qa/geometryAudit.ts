@@ -94,7 +94,8 @@ for (const entry of manifest.tiles) {
   const envTriangles =
     (env.ground.index ? env.ground.index.count / 3 : env.ground.getAttribute('position').count / 3) +
     (env.roads.index ? env.roads.index.count / 3 : env.roads.getAttribute('position').count / 3) +
-    (env.trees ? (env.trees.index ? env.trees.index.count / 3 : env.trees.getAttribute('position').count / 3) : 0);
+    (env.trees ? (env.trees.index ? env.trees.index.count / 3 : env.trees.getAttribute('position').count / 3) : 0) +
+    (env.treeInstances?.triangleCount ?? 0) + (env.counts?.attractionTriangles ?? 0);
 
   results.push({
     tile: `${tile.tileX}_${tile.tileY}`,

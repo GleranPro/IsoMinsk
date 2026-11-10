@@ -1,5 +1,8 @@
 # Art reference — Isometric Warsaw (bedirhanyildirim.com)
 
+Updated local-project status: 2026-11-06. Reference-site counts/metadata below
+are recorded from the original research; they are not a fresh external audit.
+
 ## Source and method (verified)
 
 - Interactive map: <https://bedirhanyildirim.com/warsaw-izo/> — pan, zoom, rotate in the browser.
@@ -29,15 +32,26 @@
 - **Copy:** single sun, strict palette, depth-only outlines, roof colour separated from facade, high object density, detail gated by zoom.
 - **Don't copy:** dependence on national LoD2/orthophoto (not available for Minsk), 240 hand-modelled landmarks, the 2-day agent workflow.
 
-## Where our renderer is today (code check)
+## Current local renderer (2026-11-06)
 
-`docs/ARCHITECTURE.md` describes the intended pipeline; what the checkout currently contains is below.
+- Real OSM footprint volumes, roof shapes, procedural facade/night windows,
+  raster ground with roads/rails, shadows and five curated landmarks are implemented.
+- The pixel-art pass is active: 360 px internal height by default, outline,
+  quantisation/dither and nearest-neighbour upscale; clean 3D remains a debug option.
+- Tree review compared A/B/C in the actual renderer. The user requested another
+  reference inspection and allowed C as the fallback. Summer-mode inspection
+  favoured broad, faceted, uneven crowns; asymmetric C is now the default.
+- The source positions/dimensions remain ours. No Warsaw geometry or tree data
+  was imported. Dense C trees use a rounded 20-triangle crown plus an 8-triangle
+  trunk; other density tiers use 36/44/56 triangles per complete tree.
+- Canopy appearance is independently updateable, while full seasons and mobile
+  controls remain pending. See [verified results](TREE_INSTANCING_2026-11-06.md).
 
-- Ortho camera at 45° / 35.264°, default `orthoHeight` 420 m, 320 px internal render upscaled with `image-rendering: pixelated`, PCF shadows, Lambert materials.
-- `buildingsMesh.ts`, `environmentMeshes.ts` and `facadeMaterial.ts` are **interface stubs**: axis-aligned boxes, flat ground, no trees, no markings, no procedural windows. The palette module and facade presets are real; the `outline` / `colorLevels` / `dither` settings exist but are **not wired to any pass**.
-- Consequence: the biggest visual wins right now are geometry and materials, not post-processing.
+## Initial recommendations (historical design directions)
 
-## Recommendations (12)
+These record the early review, not the current delivery checklist. In particular,
+the original 8–12-triangle crown suggestion below was superseded by the reviewed
+C geometry and its measured performance/memory trade-off.
 
 1. **Build real LoD1 volumes first.** Extruded footprints with `min_height`, `building:part`, roof shapes and per-volume heights. Post FX cannot rescue boxes; most of the reference's quality comes from geometry and data, not from the pixel filter.
 2. **Lock the pixel grid.** Snap the camera target to whole pixels for the current `orthoHeight` (world-to-screen = `2 × orthoHeight / renderHeight`) so panning doesn't shimmer. Keep 45° / 35.264° as the default and "G"-style reset.

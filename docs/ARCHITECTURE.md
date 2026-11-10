@@ -11,8 +11,8 @@ Geofabrik Belarus extract as the fallback for larger areas):
 
 | Dataset | Extent | Tiles | Purpose | Committed |
 | --- | --- | --- | --- | --- |
-| `pilot` (default) | 1.6 × 1.6 km | 16 × 512 m | vertical slice, immediate `pnpm dev` | yes (~1.9 MiB) |
-| `city` | 12 × 12 km | 144 × 1024 m | whole inner-city belt, `?dataset=city` | no — generated with `pnpm run data:city` (~59 MiB) |
+| `pilot` (default) | 1.6 × 1.6 km | 16 × 512 m | vertical slice, immediate `pnpm dev` | yes (~2.6 MiB JSON) |
+| `city` | 12 × 12 km | 144 × 1024 m | whole inner-city belt, `?dataset=city` | no — generated with `pnpm run data:city` (~88.4 MiB JSON) |
 
 ```
 BBBike Minsk .osm.pbf
@@ -48,7 +48,7 @@ same PBF + same scripts ⇒ same tiles. The dataset is selected by the URL
 | Source | WGS84 (EPSG:4326), lon/lat degrees |
 | Projected | EPSG:32635 (UTM 35N), metres |
 | Local | `local = utm − originUtm`, metres, origin = pilot centre |
-| Tile | `tile = floor(local / 512 m)` |
+| Tile | `tile = floor(local / manifest.tileSize)` (512 m pilot, 1024 m city) |
 | Renderer world | `(x, height, z) = (localX, y, −localY)` |
 
 * Local `+X` = east, `+Y` = north. Renderer `−Z` = north, so at azimuth 0 the
@@ -58,7 +58,7 @@ same PBF + same scripts ⇒ same tiles. The dataset is selected by the URL
 * The renderer uses local coordinates directly (origin at the pilot centre) —
   for a 1.6–2 km area the float32 precision is more than sufficient (≈0.1 mm at
   2 km). For city-scale expansion the same scheme is used per loaded tile, with
-  a floating origin applied to the camera when the target moves far from 0.
+  a fixed local origin. Camera panning does not rebase the scene origin.
 
 Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit test
 (`tests/unit/config_sync.test.ts`) guards that both agree.
@@ -75,14 +75,19 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
   arrive as proper `Polygon`/`MultiPolygon` geometry (member roles honoured at
   extraction); water polygons keep island holes, so surfaces are triangulated
   with holes respected (`src/city/environment/surfaceMeshes.ts`).
-* **Curated landmarks** — four buildings carry a `landmark` id
-  (`minsk-gate`, `national-library`, `victory-obelisk`, `red-church`) plus the
+* **Curated landmarks** — five buildings carry a `landmark` id
+  (`minsk-gate`, `national-library`, `victory-obelisk`, `red-church`, `tv-tower`) plus the
   untrimmed original OSM footprint in `outline` (see `docs/DATA_SOURCES.md` §7).
   `src/city/buildings/landmarks.ts` routes them to dedicated geometry modules
   that replace the generic extrusion (rhombicuboctahedron, obelisk, church
   massing); the Minsk Gate crown is additive and stays in `cityGate.ts`. All
   other buildings use the generic volume builder.
 * `surfaces` — parks, grass, forests, water, plazas (already clipped to the tile).
+* `ground` (payload 0.4.x, current default) — raster-compositor fills/strokes,
+  lane/crossing data and clip bounds. Ground roads, landcover and rails are
+  painted into a texture; bridge decks remain separate geometry/texture atlases.
+  The optional `roadSurfaces` / `roadNetwork` contracts below describe the older
+  vector path and compatibility payloads, not a promise they exist in current tiles.
 * `roadSurfaces` (optional, payload 0.2.0) — the normalized, **non-overlapping**
   road surface partition: `drivable` pieces split into material zones
   (`asphalt/stone/concrete/unpaved`), `paving`, `kerb` and `median`. Rendered at
@@ -102,11 +107,12 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
 * `roads` — legacy buffered road/pavement/rail polygons. Payload 0.2.0 tiles
   now carry **no** legacy polygons (`roads: []`; rails moved to `roadNetwork`);
   older/demo tiles still render through the legacy path.
-* `trees` — deterministic tree instances, `mapped` = real OSM node.
+* `trees` — deterministic tree instances; `mapped` marks OSM tree points or
+  points sampled along OSM tree rows, rather than heuristic vegetation fill.
 * `attractions` (optional) — non-building park props, currently ferris wheels:
   centre, rim radius, hub height, cabin count and wheel-plane yaw. Built by
-  `src/city/environment/ferrisWheel.ts` and merged with the vegetation geometry
-  (same vertex-coloured environment material, one draw call).
+  `src/city/environment/ferrisWheel.ts` and rendered as a separate shadow-casting
+  mesh/material, independent of foliage colour and visibility.
 * `crossingBuildingIds` — spatial-index hints for buildings owned by a
   neighbouring tile (geometry is never duplicated).
 
@@ -122,9 +128,10 @@ TileManager (fetch/cache/LRU/cancel)
       │ TileData
       ▼
 tile builder: buildBuildingsMesh() + buildEnvironmentMeshes()
-      │ merged BufferGeometries (attributes per src/shared/geometry.ts)
+      │ worker payload: static geometry + compact tree instance buffers
       ▼
-facade material (procedural GLSL windows/balconies/cornices) + environment material
+static tile meshes + InstancedMesh trees with shared indexed templates
+      │ facade / ground / trunk / crown / attraction materials
       │
       ▼
 low-resolution render target (depth + normals)
@@ -135,8 +142,9 @@ nearest-neighbour upscale to the canvas (image-rendering: pixelated)
 
 Key properties:
 
-* **One merged mesh per category per tile** — a tile with 400 buildings is a
-  couple of draw calls, never 400.
+* **Batching per tile** — buildings and static layers are merged; trees use
+  one trunk and up to three crown instance batches (two batches total on dense
+  tiles). Attractions have a separate mesh/material. No mesh per tree/building.
 * **Tile payloads are revalidated on every load** (`cache: 'no-cache'` for the
   manifest and every tile fetch). Tile URLs are stable while their content
   changes whenever the data pipeline is re-run, so a page refresh must never
@@ -151,6 +159,43 @@ Key properties:
   are quantised/dithered, then the framebuffer is upscaled with nearest
   filtering. `setPixelEffectEnabled(false)` bypasses it for debugging.
 
+### Instanced vegetation (2026-11-06)
+
+The default tree style is `asymmetric` (review candidate C), with rounded,
+uneven crowns inspired by the summer appearance of
+[Warsaw Izo](https://bedirhanyildirim.com/warsaw-izo/). Geometry is generated
+locally; no reference-site assets or tree positions are imported.
+
+`treeInstances.ts` validates/caps the original `TreeInstance[]` and builds
+compact typed-array batches in the worker. `TileWirePayload.trees` contains
+the style, density tier, tree/triangle counts, a trunk batch and up to three
+crown batches. Each batch transfers matrices, RGB colours and deterministic
+variations. `attractions` is separate. The source JSON schema is unchanged.
+
+The existing density thresholds (160 / 320 / 600) and 16,000-tree input cap
+remain. Dense tiles share one crown template, varying yaw and proportions per
+tree: 97% of city trees are in this tier, so three crown draws per dense tile
+would add unnecessary overhead. Other tiers retain three silhouettes. The
+selected style uses 56 / 44 / 36 / 28 triangles per tree, including the trunk.
+
+`instancedTrees.ts` creates indexed templates once per streamer. Standard
+Lambert materials use flat shading and instance colours. Instance meshes adopt
+the transferred matrix/colour arrays and calculate bounds across all instances.
+An eviction disposes `InstancedMesh` resources, leaving shared geometry alive;
+streamer disposal releases the templates after evicting all tiles. Shared bytes
+are counted once. `geometryMB` remains an approximate resident-buffer counter
+that also includes raster textures, not a measurement of total GPU allocation.
+
+The internal `setCanopyAppearance({palette?, visible?})` updates existing colour
+buffers/visibility, remembers state for future tiles, and invalidates shadows.
+It does not rebuild geometry, alter trunks/attractions, or add a seasonal UI.
+Diagnostic hooks are available at `__CITY_DEBUG__.trees()` and
+`__CITY_DEBUG__.setCanopyAppearance(...)`; `CityAppHandle` is unchanged.
+
+QA parameters: `?treeStyle=faceted|clustered|asymmetric`, explicit old reference
+`?treeStyle=legacy`, and synthetic comparison scene `?treeReview=1`.
+See [the verification report](TREE_INSTANCING_2026-11-06.md).
+
 ## 5. Module ownership
 
 | Path | Owner | Responsibility |
@@ -161,7 +206,7 @@ Key properties:
 | `src/city/buildings/**`, `src/city/roofs/**` | geometry-dev | extrusion, roofs, merged building mesh |
 | `src/city/facades/**`, `src/engine/shaders/**`, `src/engine/materials/facadeMaterial.ts` | facade-artist | facade shader, presets, palette |
 | `src/city/roads/**`, `src/city/environment/**` | environment-dev | normalized road surfaces/network, markings, crossings, pavements, parks, water, trees, rail |
-| `src/engine/renderer|camera|tiles|picking|postprocess/**`, `src/engine/createCityApp.ts` | renderer-dev | renderer, controls, streaming, lighting, post, picking |
+| `src/engine/{renderer,camera,tiles,picking,postprocess}/**`, `src/engine/createCityApp.ts` | renderer-dev | renderer, controls, streaming, lighting, post, picking |
 | `tests/e2e/**`, `scripts/qa/**`, `docs/QA_REPORT.md` | qa-dev | browser tests, screenshots, performance, visual QA |
 
 Rules: contracts in `src/shared/**` are frozen without Lead approval; nobody
@@ -171,8 +216,9 @@ writes outside their ownership; React never creates scene objects.
 
 * Orthographic camera, true isometric: azimuth 45°, elevation `atan(1/√2)`.
 * Ortho half-height 420 m default, clamp 40…2600 m.
-* Sun from a real Minsk latitude/longitude + time-of-day computation; shadow map
-  fitted to the visible footprint.
+* Sun uses Minsk latitude/longitude and time of day, with stylised summer-solstice
+  elevation/azimuth by default; `?realsun=1` enables the real date. The shadow map
+  is fitted to the visible footprint.
 * Ground layers are separated vertically (`GROUND_LAYER_Y`) to avoid z-fighting:
   base 0.00, landuse 0.02, grass 0.03, water 0.04, sidewalk 0.05, road 0.07,
   markings 0.09 m. The normalized road partition adds `median` at 0.0635 m

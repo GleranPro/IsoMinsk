@@ -7,17 +7,26 @@ Original project brief: [`docs/REQUIREMENTS_ORIGINAL.md`](REQUIREMENTS_ORIGINAL.
 (verbatim). Compliance matrix and change-request log:
 [`docs/REQUIREMENTS.md`](REQUIREMENTS.md).
 Next iterations: see the [roadmap](#roadmap-next-iterations) at the bottom.
-Planned but not started work: [`docs/BACKLOG.md`](BACKLOG.md).
+Remaining work and completed shared prerequisites: [`docs/BACKLOG.md`](BACKLOG.md).
 
 ## Current state
+
+**Rail LOD fix — 2026-11-06:** ground and bridge heads share one painter,
+unchanged family colours, 0.15 m width and 1.44 m gauge across tiers. Same-camera
+OSM/synthetic captures, real Canvas coverage and ground/deck pixel checks are
+documented in [RAIL_LOD_2026-11-06.md](RAIL_LOD_2026-11-06.md). Build/typecheck
+passed; 440 Vitest passed (5 skipped), 14 hardware-WebGL e2e passed. Mobile and
+seasons remain the next separate stages.
 
 **Delivered: an interactive isometric pixel-art 3D map of Minsk, generated from
 real OpenStreetMap geometry.** Two datasets are supported:
 
 * **central pilot (committed, default)** — 1.6 × 1.6 km around October /
-  Independence Square, 16 × 512 m tiles, ~2.0 MiB; and
+  Independence Square, 16 × 512 m tiles, 654 buildings, 6 555 trees, ~2.6 MiB JSON; and
 * **city belt (generated locally, `?dataset=city`)** — 12 × 12 km, 144 × 1024 m
-  tiles, 31 783 buildings, ~60.2 MB, all inner districts (`pnpm run data:city`).
+  tiles, 31 783 buildings, 316 704 trees, ~92.7 MB JSON, all inner districts
+  (`pnpm run data:city`). Both datasets use payload 0.4.3; current files were
+  generated on 2026-11-05.
 
 The renderer streams tiles nearest-first with a bounded resident set, fits the
 camera to the dataset bounds, and draws real buildings with walls, roofs and
@@ -25,7 +34,7 @@ procedural facades, avenues, pavements, tram rails, parks, the Svislach river,
 deterministic vegetation, cast shadows, day/night lighting and building
 selection with OSM metadata.
 
-**Roads (payload 0.3.0)** are a non-overlapping surface partition
+**Road model (introduced in payload 0.3.0)** builds a non-overlapping surface partition
 (asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians and
 one asphalt face per graph junction) plus a semantic centreline network with an
 OSM topology graph, per-direction lane tags, junction faces and pedestrian
@@ -33,6 +42,9 @@ crossings. Lane markings, zebras and tram rails are derived from the network;
 slip/link roads, service aisles and unnamed channelization connectors are
 paving (not painted streets), and junction paint is clipped by the face
 polygons. See `docs/ROAD_NETWORK.md`.
+
+The current payload 0.4.3 renders flat roads/rails through the raster ground
+compositor (0.4.x); raised bridge decks remain separate geometry.
 
 **Curated landmarks** (`landmark` field in the data, dedicated geometry modules):
 «Ворота Минска» (clock/emblem towers), Национальная библиотека (rhombicuboctahedron
@@ -44,13 +56,32 @@ See `docs/DATA_SOURCES.md` §7 for the hand-reviewed OSM fixes behind them.
 **Park attractions**: both Minsk ferris wheels are rendered as real geometry —
 54 m / Ø51 m / 36 cabins in Gorky Park and 28 m / 18 cabins in Chelyuskintsev
 Park (`TileData.attractions`, built by `src/city/environment/ferrisWheel.ts` and
-merged with the vegetation geometry). Wheel dimensions and plane bearings are
+rendered as separate meshes/materials from the instanced trees). Wheel dimensions and plane bearings are
 curated (OSM only carries `attraction=big_wheel` + height), see §7.
 
 Acceptance screenshots: `docs/screenshots/` — overview, close-up, detail, night,
 golden hour, clean 3D; landmarks `11`–`18`, `25`–`28`; park attractions `22`–`24`;
 water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 `28`.
+
+## Tree instancing checkpoint — 2026-11-06
+
+Default vegetation now uses the selected asymmetric crown style (review C) and
+`THREE.InstancedMesh`, with separate trunks/crowns and independent ferris-wheel
+meshes/materials. All 316,704 city trees retain their source positions and nominal
+sizes; density thresholds and the 16,000-tree cap are unchanged. Tree-buffer
+memory is 420,601,248 → 50,683,352 bytes including shared templates (**−87.95%**).
+Internal canopy palette/visibility changes update existing attributes and apply
+to subsequently loaded tiles without rebuilding their geometry.
+
+Same 144-tile GPU benchmark: resident-buffer counter 731.20 → 378.42 MiB,
+JS heap 1020 → 670 MB, full residency 18.599 → 13.539 s. Overview mean frame
+time **4.70 → 6.46 ms**: the new crowns are more detailed, so this is a memory
+improvement with an overview rendering cost, not a universal FPS improvement.
+Validation: TypeScript/build passed, 434 Vitest passed (5 skipped), 13 hardware
+WebGL Playwright tests passed. Mobile/touch and complete seasons remain backlog
+items. See [the detailed report](TREE_INSTANCING_2026-11-06.md) for per-view
+timings, reproduction, visual-review evidence and the explicit legacy QA path.
 
 ### Defect-fix round (after first visual review)
 
@@ -67,6 +98,10 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 
 ## Milestones
 
+Rows record the evidence available when each milestone was completed. Older
+triangle, memory and test counts are historical. Current rendering results are
+in the 2026-11-06 checkpoint and [its report](TREE_INSTANCING_2026-11-06.md).
+
 | Milestone | Status | Evidence |
 | --- | --- | --- |
 | A — Geospatial foundation | ✅ | 654 buildings, 679 surfaces, 3251 road/rail polygons, 3775 trees in 16 × 512 m tiles; validation PASS; `docs/COVERAGE_REPORT.md` |
@@ -81,9 +116,14 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 | Scaling (all Minsk) | ✅ | 12 × 12 km city-belt dataset, 144 × 1024 m tiles, 31 783 buildings, 4.01 M triangles at full residency and 60 FPS on an RTX 3080; `?dataset=city` / `pnpm run data:city`, see `docs/ARCHITECTURE.md` §7 |
 | Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
 | B-1 — Trees in parks and cemeteries (payload 0.4.3) | ✅ | OSM `natural=tree_row` lines extracted (1 033 rows, ~82.8 km) and placed as mapped points every 7 m; mapped trees dropped only on hard surfaces (buildings, water, rail, carriageway, 0.5 m), so footpaths no longer remove them: mapped trees 2 427 → 12 193 (3 539 points + 8 654 row points), park points kept 79 % → 99.6 %. Heuristic fill rebuilt in `scripts/normalize/trees.py`: disjoint vegetation zones (smaller polygon wins), cemeteries planted on a grid aligned with the plot's long axis (7 × 6 m, 1 tree / 90 m²), `radius + 2 m` clearance around mapped trunks, zone RNG independent of polygon order. The old order-based 140 000 cap (≈ ⅔ of the green area got no trees) is gone: **full density** — 316 704 trees (304 511 heuristic), 3 894 456 tree triangles, max 12 191 trees / 146 292 triangles per tile, per-tile cap 16 000 in pipeline and `treeMeshes.ts`. Measured with `scripts/qa/tree-perf.mjs` (GPU-synced frames, RTX 3080 Laptop): whole-city overview 4.65 → 5.03 ms per frame, park close-ups unchanged (1.6–2.2 ms); costs are memory — GPU geometry 495 → 731 MB, JS heap ~800 → ~1 000 MB — and payload 72 → 89 MB. Chelyuskintsev Park 0 → 10 219 trees (171/ha), Loshitsa 73 → 9 333, Botanical Garden 2 → 11 686, Kalvaria cemetery 5 → 1 553; empty parks/cemeteries > 0.2 ha 91 → 1. `scripts/qa/tree_audit.py --dataset city`: 0 trees in buildings/water/carriageway/track; `docs/COVERAGE_REPORT_CITY.md` from `scripts/qa/tree_coverage.py`; screenshots `screenshots/b1-before/`, `b1-after/` (budgeted variant), `b1-full/`; 42 tree tests (114 Python), 404 Vitest. Northern cemetery lies outside the 12 km frame (B-2); mobile (B-6) needs instanced trees before this density fits a phone |
+| B-6/B-7 prerequisite — new trees + instancing (2026-11-06) | ✅ | C default; 316 704 city trees; tree buffers −87.95%; separate canopy appearance; 434 Vitest passed (5 skipped), 13 hardware-WebGL e2e passed. Full mobile and seasons remain pending; `TREE_INSTANCING_2026-11-06.md` |
 | Park attractions (curated) | ✅ | both ferris wheels as real geometry: Gorky Park (54 m, Ø51 m, 36 cabins) and Chelyuskintsev Park (28 m, 18 cabins), with A-frame supports, rims/spokes, upright cabins, boarding deck, hub sign and the trees cleared around them; `TileData.attractions` + `src/city/environment/ferrisWheel.ts`, 19 tests |
 
-## Verified numbers (headless Chromium, ANGLE/D3D11, RTX 3080 Laptop)
+## Historical measurements (before 2026-11-06 instancing)
+
+The measurements below preserve earlier QA evidence and are not the current
+default-tree benchmark. Use [the latest report](TREE_INSTANCING_2026-11-06.md)
+for the 144-tile comparison, current tree counts and current test results.
 
 **Central pilot dataset** (1600×900):
 * 654 buildings, 16 tiles resident, 222 702 triangles (≈67 000 building +
@@ -114,7 +154,7 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
   `docs/screenshots/26-tv-tower-clean.png`).
 * Park attractions: both ferris wheels render as real geometry — Gorky Park
   (54 m, Ø51 m, 36 cabins / 4 open, 1 710 triangles) and Chelyuskintsev Park
-  (28 m, 18 cabins, 1 402 triangles), merged with the vegetation geometry;
+  (28 m, 18 cabins, 1 402 triangles), then merged with the vegetation geometry;
   heuristic trees are cleared in a radius + 10 m around each wheel
   (`docs/screenshots/22-ferris-wheel-gorky.png`,
   `docs/screenshots/23-ferris-wheel-chelyuskintsev.png`).
@@ -157,8 +197,8 @@ water/islands and the restored Svislach river `19`, `21`; flame placement `27`,
 | --- | --- | --- | --- |
 | 1 | Roof-shape mix is heuristic outside tagged buildings (~68 % pitched in the centre, similar in the city) | medium | `heightSource`/`roofShapeExplicit` provenance is recorded per volume; a statistical roof model per district is the next quality step |
 | 2 | Palace/landmark trim bands (plinth/cornice/attic, 0.35 m overhang) read as a dashed 1-px outline at far zoom | cosmetic | visible on the Palace of the Republic roof edge; reduce overhang or merge into the roof face if it bothers |
-| 3 | Payload is uncompressed JSON (~60 MB for the city belt) | low | gzip ≈ 24 %; binary + Brotli encoding is the next scalability step |
-| 4 | Most vegetation is still procedurally placed (304 511 of 316 704 trees city-wide; 12 193 come from OSM points and tree rows) | low | `TreeInstance.mapped` distinguishes surveyed from inferred; park/forest density is uniform per class, so lawns inside parks that OSM does not map as `landuse=grass` still get trees; trees are merged per tile (731 MB GPU geometry for the city) — instancing is the prerequisite for phones (B-6); see `docs/COVERAGE_REPORT_CITY.md` |
+| 3 | Payload is JSON (~92.7 MB of current city tiles) | low | Binary encoding/Brotli remain unimplemented; this is separate from resident rendering memory |
+| 4 | Most vegetation is still procedurally placed (304 511 of 316 704 trees city-wide; 12 193 come from OSM points and tree rows) | low | `TreeInstance.mapped` distinguishes surveyed from inferred; park/forest density is uniform per class, so lawns inside parks that OSM does not map as `landuse=grass` still get trees. Instancing is implemented (tree buffers −87.95%); mobile is still unverified. See `docs/COVERAGE_REPORT_CITY.md` and `docs/TREE_INSTANCING_2026-11-06.md` |
 | 5 | Underground objects (metro, passages) are not rendered | low | deliberate: they painted black strips on squares in an early build |
 | 6 | Flat terrain (no DEM) | low | terrain-height provider is the extension point; see `docs/DATA_SOURCES.md` |
 | 7 | Landmark geometry is curated for 5 of the iconic buildings only | medium | done: Minsk Gate, National Library, Victory obelisk, Red Church, TV tower. Next candidates (same pattern: data flag + dedicated module in `src/city/buildings/landmarks.ts`): Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral |
@@ -181,10 +221,11 @@ it also appears as delivered above.
 3. Roof-shape model for the ~60 % heuristic city buildings (per-district
    statistics instead of one global heuristic) — the largest remaining visual
    error outside the centre.
-4. Binary/Brotli tile encoding (city payload is ~60 MB uncompressed JSON;
-   gzip ≈ 24 %).
-5. Dense-forest tree tier if the tree triangle budget on 2 000+-tree tiles
-   becomes a bottleneck again (the current LOD tiers hold 60 FPS).
+4. Binary/Brotli tile encoding (current city tile JSON is ~92.7 MB;
+   compression and transport changes remain unimplemented).
+5. Further tree rendering optimisation: density tiers and instancing are done;
+   the new C crowns increase overview mean frame time by 37.4%. Evaluate
+   screen-size LOD and real phone budgets as part of B-6.
 6. Multipolygon edge cases: relations with missing members or broken ring order
    still fall back to a heuristic assembly; log/count them in the coverage report.
 7. Animation layer: slow wheel rotation (8 min/turn), blinking aviation lights,

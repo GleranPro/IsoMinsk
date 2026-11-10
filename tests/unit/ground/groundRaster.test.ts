@@ -7,6 +7,8 @@ import {
   KERB_WIDTH_M,
   kerbBand,
   paintGround,
+  paintRailHeads,
+  RAIL_HEAD_WIDTH_M,
   roadColor,
   type GroundContext2D,
 } from '../../../src/city/ground/groundRaster';
@@ -152,6 +154,35 @@ describe('painter order', () => {
     const bad = [road({ p: [0, 0] }), road({ w: Number.NaN }), road({ p: [0, 0, Number.NaN, 1] })];
     expect(() => paintGround(ctx, tile(bad), [0, 0, 512, 512], 0.5, 1024, 1024)).not.toThrow();
     expect(ctx.strokes).toHaveLength(0);
+  });
+});
+
+describe('rail appearance across ground LODs', () => {
+  it.each([0.25, 0.5, 1, 2, 4])('keeps physical gauge, width and each family colour at %s m/texel', (res) => {
+    const data = tile([
+      road({ k: 'rail', w: 3.5, p: [16, 64, 240, 64] }),
+      road({ k: 'tram', w: 2.2, p: [16, 128, 240, 128] }),
+    ]);
+    const ctx = new RecordingContext();
+    paintRailHeads(ctx, data, data.bounds!, res);
+    expect(ctx.strokes.map(s => s.width)).toEqual(Array(4).fill(RAIL_HEAD_WIDTH_M));
+    expect(ctx.strokes.map(s => s.color)).toEqual([
+      canvasColor(GROUND_COLORS.railHead), canvasColor(GROUND_COLORS.railHead),
+      canvasColor(GROUND_COLORS.tramRail), canvasColor(GROUND_COLORS.tramRail),
+    ]);
+    expect(ctx.strokes.map(s => s.start[1])).toEqual([63.28, 64.72, 127.28, 128.72]);
+  });
+
+  it('omits bridges and invalid strokes, and defers heads without losing the ballast', () => {
+    const data = tile([road({ k: 'rail', w: 3.5 }), road({ k: 'rail', b: 1 }),
+      road({ k: 'tram', p: [0, 0] }), road({ k: 'rail', w: Number.NaN })]);
+    const ctx = new RecordingContext();
+    paintGround(ctx, data, [0, 0, 512, 512], 4, 128, 128, { railHeads: false });
+    expect(ctx.strokes.map(s => s.color)).toEqual([
+      canvasColor(GROUND_COLORS.railBallast), canvasColor(GROUND_COLORS.railTie),
+    ]);
+    paintRailHeads(ctx, data, [0, 0, 512, 512], 4);
+    expect(ctx.strokes).toHaveLength(4);
   });
 });
 

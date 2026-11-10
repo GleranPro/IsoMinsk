@@ -1,24 +1,41 @@
 # Testing — Isometric Minsk (Windows / PowerShell)
 
-Everything here was run on Windows 11 with PowerShell (`pwsh`) on 2026-10-27.
+Latest application verification: 2026-11-06, Windows 11 / PowerShell (`pwsh`).
+Earlier road/data audit results retain their checkpoint dates; they were not
+rerun as part of the vegetation change or this documentation update.
 Commands assume the repository root: `D:\Workk\VoxelMinsk`.
+
+Rail LOD checkpoint 2026-11-06: typecheck/build passed; **440 Vitest passed
+(5 skipped), 14 hardware-WebGL Playwright tests passed**. Browser coverage checks
+rail colour/area across texel sizes and exact ground/deck pixel agreement.
+Same-camera comparisons: [RAIL_LOD_2026-11-06.md](RAIL_LOD_2026-11-06.md).
+
+Vegetation checkpoint 2026-11-06: typecheck/build passed; 434 Vitest passed
+(5 skipped), 13 hardware-WebGL Playwright tests passed. New coverage includes
+tree instance buffers, shared-template lifetime, canopy appearance, cancellation
+and the inline fallback. Full-city memory/performance and visual captures:
+[TREE_INSTANCING_2026-11-06.md](TREE_INSTANCING_2026-11-06.md).
 
 | Suite | Command | What it covers | Typical time |
 | --- | --- | --- | --- |
-| Unit + data | `pnpm test` | all `tests/unit/**/*.test.ts` incl. QA tile-math, config-sync, real-data validation, the curated landmarks and 47 road marking/junction renderer tests (382 tests at the current milestone) | ~30 s |
+| Unit + data | `pnpm test` | 440 passed, 5 skipped across 26 files; geometry, data, roads/rail LOD, landmarks, instancing, transfer and resource lifetime | ~6 s on the reference machine |
 | Data pipeline | `pnpm run data:all` | download → extract → normalize (writes tiles + manifest) → coverage report | several minutes |
 | Road normalization unit | `pnpm run test:data` | 30 Python unittest cases for the lane/width model, topology-graph junction faces, asymmetric direction lanes, link suppression, material partition, crossings, medians and merged corridors (`scripts/normalize/tests/test_road_network.py`) | ~1 s |
 | Road payload audit | `pnpm run qa:road-audit` | independent audit of the generated tiles: same-layer overlaps, tile-seam coverage gaps (all surface layers), street width spread (name+direction+lane signature, merged pieces excluded), road centrelines inside the drivable surface (rails/merged excluded by design), junction/crossing sanity; writes `data/processed/road-audit.json` | ~5 s |
 | Road paint audit | `pnpm run qa:road-paint-audit` | renderer-level audit: no lane/zebra paint inside or near junction faces/surfaces, lane-line counts match the tagged lanes, rails continuous and paint-free; writes `screenshots/road-paint-audit.json` | ~10 s |
 | Geometry audit | `pnpm exec tsx scripts/qa/geometryAudit.ts` | builds building/environment meshes from the real tiles without a browser; writes `screenshots/geometry-audit.json`; exits 1 on invalid geometry | ~5 s |
 | QA unit only | `pnpm exec vitest run tests/unit/data tests/unit/tile_math.test.ts tests/unit/config_sync.test.ts` | QA-owned tests | ~1 s |
-| E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 12 browser tests against the real app + dev server, hardware WebGL | **~1 min** |
+| E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 14 browser scenarios, including rail LOD coverage/decks and tree appearance with workers and inline fallback | **~1 min** |
 | E2E (default software) | `pnpm exec playwright test` | same tests on SwiftShader (deterministic CI mode) | ~10 min |
 | Screenshots | `$env:QA_GPU='1'; pnpm run qa:capture` | 6 fixed screenshots + `screenshots/stats.json` + `screenshots/console.log` (waits for all 16 tiles) | ~45 s |
 | Road screenshots | `$env:QA_GPU='1'; pnpm run qa:road-shots` | 23 close-up shots: canonical junctions, the seven user-reported places, the Ulyanovskaya × Lenina face and the Lenina 1+2 approach into `screenshots/roads/` | ~2 min |
 | Screenshot metrics | `node scripts/qa/analyze-screenshots.mjs` | `screenshots/analysis.json` (colour / luminance / near-black share / content bbox) for the canonical 6 | ~5 s |
 | Tile cache freshness | `node scripts/qa/cache-check.mjs` | proves a changed tile payload is revalidated on reload instead of served stale from the HTTP cache (mutates + restores `city-tiles/-1_-2.json`; needs `?dataset=city`) | ~40 s |
 | Typecheck | `pnpm run typecheck` | `tsc --noEmit` over `src`, `tests`, `scripts` | ~10 s |
+| Tree buffers | `pnpm exec tsx scripts/qa/tree-memory.ts city screenshots/tree-instancing/memory.json` | same 144 tiles / 316 704 trees, exact old/new buffer totals; fails below 75% reduction or on a count mismatch | tens of seconds |
+| Tree GPU performance | `node scripts/qa/tree-perf.mjs label screenshots/tree-instancing/perf.json` | 6 fixed views, GPU-synced mean/p95, full 144-tile residency; select old path with `QA_TREE_STYLE=legacy` | ~1 min |
+| Tree visual review | `node scripts/qa/tree-review.mjs` | A/B/C specimens, street rows and dense park through the real pixel-art renderer | ~20 s |
+| Real-map tree captures | `node scripts/qa/tree-map-capture.mjs` | overview, Gorky Park and Chelyuskintsev Park; set `QA_TREE_STYLE` for matching before/after views | ~25 s |
 
 ---
 
@@ -55,7 +72,10 @@ node scripts/qa/capture.mjs
 ```
 
 The same variable also works for `scripts/qa/capture.mjs`. Default remains
-SwiftShader for CI determinism.
+SwiftShader for CI determinism. The tree performance/review/map scripts explicitly
+request hardware ANGLE/D3D11. Set `QA_BASE_URL` for their server URL. Playwright
+accepts `QA_PORT` (default 5173) and reuses an existing server on that port.
+For a different browser cache, set `PLAYWRIGHT_BROWSERS_PATH` to that directory.
 
 ---
 
@@ -150,16 +170,16 @@ pnpm exec playwright show-trace test-results\<failed-test>\trace.zip
 
 Behaviour:
 
-- `playwright.config.ts` starts `pnpm exec vite --port 5173 --strictPort --host 127.0.0.1`
-  itself via `webServer`; if a dev server is **already** running on 5173 it is
-  reused (`reuseExistingServer: true`). Never start a second one on that port.
+- `playwright.config.ts` starts Vite through `webServer` on `QA_PORT` (default
+  5173); a server already running on that port is reused
+  (`reuseExistingServer: true`).
 - `workers: 1`, `retries: 0`, 90 s per test, 60 s allowed for engine readiness,
   viewport 1600×900. Failure artefacts (screenshot, trace, video off) land in
   `test-results/`; the HTML report lands in `playwright-report/`.
 - `QA_GPU=1` swaps the SwiftShader launch flags for ANGLE/D3D11 hardware flags.
   Without it, the full-city scene runs at ~1.9 FPS in software (measured), which
-  makes the suite ~10 min and may hit action timeouts; the clean 12/12 run
-  (1.0 min) used `QA_GPU=1`.
+  can make the suite slow or hit action timeouts. The latest 13/13 run used
+  `QA_GPU=1`; the complete current suite has not been rerun in software mode.
 - Tests fail with explicit messages if `window.__CITY_APP__` is missing, if the
   city never becomes ready, or if a control does not affect the rendered image.
 - Canvas screenshots allow a 60 s timeout (Playwright's default action timeout is
@@ -168,10 +188,12 @@ Behaviour:
   `window.__CITY_STATS__`; the e2e suite drives the app through `CityAppHandle`
   and asserts image differences for visual controls.
 
-The 12 tests: shell + console-error-free load, `window.__CITY_APP__` contract,
+The 12 core scenarios: shell + console-error-free load, `window.__CITY_APP__` contract,
 geometry budget (`triangles > 1000`, `buildings > 100`), non-flat canvas,
 pan/zoom/rotate, time-of-day slider, pixel-effect toggle, building pick → info
-panel (OSM id), error-free 5 s interaction, reload.
+panel (OSM id), error-free 5 s interaction, reload. A thirteenth scenario covers
+instanced real-map trees, finite bounds, in-place canopy appearance changes,
+unchanged instance storage and both worker/inline execution.
 
 ### If the whole page fails to boot mid-run
 
@@ -256,7 +278,7 @@ is clean (exit 0).
 | E2E: `City app did not report ready`, overlay has "Failed to load city data" | `public/data/tiles/manifest.json` missing → run the data pipeline (§2). |
 | E2E: readiness timeout with `canvasCount: 0` | Vite dev-server reload while files were being saved; re-run the test (see §4). |
 | E2E suite takes ~10 min / tests time out on screenshots | You are on the default software renderer (~1.9 FPS at full city). Use `$env:QA_GPU='1'` for hardware WebGL. |
-| Night screenshot (`04-night.png`) looks dark | 23:00 preset is a blue-tinted night scene; it is readable now but has no lit windows yet (known art-polish item, QA report D4). |
+| Night screenshot (`04-night.png`) looks dark | Night windows are implemented; the old D4 report is historical. Check the time/facade-detail settings. Street lamps remain unimplemented. |
 | Screenshots are completely black / empty | Renderer not ready or data missing: check `screenshots/00-failure.png` and `screenshots/console.log`, and whether `public/data/tiles/manifest.json` exists. |
 | WebGL context creation fails in `pnpm exec playwright test` | Keep the SwiftShader flags from `playwright.config.ts` (`--enable-unsafe-swiftshader --use-angle=swiftshader`), or use `QA_GPU=1` on a GPU machine. |
 | `QA_GPU=1` shows SwiftShader anyway | The machine has no usable GPU in the session; check `WEBGL_debug_renderer_info` in the app console, or fall back to the default mode. |

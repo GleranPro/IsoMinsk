@@ -1,4 +1,5 @@
 /**
+ * Legacy visual/performance reference (?treeStyle=legacy), not the default.
  * Deterministic stylised trees, merged into one indexed vertex-coloured
  * geometry per tile.
  *

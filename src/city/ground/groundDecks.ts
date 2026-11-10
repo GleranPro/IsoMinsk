@@ -33,6 +33,7 @@ import {
   groundRasterAvailable,
   paintCrispOverlays,
   paintGround,
+  paintRailHeads,
   type GroundContext2D,
 } from './groundRaster';
 
@@ -158,12 +159,13 @@ export function rasterizeDecks(decks: readonly GroundDeck[], res: number): DeckA
       },
     } as unknown as TileData;
     paintGround(ctx as unknown as GroundContext2D, pseudo, bounds, res, w, h, {
-      crispRails: crisp,
+      railHeads: false,
       base: null,
       underlay: deck.r.map((ring) => ring.p),
       underlayColor: DECK_COLORS.surface,
     });
     if (crisp) paintCrispOverlays(ctx, pseudo, bounds, res, w, h);
+    paintRailHeads(ctx, pseudo, bounds, res);
     // Strokes reach past the deck outline; geometry clips them, but the atlas
     // cell is shared with mip levels, so keep only texels inside the cell.
     actx.drawImage(canvas, rect.ax, rect.ay);

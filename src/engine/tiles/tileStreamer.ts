@@ -38,6 +38,9 @@ import {
 } from './serialization';
 import { TileWorkerPool } from './tileWorkerPool';
 import { createDemoManifest, createDemoTiles } from './demoTiles';
+import { CANOPY_PALETTE, treeInstanceBytes, type TreeRenderStyle } from '../../city/environment/treeInstances';
+import { applyCanopyAppearance, createTileTrees, TreeTemplateCache, type CanopyAppearance, type TileTrees } from './instancedTrees';
+import { createTreeReviewTiles } from './treeReviewTiles';
 
 export interface TileEntry {
   key: string;
@@ -48,6 +51,8 @@ export interface TileEntry {
   buildingMesh: THREE.Mesh | null;
   environmentMesh: THREE.Mesh | null;
   treeMesh: THREE.Mesh | null;
+  trees: TileTrees | null;
+  attractionMesh: THREE.Mesh | null;
   /** Raster ground quad (payload 0.4.0) with its own texture/material. */
   groundMesh: THREE.Mesh | null;
   /** Bridge deck tops (payload 0.4.2) with their own atlas texture/material. */
@@ -68,6 +73,11 @@ export interface TileStreamerOptions {
   root: THREE.Group;
   environmentMaterial: THREE.Material;
   treeMaterial: THREE.Material;
+  treeTrunkMaterial?: THREE.Material;
+  treeCanopyMaterial?: THREE.Material;
+  attractionMaterial?: THREE.Material;
+  treeStyle?: TreeRenderStyle;
+  treeReview?: boolean;
   facadeMaterialNear: THREE.Material;
   facadeMaterialFar: THREE.Material;
   demo?: boolean;
@@ -197,6 +207,8 @@ function nextTick(): Promise<void> {
 }
 
 export class TileStreamer {
+  private readonly treeTemplates = new TreeTemplateCache();
+  private canopyAppearance: CanopyAppearance = { palette: [...CANOPY_PALETTE], visible: true };
   manifest: TileManifest | null = null;
   manifestError: string | null = null;
 
@@ -415,14 +427,14 @@ export class TileStreamer {
   }
 
   private async loadDemo(): Promise<void> {
-    const manifest = createDemoManifest();
+    const tiles = this.options.treeReview ? createTreeReviewTiles() : createDemoTiles();
+    const manifest = createDemoManifest(tiles);
     this.installManifest(manifest);
-    const tiles = createDemoTiles();
     this.options.onLoadingChange?.(true, 0);
     this.loadingNotified = true;
     for (let i = 0; i < tiles.length; i += 1) {
       if (this.disposed) return;
-      const payload = buildTilePayload(tiles[i], { facadeDetail: true, trees: true });
+      const payload = buildTilePayload(tiles[i], { facadeDetail: true, trees: true, treeStyle: this.options.treeStyle });
       this.addTileFromPayload(payload);
       this.options.onLoadingChange?.(true, (i + 1) / tiles.length);
       await nextTick();
@@ -449,6 +461,7 @@ export class TileStreamer {
     this.payloadQueue.length = 0;
     this.pool.dispose();
     for (const key of [...this.tiles.keys()]) this.evictTile(key);
+    this.treeTemplates.dispose();
     this.root.remove(this.basePlane);
     this.basePlaneGeometry.dispose();
     // The base plane shares the tile environment material (owned by the app).
@@ -756,6 +769,7 @@ export class TileStreamer {
           url: task.url,
           facadeDetail: true,
           trees: true,
+          treeStyle: this.options.treeStyle,
           groundMode: this.options.groundMode,
           groundRes: this.options.groundRes ?? this.groundResFor(this.groundBaseActive ? 'base' : 'coarse'),
         });
@@ -837,6 +851,7 @@ export class TileStreamer {
           const payload = buildTilePayload(data, {
             facadeDetail: true,
             trees: true,
+            treeStyle: this.options.treeStyle,
             groundMode: this.options.groundMode,
             groundRes: this.options.groundRes,
           });
@@ -979,16 +994,39 @@ export class TileStreamer {
     }
 
     let treeMesh: THREE.Mesh | null = null;
-    if (payload.trees && payload.trees.triangleCount > 0) {
-      const geometry = unpackGeometry(payload.trees);
+    if (payload.legacyTrees && payload.legacyTrees.triangleCount > 0) {
+      const geometry = unpackGeometry(payload.legacyTrees);
       treeMesh = new THREE.Mesh(geometry, this.options.treeMaterial);
       treeMesh.castShadow = true;
       treeMesh.receiveShadow = true;
       treeMesh.matrixAutoUpdate = false;
       treeMesh.name = `trees-${payload.key}`;
       group.add(treeMesh);
+      triangles += payload.legacyTrees.triangleCount;
+      bytes += wireMeshBytes(payload.legacyTrees);
+    }
+
+    let trees: TileTrees | null = null;
+    if (payload.trees) {
+      trees = createTileTrees(payload.trees, this.treeTemplates,
+        this.options.treeTrunkMaterial ?? this.options.treeMaterial,
+        this.options.treeCanopyMaterial ?? this.options.treeMaterial,
+        payload.key, this.canopyAppearance);
+      group.add(trees.trunks, ...trees.crowns);
       triangles += payload.trees.triangleCount;
-      bytes += wireMeshBytes(payload.trees);
+      bytes += treeInstanceBytes(payload.trees);
+    }
+    let attractionMesh: THREE.Mesh | null = null;
+    if (payload.attractions) {
+      attractionMesh = new THREE.Mesh(unpackGeometry(payload.attractions),
+        this.options.attractionMaterial ?? this.options.treeMaterial);
+      attractionMesh.name = `attractions-${payload.key}`;
+      attractionMesh.castShadow = true;
+      attractionMesh.receiveShadow = true;
+      attractionMesh.matrixAutoUpdate = false;
+      group.add(attractionMesh);
+      triangles += payload.attractions.triangleCount;
+      bytes += wireMeshBytes(payload.attractions);
     }
 
     group.updateMatrixWorld(true);
@@ -1003,6 +1041,8 @@ export class TileStreamer {
       buildingMesh,
       environmentMesh,
       treeMesh,
+      trees,
+      attractionMesh,
       groundMesh,
       deckMesh,
       groundRes: payload.ground?.res ?? 0,
@@ -1028,8 +1068,9 @@ export class TileStreamer {
     if (!entry) return;
     this.tiles.delete(key);
     this.root.remove(entry.group);
+    entry.trees?.dispose();
     entry.group.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
+      if (object instanceof THREE.Mesh && !(object instanceof THREE.InstancedMesh)) {
         object.geometry.dispose();
       }
     });
@@ -1060,6 +1101,30 @@ export class TileStreamer {
     this.nightFactor = Number.isFinite(nightFactor)
       ? Math.max(0, Math.min(1, nightFactor))
       : 0;
+  }
+
+  /** Internal seasonal foundation, independent of UI and tile geometry builds. */
+  setCanopyAppearance(change: Partial<CanopyAppearance>): void {
+    if (this.disposed) return;
+    if (change.palette && (change.palette.length !== 4 || change.palette.some(c => !/^#[0-9a-f]{6}$/i.test(c)))) {
+      throw new Error('A canopy palette must contain four #RRGGBB colours');
+    }
+    this.canopyAppearance = {
+      palette: change.palette ? [...change.palette] : this.canopyAppearance.palette,
+      visible: change.visible ?? this.canopyAppearance.visible,
+    };
+    for (const entry of this.tiles.values()) if (entry.trees) applyCanopyAppearance(entry.trees, this.canopyAppearance);
+    this.tilesChangedPending = true;
+  }
+
+  getTreeDiagnostics(): { count: number; instanceBytes: number; templateBytes: number; batches: number } {
+    let count = 0, instanceBytes = 0, batches = 0;
+    for (const entry of this.tiles.values()) if (entry.trees) {
+      count += entry.trees.data.count;
+      instanceBytes += treeInstanceBytes(entry.trees.data);
+      batches += 1 + entry.trees.crowns.length;
+    }
+    return { count, instanceBytes, templateBytes: this.treeTemplates.bytes, batches };
   }
 
   private updateLod(renderHeightPx: number, rig: IsometricCameraRig): void {
@@ -1316,7 +1381,7 @@ export class TileStreamer {
   }
 
   get geometryMB(): number {
-    return this.geometryBytes / (1024 * 1024);
+    return (this.geometryBytes + this.treeTemplates.bytes) / (1024 * 1024);
   }
 
   get isReady(): boolean {

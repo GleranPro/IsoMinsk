@@ -25,7 +25,7 @@
 import { defineConfig } from '@playwright/test';
 
 /** The dev server is authoritative here; keep in sync with the app's docs/TESTING.md. */
-const DEV_SERVER_PORT = 5173;
+const DEV_SERVER_PORT = Number(process.env.QA_PORT || 5173);
 const DEV_SERVER_URL = `http://127.0.0.1:${DEV_SERVER_PORT}`;
 
 /** Shared Chromium flags: deterministic software WebGL2 in headless mode. */

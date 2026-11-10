@@ -51,6 +51,8 @@ import { BuildingPicker } from './picking/buildingPicker';
 import { BuildingHighlighter } from './picking/highlightOverlay';
 import { PixelArtPipeline, type PixelArtEnvironment } from './postprocess/pixelArtPipeline';
 import { hexToRgb, mixHex } from './postprocess/palette';
+import { resolveTreeStyle } from '../city/environment/treeInstances';
+import type { CanopyAppearance } from './tiles/instancedTrees';
 
 const EXPOSURE = 1.02;
 const STATS_INTERVAL_MS = 500;
@@ -206,7 +208,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search)
       : new URLSearchParams();
-  const demoMode = params.get('demo') === '1';
+  const treeReview = params.get('treeReview') === '1';
+  const demoMode = params.get('demo') === '1' || treeReview;
+  const treeStyle = resolveTreeStyle(params.get('treeStyle'));
   const noLimit = params.get('nolimit') === '1';
   const shadowParam = Number.parseInt(params.get('shadow') ?? '', 10);
   const resolutionParam = Number.parseInt(params.get('res') ?? '', 10);
@@ -414,6 +418,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     root: cityRoot,
     environmentMaterial: environment.environment,
     treeMaterial: environment.trees,
+    treeTrunkMaterial: environment.treeTrunks,
+    treeCanopyMaterial: environment.treeCanopies,
+    attractionMaterial: environment.attractions,
+    treeStyle,
+    treeReview,
     facadeMaterialNear: facadeNear,
     facadeMaterialFar: facadeFar,
     demo: demoMode,
@@ -575,6 +584,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
   // --- debug surface (X-ray for the QA harness) ----------------------------
   const debugApi = {
+    trees: () => ({ style: treeStyle, ...streamer.getTreeDiagnostics() }),
+    setCanopyAppearance: (change: Partial<CanopyAppearance>) => streamer.setCanopyAppearance(change),
     camera: () => {
       const camera = rig.camera;
       const direction = new THREE.Vector3();

@@ -251,10 +251,11 @@ export function createDemoTiles(): TileData[] {
   return cachedTiles;
 }
 
-export function createDemoManifest(): TileManifest {
-  const tiles = createDemoTiles();
-  const min = -TILE_SIZE_M;
-  const max = TILE_SIZE_M * 2;
+export function createDemoManifest(tiles: TileData[] = createDemoTiles()): TileManifest {
+  const minX = Math.min(...tiles.map(t => t.bounds[0]));
+  const minY = Math.min(...tiles.map(t => t.bounds[1]));
+  const maxX = Math.max(...tiles.map(t => t.bounds[2]));
+  const maxY = Math.max(...tiles.map(t => t.bounds[3]));
   const buildingCount = tiles.reduce((sum, tile) => sum + tile.buildings.length, 0);
   return {
     version: 'demo',
@@ -263,8 +264,9 @@ export function createDemoManifest(): TileManifest {
     originUtm: [0, 0],
     centerLatLon: [53.9022, 27.561],
     tileSize: TILE_SIZE_M,
-    tileRange: { minX: min / TILE_SIZE_M, minY: min / TILE_SIZE_M, maxX: 1, maxY: 1 },
-    bounds: [min, min, max, max],
+    tileRange: { minX: Math.min(...tiles.map(t => t.tileX)), minY: Math.min(...tiles.map(t => t.tileY)),
+      maxX: Math.max(...tiles.map(t => t.tileX)), maxY: Math.max(...tiles.map(t => t.tileY)) },
+    bounds: [minX, minY, maxX, maxY],
     tiles: tiles.map((tile) => ({
       x: tile.tileX,
       y: tile.tileY,

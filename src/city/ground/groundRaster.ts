@@ -44,9 +44,7 @@ import type { GroundFill, GroundStroke, Polygon, RoadClass, SurfacePolygon, Tile
 import { surfaceTier, type Bounds4 } from '../environment/envLayers';
 import { offsetPolyline } from './polyline';
 import {
-  bresenhamPolyline,
   hardenPaint,
-  PAINT_SOLID,
   paintMarkings,
   type PaintContext2D,
   type PaintGrid,
@@ -106,8 +104,11 @@ export function canvasColor(hex: string): string {
   return color;
 }
 
-/** Markings/rail heads are only painted at or below this texel size. */
+/** Road markings are only painted at or below this texel size. */
 export const MARKINGS_MAX_RES_M = 1.0;
+/** World-space width at EVERY ground LOD; subtexel heads retain area coverage. */
+export const RAIL_HEAD_WIDTH_M = 0.15;
+export const RAIL_HALF_GAUGE_M = 0.72;
 
 /** Minimal 2D context surface used by the compositor (testable with a mock). */
 export interface GroundContext2D {
@@ -178,9 +179,10 @@ export function rasterizeGround(
   if (!ctx) return null;
   const crisp = res <= MARKINGS_MAX_RES_M && options.markings !== false;
   paintGround(ctx as unknown as GroundContext2D, tile, bounds, res, width, height, {
-    crispRails: crisp,
+    railHeads: false,
   });
   if (crisp) paintCrispOverlays(ctx, tile, bounds, res, width, height);
+  paintRailHeads(ctx, tile, bounds, res);
   paintDeckShadows(ctx as unknown as GroundContext2D, tile, bounds, res);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const image = ctx.getImageData(0, 0, width, height);
@@ -205,7 +207,7 @@ function paintDeckShadows(ctx: GroundContext2D, tile: TileData, bounds: Bounds4,
 
 /**
  * Hard-edged overlays at marking resolution: lane paint, parking bays,
- * dividers, zebras and stop lines, then rail heads. Shared by the ground
+ * dividers, zebras and stop lines. Shared by the ground
  * texture and the bridge deck textures.
  */
 export function paintCrispOverlays(
@@ -243,18 +245,6 @@ export function paintCrispOverlays(
       },
       dim,
     );
-    // Rail heads above the paint: 1-texel Bresenham lines.
-    overlayHardLayer(ctx, width, height, bounds, res, canvasRgb(GROUND_COLORS.tramRail), (paint) => {
-      paint.setTransform(1, 0, 0, 1, 0, 0);
-      const image = paint.getImageData(0, 0, width, height);
-      for (const stroke of strokes) {
-        if (stroke.k !== 'tram' && stroke.k !== 'rail') continue;
-        for (const side of [-0.72, 0.72]) {
-          bresenhamPolyline(image.data, grid, offsetPolyline(stroke.p, side), PAINT_SOLID, null, 0);
-        }
-      }
-      paint.putImageData(image, 0, 0);
-    });
     ctx.setTransform(1 / res, 0, 0, -1 / res, -bounds[0] / res, bounds[3] / res);
     maskOutsideClip(ctx as unknown as GroundContext2D, tile, bounds);
   }
@@ -294,7 +284,8 @@ export function paintGround(
   width: number,
   height: number,
   options: {
-    crispRails?: boolean;
+    /** Defer heads until after road paint in the raster/bridge compositors. */
+    railHeads?: boolean;
     /** Base colour; null leaves the canvas transparent (bridge deck textures). */
     base?: string | null;
     /** Rings filled (and dilated by a texel) in `underlayColor` before the strokes. */
@@ -468,23 +459,37 @@ export function paintGround(
       ctx.setLineDash([]);
       ctx.lineDashOffset = 0;
       ctx.lineCap = 'round';
-      if (!options.crispRails) {
-        for (const side of [-0.72, 0.72]) {
-          strokeLine(ctx, offsetPolyline(stroke.p, side), Math.max(minLine, 0.15), GROUND_COLORS.railHead);
-        }
-      }
       stats.rails++;
     } else if (stroke.k === 'tram') {
-      if (!options.crispRails) {
-        for (const side of [-0.72, 0.72]) {
-          strokeLine(ctx, offsetPolyline(stroke.p, side), Math.max(minLine, 0.15), GROUND_COLORS.tramRail);
-        }
-      }
       stats.rails++;
     }
   }
-  maskOutsideClip(ctx, tile, bounds);
+  if (options.railHeads !== false) paintRailHeads(ctx, tile, bounds, res);
+  else maskOutsideClip(ctx, tile, bounds);
   return stats;
+}
+
+/**
+ * One palette and physical width across ground and bridge LODs. Do not harden
+ * this layer or widen it to one texel: at 4 m/texel that turns two 15 cm heads
+ * into a bright 5.4 m band. Canvas antialiasing preserves subtexel coverage,
+ * allowing distant heads to blend into the ballast instead of changing it.
+ * Heavy rail and tram retain their own palette entries at every resolution.
+ */
+export function paintRailHeads(ctx: GroundContext2D, tile: TileData, bounds: Bounds4, res: number): void {
+  ctx.setTransform(1 / res, 0, 0, -1 / res, -bounds[0] / res, bounds[3] / res);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
+  for (const stroke of tile.ground?.strokes ?? []) {
+    if (!isValidStroke(stroke) || stroke.b === 1 || (stroke.k !== 'rail' && stroke.k !== 'tram')) continue;
+    const color = stroke.k === 'rail' ? GROUND_COLORS.railHead : GROUND_COLORS.tramRail;
+    for (const side of [-RAIL_HALF_GAUGE_M, RAIL_HALF_GAUGE_M]) {
+      strokeLine(ctx, offsetPolyline(stroke.p, side), RAIL_HEAD_WIDTH_M, color);
+    }
+  }
+  maskOutsideClip(ctx, tile, bounds);
 }
 
 /**

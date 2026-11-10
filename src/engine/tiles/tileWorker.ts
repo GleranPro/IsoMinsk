@@ -56,6 +56,7 @@ async function handleLoad(request: Extract<TileWorkerRequest, { type: 'load' }>)
     const payload = buildTilePayload(data, {
       facadeDetail: request.facadeDetail,
       trees: request.trees,
+      treeStyle: request.treeStyle,
       groundMode: request.groundMode,
       groundRes: request.groundRes,
       groundOnly: request.groundOnly,

@@ -11,10 +11,13 @@
  * consume them exactly as documented in src/shared/geometry.ts.
  * Environment meshes are merged per tile into one geometry with the canonical
  * `position` / `normal` / `color` attributes.
+ * Trees instead transfer two kinds of instance batches (matrices, colours,
+ * variations); their indexed templates exist only on the rendering thread.
  */
 
 import * as THREE from 'three';
 import type { BuildingFeature, FeatureId } from '../../shared/types';
+import { treeInstanceBytes, type TreeInstances, type TreeRenderStyle } from '../../city/environment/treeInstances';
 
 export type TypedArrayName =
   | 'Float32Array'
@@ -104,7 +107,10 @@ export interface TileWirePayload {
   triangleOwnerLength: number;
   buildingIds: FeatureId[];
   environment: WireMesh | null;
-  trees: WireMesh | null;
+  trees: TreeInstances | null;
+  /** Explicit legacy visual/performance reference, never populated by default. */
+  legacyTrees?: WireMesh | null;
+  attractions?: WireMesh | null;
   /** Raster ground texture (payload 0.4.0), or null for the vector ground. */
   ground?: WireGroundTexture | null;
   /** Bridge deck tops (payload 0.4.2): textured mesh + its atlas. */
@@ -286,6 +292,7 @@ export interface TileWorkerLoadRequest {
   url: string;
   facadeDetail: boolean;
   trees: boolean;
+  treeStyle?: TreeRenderStyle;
   groundMode?: GroundBuildMode;
   /** Ground texel size override, metres (default: by tile size). */
   groundRes?: number;
@@ -332,7 +339,14 @@ export function collectTransferables(payload: TileWirePayload): ArrayBuffer[] {
   };
   addMesh(payload.buildingGeometry);
   addMesh(payload.environment);
-  addMesh(payload.trees);
+  addMesh(payload.legacyTrees ?? null);
+  addMesh(payload.attractions ?? null);
+  if (payload.trees) {
+    for (const batch of [payload.trees.trunks, ...payload.trees.crowns]) {
+      buffers.push(batch.matrices.buffer as ArrayBuffer, batch.colors.buffer as ArrayBuffer,
+        batch.variations.buffer as ArrayBuffer);
+    }
+  }
   if (payload.ground?.data) buffers.push(payload.ground.data);
   if (payload.decks) {
     addMesh(payload.decks.mesh);
@@ -346,7 +360,9 @@ export function payloadBytes(payload: TileWirePayload): number {
   return (
     wireMeshBytes(payload.buildingGeometry) +
     wireMeshBytes(payload.environment) +
-    wireMeshBytes(payload.trees) +
+    treeInstanceBytes(payload.trees) +
+    wireMeshBytes(payload.legacyTrees ?? null) +
+    wireMeshBytes(payload.attractions ?? null) +
     (payload.ground?.data.byteLength ?? 0) +
     (payload.decks ? wireMeshBytes(payload.decks.mesh) + payload.decks.texture.data.byteLength : 0) +
     (payload.triangleOwner ? payload.triangleOwner.byteLength : 0)

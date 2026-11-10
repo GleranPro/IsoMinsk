@@ -10,7 +10,9 @@ import { chromium } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 
 const [label = 'run', out = 'perf.json'] = process.argv.slice(2);
-const BASE = `${(process.env.QA_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, '')}/?dataset=city`;
+const query = new URLSearchParams({ dataset: 'city', nolimit: '1' });
+if (process.env.QA_TREE_STYLE) query.set('treeStyle', process.env.QA_TREE_STYLE);
+const BASE = `${(process.env.QA_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, '')}/?${query}`;
 const VIEWS = [
   { name: 'overview', reset: true, zoom: 2600 },
   { name: 'gorky-park', fx: 809, fy: 108, zoom: 420 },
@@ -24,6 +26,9 @@ const browser = await chromium.launch({
          '--disable-gpu-vsync', '--disable-frame-rate-limit'],
 });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+const errors = [];
+page.on('pageerror', error => errors.push(String(error)));
+page.on('console', message => { if (message.type() === 'error' && !/favicon/.test(message.text())) errors.push(message.text()); });
 const t0 = Date.now();
 await page.goto(BASE, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__CITY_APP__?.ready === true, null, { timeout: 180000 });
@@ -69,6 +74,8 @@ for (const view of VIEWS) {
   console.log(`${label} ${view.name.padEnd(20)} mean ${m.meanMs} ms  p95 ${m.p95Ms} ms  ${m.fps} fps  tris ${s.triangles}  draws ${s.drawCalls}  geomMB ${s.geometryMB}`);
 }
 const heap = await page.evaluate(() => performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null);
+const trees = await page.evaluate(() => window.__CITY_DEBUG__?.trees?.() ?? null);
 console.log(`${label} gpu=${gpu} load=${loadS}s tiles=${expected} jsHeapMB=${heap}`);
-writeFileSync(out, JSON.stringify({ label, gpu, loadS, heap, results }, null, 1));
+writeFileSync(out, JSON.stringify({ label, url: BASE, gpu, loadS, heap, tiles: expected, trees, results, errors }, null, 1));
 await browser.close();
+if (errors.length) throw new Error(errors.join('\n'));

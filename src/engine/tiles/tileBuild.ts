@@ -2,8 +2,8 @@
  * Tile -> render payload.
  *
  * Runs inside the tile worker (and as an inline fallback on the main thread):
- * calls the city geometry builders, merges the environment layers into a single
- * draw call per tile, and flattens everything into transferable buffers.
+ * calls the city geometry builders, merges static ground/road layers and packs
+ * separate compact tree instances and attraction geometry into transferable buffers.
  *
  * World-space convention: geometry builders already emit world coordinates
  * (x east, y up, z = -north), so nothing here re-projects points.
@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { buildBuildingsMesh } from '../../city/buildings/buildingsMesh';
 import { buildEnvironmentMeshes } from '../../city/environment/environmentMeshes';
 import type { TileData } from '../../shared/types';
+import type { TreeRenderStyle } from '../../city/environment/treeInstances';
 import {
   groundRasterAvailable,
   groundResolutionFor,
@@ -38,6 +39,7 @@ import {
 export interface TileBuildOptions {
   facadeDetail: boolean;
   trees: boolean;
+  treeStyle?: TreeRenderStyle;
   /** 'raster' (default) paints the flat ground into a texture when possible. */
   groundMode?: GroundBuildMode;
   /** Ground texel size override, metres. */
@@ -266,19 +268,16 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
       const result = buildEnvironmentMeshes(data, {
         tileBounds: data.bounds,
         trees: options.trees,
+        treeStyle: options.treeStyle,
         rasterGround: ground !== null,
       });
       const merged = mergeEnvironmentGeometries([result.ground, result.roads]);
-      // Trees and park props (ferris wheels) share the same vertex-coloured
-      // environment material, so they are merged into one geometry/draw call.
-      const vegetation = [result.trees, result.attractions].filter(
-        (part): part is NonNullable<typeof part> => Boolean(part),
-      );
-      const trees = vegetation.length ? mergeEnvironmentGeometries(vegetation) : null;
-      return { merged, trees };
+      // Attractions must not inherit foliage colour or visibility changes.
+      const legacyTrees = result.trees ? mergeEnvironmentGeometries([result.trees]) : null;
+      return { merged, legacyTrees, trees: result.treeInstances ?? null, attractions: result.attractions ?? null };
     } catch (error) {
       buildingsError = `environment: ${String(error)}`;
-      return { merged: null, trees: null };
+      return { merged: null, legacyTrees: null, trees: null, attractions: null };
     }
   })();
 
@@ -314,11 +313,13 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
   }
 
   const environmentMesh = environment.merged ? packGeometry(environment.merged) : null;
-  const treeMesh = environment.trees ? packGeometry(environment.trees) : null;
+  const legacyTrees = environment.legacyTrees ? packGeometry(environment.legacyTrees) : null;
+  const attractions = environment.attractions ? packGeometry(environment.attractions) : null;
   const triangleCount =
     (buildingGeometry ? buildingGeometry.triangleCount : 0) +
     (environmentMesh ? environmentMesh.triangleCount : 0) +
-    (treeMesh ? treeMesh.triangleCount : 0);
+    (legacyTrees?.triangleCount ?? 0) + (environment.trees?.triangleCount ?? 0) +
+    (attractions?.triangleCount ?? 0);
 
   const payload: TileWirePayload = {
     key: `${data.tileX}_${data.tileY}`,
@@ -331,7 +332,9 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
     triangleOwnerLength,
     buildingIds,
     environment: environmentMesh,
-    trees: treeMesh,
+    trees: environment.trees,
+    legacyTrees,
+    attractions,
     ground,
     decks,
     triangleCount,

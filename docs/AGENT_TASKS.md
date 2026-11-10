@@ -1,5 +1,11 @@
 # Agent tasks & ownership
 
+Historical bootstrap delegation record. This does not describe an active team
+for later work. The current contracts and completed 2026-11-06 vegetation change
+are documented in [ARCHITECTURE.md](ARCHITECTURE.md) and
+[TREE_INSTANCING_2026-11-06.md](TREE_INSTANCING_2026-11-06.md); the original
+handoffs below predate instancing.
+
 Five engineering agents plus the Lead build this project in parallel in the same
 working directory. This file records the delegation contract so that parallel
 work stays conflict-free. See `docs/ARCHITECTURE.md` §5 for the module map.

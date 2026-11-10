@@ -11,8 +11,9 @@ Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsa
 
 **Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
 tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
-generated offline, streamed and rendered in the browser. The road layer was
-rewritten to **payload 0.3.0**: a non-overlapping surface partition
+generated offline, streamed and rendered in the browser (current tile payload
+**0.4.3**). The road topology introduced in **payload 0.3.0** uses a
+non-overlapping surface partition
 (asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians and
 one asphalt face per graph junction) plus an **OSM topology graph** with
 per-direction lane tags, junction faces and pedestrian crossings — so road
@@ -50,9 +51,9 @@ The app needs no backend: it is a static Vite site plus JSON tiles.
 ## Two datasets: the pilot district and the whole city belt
 
 The repository ships a **1.6 × 1.6 km central district** (16 × 512 m tiles,
-~2 MiB) so the app runs immediately after `pnpm install`.
+~2.6 MiB JSON) so the app runs immediately after `pnpm install`.
 
-A **12 × 12 km city dataset** (144 × 1024 m tiles, ~60 MB, 31 783 buildings
+A **12 × 12 km city dataset** (144 × 1024 m tiles, ~93 MB JSON, 31 783 buildings
 including panel/historic/industrial/stadium/palace archetypes across all inner
 districts, plus five curated landmarks: Minsk Gate clock/emblem towers, National
 Library diamond, Victory Square obelisk, the Red Church and the TV tower) can be
@@ -108,21 +109,30 @@ pnpm test               # Vitest: geometry, roofs, facades, environment,
                         #   curated landmarks, real-tile data
 pnpm run test:data      # Python unit tests of the road normalization rules
 pnpm run qa:road-audit  # independent audit of the generated road payload
-pnpm run test:e2e       # Playwright: 12 browser tests (real WebGL)
+pnpm run test:e2e       # Playwright: 13 browser tests (WebGL; SwiftShader by default)
 $env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)
 pnpm run qa:capture     # 6 canonical screenshots + stats.json + console.log
 pnpm run qa:road-shots  # close-up road/junction screenshot sweep
-node scripts/qa/geometryAudit.ts    # headless geometry audit of all tiles (needs tsx)
+pnpm exec tsx scripts/qa/geometryAudit.ts  # headless geometry audit of pilot tiles
 ```
 
-Measured on the reference machine (RTX 3080 Laptop, 16 GB VRAM, Chromium
-ANGLE/D3D11, 1600×900): **60 FPS, 49 draw calls, ~199k visible triangles
-(368 871 in the resident set), 640×360 internal pixel-art resolution, 26 MB GPU
-geometry, 0 console errors**. The 12 km city belt renders 4.03 M triangles in
-424 draw calls at full residency on the same machine.
-Screenshots are written to `screenshots/` (git-ignored) and a copy of the
-QA set plus the City Gate landmark shots is kept under `docs/screenshots/`
-(also git-ignored, local evidence for the docs).
+**Verified 2026-11-06:** TypeScript/build passed, **440 Vitest passed (5 skipped)**
+and **14 hardware-WebGL Playwright tests passed**. Rail heads now keep the same
+palette and physical width across ground/deck LODs; see
+[`docs/RAIL_LOD_2026-11-06.md`](docs/RAIL_LOD_2026-11-06.md). The default trees use
+rounded, asymmetric instanced crowns (review C); all **316 704 city trees** retain
+their positions and nominal dimensions. Canopy palette/visibility can change
+without rebuilding tiles; mobile/touch and full seasons remain unfinished.
+
+On the reference RTX 3080 Laptop (ANGLE/D3D11, 1600×900, internal 640×360),
+the same 144-tile comparison reduces tree buffers by **87.95%** and the resident
+buffer counter from **731.20 to 378.42 MiB**. The detailed crowns increase
+overview frame time from **4.70 to 6.46 ms** (p95 6.10 → 8.10 ms), with
+**593 draw calls / 7 875 933 visible triangles**. Vsync and the FPS cap were off
+for this benchmark; these are desktop results, not phone verification. See
+[`docs/TREE_INSTANCING_2026-11-06.md`](docs/TREE_INSTANCING_2026-11-06.md)
+for per-view results and review commands. Screenshots are in `screenshots/`
+(git-ignored); current comparisons are under `screenshots/tree-instancing/`.
 
 ## Controls
 
