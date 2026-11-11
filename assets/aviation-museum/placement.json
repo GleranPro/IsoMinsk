@@ -3,357 +3,483 @@
  "coordinateSystem": {
   "origin": "PILOT_CENTER 53.9022N 27.5610E (scripts/geo_config.py)",
   "units": "metres, x east, y north (EPSG:32635 minus origin)",
-  "heading": "world yaw deg CCW from +X (east); model nose is baked along +X"
+  "heading": "world yaw degrees CCW from +X (east); every baked model carries its nose along +X"
  },
- "provenance": "Positions/headings measured programmatically on the clean Yandex screenshot (analysis/final_dataset.json) and matched to the exhibit registry (aviapix.ru) + museum inventory (aircraft-museum.ucoz.ru); see analysis/report_lipki.md",
+ "provenance": "Built from the user-annotated drone photo (drone_grid1.png): each exhibit sits on its red nose arrow (midpoint) and the arrow direction gives the heading, mapped through the photo->local affine (fitted on ten registry-verified aircraft, rms 4.4 m). Layout reviewed against the user's correction memo; models without a 3D asset remain empty spots.",
+ "dropped": {
+  "CRJ200": "not present on the photo (arrived later); the old row was a survey copy",
+  "Беркут-ВЛ": "not annotated on the photo (the row duplicated the An-26 leader)"
+ },
  "exhibits": [
   {
-   "slug": "su-24",
-   "x": 9239.3,
-   "y": 489.8,
-   "heading": -160.0,
-   "ref": "A01",
-   "note": "Су-24М [25]"
+   "slug": "mi-1",
+   "x": 9326.4,
+   "y": 789.2,
+   "heading": -164.4,
+   "ref": "Ми-1М",
+   "photo": [
+    651.6,
+    155.8
+   ],
+   "noseArrow": 1
   },
   {
    "slug": "yak-40",
-   "x": 9281.1,
-   "y": 508.7,
-   "heading": -135.0,
-   "ref": "A04",
-   "note": "Як-40 [СССР-87308]"
-  },
-  {
-   "slug": "citation-x",
-   "x": 9293.5,
-   "y": 533.8,
-   "heading": -135.0,
-   "ref": "A05",
-   "note": "Cessna 750 Citation X [EW-15257]"
-  },
-  {
-   "slug": "mi-2",
-   "x": 9230.0,
-   "y": 544.9,
-   "heading": 142.4,
-   "ref": "A08",
-   "note": "Ми-2У [EW-121AO]"
-  },
-  {
-   "slug": "su-24",
-   "x": 9225.0,
-   "y": 580.0,
-   "heading": -111.4,
-   "ref": "A11",
-   "note": "Су-24М [26]"
-  },
-  {
-   "slug": "su-25",
-   "x": 9281.1,
-   "y": 580.4,
-   "heading": 32.0,
-   "ref": "A12",
-   "note": "Су-25 [51]"
-  },
-  {
-   "slug": "an-26",
-   "x": 9312.6,
-   "y": 582.9,
-   "heading": -135.0,
-   "ref": "A13",
-   "note": "Ан-26 [22]"
-  },
-  {
-   "slug": "mig-27",
-   "x": 9283.8,
-   "y": 595.0,
-   "heading": 15.0,
-   "ref": "A14",
-   "note": "МиГ-27К [05]"
-  },
-  {
-   "slug": "mig-29",
-   "x": 9271.2,
-   "y": 599.6,
-   "heading": -18.1,
-   "ref": "A15",
-   "note": "МиГ-29УБ (9.51) [65]"
-  },
-  {
-   "slug": "yak-28",
-   "x": 9229.7,
-   "y": 600.7,
-   "heading": -110.2,
-   "ref": "A16",
-   "note": "Як-28ПП [14]"
-  },
-  {
-   "slug": "mig-25",
-   "x": 9251.9,
-   "y": 605.5,
-   "heading": -81.7,
-   "ref": "A17",
-   "note": "МиГ-25БМ [78]"
-  },
-  {
-   "slug": "mig-27",
-   "x": 9286.1,
-   "y": 616.0,
-   "heading": 15.0,
-   "ref": "A21",
-   "note": "МиГ-27К [17]"
-  },
-  {
-   "slug": "mig-29",
-   "x": 9238.6,
-   "y": 617.6,
-   "heading": -121.1,
-   "ref": "A22",
-   "note": "МиГ-29 (9-13) [29]"
-  },
-  {
-   "slug": "mig-25",
-   "x": 9274.4,
-   "y": 622.6,
-   "heading": -10.0,
-   "ref": "A23",
-   "note": "МиГ-25ПУ [20]"
-  },
-  {
-   "slug": "su-17",
-   "x": 9252.0,
-   "y": 628.8,
-   "heading": 120.0,
-   "ref": "A24",
-   "note": "Су-17М [35]"
-  },
-  {
-   "slug": "mig-23",
-   "x": 9304.9,
-   "y": 630.8,
-   "heading": 81.7,
-   "ref": "A25",
-   "note": "МиГ-23УБ [95]"
-  },
-  {
-   "slug": "mig-23",
-   "x": 9307.4,
-   "y": 640.7,
-   "heading": -43.0,
-   "ref": "A26",
-   "note": "МиГ-23УБ [71]"
-  },
-  {
-   "slug": "mig-21",
-   "x": 9316.5,
-   "y": 658.8,
-   "heading": -20.1,
-   "ref": "A28",
-   "note": "МиГ-21СМТ [53]"
-  },
-  {
-   "slug": "il-18",
-   "x": 9349.8,
-   "y": 672.3,
-   "heading": -135.0,
-   "ref": "A31",
-   "note": "Ил-18В [СССР-75781]"
-  },
-  {
-   "slug": "mig-19",
-   "x": 9325.4,
-   "y": 683.7,
-   "heading": 106.4,
-   "ref": "A33",
-   "note": "МиГ-19П [11]"
-  },
-  {
-   "slug": "mig-17",
-   "x": 9325.7,
-   "y": 684.3,
-   "heading": -118.6,
-   "ref": "A34",
-   "note": "МиГ-17 [28]"
-  },
-  {
-   "slug": "tu-134",
-   "x": 9358.8,
-   "y": 695.0,
-   "heading": 180.0,
-   "ref": "A37",
-   "note": "Ту-134А [СССР-65038]"
-  },
-  {
-   "slug": "mig-15",
-   "x": 9299.6,
-   "y": 713.1,
-   "heading": 140.6,
-   "ref": "A39",
-   "note": "МиГ-15УТИ [18]"
-  },
-  {
-   "slug": "yak-18",
-   "x": 9286.1,
-   "y": 713.3,
-   "heading": 174.4,
-   "ref": "A40",
-   "note": "Як-18 [6]"
-  },
-  {
-   "slug": "yak-40",
-   "x": 9301.5,
-   "y": 718.7,
-   "heading": -27.0,
-   "ref": "A41",
-   "note": "Як-40 [EW-88187]"
+   "x": 9297.3,
+   "y": 722.1,
+   "heading": 94.8,
+   "ref": "Як-40 (сев)",
+   "photo": [
+    521.2,
+    449.8
+   ],
+   "noseArrow": 8
   },
   {
    "slug": "mi-26",
-   "x": 9370.3,
-   "y": 718.7,
-   "heading": 148.8,
-   "ref": "A42",
-   "note": "Ми-26 [07]"
+   "x": 9360.1,
+   "y": 724.3,
+   "heading": -160.8,
+   "ref": "Ми-26",
+   "photo": [
+    820.9,
+    473.4
+   ],
+   "noseArrow": 10
   },
   {
-   "slug": "mi-2",
-   "x": 9344.5,
-   "y": 740.6,
-   "heading": -107.5,
-   "ref": "A43",
-   "note": "Ми-2 [EW-225AO]"
+   "slug": "tu-134",
+   "x": 9336.1,
+   "y": 688.9,
+   "heading": -163.2,
+   "ref": "Ту-134",
+   "photo": [
+    730.4,
+    601.0
+   ],
+   "noseArrow": 15
   },
   {
-   "slug": "mi-8",
-   "x": 9202.5,
-   "y": 517.3,
-   "heading": -40.0,
-   "ref": "A44",
-   "note": "Ми-8Т [36]"
+   "slug": "yak-18",
+   "x": 9282.1,
+   "y": 701.4,
+   "heading": 106.1,
+   "ref": "Як-18",
+   "photo": [
+    461.0,
+    538.5
+   ],
+   "noseArrow": 12
   },
   {
-   "slug": "an-2",
-   "x": 9249.2,
-   "y": 646.0,
-   "heading": -10.0,
-   "ref": "A45",
-   "note": "Ан-2Т [СССР-48527]"
+   "slug": "mig-15",
+   "x": 9295.6,
+   "y": 701.2,
+   "heading": 114.2,
+   "ref": "МиГ-15УТИ",
+   "photo": [
+    506.2,
+    544.7
+   ],
+   "noseArrow": 13
   },
   {
-   "slug": "mi-24",
-   "x": 9210.0,
-   "y": 541.0,
-   "heading": -40.0,
-   "ref": "visual",
-   "note": "Ми-24П [16]: тёмный камуфляж не сегментировался; центр и курс по фото-кропу"
+   "slug": "il-18",
+   "x": 9333.8,
+   "y": 665.0,
+   "heading": -146.3,
+   "ref": "Ил-18В",
+   "photo": [
+    703.1,
+    727.6
+   ],
+   "noseArrow": 19
+  },
+  {
+   "slug": "mig-17",
+   "x": 9317.4,
+   "y": 677.7,
+   "heading": 10.6,
+   "ref": "МиГ-17",
+   "photo": [
+    622.6,
+    665.7
+   ],
+   "noseArrow": 17
+  },
+  {
+   "slug": "mig-19",
+   "x": 9307.7,
+   "y": 655.1,
+   "heading": 17.5,
+   "ref": "МиГ-19П",
+   "photo": [
+    579.3,
+    764.8
+   ],
+   "noseArrow": 23
+  },
+  {
+   "slug": "mig-21",
+   "x": 9291.6,
+   "y": 656.0,
+   "heading": 88.9,
+   "ref": "МиГ-21СМТ",
+   "photo": [
+    503.5,
+    754.5
+   ],
+   "noseArrow": 22
+  },
+  {
+   "slug": "mig-23",
+   "x": 9274.0,
+   "y": 653.5,
+   "heading": -89.9,
+   "ref": "МиГ-23УБ [88]",
+   "photo": [
+    418.5,
+    754.2
+   ],
+   "noseArrow": 21
+  },
+  {
+   "slug": "mig-23",
+   "x": 9296.5,
+   "y": 646.1,
+   "heading": -84.9,
+   "ref": "МиГ-23УБ [71]",
+   "photo": [
+    526.2,
+    798.0
+   ],
+   "noseArrow": 26
+  },
+  {
+   "slug": "mig-25",
+   "x": 9272.3,
+   "y": 615.4,
+   "heading": -72.0,
+   "ref": "МиГ-25ПУ",
+   "photo": [
+    420.6,
+    932.3
+   ],
+   "noseArrow": 31
+  },
+  {
+   "slug": "su-17",
+   "x": 9258.3,
+   "y": 613.0,
+   "heading": -63.9,
+   "ref": "Су-17М",
+   "photo": [
+    349.6,
+    933.8
+   ],
+   "noseArrow": 32
+  },
+  {
+   "slug": "mig-27",
+   "x": 9297.0,
+   "y": 617.5,
+   "heading": -65.0,
+   "ref": "МиГ-27К [05]",
+   "photo": [
+    532.2,
+    934.9
+   ],
+   "noseArrow": 33
+  },
+  {
+   "slug": "mig-27",
+   "x": 9284.8,
+   "y": 610.1,
+   "heading": -59.6,
+   "ref": "МиГ-27К [17]",
+   "photo": [
+    474.2,
+    958.5
+   ],
+   "noseArrow": 34
   },
   {
    "slug": "l-29",
-   "x": 9297.0,
-   "y": 588.0,
-   "heading": 20.0,
-   "ref": "visual",
-   "note": "Л-29 [34]: положение триангуляцией по трём ориентирам на дрон-фото, курс оценочный"
+   "x": 9294.2,
+   "y": 608.3,
+   "heading": -61.7,
+   "ref": "Л-29",
+   "photo": [
+    517.5,
+    970.6
+   ],
+   "noseArrow": 37
   },
   {
-   "slug": "mi-1",
-   "x": 9327.5,
-   "y": 796.7,
-   "heading": -107.0,
-   "ref": "registry",
-   "note": "Ми-1М [27]: вне кадра скриншота, позиция из реестра aviapix; курс приближённый"
+   "slug": "mig-25",
+   "x": 9256.9,
+   "y": 598.8,
+   "heading": 31.4,
+   "ref": "МиГ-25БМ",
+   "photo": [
+    345.6,
+    997.5
+   ],
+   "noseArrow": 38
+  },
+  {
+   "slug": "mig-29",
+   "x": 9270.4,
+   "y": 596.4,
+   "heading": 33.7,
+   "ref": "МиГ-29УБ",
+   "photo": [
+    407.5,
+    1015.5
+   ],
+   "noseArrow": 40
+  },
+  {
+   "slug": "mig-29",
+   "x": 9244.3,
+   "y": 623.3,
+   "heading": 40.7,
+   "ref": "МиГ-29 (9-13)",
+   "photo": [
+    280.8,
+    877.8
+   ],
+   "noseArrow": 30
+  },
+  {
+   "slug": "an-26",
+   "x": 9301.5,
+   "y": 592.0,
+   "heading": -172.5,
+   "ref": "Ан-26ЛЛ",
+   "photo": [
+    557.6,
+    1053.2
+   ],
+   "noseArrow": 43
+  },
+  {
+   "slug": "yak-40",
+   "x": 9270.4,
+   "y": 523.0,
+   "heading": -175.4,
+   "ref": "Як-40 (южн)",
+   "photo": [
+    418.2,
+    1355.3
+   ],
+   "noseArrow": 52
+  },
+  {
+   "slug": "citation-x",
+   "x": 9279.0,
+   "y": 541.9,
+   "heading": 175.7,
+   "ref": "Cessna 750 Citation X",
+   "photo": [
+    457.0,
+    1272.5
+   ],
+   "noseArrow": 50
+  },
+  {
+   "slug": "mi-24",
+   "x": 9219.2,
+   "y": 549.9,
+   "heading": 33.4,
+   "ref": "Ми-24П",
+   "photo": [
+    170.3,
+    1203.6
+   ],
+   "noseArrow": 48
+  },
+  {
+   "slug": "mi-8",
+   "x": 9211.1,
+   "y": 515.4,
+   "heading": 39.8,
+   "ref": "Ми-8Т",
+   "photo": [
+    135.9,
+    1358.6
+   ],
+   "noseArrow": 53
+  },
+  {
+   "slug": "an-2",
+   "x": 9249.5,
+   "y": 643.9,
+   "heading": 38.6,
+   "ref": "Ан-2Т",
+   "photo": [
+    302.9,
+    785.4
+   ],
+   "noseArrow": 24
+  },
+  {
+   "slug": "su-24",
+   "x": 9225.3,
+   "y": 568.7,
+   "heading": 49.3,
+   "ref": "Су-24М [26]",
+   "photo": [
+    197.0,
+    1119.8
+   ],
+   "noseArrow": 45
+  },
+  {
+   "slug": "su-24",
+   "x": 9233.1,
+   "y": 502.6,
+   "heading": 165.9,
+   "ref": "Су-24М [25]",
+   "photo": [
+    242.8,
+    1429.5
+   ],
+   "noseArrow": 55
+  },
+  {
+   "slug": "yak-28",
+   "x": 9229.5,
+   "y": 584.9,
+   "heading": 40.3,
+   "ref": "Як-28ПП",
+   "photo": [
+    215.2,
+    1047.4
+   ],
+   "noseArrow": 42
+  },
+  {
+   "slug": "su-25",
+   "x": 9284.8,
+   "y": 579.2,
+   "heading": 34.8,
+   "ref": "Су-25 [51]",
+   "photo": [
+    479.9,
+    1103.3
+   ],
+   "noseArrow": 44
   }
  ],
  "missing": [
   {
-   "type": "tu-154",
-   "x": 9325.0,
-   "y": 706.0,
-   "note": "Ту-154М EW-85815, борт президента РБ (A38)"
+   "label": "Ту-154",
+   "x": 9316.5,
+   "y": 719.1,
+   "heading": 104.1,
+   "photo": [
+    613.5,
+    474.3
+   ],
+   "noseArrow": 9,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "crj-100",
-   "x": 9280.0,
-   "y": 504.0,
-   "note": "Bombardier CRJ-100ER EW-100PJ (A03)"
+   "label": "Ан-12Б",
+   "x": 9316.7,
+   "y": 646.1,
+   "heading": -171.1,
+   "photo": [
+    623.7,
+    811.4
+   ],
+   "noseArrow": 27,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "il-14",
-   "x": 9301.0,
-   "y": 561.0,
-   "note": "Ил-14М СССР-41865 (A10)"
+   "label": "Ан-24Б",
+   "x": 9309.6,
+   "y": 615.1,
+   "heading": -171.4,
+   "photo": [
+    593.8,
+    950.7
+   ],
+   "noseArrow": 36,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "su-7",
-   "x": 9275.0,
-   "y": 536.0,
-   "note": "Су-7БМК [71] (A06)"
+   "label": "Як-25М",
+   "x": 9235.2,
+   "y": 607.6,
+   "heading": 43.8,
+   "photo": [
+    239.2,
+    945.8
+   ],
+   "noseArrow": 35,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "su-27",
-   "x": 9216.0,
-   "y": 560.0,
-   "note": "Су-27П [19], под навесом у ЮЗ угла (A09)"
+   "label": "Ил-14П",
+   "x": 9290.6,
+   "y": 565.3,
+   "heading": -171.0,
+   "photo": [
+    509.4,
+    1170.7
+   ],
+   "noseArrow": 47,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "yak-25",
-   "x": 9236.0,
-   "y": 613.0,
-   "note": "Як-25М [10] (A20)"
+   "label": "Ка-26",
+   "x": 9213.9,
+   "y": 530.6,
+   "heading": 32.8,
+   "photo": [
+    147.2,
+    1289.8
+   ],
+   "noseArrow": 51,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "l-13",
-   "x": 9261.0,
-   "y": 690.0,
-   "note": "планер Let L-13 Blaník EW-103AS (A35, в паре с SZD-48)"
+   "label": "PZL-104 Вильга",
+   "x": 9263.7,
+   "y": 687.2,
+   "heading": 37.5,
+   "photo": [
+    365.2,
+    593.0
+   ],
+   "noseArrow": 14,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "szd-48",
-   "x": 9261.0,
-   "y": 690.0,
-   "note": "планер PZL-Bielsko SZD-48 Jantar Standard EW-107AS (A36, в паре с L-13)"
+   "label": "L-13 Blaník",
+   "x": 9261.3,
+   "y": 674.8,
+   "heading": -15.7,
+   "photo": [
+    355.2,
+    649.1
+   ],
+   "noseArrow": 16,
+   "note": "нет 3D-модели — место остаётся пустым"
   },
   {
-   "type": "pzl-104",
-   "x": 9252.0,
-   "y": 660.0,
-   "note": "PZL-104 Вильга EW-1525OA (A29)"
-  },
-  {
-   "type": "yak-52",
-   "x": 9258.0,
-   "y": 675.0,
-   "note": "Як-52 EW-32070HM (A32)"
-  },
-  {
-   "type": "l-39",
-   "x": 9276.0,
-   "y": 661.0,
-   "note": "вероятно Aero L-39C [05], прибыл 06.2026 (A30)"
-  },
-  {
-   "type": "ka-26",
-   "x": 9208.0,
-   "y": 531.0,
-   "note": "Ка-26 EW-331CM (A07/реестр)"
-  },
-  {
-   "type": "ka-26",
-   "x": 9175.0,
-   "y": 542.0,
-   "note": "Ка-26 №055 EW-24304 у западной кромки кадра"
-  },
-  {
-   "type": "berkut-vl",
-   "x": 9304.0,
-   "y": 609.0,
-   "note": "опытный вертолёт «Беркут-ВЛ» [001] (A18)"
-  },
-  {
-   "type": "ow-1",
-   "x": 9211.0,
-   "y": 503.0,
-   "note": "кольцеплан Нарушевича ОВ-1 EW-555AO (A02)"
+   "label": "Як-52",
+   "x": 9256.7,
+   "y": 662.2,
+   "heading": 38.3,
+   "photo": [
+    335.0,
+    704.7
+   ],
+   "noseArrow": 18,
+   "note": "нет 3D-модели — место остаётся пустым"
   }
  ]
 }

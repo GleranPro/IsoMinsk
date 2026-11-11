@@ -1,32 +1,41 @@
-"""Bake decimated aircraft models into compact coloured triangle meshes.
+# -*- coding: utf-8 -*-
+"""Re-bake the museum models with the nose guaranteed along +X.
 
-Output: `assets/aviation-museum/baked/<slug>.json` with:
-  positions  - flat metres, fuselage along +X, origin at ground/horizontal centre
-  colors     - flat sRGB 0-255 per vertex (one mean colour per material)
-  indices    - triangle indices
+Input: `data/interim/museum_meshes/<slug>.npz` (dumped by Blender).
+Output: `assets/aviation-museum/baked/<slug>.json` and a verification sheet.
 
-The bake is offline only: the map payload carries the resulting triangles, so the
-runtime needs no glTF loader or textures for the museum exhibits.
+The original bake trusted axis-aligned source geometry, which left a third of the
+collection rotated 27-58 degrees in plan (Mi-1, Mi-2, Su-17, Tu-134, Yak-40 ...).
+This bake measures the fuselage axis from plan-view mirror symmetry (an aircraft
+is symmetric about it), normalises the fuselage to +X and then detects which end
+carries the tail fin, so the nose points along +X.
+
+Override table: `assets/aviation-museum/analysis/model_nose.json`
+    {"<slug>": {"flip": true}}  # force a 180-degree turn after auto-detection
 """
 
-import bpy
+from __future__ import annotations
+
 import json
 import math
-import os
-import sys
+from pathlib import Path
 
 import numpy as np
-from mathutils import Vector
+from PIL import Image, ImageDraw
 
-ROOT = os.path.abspath("assets/aviation-museum")
-DECIMATED = os.path.join(ROOT, "decimated")
-OUT = os.path.join(ROOT, "baked")
-os.makedirs(OUT, exist_ok=True)
+ROOT = Path(__file__).resolve().parents[2]
+ASSETS = ROOT / "assets" / "aviation-museum"
+MESHES = ROOT / "data" / "interim" / "museum_meshes"
+BAKED = ASSETS / "baked"
+ANALYSIS = ASSETS / "analysis"
+OVERRIDES = ANALYSIS / "model_nose.json"
+SHEET = ANALYSIS / "model_bake_sheet.png"
 
-# Real length / wingspan (metres) used to normalise the downloaded models.
+# Real length / wingspan (metres).
 SPECS = {
     "an-2": (12.4, 18.2),
     "an-26": (23.8, 29.2),
+    "citation-x": (22.0, 19.4),
     "il-18": (35.9, 37.4),
     "l-29": (10.6, 10.3),
     "mig-15": (10.1, 10.1),
@@ -49,140 +58,279 @@ SPECS = {
     "mi-8": (18.2, 21.3),
     "mi-24": (17.5, 17.3),
     "mi-26": (40.0, 32.0),
-    "citation-x": (22.0, 19.4),
 }
 
+GRID = 256
 
-def material_color(material) -> tuple[int, int, int]:
-    """Mean sRGB colour of a material's base texture (or base colour)."""
-    if material is None or not material.use_nodes:
-        return (180, 180, 180)
-    base = None
-    texture = None
-    for node in material.node_tree.nodes:
-        if node.type == "BSDF_PRINCIPLED":
-            input_socket = node.inputs.get("Base Color")
-            if input_socket is None:
-                continue
-            if input_socket.is_linked:
-                source = input_socket.links[0].from_node
-                if source.type == "TEX_IMAGE" and source.image is not None:
-                    texture = source.image
-                elif source.type == "MIX":
-                    for leaf in source.inputs:
-                        if leaf.is_linked:
-                            candidate = leaf.links[0].from_node
-                            if candidate.type == "TEX_IMAGE" and candidate.image is not None:
-                                texture = candidate.image
-                                break
-            else:
-                base = tuple(input_socket.default_value)
+# Rotor discs dominate the plan bounding box of helicopters, so the length/span
+# aspect test that picks the fuselage axis for fixed-wing models cannot be used.
+HELICOPTERS = {"mi-1", "mi-2", "mi-8", "mi-24", "mi-26"}
+
+
+# --------------------------------------------------------------------------- raster
+def rasterize(xy: np.ndarray, idx: np.ndarray, size: int = GRID) -> Image.Image:
+    lo, hi = xy.min(axis=0), xy.max(axis=0)
+    span = max(float((hi - lo).max()), 1e-6)
+    pad = 0.05 * span
+    scale = (size - 1) / (span + 2 * pad)
+
+    def to_px(p):
+        return (
+            float((p[0] - lo[0] + pad) * scale),
+            float(size - 1 - (p[1] - lo[1] + pad) * scale),
+        )
+
+    image = Image.new("L", (size, size), 0)
+    draw = ImageDraw.Draw(image)
+    for tri in idx:
+        draw.polygon([to_px(xy[i]) for i in tri], fill=255)
+    return image
+
+
+def symmetry_angle(mask: Image.Image, coarse: float = 2.0, fine: float = 0.25) -> tuple[float, float]:
+    best = (-1.0, 0.0)
+
+    def score(angle: float) -> float:
+        rotated = mask.rotate(angle, resample=Image.BILINEAR, expand=False)
+        arr = (np.asarray(rotated, dtype=np.float32) / 255.0 > 0.5).astype(np.float32)
+        if arr.sum() <= 1:
+            return 0.0
+        ys, xs = np.nonzero(arr)
+        cyi = int(round(float(np.average(ys, weights=arr[ys, xs]))))
+        mirrored = np.zeros_like(arr)
+        for src in range(arr.shape[0]):
+            dst = 2 * cyi - src
+            if 0 <= dst < arr.shape[0]:
+                mirrored[dst] = arr[src]
+        inter = float((arr * mirrored).sum())
+        union = float(np.clip(arr + mirrored, 0, 1).sum())
+        return inter / union if union else 0.0
+
+    angle = -90.0
+    while angle < 90.0:
+        value = score(angle)
+        if value > best[0]:
+            best = (value, angle)
+        angle += coarse
+    center = best[1]
+    angle = center - coarse
+    while angle <= center + coarse:
+        value = score(angle)
+        if value > best[0]:
+            best = (value, angle)
+        angle += fine
+    return best[1], best[0]
+
+
+def plan_rotate(xy: np.ndarray, degrees: float) -> np.ndarray:
+    """Rotate plan coordinates by a mathematical (CCW) angle."""
+    a = math.radians(degrees)
+    c, s = math.cos(a), math.sin(a)
+    return np.stack([xy[:, 0] * c - xy[:, 1] * s, xy[:, 0] * s + xy[:, 1] * c], axis=1)
+
+
+def subset_mesh(xy: np.ndarray, idx: np.ndarray, keep: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Restrict a mesh to vertices flagged keep, remapping triangle indices."""
+    sel = np.nonzero(keep)[0]
+    remap = -np.ones(len(xy), dtype=np.int64)
+    remap[sel] = np.arange(len(sel), dtype=np.int64)
+    triangle_mask = keep[idx].all(axis=1)
+    return xy[sel], remap[idx[triangle_mask]]
+
+
+def align_fuselage(xy: np.ndarray, z: np.ndarray, idx: np.ndarray) -> tuple[np.ndarray, float, float]:
+    # Helicopter rotor discs are rotationally symmetric and would win the
+    # symmetry search, so measure the fuselage axis on the lower half only.
+    zmin, zmax = float(z.min()), float(z.max())
+    keep = z <= zmin + 0.6 * (zmax - zmin) if zmax - zmin > 1e-6 else np.ones(len(z), dtype=bool)
+    xy_sub, idx_sub = subset_mesh(xy, idx, keep)
+    mask = rasterize(xy_sub, idx_sub)
+    angle, score = symmetry_angle(mask)
+    # PIL rotates counter-clockwise in image space (y down), i.e. clockwise in
+    # model space, so apply the opposite sign and let the residual check close.
+    rotated = plan_rotate(xy, angle)
+    for _ in range(3):
+        xy_sub2, idx_sub2 = subset_mesh(rotated, idx, keep)
+        mask2 = rasterize(xy_sub2, idx_sub2)
+        residual, s2 = symmetry_angle(mask2)
+        if abs(residual) < 0.6:
+            score = max(score, s2)
             break
-    if texture is not None:
-        try:
-            pixels = np.array(texture.pixels[:], dtype=np.float32).reshape(-1, 4)
-            mean = pixels[:, :3].mean(axis=0) if len(pixels) else (0.5, 0.5, 0.5)
-            return tuple(int(max(0, min(255, round(channel * 255)))) for channel in mean)
-        except Exception:  # noqa: BLE001
-            pass
-    if base is not None:
-        return tuple(int(max(0, min(255, round(channel * 255)))) for channel in base[:3])
-    return (180, 180, 180)
+        rotated = plan_rotate(rotated, residual)
+        angle += residual
+    return rotated, angle, score
 
 
-def bake(slug: str) -> dict:
-    path = os.path.join(DECIMATED, slug, f"{slug}.glb")
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    bpy.ops.import_scene.gltf(filepath=path)
+def nose_direction(xy: np.ndarray, z: np.ndarray, idx: np.ndarray, length: float) -> tuple[int, dict]:
+    """Return +1 if the nose is at +X, -1 if at -X, plus diagnostics."""
+    xs = xy[:, 0]
+    lo, hi = float(xs.min()), float(xs.max())
+    bins = 40
+    edges = np.linspace(lo, hi, bins + 1)
+    max_z = np.zeros(bins)
+    span_y = np.zeros(bins)
+    area = np.zeros(bins)
+    zmin, zmax = float(z.min()), float(z.max())
+    low = z <= zmin + 0.55 * (zmax - zmin)
+    for i in range(bins):
+        mask = (xs >= edges[i]) & (xs < edges[i + 1])
+        if not mask.any():
+            continue
+        max_z[i] = float(z[mask].max())
+        span_y[i] = float(xy[mask, 1].max() - xy[mask, 1].min())
+        area[i] = float((mask & low).sum())
 
-    meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
-    if len(meshes) > 1:
-        bpy.ops.object.select_all(action="DESELECT")
-        for mesh in meshes:
-            mesh.select_set(True)
-        bpy.context.view_layer.objects.active = meshes[0]
-        bpy.ops.object.join()
-    obj = next(o for o in bpy.context.scene.objects if o.type == "MESH")
-    bpy.ops.object.select_all(action="DESELECT")
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = obj
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    z_scale = max(float(max_z.max()), 1e-6)
+    span_scale = max(float(span_y.max()), 1e-6)
+    fin = (max_z >= 0.70 * z_scale) & (span_y <= 0.30 * span_scale)
+    fin_x = float((edges[:-1] + edges[1:])[fin].mean()) if fin.any() else None
 
-    # Triangulate so the baked index buffer is unambiguous.
-    triangulate = obj.modifiers.new("Triangulate", type="TRIANGULATE")
-    bpy.ops.object.modifier_apply(modifier=triangulate.name)
+    # Area asymmetry: for helicopters the cabin end carries most of the plan area.
+    total_area = float(area.sum())
+    com_x = float((area * (edges[:-1] + edges[1:]) / 2).sum() / total_area) if total_area else 0.0
+    rel_com = (com_x - (lo + hi) / 2) / max(hi - lo, 1e-6)
 
-    vertices = [obj.matrix_world @ vertex.co for vertex in obj.data.vertices]
-    xs = [v.x for v in vertices]
-    ys = [v.y for v in vertices]
-    zs = [v.z for v in vertices]
-    size_x = max(xs) - min(xs)
-    size_y = max(ys) - min(ys)
-    size_z = max(zs) - min(zs)
+    rel_fin = None if fin_x is None else (fin_x - (lo + hi) / 2) / max(hi - lo, 1e-6)
+    if rel_fin is not None and abs(rel_fin) >= 0.22:
+        nose = -int(np.sign(rel_fin))
+        method = "fin"
+    elif abs(rel_com) >= 0.02:
+        nose = int(np.sign(rel_com))
+        method = "area"
+    else:
+        nose = 1
+        method = "default"
+    diagnostics = {
+        "finRel": None if rel_fin is None else round(rel_fin, 3),
+        "comRel": round(rel_com, 3),
+        "method": method,
+    }
+    return nose, diagnostics
 
+
+def transform(slug: str) -> dict:
+    data = np.load(MESHES / f"{slug}.npz")
+    pos = data["positions"].astype(np.float64).reshape(-1, 3)
+    colors = data["colors"].reshape(-1, 3)
+    idx = data["indices"].astype(np.int64).reshape(-1, 3)
+    xy = pos[:, :2].copy()
+    z = pos[:, 2].copy()
+
+    xy, angle, score = align_fuselage(xy, z, idx)
+    # After aligning, make sure the longer plan axis (fuselage) is X.
+    ext_x = float(xy[:, 0].max() - xy[:, 0].min())
+    ext_y = float(xy[:, 1].max() - xy[:, 1].min())
     length, span = SPECS[slug]
-    # Decide which horizontal model axis is the fuselage: compare the model's
-    # aspect ratio with both real spec ratios.
-    error_xy = abs((size_x / max(size_y, 1e-6)) - (length / span))
-    error_yx = abs((size_y / max(size_x, 1e-6)) - (length / span))
-    fuselage_is_x = error_xy <= error_yx
-    fuselage_size = size_x if fuselage_is_x else size_y
-    scale = length / max(fuselage_size, 1e-6)
+    if slug not in HELICOPTERS and abs(ext_x / max(ext_y, 1e-9) - length / span) > abs(
+        ext_y / max(ext_x, 1e-9) - length / span
+    ):
+        xy = plan_rotate(xy, 90.0)
+        angle += 90.0
 
-    angle = 0.0 if fuselage_is_x else math.pi / 2.0
-    rotation = math.cos(angle), math.sin(angle)
+    nose, diagnostics = nose_direction(xy, z, idx, length)
+    override = {}
+    if OVERRIDES.exists():
+        override = json.loads(OVERRIDES.read_text(encoding="utf-8")).get(slug, {})
+    if override.get("flip"):
+        nose = -nose
+        diagnostics["method"] = "override"
+    if nose < 0:
+        xy = -xy
 
-    min_x, max_x = min(xs), max(xs)
-    min_y, max_y = min(ys), max(ys)
-    center_x, center_y = (min_x + max_x) / 2, (min_y + max_y) / 2
-
-    def transform(point: Vector) -> tuple[float, float, float]:
-        x = (point.x - center_x) * scale
-        y = (point.y - center_y) * scale
-        # Rotate so the fuselage points along +X.
-        rx = x * rotation[0] + y * rotation[1]
-        ry = -x * rotation[1] + y * rotation[0]
-        z = (point.z - min(zs)) * scale
-        return round(rx, 2), round(ry, 2), round(z, 2)
-
-    colors = [material_color(slot.material) for slot in obj.material_slots]
-    positions: list[float] = []
-    colors_out: list[int] = []
-    indices: list[int] = []
-    for polygon in obj.data.polygons:
-        material_index = polygon.material_index
-        color = colors[material_index] if material_index < len(colors) else (180, 180, 180)
-        base = len(positions) // 3
-        for loop_index in polygon.loop_indices:
-            vertex_index = obj.data.loops[loop_index].vertex_index
-            positions.extend(transform(vertices[vertex_index]))
-            colors_out.extend(color)
-        for offset in range(1, len(polygon.loop_indices) - 1):
-            indices.extend((base, base + offset, base + offset + 1))
+    lo, hi = xy.min(axis=0), xy.max(axis=0)
+    ext_x = float(hi[0] - lo[0])
+    ext_y = float(hi[1] - lo[1])
+    scale = length / max(ext_x, 1e-6)
+    cx, cy = (lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0
+    zmin = float(z.min())
+    out = np.empty_like(pos)
+    out[:, 0] = (xy[:, 0] - cx) * scale
+    out[:, 1] = (xy[:, 1] - cy) * scale
+    out[:, 2] = (z - zmin) * scale
 
     return {
         "slug": slug,
         "lengthM": length,
-        "spanM": span,
-        "heightM": round(size_z * scale, 2),
-        "triangles": len(indices) // 3,
-        "positions": positions,
-        "colors": colors_out,
-        "indices": indices,
+        "spanM": round(ext_y * scale, 2),
+        "heightM": round(float(out[:, 2].max()), 2),
+        "triangles": int(len(idx) // 3),
+        "noseAxis": "+X",
+        "bake": diagnostics,
+        "symmetryDeg": round(angle, 2),
+        "symmetryIou": round(score, 3),
+        "positions": [round(float(v), 3) for v in out.reshape(-1)],
+        "colors": [int(v) for v in colors.reshape(-1)],
+        "indices": [int(v) for v in idx.reshape(-1)],
     }
 
 
+# --------------------------------------------------------------------------- sheet
+CELL = 300
+
+
+def draw_cell(draw: ImageDraw.ImageDraw, model: dict, box: tuple[int, int]) -> None:
+    ox, oy = box
+    pos = np.asarray(model["positions"], dtype=float).reshape(-1, 3)
+    idx = np.asarray(model["indices"], dtype=int).reshape(-1, 3)
+    xy = pos[:, :2]
+    lo, hi = xy.min(axis=0), xy.max(axis=0)
+    size = max(float(hi[0] - lo[0]), 1e-6)
+    scale = (CELL - 24) / size
+    cx = ox + CELL / 2 - (lo[0] + hi[0]) / 2 * scale
+    cy = oy + CELL / 2 + (lo[1] + hi[1]) / 2 * scale
+
+    order = np.argsort(pos[idx, 2].mean(axis=1))
+    for tri in order:
+        shade = 150
+        pts = []
+        for i in idx[tri]:
+            pts.append((cx + xy[i, 0] * scale, cy - xy[i, 1] * scale))
+        draw.polygon(pts, fill=(shade, shade - 8, shade - 14), outline=(90, 90, 90))
+
+    # Nose marker: big green arrow along +X.
+    x_hi = cx + float(hi[0]) * scale
+    y_mid = cy - float(xy[:, 1].mean()) * scale
+    draw.line([(cx, y_mid), (x_hi + 6, y_mid)], fill=(0, 150, 60), width=2)
+    draw.polygon(
+        [(x_hi + 12, y_mid), (x_hi, y_mid - 7), (x_hi, y_mid + 7)],
+        fill=(0, 150, 60),
+    )
+    draw.text((ox + 6, oy - 20), model["slug"], fill=(10, 10, 10))
+
+
+def write_sheet(models: list[dict]) -> None:
+    cols = 5
+    rows = math.ceil(len(models) / cols)
+    sheet = Image.new("RGB", (cols * CELL + 40, rows * (CELL + 22) + 20), (250, 250, 247))
+    draw = ImageDraw.Draw(sheet)
+    for i, model in enumerate(models):
+        col, row = i % cols, i // cols
+        ox = 12 + col * CELL
+        oy = 18 + row * (CELL + 22) + 18
+        draw_cell(draw, model, (ox, oy))
+    sheet.save(SHEET)
+
+
 def main() -> None:
-    slugs = [name for name in sorted(os.listdir(DECIMATED)) if os.path.isdir(os.path.join(DECIMATED, name))]
-    for slug in slugs:
-        if slug not in SPECS:
-            print(f"[skip] {slug}: no specs")
+    BAKED.mkdir(parents=True, exist_ok=True)
+    models = []
+    for slug in sorted(SPECS):
+        if not (MESHES / f"{slug}.npz").exists():
+            print(f"[skip] {slug}: no mesh")
             continue
-        data = bake(slug)
-        out_path = os.path.join(OUT, f"{slug}.json")
-        with open(out_path, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, separators=(",", ":"))
-        print(f"[bake] {slug}: {data['triangles']} tris, {os.path.getsize(out_path) // 1024} KiB")
+        model = transform(slug)
+        models.append(model)
+        with open(BAKED / f"{slug}.json", "w", encoding="utf-8") as handle:
+            json.dump(model, handle, separators=(",", ":"), ensure_ascii=False)
+        b = model["bake"]
+        print(
+            f"[bake] {slug:<11} L{model['lengthM']:5.1f} S{model['spanM']:5.1f} "
+            f"axis {model['symmetryDeg']:7.2f} iou {model['symmetryIou']:.3f} "
+            f"nose {b['method']:<8} fin {str(b['finRel']):>6} com {b['comRel']}"
+        )
+    write_sheet(models)
+    print(f"[sheet] {SHEET.relative_to(ROOT)}")
 
 
-main()
+if __name__ == "__main__":
+    main()

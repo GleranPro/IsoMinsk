@@ -1,0 +1,7 @@
+{
+ "note": "Reviewed nose-direction overrides for the museum bake. Every model is aligned with the fuselage along +X; a flip turns a model whose pointed end the detector could not separate from the fin.",
+ "su-25": {
+  "flip": true,
+  "why": "top/side inspection: fin and stabiliser at +X, cockpit at -X"
+ }
+}
