@@ -156,20 +156,20 @@ def main() -> None:
     build_exhibit_mesh(models)
     ground_and_hangar()
 
-    center = (9285.0, 660.0)
+    center = (9285.0, 650.0)
     # Top-down plan view.
     render_view(
         "museum-layout-top.png",
         (center[0], center[1], 400.0),
         (0.0, 0.0, 0.0),
-        470.0,
+        560.0,
     )
     # Three-quarter view, similar to the map camera.
     render_view(
         "museum-layout-3d.png",
-        (center[0] + 260.0, center[1] - 260.0, 240.0),
+        (center[0] + 300.0, center[1] - 300.0, 260.0),
         (math.radians(55), 0.0, math.radians(45)),
-        520.0,
+        560.0,
     )
 
 
