@@ -33,6 +33,7 @@ ASSETS = ROOT / "assets" / "aviation-museum"
 ANALYSIS = ASSETS / "analysis"
 TABLE = ANALYSIS / "placement_table.json"
 ARROWS = ANALYSIS / "drone_nose_arrows.json"
+BLUE = ANALYSIS / "blue_axes_crop.json"
 OUT = ASSETS / "placement.json"
 
 # photo px -> local metres (x east, y north); fitted on ten registry-verified aircraft
@@ -73,23 +74,33 @@ def model_sizes() -> dict[str, float]:
 def main() -> None:
     table = json.loads(TABLE.read_text(encoding="utf-8"))
     arrows = {int(a["n"]): a for a in json.loads(ARROWS.read_text(encoding="utf-8"))}
+    blue = {int(a["n"]): a for a in json.loads(BLUE.read_text(encoding="utf-8"))}
     sizes = model_sizes()
 
     exhibits = []
     for item in table["exhibits"]:
-        arrow = arrows[int(item["arrow"])]
-        x, y = arrow_centre(arrow)
+        if "blue" in item:
+            # Blue axis arrow: tail -> nose, the aircraft sits on its middle.
+            source = blue[int(item["blue"])]
+            note = "ось: синяя стрелка"
+        else:
+            # Red leader arrow: shows which aircraft the label refers to.
+            source = arrows[int(item["arrow"])]
+            note = "ось: красная стрелка (синей разметки нет)"
+        x, y = arrow_centre(source)
         dx, dy = item.get("offset", [0.0, 0.0])
         exhibits.append(
             {
                 "slug": item["slug"],
                 "x": round(x + dx, 1),
                 "y": round(y + dy, 1),
-                "heading": arrow_heading(arrow),
+                "heading": arrow_heading(source),
                 "ref": item["ref"],
-                "photo": [round(0.5 * (arrow["tip"][0] + arrow["tail"][0]), 1),
-                          round(0.5 * (arrow["tip"][1] + arrow["tail"][1]), 1)],
-                "noseArrow": int(item["arrow"]),
+                "photo": [round(0.5 * (source["tip"][0] + source["tail"][0]), 1),
+                          round(0.5 * (source["tip"][1] + source["tail"][1]), 1)],
+                "noseArrow": int(item.get("blue", item.get("arrow"))),
+                "axisSource": "blue" if "blue" in item else "red",
+                "note": note,
             }
         )
 

@@ -21,7 +21,8 @@ ASSETS = ROOT / "assets" / "aviation-museum"
 OUT = ASSETS / "analysis" / "heading_check.png"
 
 A = np.array([[0.210128517, -0.005781065], [0.024360907, -0.217185299]])
-ARROW_BY_ID = {int(a["n"]): a for a in json.loads((ASSETS / "analysis" / "drone_nose_arrows.json").read_text(encoding="utf-8"))}
+RED_BY_ID = {int(a["n"]): a for a in json.loads((ASSETS / "analysis" / "drone_nose_arrows.json").read_text(encoding="utf-8"))}
+BLUE_BY_ID = {int(a["n"]): a for a in json.loads((ASSETS / "analysis" / "blue_axes_crop.json").read_text(encoding="utf-8"))}
 PLACEMENT = json.loads((ASSETS / "placement.json").read_text(encoding="utf-8"))
 
 X0, X1, Y0, Y1 = 9185.0, 9400.0, 490.0, 825.0
@@ -48,7 +49,8 @@ def main() -> None:
 
     worst = 0.0
     for exhibit in PLACEMENT["exhibits"]:
-        arrow = ARROW_BY_ID[int(exhibit["noseArrow"])]
+        source = exhibit.get("axisSource", "red")
+        arrow = (BLUE_BY_ID if source == "blue" else RED_BY_ID)[int(exhibit["noseArrow"])]
         d = np.dot(A, np.array([arrow["tip"][0] - arrow["tail"][0], arrow["tip"][1] - arrow["tail"][1]], float))
         arrow_deg = math.degrees(math.atan2(d[1], d[0]))
         delta = (float(exhibit["heading"]) - arrow_deg + 180.0) % 360.0 - 180.0
