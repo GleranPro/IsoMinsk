@@ -31,6 +31,11 @@ from shapely.geometry import box, shape
 ROOT = Path(__file__).resolve().parents[2]
 REPORT = ROOT / "docs/COVERAGE_REPORT_CITY.md"
 BASELINE = ROOT / "scripts/qa/tree_coverage_baseline.json"
+COVERAGE_JSON = ROOT / "data/processed/coverage_city.json"
+RAW_GEOJSON = ROOT / "data/interim/city_raw.geojson"
+NORMALIZED_JSON = ROOT / "data/processed/city_area_normalized.json"
+TREES_JSON = ROOT / "data/interim/city_trees.json"
+TILES_DIR = ROOT / "public/data/city-tiles"
 
 CLASS_LABELS = {
     "park": "`leisure=park`",
@@ -74,26 +79,31 @@ def fmt(value: float, digits: int = 0) -> str:
 
 
 def measure() -> tuple[list[dict], dict, dict]:
-    coverage = json.loads((ROOT / "data/processed/coverage_city.json").read_text(encoding="utf-8"))
+    coverage = json.loads(COVERAGE_JSON.read_text(encoding="utf-8"))
     origin_x, origin_y = coverage["area"]["originUtm"]
-    half = coverage["area"]["pilotSizeM"] / 2
+    area = coverage["area"]
+    if "boundsLocal" in area:
+        minx, miny, maxx, maxy = area["boundsLocal"]
+    else:  # older coverage files: square pilot area
+        half = area["pilotSizeM"] / 2
+        minx, miny, maxx, maxy = -half, -half, half, half
     projector = Transformer.from_crs(4326, 32635, always_xy=True)
 
     def to_local(coords: np.ndarray) -> np.ndarray:
         x, y = projector.transform(coords[:, 0], coords[:, 1])
         return np.column_stack([np.asarray(x) - origin_x, np.asarray(y) - origin_y])
 
-    raw = json.loads((ROOT / "data/interim/city_raw.geojson").read_text(encoding="utf-8"))
-    payload = json.loads((ROOT / "data/processed/city_area_normalized.json").read_text(encoding="utf-8"))
+    raw = json.loads(RAW_GEOJSON.read_text(encoding="utf-8"))
+    payload = json.loads(NORMALIZED_JSON.read_text(encoding="utf-8"))
     trees = payload["trees"]
     mapped_flags = np.array([bool(t["mapped"]) for t in trees])
     tree_index = STRtree(points([t["x"] for t in trees], [t["y"] for t in trees]))
 
-    raw_trees = json.loads((ROOT / "data/interim/city_trees.json").read_text(encoding="utf-8"))["trees"]
+    raw_trees = json.loads(TREES_JSON.read_text(encoding="utf-8"))["trees"]
     raw_xy = to_local(np.array([[t["lon"], t["lat"]] for t in raw_trees]))
     raw_index = STRtree(points(raw_xy[:, 0], raw_xy[:, 1]))
 
-    frame = box(-half, -half, half, half)
+    frame = box(minx, miny, maxx, maxy)
     rows: list[dict] = []
     for feature in raw["features"]:
         if feature.get("kind") != "surface":
@@ -141,19 +151,32 @@ def render(rows: list[dict], coverage: dict) -> str:
     def tree_stat(key: str, default="—"):
         return environment.get(key, default)
 
-    manifest = ROOT / "public/data/city-tiles/manifest.json"
+    manifest = TILES_DIR / "manifest.json"
     version = (json.loads(manifest.read_text(encoding="utf-8")).get("version", "?")
                if manifest.exists() else "?")
 
+    area = coverage.get("area", {})
+    if "boundsLocal" in area:
+        aminx, aminy, amaxx, amaxy = area["boundsLocal"]
+        frame_text = f"Рамка {(amaxx - aminx) / 1000:.2f} × {(amaxy - aminy) / 1000:.2f} км"
+    else:
+        frame_text = "Рамка 12 × 12 км"
     lines: list[str] = []
     lines.append("# Деревья в парках и на кладбищах: покрытие городского датасета")
     lines.append("")
     lines.append(f"Отчёт пересчитан `scripts/qa/tree_coverage.py` по payload "
                  f"{version}. "
                  "Колонки «до» — замер payload 0.4.2 перед задачей B-1 "
-                 "(`scripts/qa/tree_coverage_baseline.json`). Рамка 12 × 12 км. Дерево "
+                 f"(`scripts/qa/tree_coverage_baseline.json`). {frame_text}. Дерево "
                  "относится к полигону, если стоит внутри него; полигоны пересекаются, "
                  "поэтому одно дерево может войти в несколько строк.")
+    if "boundsLocal" in area and (
+        abs((amaxx - aminx) - 12000) > 1
+        or abs((amaxy - aminy) - 12000) > 1
+    ):
+        lines.append("")
+        lines.append("Внимание: рамка отличается от 12-км baseline B-1 — "
+                     "сравнение «до/после» по этому baseline для неё не сопоставимо.")
     lines.append("")
     lines.append("## Итог по городу")
     lines.append("")
@@ -243,10 +266,44 @@ def render(rows: list[dict], coverage: dict) -> str:
 
 
 def main() -> int:
+    global REPORT, COVERAGE_JSON, RAW_GEOJSON, NORMALIZED_JSON, TREES_JSON, TILES_DIR
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Tree coverage report (city dataset)")
+    parser.add_argument("--coverage", default=None,
+                        help="coverage JSON (default: data/processed/coverage_city.json)")
+    parser.add_argument("--raw", default=None,
+                        help="raw geojson (default: data/interim/city_raw.geojson)")
+    parser.add_argument("--normalized", default=None,
+                        help="normalized payload (default: data/processed/city_area_normalized.json)")
+    parser.add_argument("--trees", default=None,
+                        help="mapped trees JSON (default: data/interim/city_trees.json)")
+    parser.add_argument("--tiles-dir", default=None,
+                        help="tile dataset dir (default: public/data/city-tiles)")
+    parser.add_argument("--report", default=None,
+                        help="output markdown (default: docs/COVERAGE_REPORT_CITY.md)")
+    args = parser.parse_args()
+    if args.coverage:
+        COVERAGE_JSON = Path(args.coverage)
+    if args.raw:
+        RAW_GEOJSON = Path(args.raw)
+    if args.normalized:
+        NORMALIZED_JSON = Path(args.normalized)
+    if args.trees:
+        TREES_JSON = Path(args.trees)
+    if args.tiles_dir:
+        TILES_DIR = Path(args.tiles_dir)
+    if args.report:
+        REPORT = Path(args.report)
+
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     rows, coverage, _payload = measure()
     REPORT.write_text(render(rows, coverage), encoding="utf-8")
-    print(f"Wrote {REPORT.relative_to(ROOT)} ({len(rows)} polygons)")
+    try:
+        shown = REPORT.relative_to(ROOT)
+    except ValueError:
+        shown = REPORT
+    print(f"Wrote {shown} ({len(rows)} polygons)")
     return 0
 
 

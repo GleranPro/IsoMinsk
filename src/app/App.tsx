@@ -7,11 +7,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createCityApp } from '../engine/createCityApp';
-import type { BuildingSelection, CityAppHandle, EngineStats } from '../shared/appApi';
+import type { BuildingSelection, CityAppHandle, EngineStats, MuseumExhibitSelection } from '../shared/appApi';
 import type { TileManifest } from '../shared/types';
 import { resolveDatasetName, resolveManifestUrl } from '../shared/config';
 import { MUSEUM } from '../shared/museum';
 import { InfoPanel } from './InfoPanel';
+import { MuseumPanel } from './MuseumPanel';
 import { ControlPanel } from './ControlPanel';
 import { AttributionPanel } from './AttributionPanel';
 import { LoadingOverlay } from './LoadingOverlay';
@@ -45,6 +46,7 @@ export function App() {
   const [progress, setProgress] = useState(0);
   const [stats, setStats] = useState<EngineStats | null>(null);
   const [selection, setSelection] = useState<BuildingSelection | null>(null);
+  const [exhibit, setExhibit] = useState<MuseumExhibitSelection | null>(null);
   const [ui, setUi] = useState<UiState>(DEFAULT_UI);
   const [manifest, setManifest] = useState<TileManifest | null>(null);
 
@@ -75,7 +77,11 @@ export function App() {
         if (exposed) exposed.stats = snapshot;
         (window as unknown as Record<string, unknown>).__CITY_STATS__ = snapshot;
       },
-      onSelection: (next) => setSelection(next),
+      onSelection: (next) => {
+        setSelection(next);
+        if (next) setExhibit(null);
+      },
+      onExhibitSelect: (next) => setExhibit(next),
       onLoadingChange: (isLoading, value) => {
         setLoading(isLoading);
         setProgress(value);
@@ -178,6 +184,17 @@ export function App() {
       />
 
       <InfoPanel selection={selection} onClose={() => appRef.current?.clearSelection()} />
+
+      {exhibit && (
+        <MuseumPanel
+          selection={exhibit}
+          app={appRef.current}
+          onClose={() => {
+            appRef.current?.clearExhibit();
+            setExhibit(null);
+          }}
+        />
+      )}
 
       <AttributionPanel manifest={manifest} />
 

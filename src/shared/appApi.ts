@@ -16,6 +16,31 @@ export interface BuildingSelection {
   screenY: number;
 }
 
+/** A Lipki museum exhibit picked in the 3D scene. */
+export interface MuseumExhibitSelection {
+  /** Index inside the museum payload. */
+  index: number;
+  slug: string;
+  ref: string;
+  /** Local metres (x east, y north). */
+  x: number;
+  y: number;
+  heading: number;
+  lengthM: number;
+  spanM: number;
+  /** Screen-space pixel coordinates of the click, for the card anchor. */
+  screenX: number;
+  screenY: number;
+}
+
+/** Geometry of one exhibit, centred and ready for the card's 3D preview. */
+export interface MuseumExhibitPreview {
+  positions: Float32Array;
+  colors: Float32Array;
+  lengthM: number;
+  spanM: number;
+}
+
 export interface EngineStats {
   fps: number;
   frameMs: number;
@@ -38,6 +63,8 @@ export interface CityAppOptions {
   onStats?: (stats: EngineStats) => void;
   /** Called when a building pick completes (or is cleared with null). */
   onSelection?: (selection: BuildingSelection | null) => void;
+  /** Called when a museum exhibit is clicked (or the selection is cleared). */
+  onExhibitSelect?: (selection: MuseumExhibitSelection | null) => void;
   /** Called when a tile finishes loading (for the loading indicator). */
   onLoadingChange?: (loading: boolean, progress: number) => void;
   /** Called on fatal initialisation errors (e.g. WebGL2 unavailable). */
@@ -97,4 +124,8 @@ export interface CityAppHandle {
   /** Selection */
   clearSelection(): void;
   highlightBuilding(id: FeatureId | null): void;
+  /** Museum card data: centred geometry of one exhibit (null until loaded). */
+  getExhibitPreview(index: number): MuseumExhibitPreview | null;
+  /** Clear the museum exhibit selection (card closes). */
+  clearExhibit(): void;
 }

@@ -446,6 +446,20 @@ export function paintGround(
     stats.medians++;
   }
 
+  // 4c. Aerodrome surfaces (B-2): apron/helipad fills and runway/taxiway
+  // strokes from `aeroway=*`; concrete is the default, tag surface can override.
+  for (const fill of fills) {
+    if (fill.m !== 'concrete') continue;
+    fillRing(ctx, fill.p, SURFACE_COLORS.concrete);
+    stats.medians++;
+  }
+  for (const stroke of strokes) {
+    if (stroke.k !== 'aeroway') continue;
+    const color = stroke.mat ? SURFACE_COLORS[stroke.mat] : SURFACE_COLORS.concrete;
+    strokeLine(ctx, stroke.p, Math.max(minLine, stroke.w), color);
+    stats.fills++;
+  }
+
   // 5. Rails: tram rails embedded in the asphalt, heavy rail on ballast.
   for (const stroke of strokes) {
     if (stroke.k === 'rail') {

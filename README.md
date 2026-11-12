@@ -69,7 +69,7 @@ to the city bounds, streams tiles nearest-first and keeps a bounded resident set
 
 ### Lipki aviation museum
 
-The open-air exhibition at Lipki airfield is curated geometry: 30 aircraft
+The open-air exhibition at Lipki airfield is curated geometry: 29 aircraft
 (baked from the decimated museum models) placed exactly as annotated on the
 drone photo, with 9 empty spots where no 3D model exists. The exhibits are a
 static payload (`public/data/museum/`, ~2.3 MiB binary, 87 k triangles) loaded
@@ -77,7 +77,7 @@ next to the streamed tiles.
 
 Open **http://127.0.0.1:5173/?dataset=city&focus=lipki** or press
 **«Авиамузей «Липки»»** in the control panel (from the central district the
-button switches to the city dataset). Regenerate the payload after changing the
+button switches to the city dataset). Clicking an aircraft opens a card with a rotatable 3D model, a short description and links to the museum website. Regenerate the payload after changing the
 placement with:
 
 ```powershell

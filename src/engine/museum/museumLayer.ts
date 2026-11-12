@@ -189,6 +189,97 @@ export class MuseumLayer {
     this.mesh = mesh;
     this.manifest = manifest;
     this.triangles = manifest.triangles;
+    // Triangle -> exhibit index, so a raycast hit can open the right card.
+    const owner = new Uint32Array(manifest.triangles);
+    manifest.exhibits.forEach((exhibit, index) => {
+      const first = Math.round(exhibit.start / 3);
+      const end = Math.min(manifest.triangles, Math.round((exhibit.start + exhibit.count) / 3));
+      owner.fill(index, first, end);
+    });
+    this.triangleOwner = owner;
+  }
+
+  /** Triangle -> exhibit index (empty until ready). */
+  triangleOwner = new Uint32Array(0);
+
+  /** Exhibit index for a triangle hit (-1 outside the range). */
+  exhibitIndexForTriangle(triangleIndex: number): number {
+    if (triangleIndex < 0 || triangleIndex >= this.triangleOwner.length) return -1;
+    return this.triangleOwner[triangleIndex];
+  }
+
+  /** Exhibit metadata for a triangle hit (null when outside the range). */
+  exhibitForTriangle(triangleIndex: number): MuseumExhibitMeta | null {
+    if (triangleIndex < 0 || triangleIndex >= this.triangleOwner.length) return null;
+    const index = this.triangleOwner[triangleIndex];
+    return this.manifest?.exhibits[index] ?? null;
+  }
+
+  /** Display index of an exhibit slug (first match), or -1. */
+  indexOfSlug(slug: string): number {
+    if (!this.manifest) return -1;
+    return this.manifest.exhibits.findIndex((exhibit) => exhibit.slug === slug);
+  }
+
+  /**
+   * Local-space geometry of one exhibit, centred and normalised for the card's
+   * preview viewer. Returns null before the payload is loaded.
+   */
+  getExhibitPreview(index: number): {
+    positions: Float32Array;
+    colors: Float32Array;
+    lengthM: number;
+    spanM: number;
+  } | null {
+    if (!this.manifest || !this.geometry) return null;
+    const exhibit = this.manifest.exhibits[index];
+    if (!exhibit) return null;
+    const attributes = this.geometry.getAttribute('position');
+    const colors = this.geometry.getAttribute('color');
+    if (!attributes || !colors) return null;
+    const start = exhibit.start;
+    const count = exhibit.count;
+    const positions = new Float32Array(count * 3);
+    const outColors = new Float32Array(count * 3);
+    const step = 1 / Math.max(this.manifest.positionScale, 1e-6);
+    void step;
+    const src = attributes.array as Float32Array;
+    const srcColors = colors.array as Float32Array;
+    positions.set(src.subarray(start * 3, (start + count) * 3));
+    outColors.set(srcColors.subarray(start * 3, (start + count) * 3));
+
+    // Centre horizontally and drop the model onto y=0 for the preview.
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (let i = 0; i < count; i += 1) {
+      const x = positions[i * 3];
+      const y = positions[i * 3 + 1];
+      const z = positions[i * 3 + 2];
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      if (z < minZ) minZ = z;
+      if (z > maxZ) maxZ = z;
+    }
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const cz = minZ;
+    for (let i = 0; i < count; i += 1) {
+      positions[i * 3] -= cx;
+      positions[i * 3 + 1] -= cy;
+      positions[i * 3 + 2] -= cz;
+    }
+    return {
+      positions,
+      colors: outColors,
+      lengthM: exhibit.lengthM,
+      spanM: exhibit.spanM,
+    };
   }
 
   /** Triangles currently in the scene (0 until ready). */
@@ -224,5 +315,7 @@ export class MuseumLayer {
     this.root.clear();
     this.state = 'idle';
     this.triangles = 0;
+    this.triangleOwner = new Uint32Array(0);
+    this.manifest = null;
   }
 }

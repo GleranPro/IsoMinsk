@@ -64,7 +64,15 @@ export class TileWorkerPool {
   constructor(options: TileWorkerPoolOptions = {}) {
     this.options = options;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const size = Math.max(1, Math.min(options.size ?? 2, 4));
+    const cores =
+      typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+        ? navigator.hardwareConcurrency
+        : 4;
+    // B-2: the 437-tile city saturates two workers for ~50 s on the whole-view
+    // load. Use up to four (leaving room for the main thread and the GPU
+    // upload path), still bounded by the previous safety cap.
+    const defaultSize = Math.min(4, Math.max(2, cores - 2));
+    const size = Math.max(1, Math.min(options.size ?? defaultSize, 4));
     if (typeof Worker === 'undefined') {
       this.fail('Web Workers are not available');
       return;

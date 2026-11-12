@@ -24,6 +24,7 @@ import * as THREE from 'three';
 import type {
   BuildingSelection,
   CameraSettings,
+  MuseumExhibitSelection,
   CityAppHandle,
   CityAppOptions,
   EngineStats,
@@ -187,6 +188,8 @@ function createUnavailableHandle(container: HTMLElement, message: string): CityA
     setCameraSettings: noop,
     focusOnLocal: noop,
     focusMuseum: noop,
+    getExhibitPreview: () => null,
+    clearExhibit: noop,
     setPixelArt: noop,
     getPixelArt: () => ({ ...DEFAULT_PIXEL_ART }),
     setTimeOfDay: noop,
@@ -486,6 +489,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   });
 
   picker = new BuildingPicker(streamer, rig.camera);
+  const museumRaycaster = new THREE.Raycaster();
+  museumRaycaster.near = 0;
+  museumRaycaster.far = Number.POSITIVE_INFINITY;
 
   // --- state shared with the frame loop ------------------------------------
   const stats: EngineStats = createZeroStats();
@@ -582,6 +588,16 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         options.onSelection?.(null);
       } catch {
         /* ignore */
+      }
+    },
+    getExhibitPreview(index: number) {
+      return museum.getExhibitPreview(index);
+    },
+    clearExhibit() {
+      try {
+        options.onExhibitSelect?.(null);
+      } catch {
+        /* ignore shell errors */
       }
     },
     highlightBuilding(id: FeatureId | null) {
@@ -1334,9 +1350,56 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     markCameraDirty();
   }
 
+  function pickMuseumExhibit(clientX: number, clientY: number, rect: DOMRect): MuseumExhibitSelection | null {
+    const mesh = museum.getMesh();
+    if (!mesh || museum.state !== 'ready') return null;
+    const width = Math.max(rect.width, 1);
+    const height = Math.max(rect.height, 1);
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / width) * 2 - 1,
+      -((clientY - rect.top) / height) * 2 + 1,
+    );
+    museumRaycaster.setFromCamera(ndc, rig.camera);
+    const hits = museumRaycaster.intersectObject(mesh, false);
+    if (hits.length === 0) return null;
+    const hit = hits[0];
+    const index = museum.exhibitIndexForTriangle(hit.faceIndex ?? -1);
+    const meta = index >= 0 ? museum.manifest?.exhibits[index] : null;
+    if (!meta) return null;
+    return {
+      index,
+      slug: meta.slug,
+      ref: meta.ref,
+      x: meta.x,
+      y: meta.y,
+      heading: meta.heading,
+      lengthM: meta.lengthM,
+      spanM: meta.spanM,
+      screenX: clientX,
+      screenY: clientY,
+    };
+  }
+
   function handleClick(clientX: number, clientY: number): void {
     if (disposed || !picker) return;
     const rect = host!.canvas.getBoundingClientRect();
+    const exhibit = pickMuseumExhibit(clientX, clientY, rect);
+    if (exhibit) {
+      selected = null;
+      highlightId = null;
+      highlighter.setHighlight(null);
+      try {
+        options.onSelection?.(null);
+      } catch {
+        /* ignore shell errors */
+      }
+      try {
+        options.onExhibitSelect?.(exhibit);
+      } catch {
+        /* ignore shell errors */
+      }
+      return;
+    }
     const selection = picker.pick(clientX, clientY, rect);
     selected = selection;
     if (selection) {

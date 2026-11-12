@@ -37,6 +37,7 @@ declare global {
 }
 
 test('Lipki museum exhibits render in the city dataset', async ({ page }) => {
+  test.setTimeout(180_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(String(error)));
   page.on('console', (message) => {
@@ -77,7 +78,7 @@ test('Lipki museum exhibits render in the city dataset', async ({ page }) => {
   });
 
   expect(museum.state).toBe('ready');
-  expect(museum.exhibits).toBe(30);
+  expect(museum.exhibits).toBe(29);
   expect(museum.missing).toBe(9);
   expect(museum.triangles).toBeGreaterThan(50000);
   expect(museum.vertices).toBe(museum.triangles * 3);
@@ -97,7 +98,34 @@ test('Lipki museum exhibits render in the city dataset', async ({ page }) => {
   expect(stats.loadedTiles).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.__CITY_DEBUG__!.museum().state)).toBe('ready');
 
-  await page.screenshot({ path: 'test-results/museum-lipki.png', timeout: 90000 });
+  // Clicking an aircraft opens the exhibit card with the rotatable preview and
+  // the museum links.
+  const point = await page.evaluate(() => {
+    const debug = (window as unknown as { __CITY_DEBUG__: any }).__CITY_DEBUG__;
+    const layer = debug.museumObject();
+    const THREE = debug.three();
+    const app = window.__CITY_APP__!.app!;
+    app.setCameraSettings({ azimuth: Math.PI / 4, orthoHeight: 110 });
+    const exhibit = layer.manifest.exhibits.find((item: { slug: string }) => item.slug === 'mi-26');
+    app.focusOnLocal(exhibit.x, exhibit.y);
+    const camera = debug.cameraObject();
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const projected = new THREE.Vector3(exhibit.x, 3, -exhibit.y).project(camera);
+    return {
+      x: rect.left + (projected.x * 0.5 + 0.5) * rect.width,
+      y: rect.top + (-projected.y * 0.5 + 0.5) * rect.height,
+    };
+  });
+  await page.waitForTimeout(3000);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator('[data-testid="museum-card"]')).toBeVisible();
+  await expect(page.locator('[data-testid="museum-card"] h2')).toHaveText('Ми-26');
+  await expect(page.locator('[data-testid="museum-preview"] canvas')).toBeVisible();
+  await expect(page.locator('[data-testid="museum-card"] .museum-links a')).toHaveCount(2);
+  const href = await page.locator('[data-testid="museum-card"] .museum-links a').first().getAttribute('href');
+  expect(href).toContain('aircraft-museum.ucoz.ru');
+  await page.screenshot({ path: 'test-results/museum-card.png', timeout: 90000 });
   expect(errors).toEqual([]);
 });
 

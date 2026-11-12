@@ -392,7 +392,8 @@ export type GroundStrokeKind =
   | 'ped'
   | 'track'
   | 'tram'
-  | 'rail';
+  | 'rail'
+  | 'aeroway';
 
 /**
  * One OSM centreline painted into the ground texture (payload 0.4.0).
@@ -499,7 +500,7 @@ export interface GroundDeck {
 }
 
 export interface GroundFill {
-  m: 'asphalt' | 'tram' | 'platform';
+  m: 'asphalt' | 'concrete' | 'tram' | 'platform';
   /** Road class of the carriageway an asphalt fill belongs to (colour). */
   c?: RoadClass;
   /** Closed ring, flat [x0, y0, x1, y1, …], local metres. */

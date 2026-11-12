@@ -317,3 +317,130 @@ body,
   border-radius: 999px;
   white-space: nowrap;
 }
+
+/* --- Lipki museum exhibit card ------------------------------------------- */
+.museum-card {
+  bottom: 16px;
+  left: 16px;
+  width: 340px;
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  z-index: 6;
+}
+
+.museum-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.museum-card h2 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.museum-subtitle {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.museum-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.museum-close:hover {
+  color: var(--text);
+}
+
+.museum-preview {
+  position: relative;
+  height: 190px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #1a2118;
+}
+
+.museum-preview canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.museum-preview canvas:active {
+  cursor: grabbing;
+}
+
+.museum-preview-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.museum-description {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.museum-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 11.5px;
+}
+
+.museum-facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.museum-facts dt {
+  color: var(--text-dim);
+}
+
+.museum-facts dd {
+  margin: 0;
+}
+
+.museum-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11.5px;
+}
+
+.museum-links a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.museum-links a:hover {
+  text-decoration: underline;
+}
+
+.museum-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--text-dim);
+}
