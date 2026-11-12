@@ -1,0 +1,491 @@
+{
+ "version": 1,
+ "origin": [
+  9300.0,
+  650.0
+ ],
+ "positionScale": 10.0,
+ "vertices": 261978,
+ "triangles": 87326,
+ "byteLength": 2357802,
+ "sections": [
+  {
+   "name": "x",
+   "type": "int16",
+   "count": 261978,
+   "offset": 0
+  },
+  {
+   "name": "z",
+   "type": "int16",
+   "count": 261978,
+   "offset": 523956
+  },
+  {
+   "name": "y",
+   "type": "int16",
+   "count": 261978,
+   "offset": 1047912
+  },
+  {
+   "name": "rgb",
+   "type": "uint8",
+   "count": 785934,
+   "offset": 1571868
+  }
+ ],
+ "exhibits": [
+  {
+   "slug": "mi-1",
+   "ref": "Ми-1М",
+   "x": 9326.4,
+   "y": 789.2,
+   "heading": -164.4,
+   "start": 0,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 12.1,
+   "spanM": 11.37
+  },
+  {
+   "slug": "yak-40",
+   "ref": "Як-40 (сев)",
+   "x": 9297.3,
+   "y": 722.1,
+   "heading": 94.8,
+   "start": 7500,
+   "count": 18000,
+   "triangles": 6000,
+   "axisSource": "red",
+   "lengthM": 20.4,
+   "spanM": 25.03
+  },
+  {
+   "slug": "mi-26",
+   "ref": "Ми-26",
+   "x": 9360.1,
+   "y": 724.3,
+   "heading": -160.8,
+   "start": 25500,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 40.0,
+   "spanM": 31.65
+  },
+  {
+   "slug": "tu-134",
+   "ref": "Ту-134",
+   "x": 9336.1,
+   "y": 688.9,
+   "heading": -163.2,
+   "start": 33000,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 37.1,
+   "spanM": 30.25
+  },
+  {
+   "slug": "yak-18",
+   "ref": "Як-18",
+   "x": 9285.4,
+   "y": 702.0,
+   "heading": 118.3,
+   "start": 40500,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "blue",
+   "lengthM": 8.6,
+   "spanM": 11.25
+  },
+  {
+   "slug": "mig-15",
+   "ref": "МиГ-15УТИ",
+   "x": 9294.8,
+   "y": 700.2,
+   "heading": 117.9,
+   "start": 48000,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "blue",
+   "lengthM": 10.1,
+   "spanM": 10.15
+  },
+  {
+   "slug": "il-18",
+   "ref": "Ил-18В",
+   "x": 9333.8,
+   "y": 665.0,
+   "heading": -146.3,
+   "start": 55500,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 35.9,
+   "spanM": 37.44
+  },
+  {
+   "slug": "mig-17",
+   "ref": "МиГ-17",
+   "x": 9313.0,
+   "y": 676.5,
+   "heading": 18.8,
+   "start": 63000,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "blue",
+   "lengthM": 11.3,
+   "spanM": 9.46
+  },
+  {
+   "slug": "mig-19",
+   "ref": "МиГ-19П",
+   "x": 9310.9,
+   "y": 664.4,
+   "heading": 16.6,
+   "start": 70500,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "blue",
+   "lengthM": 12.6,
+   "spanM": 9.0
+  },
+  {
+   "slug": "mig-21",
+   "ref": "МиГ-21СМТ",
+   "x": 9304.7,
+   "y": 653.5,
+   "heading": 16.6,
+   "start": 78000,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "blue",
+   "lengthM": 15.8,
+   "spanM": 7.39
+  },
+  {
+   "slug": "mig-23",
+   "ref": "МиГ-23УБ [88]",
+   "x": 9274.0,
+   "y": 653.5,
+   "heading": -89.9,
+   "start": 85500,
+   "count": 7482,
+   "triangles": 2494,
+   "axisSource": "red",
+   "lengthM": 16.7,
+   "spanM": 7.39
+  },
+  {
+   "slug": "mig-23",
+   "ref": "МиГ-23УБ [71]",
+   "x": 9296.1,
+   "y": 646.4,
+   "heading": -84.9,
+   "start": 92982,
+   "count": 7482,
+   "triangles": 2494,
+   "axisSource": "red",
+   "lengthM": 16.7,
+   "spanM": 7.39
+  },
+  {
+   "slug": "mig-25",
+   "ref": "МиГ-25ПУ",
+   "x": 9272.3,
+   "y": 615.4,
+   "heading": -72.0,
+   "start": 100464,
+   "count": 9000,
+   "triangles": 3000,
+   "axisSource": "red",
+   "lengthM": 23.8,
+   "spanM": 14.48
+  },
+  {
+   "slug": "su-17",
+   "ref": "Су-17М",
+   "x": 9258.3,
+   "y": 613.0,
+   "heading": -63.9,
+   "start": 109464,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 18.7,
+   "spanM": 9.89
+  },
+  {
+   "slug": "mig-27",
+   "ref": "МиГ-27К [05]",
+   "x": 9297.0,
+   "y": 617.5,
+   "heading": -65.0,
+   "start": 116964,
+   "count": 7497,
+   "triangles": 2499,
+   "axisSource": "red",
+   "lengthM": 17.1,
+   "spanM": 14.32
+  },
+  {
+   "slug": "mig-27",
+   "ref": "МиГ-27К [17]",
+   "x": 9284.8,
+   "y": 610.1,
+   "heading": -59.6,
+   "start": 124461,
+   "count": 7497,
+   "triangles": 2499,
+   "axisSource": "red",
+   "lengthM": 17.1,
+   "spanM": 14.32
+  },
+  {
+   "slug": "l-29",
+   "ref": "Л-29",
+   "x": 9294.2,
+   "y": 608.3,
+   "heading": -61.7,
+   "start": 131958,
+   "count": 7494,
+   "triangles": 2498,
+   "axisSource": "red",
+   "lengthM": 10.6,
+   "spanM": 10.0
+  },
+  {
+   "slug": "mig-25",
+   "ref": "МиГ-25БМ",
+   "x": 9256.9,
+   "y": 598.8,
+   "heading": 31.4,
+   "start": 139452,
+   "count": 9000,
+   "triangles": 3000,
+   "axisSource": "red",
+   "lengthM": 23.8,
+   "spanM": 14.48
+  },
+  {
+   "slug": "mig-29",
+   "ref": "МиГ-29УБ",
+   "x": 9270.4,
+   "y": 596.4,
+   "heading": 33.7,
+   "start": 148452,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 17.3,
+   "spanM": 11.67
+  },
+  {
+   "slug": "mig-29",
+   "ref": "МиГ-29 (9-13)",
+   "x": 9244.3,
+   "y": 623.3,
+   "heading": 40.7,
+   "start": 155952,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 17.3,
+   "spanM": 11.67
+  },
+  {
+   "slug": "an-26",
+   "ref": "Ан-26ЛЛ",
+   "x": 9301.5,
+   "y": 592.0,
+   "heading": -172.5,
+   "start": 163452,
+   "count": 18000,
+   "triangles": 6000,
+   "axisSource": "red",
+   "lengthM": 23.8,
+   "spanM": 30.13
+  },
+  {
+   "slug": "yak-40",
+   "ref": "Як-40 (южн)",
+   "x": 9270.4,
+   "y": 523.0,
+   "heading": -175.4,
+   "start": 181452,
+   "count": 18000,
+   "triangles": 6000,
+   "axisSource": "red",
+   "lengthM": 20.4,
+   "spanM": 25.03
+  },
+  {
+   "slug": "citation-x",
+   "ref": "Cessna 750 Citation X",
+   "x": 9279.0,
+   "y": 541.9,
+   "heading": 175.7,
+   "start": 199452,
+   "count": 12000,
+   "triangles": 4000,
+   "axisSource": "red",
+   "lengthM": 22.0,
+   "spanM": 19.4
+  },
+  {
+   "slug": "mi-24",
+   "ref": "Ми-24П",
+   "x": 9219.2,
+   "y": 549.9,
+   "heading": 33.4,
+   "start": 211452,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 17.5,
+   "spanM": 14.32
+  },
+  {
+   "slug": "mi-8",
+   "ref": "Ми-8Т",
+   "x": 9211.1,
+   "y": 515.4,
+   "heading": 39.8,
+   "start": 218952,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 18.2,
+   "spanM": 16.36
+  },
+  {
+   "slug": "an-2",
+   "ref": "Ан-2Т",
+   "x": 9249.5,
+   "y": 643.9,
+   "heading": 38.6,
+   "start": 226452,
+   "count": 5544,
+   "triangles": 1848,
+   "axisSource": "red",
+   "lengthM": 12.4,
+   "spanM": 17.84
+  },
+  {
+   "slug": "su-24",
+   "ref": "Су-24М [26]",
+   "x": 9225.3,
+   "y": 568.7,
+   "heading": 49.3,
+   "start": 231996,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 22.5,
+   "spanM": 17.13
+  },
+  {
+   "slug": "su-24",
+   "ref": "Су-24М [25]",
+   "x": 9233.1,
+   "y": 502.6,
+   "heading": 165.9,
+   "start": 239496,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 22.5,
+   "spanM": 17.13
+  },
+  {
+   "slug": "yak-28",
+   "ref": "Як-28ПП",
+   "x": 9229.5,
+   "y": 584.9,
+   "heading": 40.3,
+   "start": 246996,
+   "count": 7482,
+   "triangles": 2494,
+   "axisSource": "red",
+   "lengthM": 20.0,
+   "spanM": 11.77
+  },
+  {
+   "slug": "su-25",
+   "ref": "Су-25 [51]",
+   "x": 9284.8,
+   "y": 579.2,
+   "heading": 34.8,
+   "start": 254478,
+   "count": 7500,
+   "triangles": 2500,
+   "axisSource": "red",
+   "lengthM": 15.5,
+   "spanM": 14.44
+  }
+ ],
+ "missing": [
+  {
+   "label": "Ту-154",
+   "x": 9316.5,
+   "y": 719.1,
+   "heading": 104.1
+  },
+  {
+   "label": "Ан-12Б",
+   "x": 9316.7,
+   "y": 646.1,
+   "heading": -171.1
+  },
+  {
+   "label": "Ан-24Б",
+   "x": 9309.6,
+   "y": 615.1,
+   "heading": -171.4
+  },
+  {
+   "label": "Як-25М",
+   "x": 9235.2,
+   "y": 607.6,
+   "heading": 43.8
+  },
+  {
+   "label": "Ил-14П",
+   "x": 9290.6,
+   "y": 565.3,
+   "heading": -171.0
+  },
+  {
+   "label": "Ка-26",
+   "x": 9213.9,
+   "y": 530.6,
+   "heading": 32.8
+  },
+  {
+   "label": "PZL-104 Вильга",
+   "x": 9263.7,
+   "y": 687.2,
+   "heading": 37.5
+  },
+  {
+   "label": "L-13 Blaník",
+   "x": 9261.3,
+   "y": 674.8,
+   "heading": -15.7
+  },
+  {
+   "label": "Як-52",
+   "x": 9256.7,
+   "y": 662.2,
+   "heading": 38.3
+  }
+ ],
+ "bounds": {
+  "minX": -96.3,
+  "maxX": 78.6,
+  "minY": -156.7,
+  "maxY": 143.1
+ }
+}

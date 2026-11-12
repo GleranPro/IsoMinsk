@@ -67,6 +67,28 @@ pnpm run data:city        # extract + normalise + validate, ~6 min, no new downl
 Then open **http://127.0.0.1:5173/?dataset=city** — the engine fits the camera
 to the city bounds, streams tiles nearest-first and keeps a bounded resident set.
 
+### Lipki aviation museum
+
+The open-air exhibition at Lipki airfield is curated geometry: 30 aircraft
+(baked from the decimated museum models) placed exactly as annotated on the
+drone photo, with 9 empty spots where no 3D model exists. The exhibits are a
+static payload (`public/data/museum/`, ~2.3 MiB binary, 87 k triangles) loaded
+next to the streamed tiles.
+
+Open **http://127.0.0.1:5173/?dataset=city&focus=lipki** or press
+**«Авиамузей «Липки»»** in the control panel (from the central district the
+button switches to the city dataset). Regenerate the payload after changing the
+placement with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/qa/export_museum_web.py
+```
+
+Placement provenance, the annotation convention (blue arrows = fuselage axes)
+and the per-exhibit checks are documented in
+[`assets/aviation-museum/analysis/report_lipki.md`](assets/aviation-museum/analysis/report_lipki.md).
+
+
 ## Regenerating the pilot data (optional)
 
 The offline pipeline downloads the OSM extract for Minsk, extracts the pilot

@@ -36,6 +36,8 @@ import {
   resolveDatasetName,
   resolveManifestUrl,
 } from '../shared/config';
+import { MUSEUM, isMuseumFocus } from '../shared/museum';
+import { MuseumLayer } from './museum/museumLayer';
 import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
@@ -184,6 +186,7 @@ function createUnavailableHandle(container: HTMLElement, message: string): CityA
     getCameraSettings: () => ({ orthoHeight: 0, azimuth: 0, elevation: 0 }),
     setCameraSettings: noop,
     focusOnLocal: noop,
+    focusMuseum: noop,
     setPixelArt: noop,
     getPixelArt: () => ({ ...DEFAULT_PIXEL_ART }),
     setTimeOfDay: noop,
@@ -413,6 +416,22 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   let picker: BuildingPicker | null = null;
   let controls: CameraControls | null = null;
 
+  // --- Lipki aviation museum (static exhibit payload, loaded once) ---------
+  const museum = new MuseumLayer({
+    baseUrl: MUSEUM.dataUrl,
+    onReady: () => {
+      renderer.shadowMap.needsUpdate = true;
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
+    },
+    onError: recordDiagnostic,
+  });
+  scene.add(museum.root);
+  // The museum lies outside the central pilot dataset; only the city dataset
+  // covers it. Failure is non-fatal: the map renders without the exhibits.
+  if (dataset === 'city') {
+    void museum.load();
+  }
+
   const streamer = new TileStreamer({
     scene,
     root: cityRoot,
@@ -512,6 +531,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       rig.focusOnLocal(localX, localY, true);
       streamer.ensureArea(localX, localY, 1);
       markCameraDirty();
+    },
+    focusMuseum() {
+      focusMuseum();
     },
     setPixelArt(settings: Partial<PixelArtSettings>) {
       Object.assign(pixelArt, clampPixelArt(settings, pixelArt));
@@ -709,6 +731,15 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     cameraObject: () => rig.camera,
     rendererObject: () => renderer,
     cityRootObject: () => cityRoot,
+    museum: () => ({
+      state: museum.state,
+      triangles: museum.getTriangles(),
+      exhibits: museum.manifest?.exhibits.length ?? 0,
+      missing: museum.manifest?.missing.length ?? 0,
+      error: museum.error,
+      bounds: museum.manifest?.bounds ?? null,
+    }),
+    museumObject: () => museum,
     targetObject: () => post.targetHandle,
     lightsObject: () => lighting,
     /** Grid samples (RGB) from the low-res scene target. */
@@ -1290,6 +1321,17 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     } catch {
       /* ignore shell errors */
     }
+    if (isMuseumFocus()) focusMuseum();
+  }
+
+  /** Frame the Lipki exhibits; works on the city dataset (the pilot area has no Lipki tiles). */
+  function focusMuseum(): void {
+    if (disposed) return;
+    rig.focusOnLocal(MUSEUM.focus.x, MUSEUM.focus.y, true);
+    rig.setSettings({ orthoHeight: MUSEUM.orthoHeight });
+    streamer.ensureArea(MUSEUM.focus.x, MUSEUM.focus.y, 1);
+    void museum.load();
+    markCameraDirty();
   }
 
   function handleClick(clientX: number, clientY: number): void {
@@ -1529,6 +1571,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
     controls = null;
     try {
+      museum.dispose();
       streamer.dispose();
     } catch (error) {
       recordDiagnostic(`streamer dispose failed: ${String(error)}`);

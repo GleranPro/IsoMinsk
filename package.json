@@ -26,7 +26,8 @@
     "data:city:extract": ".venv\\Scripts\\python.exe scripts/ingest/extract.py --area city",
     "data:city:normalize": ".venv\\Scripts\\python.exe scripts/normalize/normalize.py --area city",
     "data:city:validate": ".venv\\Scripts\\python.exe scripts/validation/coverage_report.py --area city",
-    "data:city": "npm run data:download && npm run data:city:extract && npm run data:city:normalize && npm run data:city:validate"
+    "data:city": "npm run data:download && npm run data:city:extract && npm run data:city:normalize && npm run data:city:validate",
+    "data:museum": ".venv\\Scripts\\python.exe scripts/qa/export_museum_web.py"
   },
   "dependencies": {
     "react": "^19.2.0",

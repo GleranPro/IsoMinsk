@@ -88,6 +88,25 @@ L-13 Blaník, Як-52.
 * `renders/museum-layout-top.png` (север сверху), `museum-layout-3d.png`,
   `museum-layout-top-labelled.png`.
 
+## В продукте
+
+Экспозиция встроена в изометрическую карту как кураторский слой:
+
+* scripts/qa/export_museum_web.py (или pnpm run data:museum) пересобирает
+  public/data/museum/manifest.json + exhibits.bin из placement.json и
+  запечённых моделей: 30 экспонатов, 261 978 вершин, 87 326 треугольников,
+  ~2,3 МБ (int16 дециметры + uint8 RGB), мир относительного центра площадки;
+* src/engine/museum/museumLayer.ts грузит файлы один раз, собирает одну
+  неиндексированную геометрию с плоскими нормалями и ставит её на (9300, 650);
+* открыть: **http://127.0.0.1:5173/?dataset=city&focus=lipki** или кнопка
+  «Авиамузей Липки» в панели управления (из центрального датасета кнопка
+  переключает на ?dataset=city&focus=lipki);
+* пустые места без 3D-моделей не заполняются ничем — по требованию заказчика;
+* проверки: 	ests/unit/museum/museumPayload.test.ts (контракт бинаря и
+  реальные файлы), 	ests/e2e/museum.spec.ts (слой ready, 30 экспонатов,
+  9 пустых мест, 87 326 треугольников, кнопка/диплинк), скриншоты —
+  scripts/qa/museum-shots.mjs → screenshots/museum/.
+
 ## Ограничения
 
 * Аффинное преобразование даёт СКО 4.4 м по реестровым точкам; систематическая

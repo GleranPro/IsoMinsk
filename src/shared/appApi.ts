@@ -77,6 +77,8 @@ export interface CityAppHandle {
   setCameraSettings(settings: Partial<CameraSettings>): void;
   /** Instantly move the camera focus to local-metre coordinates. */
   focusOnLocal(localX: number, localY: number): void;
+  /** Fly to the Lipki aviation museum exhibits (city dataset only). */
+  focusMuseum(): void;
 
   /** Rendering */
   setPixelArt(settings: Partial<PixelArtSettings>): void;

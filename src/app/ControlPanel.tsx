@@ -5,18 +5,22 @@ interface ControlPanelProps {
   ui: UiState;
   onChange: (patch: Partial<UiState>) => void;
   onReset: () => void;
+  onFocusMuseum: () => void;
   onRefreshStats: () => void;
   stats: EngineStats | null;
   disabled: boolean;
 }
 
-export function ControlPanel({ ui, onChange, onReset, onRefreshStats, stats, disabled }: ControlPanelProps) {
+export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshStats, stats, disabled }: ControlPanelProps) {
   return (
     <aside className="hud controls" data-testid="control-panel">
       <section>
         <h2>View</h2>
         <button onClick={onReset} disabled={disabled} data-testid="reset-camera">
           Reset isometric view
+        </button>
+        <button onClick={onFocusMuseum} disabled={disabled} data-testid="focus-museum">
+          Авиамузей Липки
         </button>
         <label>
           <input

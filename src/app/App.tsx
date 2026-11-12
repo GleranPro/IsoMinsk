@@ -10,6 +10,7 @@ import { createCityApp } from '../engine/createCityApp';
 import type { BuildingSelection, CityAppHandle, EngineStats } from '../shared/appApi';
 import type { TileManifest } from '../shared/types';
 import { resolveDatasetName, resolveManifestUrl } from '../shared/config';
+import { MUSEUM } from '../shared/museum';
 import { InfoPanel } from './InfoPanel';
 import { ControlPanel } from './ControlPanel';
 import { AttributionPanel } from './AttributionPanel';
@@ -128,6 +129,21 @@ export function App() {
     }
   }, []);
 
+  const focusMuseum = useCallback(() => {
+    const app = appRef.current;
+    if (!app) return;
+    // The exhibits live at x ≈ 9.3 km east: only the city dataset covers Lipki.
+    if (resolveDatasetName() !== 'city') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('dataset', 'city');
+      url.searchParams.set('focus', 'lipki');
+      window.location.assign(url.toString());
+      return;
+    }
+    app.focusMuseum();
+    setUi((prev) => ({ ...prev, orthoHeight: MUSEUM.orthoHeight }));
+  }, []);
+
   const snapshotStats = useCallback(() => {
     const next = appRef.current?.getStats();
     if (next) setStats(next);
@@ -155,6 +171,7 @@ export function App() {
         ui={ui}
         onChange={(patch) => setUi((prev) => ({ ...prev, ...patch }))}
         onReset={resetCamera}
+        onFocusMuseum={focusMuseum}
         onRefreshStats={snapshotStats}
         stats={stats}
         disabled={!ready}
