@@ -400,6 +400,7 @@ The tile payload minor version is raised from `0.4.3` to **`0.5.0`**
 | `styleSchema` | `1` |
 | `sourceDatasetId` | `"<area>-<first 16 hex of the input PBF sha256>"`; with the reviewed B-2 extraction (`pbf_sha256 = da3ccdb434f90d6a…`) the city id is `city-da3ccdb434f90d6a` |
 | `sourceInputSha256` | SHA-256 of the canonical JSON of `{area, epsg, center, window, pbf, pbfSize, pbfSha256, tileSize, bounds}` |
+| `styleRunId` | the same deterministic input hash, recorded as the identity of one styled run (no wall clock) |
 | `styleRecipeCounts` | object with **all 38 runtime ids** (`0..26` families, `27..37` legacy) → building count, zeros included |
 
 The source-input hash deliberately excludes `generatedAt` so the same reviewed

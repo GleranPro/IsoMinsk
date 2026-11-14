@@ -34,43 +34,67 @@ trusting the historical 399/400-address reports; it passes 35/35 checks
 | --- | --- | --- |
 | Full-city inventory and address book | pass | `BASELINE.json`, `docs/B2/STAGING_AUDIT.json` (35 checks, 0 failed) |
 | Review cases frozen before styling | pass | `review-cases.json` (31 cases: 11 archetypes, 3 panel neighbourhoods, 3 pre-war areas, 5 landmarks, modern tower district, industrial area, small edge, 4 corners, river/bridge, Lipki) |
-| Before images at 420 m / 90 m for every case | blocked | needs the QA capture tooling added in Task 5/6; no before image may be claimed before it exists |
-| No hidden dataset selector can route to the pilot | blocked | application resolver still offers `?dataset=city` (Task 9); tracked, not yet fixed |
+| Before images at 420 m / 90 m for every case | partial | `building-review-capture.mjs` captures the frozen camera matrix against the accepted dataset; the full 31-case before/after matrix has not finished in this session (see the L2 row) |
+| No hidden dataset selector can route to the pilot | pass | `src/shared/config.ts` resolves `city` for every search string; `tests/unit/config_sync.test.ts` (23 tests) and the e2e complete-city contract cover it |
 
-L0 is therefore **not** signed off yet: the inventory half passes, the visual
-before-state is blocked on capture tooling. No style code is allowed to claim a
-quality improvement before that gate closes.
+L0 is **conditionally signed off**: inventory, address book and the frozen case
+registry pass; the visual before-state is captured by the same script that
+produces the L2 pairs and is still incomplete for all 31 cases.
 
 ## L1 — building-family gallery
 
 | Item | Result | Evidence |
 | --- | --- | --- |
-| 27-recipe gallery, day/night, two azimuths | pending | Task 5 |
+| 27-recipe gallery, day/night, two azimuths | pass (automated) | `gallery-results.json`: 27/27 panels pass; every panel has ≥2 wall triangles and ≥1 roof triangle; day/night frames actually cover pixels; images in `screenshots/building-quality/<sha>/gallery/` |
+| Deterministic second order (seeded) | pass | `grid-seeded-order-day.png` contact sheet; panel order derived from a fixed golden-ratio stride |
+| Per-family visual sign-off | partial | agent review of the captured panels: mansard (17) reads as a gambrel envelope with a readable eave/cap; loggia (6) shows the repeated glazed bays; sawtooth (18) shows the repeating ridges. Owner sign-off of all 27 families is still required |
+| Renderer for L1 | note | captured on ANGLE SwiftShader (correctness only, no FPS claim) |
+
+L1 is **not** owner-approved yet. The automated checklist passes and the panels
+are inspectable, but the plan requires a human pass over all 27 families at day,
+night and the opposite azimuth.
 
 ## L2 — neighbourhood architectural quality
 
 | Item | Result | Evidence |
 | --- | --- | --- |
-| Real-city before/after pairs, style coverage audit | pending | Task 6 |
+| Styled complete-city candidate generated | pass | `data/staging/city-buildings`: 437 tiles, 309.37 MB, 76,004 buildings, 1,910,624 trees, payload 0.5.0, manifest sha256 `c6f74953…` |
+| Source/geometry/style contract audit | pass | `style-audit.json`: 16 checks, 0 building failures over 76,004 buildings; every source volume preserved within 0.05 m top / 0.005 m plan; 27 family recipes used; ≥3 recipes for all 9 generic archetypes |
+| Style coverage | pass | recipe counts per id and per archetype in `style-audit.json.style`; legacy ids 27/35/36/37 only for protected routes |
+| Before/after pairs for all 31 cases | blocked | `neighborhood-results.json` + `building-review-capture.mjs` implement the locked-camera matrix; a full 31-case capture (155 frames) exceeds this session's capture budget. Owner/hardware run required |
+| Human visual sign-off | blocked | depends on the full capture set |
 
 ## L3 — complete city, LOD and journey
 
 | Item | Result | Evidence |
 | --- | --- | --- |
-| Full/far coverage, transitions, journeys | pending | Task 7 |
+| Full/far coverage, transitions, journeys | blocked | the accepted B-2 streamer in this branch still renders one representation per tile; the atomic far/full state machine (`cityLodStreamer.ts`), far export and the journey probe are specified in Task 7 but not implemented in this session |
 
 ## L4 — public artifact and release
 
 | Item | Result | Evidence |
 | --- | --- | --- |
-| GitHub Pages project-path release | blocked | owner must choose repository owner/name and the source-code licence, and confirm third-party redistribution rights; no identity or licence is invented here |
+| Whitelisted static artifact | pass (local) | `site:build` + `site:audit`: 450 files, 307,436,371 bytes, `data/city-tiles` only, museum payload, `.nojekyll`, ODbL text and attribution present; legacy/alternate dataset paths 404 below `/VoxelMinsk/` |
+| GitHub Actions → Pages workflow | pass (static review) | `.github/workflows/pages.yml` matches the plan (verify + deploy jobs, pinned action majors, 10-minute timeouts, `group: pages`) |
+| Live URL, anonymous fresh profile, owner sign-off | blocked | owner must choose repository owner/name and the source-code licence, confirm museum asset redistribution rights, and run the workflow on `main` |
 
 ## Open blockers carried in this branch
 
 1. **Owner inputs for publication (L4):** repository owner/name, source-code
    licence choice, and verified third-party museum asset redistribution rights.
-2. **Hardware performance evidence (L3/L8 gate):** FPS claims require a hardware
+2. **Dataset availability in CI:** `public/data/city-tiles/` is git-ignored, so a
+   fresh GitHub Actions checkout has no 295 MB dataset and the artifact step
+   fails closed. The owner must decide how CI obtains the accepted payload
+   (commit it, LFS/release artifact, cache, or regenerate).
+3. **Hardware performance evidence (L3/L8 gate):** FPS claims require a hardware
    GPU run (`QA_GPU=1`); SwiftShader runs only prove correctness.
-3. **Uncommitted B-2 state in the root checkout:** imported into this branch as
+4. **Full L2 capture matrix** (31 cases × 5 views) and the owner's visual
+   sign-off are outstanding.
+5. **L3 far/full representation** is specified but not implemented in this
+   session; the accepted streamer still uses a single representation.
+6. **Museum licence report:** `assets/aviation-museum/LICENSES.md` is stale
+   (missing the shipped `citation-x` exhibit); regenerate it before release.
+7. **Uncommitted B-2 state in the root checkout:** imported into this branch as
    commit `chore: import B-2 city area and data-pipeline baseline…`; the root
    checkout keeps its own working-tree changes untouched.
+
