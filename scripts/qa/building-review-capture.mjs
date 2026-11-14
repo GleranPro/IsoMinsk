@@ -79,7 +79,7 @@ async function main() {
     headless: true,
     args: process.env.QA_GPU === '1' ? GPU_ARGS : SWIFTSHADER_ARGS,
   });
-  const context = await browser.newContext({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   const consoleErrors = [];
   page.on('console', (message) => {
@@ -130,6 +130,43 @@ async function main() {
   const views = args.views
     ? allViews.filter((view) => args.views.includes(view.name))
     : allViews;
+
+  const outPath = resolve(REPO_ROOT, args.out);
+  mkdirSync(dirname(outPath), { recursive: true });
+  /** Build (and persist) the report; called after every case so an interrupted
+   * run still leaves a truthful partial result instead of nothing. */
+  const writeReport = () => {
+    const failures = rows.filter((row) => row.status !== 'pass');
+    const report = {
+      schema: 1,
+      generatedAt: startedAt,
+      mode: args.mode,
+      gitSha: sha,
+      baseUrl: args.baseUrl,
+      renderer,
+      gpuRequested: process.env.QA_GPU === '1',
+      viewport: { width: 1280, height: 720 },
+      dataset,
+      camera: {
+        orthoHeights: [420, 90],
+        azimuth: Math.PI / 4,
+        oppositeAzimuth: (5 * Math.PI) / 4,
+        elevation: Math.atan(1 / Math.SQRT2),
+        times: { day: 13, night: 22 },
+        pixelArt: { enabled: [false, true], resolution: 360 },
+      },
+      requestedCategories: args.categories ?? null,
+      requestedViews: views.map((view) => view.name),
+      plannedCases: cases.length,
+      cases: rows,
+      passedCases: rows.length - failures.length,
+      failedCases: failures.map((row) => row.category),
+      consoleErrors,
+      complete: rows.length === cases.length,
+    };
+    writeFileSync(outPath, `${JSON.stringify(report, null, 1)}\n`, 'utf8');
+    return report;
+  };
 
   const rows = [];
   for (const [caseIndex, item] of cases.entries()) {
@@ -216,43 +253,18 @@ async function main() {
       views: caseRows,
       status: caseRows.every((row) => row.status === 'pass') ? 'pass' : 'fail',
     });
+    writeReport();
   }
 
-  const failures = rows.filter((row) => row.status !== 'pass');
-  const report = {
-    schema: 1,
-    generatedAt: startedAt,
-    mode: args.mode,
-    gitSha: sha,
-    baseUrl: args.baseUrl,
-    renderer,
-    gpuRequested: process.env.QA_GPU === '1',
-    viewport: { width: 1600, height: 900 },
-    dataset,
-    camera: {
-      orthoHeights: [420, 90],
-      azimuth: Math.PI / 4,
-      oppositeAzimuth: (5 * Math.PI) / 4,
-      elevation: Math.atan(1 / Math.SQRT2),
-      times: { day: 13, night: 22 },
-      pixelArt: { enabled: [false, true], resolution: 360 },
-    },
-    cases: rows,
-    passedCases: rows.length - failures.length,
-    failedCases: failures.map((row) => row.category),
-    consoleErrors,
-  };
-  const outPath = resolve(REPO_ROOT, args.out);
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, `${JSON.stringify(report, null, 1)}\n`, 'utf8');
+  const finalReport = writeReport();
   await browser.close();
 
   console.log(
-    `capture (${args.mode}): ${rows.length - failures.length}/${rows.length} cases pass; ` +
+    `capture (${args.mode}): ${finalReport.passedCases}/${rows.length} cases pass; ` +
       `dataset v${dataset.version} ${dataset.tiles} tiles, styleSchema ${dataset.styleSchema}; images ${outDir}`,
   );
-  if (failures.length) {
-    for (const failure of failures) {
+  if (finalReport.failedCases.length) {
+    for (const failure of rows.filter((row) => row.status !== 'pass')) {
       console.error(`FAIL case ${failure.category}: ${failure.views.filter((row) => row.status !== 'pass').map((row) => row.view).join(', ')}`);
     }
     process.exitCode = 1;
