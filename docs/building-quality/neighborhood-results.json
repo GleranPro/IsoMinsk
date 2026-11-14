@@ -422,7 +422,7 @@
    "views": [
     {
      "view": "close-90",
-     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_industrial-close-90.png",
+     "file": "screenshots\\building-quality\\0df3506\\l2\\candidate\\archetype_industrial-close-90.png",
      "ready": true,
      "camera": {
       "orthoHeight": 90,
@@ -438,13 +438,13 @@
       "dither": 0.35
      },
      "stats": {
-      "loadedTiles": 255,
-      "visibleTiles": 255,
-      "buildings": 45338,
-      "triangles": 4,
-      "drawCalls": 2,
-      "renderWidth": 1280,
-      "renderHeight": 720
+      "loadedTiles": 60,
+      "visibleTiles": 60,
+      "buildings": 7635,
+      "triangles": 5594345,
+      "drawCalls": 296,
+      "renderWidth": 640,
+      "renderHeight": 360
      },
      "diagnostics": [
       "manifest: 437 tiles, 76004 buildings; default view 8867 m"
@@ -454,7 +454,7 @@
     },
     {
      "view": "night-22",
-     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_industrial-night-22.png",
+     "file": "screenshots\\building-quality\\0df3506\\l2\\candidate\\archetype_industrial-night-22.png",
      "ready": true,
      "camera": {
       "orthoHeight": 90,
@@ -470,11 +470,11 @@
       "dither": 0.35
      },
      "stats": {
-      "loadedTiles": 278,
-      "visibleTiles": 278,
-      "buildings": 49846,
-      "triangles": 2219515,
-      "drawCalls": 49,
+      "loadedTiles": 90,
+      "visibleTiles": 90,
+      "buildings": 12558,
+      "triangles": 1447500,
+      "drawCalls": 39,
       "renderWidth": 640,
       "renderHeight": 360
      },
@@ -1023,5 +1023,11 @@
  "passedCases": 12,
  "failedCases": [],
  "consoleErrors": [],
- "complete": true
+ "complete": true,
+ "refreshedCases": [
+  {
+   "category": "archetype_industrial",
+   "reason": "sawtooth variant roof disabled after the L1 defect; industrial frames recaptured with the shipped renderer"
+  }
+ ]
 }

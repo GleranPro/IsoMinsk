@@ -1,7 +1,7 @@
 {
  "schema": 1,
- "generatedAt": "2026-11-14T14:21:41.448Z",
- "gitSha": "5fc2a68",
+ "generatedAt": "2026-11-14T20:24:56.337Z",
+ "gitSha": "0df3506",
  "galleryUrl": "http://127.0.0.1:5180/qa/building-gallery.html",
  "renderer": {
   "vendor": "Google Inc. (Google)",
@@ -33,12 +33,20 @@
   }
  },
  "expectedPanels": 27,
- "passedPanels": 27,
- "failedPanels": [],
+ "passedPanels": 26,
+ "failedPanels": [
+  18
+ ],
+ "visualFailures": [
+  {
+   "recipeId": 18,
+   "issue": "sawtooth roof envelope left see-through gaps between the teeth; the variant roof is disabled in planRecipeRoof until the clerestory strip is watertight, so this panel now shows the source flat roof"
+  }
+ ],
  "consoleErrors": [],
  "contactSheets": [
-  "screenshots\\building-quality\\5fc2a68\\gallery\\grid-recipe-order-day.png",
-  "screenshots\\building-quality\\5fc2a68\\gallery\\grid-seeded-order-day.png"
+  "screenshots\\building-quality\\0df3506\\gallery\\grid-recipe-order-day.png",
+  "screenshots\\building-quality\\0df3506\\gallery\\grid-seeded-order-day.png"
  ],
  "panels": [
   {
@@ -62,10 +70,14 @@
    "dayMeanLuma": 146.66,
    "nightMeanLuma": 76.58,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-00-ensemble_symmetric-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-00-ensemble_symmetric-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-00-ensemble_symmetric-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-00-ensemble_symmetric-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-00-ensemble_symmetric-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-00-ensemble_symmetric-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -90,10 +102,14 @@
    "dayMeanLuma": 143.75,
    "nightMeanLuma": 75.24,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-01-end_pavilion-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-01-end_pavilion-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-01-end_pavilion-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-01-end_pavilion-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-01-end_pavilion-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-01-end_pavilion-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -118,10 +134,14 @@
    "dayMeanLuma": 147.93,
    "nightMeanLuma": 76.85,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-02-restrained_monument-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-02-restrained_monument-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-02-restrained_monument-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-02-restrained_monument-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-02-restrained_monument-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-02-restrained_monument-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -146,10 +166,14 @@
    "dayMeanLuma": 145.4,
    "nightMeanLuma": 72.14,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-03-brick_punched-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-03-brick_punched-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-03-brick_punched-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-03-brick_punched-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-03-brick_punched-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-03-brick_punched-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -174,10 +198,14 @@
    "dayMeanLuma": 149.2,
    "nightMeanLuma": 75.03,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-04-balcony_slab-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-04-balcony_slab-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-04-balcony_slab-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-04-balcony_slab-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-04-balcony_slab-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-04-balcony_slab-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -202,10 +230,14 @@
    "dayMeanLuma": 151.8,
    "nightMeanLuma": 74.91,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-05-pitched_low_block-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-05-pitched_low_block-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-05-pitched_low_block-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-05-pitched_low_block-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-05-pitched_low_block-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-05-pitched_low_block-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -230,10 +262,14 @@
    "dayMeanLuma": 144.86,
    "nightMeanLuma": 72.51,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-06-recessed_loggia-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-06-recessed_loggia-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-06-recessed_loggia-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-06-recessed_loggia-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-06-recessed_loggia-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-06-recessed_loggia-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -258,10 +294,14 @@
    "dayMeanLuma": 167.3,
    "nightMeanLuma": 119.43,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-07-endwall_tower-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-07-endwall_tower-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-07-endwall_tower-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-07-endwall_tower-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-07-endwall_tower-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-07-endwall_tower-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -286,10 +326,14 @@
    "dayMeanLuma": 163.75,
    "nightMeanLuma": 115.95,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-08-staircore_spine-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-08-staircore_spine-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-08-staircore_spine-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-08-staircore_spine-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-08-staircore_spine-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-08-staircore_spine-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -314,10 +358,14 @@
    "dayMeanLuma": 166.68,
    "nightMeanLuma": 122.92,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-09-podium_tower-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-09-podium_tower-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-09-podium_tower-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-09-podium_tower-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-09-podium_tower-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-09-podium_tower-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -342,10 +390,14 @@
    "dayMeanLuma": 161.24,
    "nightMeanLuma": 116.42,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-10-stepped_residential-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-10-stepped_residential-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-10-stepped_residential-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-10-stepped_residential-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-10-stepped_residential-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-10-stepped_residential-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -370,10 +422,14 @@
    "dayMeanLuma": 163.89,
    "nightMeanLuma": 115.99,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-11-framed_residential-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-11-framed_residential-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-11-framed_residential-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-11-framed_residential-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-11-framed_residential-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-11-framed_residential-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -398,10 +454,14 @@
    "dayMeanLuma": 158.57,
    "nightMeanLuma": 114.45,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-12-curtain_ribbon-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-12-curtain_ribbon-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-12-curtain_ribbon-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-12-curtain_ribbon-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-12-curtain_ribbon-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-12-curtain_ribbon-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -426,10 +486,14 @@
    "dayMeanLuma": 159.41,
    "nightMeanLuma": 112.72,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-13-framed_stone_grid-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-13-framed_stone_grid-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-13-framed_stone_grid-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-13-framed_stone_grid-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-13-framed_stone_grid-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-13-framed_stone_grid-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -454,10 +518,14 @@
    "dayMeanLuma": 184.48,
    "nightMeanLuma": 178.64,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-14-commercial_podium-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-14-commercial_podium-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-14-commercial_podium-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-14-commercial_podium-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-14-commercial_podium-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-14-commercial_podium-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -482,10 +550,14 @@
    "dayMeanLuma": 199.29,
    "nightMeanLuma": 192.56,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-15-plaster_street_house-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-15-plaster_street_house-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-15-plaster_street_house-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-15-plaster_street_house-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-15-plaster_street_house-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-15-plaster_street_house-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -510,10 +582,14 @@
    "dayMeanLuma": 198.44,
    "nightMeanLuma": 193.64,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-16-brick_gabled_house-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-16-brick_gabled_house-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-16-brick_gabled_house-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-16-brick_gabled_house-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-16-brick_gabled_house-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-16-brick_gabled_house-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -538,10 +614,14 @@
    "dayMeanLuma": 201.35,
    "nightMeanLuma": 195.06,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-17-mansard_attic-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-17-mansard_attic-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-17-mansard_attic-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-17-mansard_attic-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-17-mansard_attic-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-17-mansard_attic-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -555,23 +635,29 @@
    "height": 12,
    "floors": 2,
    "sourceRoof": "flat",
-   "triangles": 190,
-   "wallTriangles": 144,
-   "roofTriangles": 46,
-   "trimTriangles": 0,
+   "triangles": 26,
+   "wallTriangles": 16,
+   "roofTriangles": 2,
+   "trimTriangles": 8,
    "detailTriangles": 0,
-   "bytes": 38304,
+   "bytes": 4416,
    "closeOrthoHeight": 11,
-   "coverageRatio": 0.2745,
-   "dayMeanLuma": 179.54,
-   "nightMeanLuma": 168.54,
+   "coverageRatio": 0.2915,
+   "dayMeanLuma": 182.74,
+   "nightMeanLuma": 169.44,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-18-sawtooth_factory-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-18-sawtooth_factory-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-18-sawtooth_factory-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-18-sawtooth_factory-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-18-sawtooth_factory-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-18-sawtooth_factory-night-a.png"
    ],
-   "status": "pass",
-   "issues": []
+   "visualReview": {
+    "status": "fail",
+    "issue": "sawtooth roof envelope left see-through gaps between the teeth; the variant roof is disabled in planRecipeRoof until the clerestory strip is watertight, so this panel now shows the source flat roof"
+   },
+   "status": "fail",
+   "issues": [
+    "sawtooth roof envelope left see-through gaps between the teeth; the variant roof is disabled in planRecipeRoof until the clerestory strip is watertight, so this panel now shows the source flat roof"
+   ]
   },
   {
    "recipeId": 19,
@@ -594,10 +680,14 @@
    "dayMeanLuma": 184.75,
    "nightMeanLuma": 176.26,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-19-broad_clerestory_hall-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-19-broad_clerestory_hall-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-19-broad_clerestory_hall-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-19-broad_clerestory_hall-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-19-broad_clerestory_hall-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-19-broad_clerestory_hall-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -622,10 +712,14 @@
    "dayMeanLuma": 194.11,
    "nightMeanLuma": 183.61,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-20-service_workshop-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-20-service_workshop-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-20-service_workshop-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-20-service_workshop-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-20-service_workshop-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-20-service_workshop-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -650,10 +744,14 @@
    "dayMeanLuma": 205.86,
    "nightMeanLuma": 201.15,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-21-hipped_house-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-21-hipped_house-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-21-hipped_house-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-21-hipped_house-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-21-hipped_house-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-21-hipped_house-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -678,10 +776,14 @@
    "dayMeanLuma": 203.61,
    "nightMeanLuma": 201.21,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-22-flat_service_annex-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-22-flat_service_annex-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-22-flat_service_annex-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-22-flat_service_annex-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-22-flat_service_annex-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-22-flat_service_annex-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -706,10 +808,14 @@
    "dayMeanLuma": 203.78,
    "nightMeanLuma": 200.08,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-23-gabled_workshop-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-23-gabled_workshop-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-23-gabled_workshop-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-23-gabled_workshop-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-23-gabled_workshop-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-23-gabled_workshop-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -734,10 +840,14 @@
    "dayMeanLuma": 193.1,
    "nightMeanLuma": 185.19,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-24-school_hospital_wings-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-24-school_hospital_wings-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-24-school_hospital_wings-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-24-school_hospital_wings-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-24-school_hospital_wings-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-24-school_hospital_wings-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -762,10 +872,14 @@
    "dayMeanLuma": 191.01,
    "nightMeanLuma": 180.43,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-25-public_colonnade-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-25-public_colonnade-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-25-public_colonnade-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-25-public_colonnade-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-25-public_colonnade-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-25-public_colonnade-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   },
@@ -790,10 +904,14 @@
    "dayMeanLuma": 190.48,
    "nightMeanLuma": 178.61,
    "images": [
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-26-assembly_hall-day-a.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-26-assembly_hall-day-b.png",
-    "screenshots\\building-quality\\5fc2a68\\gallery\\panel-26-assembly_hall-night-a.png"
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-26-assembly_hall-day-a.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-26-assembly_hall-day-b.png",
+    "screenshots\\building-quality\\0df3506\\gallery\\panel-26-assembly_hall-night-a.png"
    ],
+   "visualReview": {
+    "status": "agent-pass",
+    "issue": null
+   },
    "status": "pass",
    "issues": []
   }

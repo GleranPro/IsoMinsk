@@ -543,14 +543,12 @@ export function planRecipeRoof(
     return { kind: 'mansard', rise: Math.min(4.5, Math.max(1.2, shortSide * 0.32)), direction };
   }
   if (recipeRoof === 'sawtooth') {
-    const bayCount = longSide >= 36 ? 6 : longSide >= 28 ? 5 : longSide >= 20 ? 4 : 3;
-    return {
-      kind: 'sawtooth',
-      rise: Math.min(2.8, Math.max(1.2, shortSide * 0.24)),
-      direction,
-      bayCount,
-      sampleStep: 1.25,
-    };
+    // OPEN DEFECT (2026-11-14): the analytic sawtooth envelope leaves see-through
+    // gaps between its teeth because the near-vertical clerestory strip faces are
+    // not watertight in the facet mesher. Until that is fixed the variant roof is
+    // not emitted; the source flat roof plus the clerestory facade motif is used
+    // instead. See docs/building-quality/REVIEW.md (L1, recipe 18).
+    return null;
   }
   return { kind: 'clerestory', rise: Math.min(2.2, Math.max(0.9, shortSide * 0.16)), direction };
 }

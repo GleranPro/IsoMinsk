@@ -45,14 +45,14 @@ produces the L2 pairs and is still incomplete for all 31 cases.
 
 | Item | Result | Evidence |
 | --- | --- | --- |
-| 27-recipe gallery, day/night, two azimuths | pass (automated) | `gallery-results.json`: 27/27 panels pass; every panel has ≥2 wall triangles and ≥1 roof triangle; day/night frames actually cover pixels; images in `screenshots/building-quality/<sha>/gallery/` |
+| 27-recipe gallery, day/night, two azimuths | **fail — one named family** | `gallery-results.json`: 26/27 panels pass; every panel has ≥2 wall triangles and ≥1 roof triangle and day/night frames cover pixels. **Recipe 18 `sawtooth_factory` fails visual review:** the analytic sawtooth envelope left see-through gaps between the teeth (the near-vertical clerestory strip is not watertight in the facet mesher). The variant roof is disabled in `planRecipeRoof` until that is fixed, so the panel now renders the source flat roof plus the clerestory facade motif. Images: `screenshots/building-quality/<sha>/gallery/` |
 | Deterministic second order (seeded) | pass | `grid-seeded-order-day.png` contact sheet; panel order derived from a fixed golden-ratio stride |
-| Per-family visual sign-off | partial | agent review of the captured panels: mansard (17) reads as a gambrel envelope with a readable eave/cap; loggia (6) shows the repeated glazed bays; sawtooth (18) shows the repeating ridges. Owner sign-off of all 27 families is still required |
+| Per-family visual sign-off | partial | agent review: mansard (17) reads as a gambrel envelope with a readable eave/cap; staircore (8) shows the continuous glazed spine; public_colonnade (25) shows pilasters, tall windows and a cornice; loggia (6) shows repeated glazed bays. Recipe 18 fails (above). Owner sign-off of all 27 families is still required |
 | Renderer for L1 | note | captured on ANGLE SwiftShader (correctness only, no FPS claim) |
 
-L1 is **not** owner-approved yet. The automated checklist passes and the panels
-are inspectable, but the plan requires a human pass over all 27 families at day,
-night and the opposite azimuth.
+L1 is **not** signed off: one family (recipe 18, sawtooth) fails visual review
+and its variant roof is disabled, and the owner must still review all 27 families
+at day, night and the opposite azimuth.
 
 ## L2 — neighbourhood architectural quality
 
@@ -61,7 +61,7 @@ night and the opposite azimuth.
 | Styled complete-city candidate generated | pass | `data/staging/city-buildings`: 437 tiles, 309.37 MB, 76,004 buildings, 1,910,624 trees, payload 0.5.0, manifest sha256 `c6f74953…` |
 | Source/geometry/style contract audit | pass | `style-audit.json`: 16 checks, 0 building failures over 76,004 buildings; every source volume preserved within 0.05 m top / 0.005 m plan; 27 family recipes used; ≥3 recipes for all 9 generic archetypes |
 | Style coverage | pass | recipe counts per id and per archetype in `style-audit.json.style`; legacy ids 27/35/36/37 only for protected routes |
-| Before/after pairs for all 31 cases | blocked | `neighborhood-results.json` + `building-review-capture.mjs` implement the locked-camera matrix; a full 31-case capture (155 frames) exceeds this session's capture budget. Owner/hardware run required |
+| Before/after pairs for all 31 cases | partial | 12 representative categories captured with the frozen camera at close (90 m) day and night: candidate `neighborhood-results.json` 12/12 pass on the styled v0.5.0 dataset; baseline `neighborhood-results-baseline.json` 12/12 pass on the accepted v0.4.3 dataset (no `styleVariant`), same cameras and client. Measured example (`panel_neighborhood_1`): 537,959 > 566,191 triangles (+5.3%), 60 > 60 draw calls. The remaining 19 cases (full 155-frame matrix) and the paired image review are outstanding |
 | Human visual sign-off | blocked | depends on the full capture set |
 
 ## L3 — complete city, LOD and journey

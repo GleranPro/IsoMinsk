@@ -42,6 +42,19 @@ const closeOrthoFor = (panel) => Math.max(10, Math.round(panel.height * 0.95));
 const GRID_ORTHO = 420;
 const PIXEL_ART = { enabled: false, resolution: 360, outline: 0.55, colorLevels: 20, dither: 0.35 };
 
+// Visual review state recorded by the agent/owner pass. Automated geometry and
+// frame checks cannot see through-gaps or implausible silhouettes, so the
+// visual verdict is a separate field: a row is `pass` only when BOTH the
+// automated checks and the recorded visual review pass.
+const VISUAL_REVIEW = {
+  18: {
+    status: 'fail',
+    issue:
+      'sawtooth roof envelope left see-through gaps between the teeth; the variant roof is disabled in planRecipeRoof until the clerestory strip is watertight, so this panel now shows the source flat roof',
+  },
+};
+
+
 const SWIFTSHADER_ARGS = [
   '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist',
@@ -180,13 +193,18 @@ async function main() {
       dayMeanLuma: Number(dayA.stats.meanLuma.toFixed(2)),
       nightMeanLuma: Number(nightA.stats.meanLuma.toFixed(2)),
       images: [dayA.file, dayB.file, nightA.file].map((file) => file.replace(`${REPO_ROOT}\\`, '').replace(`${REPO_ROOT}/`, '')),
-      status: geometryOk && renderOk && nightOk ? 'pass' : 'fail',
+      visualReview: VISUAL_REVIEW[panel.recipeId] ?? { status: 'agent-pass', issue: null },
+      status:
+        geometryOk && renderOk && nightOk && (VISUAL_REVIEW[panel.recipeId]?.status ?? 'agent-pass') === 'agent-pass'
+          ? 'pass'
+          : 'fail',
       issues: [
         ...(panel.triangles > 0 ? [] : ['no triangles']),
         ...(panel.wallTriangles >= 2 ? [] : ['fewer than 2 wall triangles']),
         ...(panel.roofTriangles >= 1 ? [] : ['no complete roof triangle']),
         ...(renderOk ? [] : [`frame coverage ${coveredRatio.toFixed(4)} / mean luma ${dayA.stats.meanLuma.toFixed(1)}`]),
         ...(nightOk ? [] : ['night frame too dark']),
+        ...(VISUAL_REVIEW[panel.recipeId]?.issue ? [VISUAL_REVIEW[panel.recipeId].issue] : []),
       ],
     });
   }
@@ -226,6 +244,7 @@ async function main() {
     expectedPanels: panels.length,
     passedPanels: rows.length - failures.length,
     failedPanels: failures.map((row) => row.recipeId),
+    visualFailures: Object.entries(VISUAL_REVIEW).filter(([, entry]) => entry.status !== 'agent-pass').map(([id, entry]) => ({ recipeId: Number(id), issue: entry.issue })),
     consoleErrors,
     contactSheets: [gridRecipe, gridSeeded].map((file) =>
       file.replace(`${REPO_ROOT}\\`, '').replace(`${REPO_ROOT}/`, ''),
