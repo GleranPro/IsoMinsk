@@ -56,6 +56,10 @@ export interface BuildingStyle {
   trimColor: RGB;
   /** Parapet height in metres for flat roofs. */
   parapetHeight: number;
+  /** Window bay width of the resolved preset, metres (detail-module rhythm). */
+  bayWidth: number;
+  /** Cornice band height of the resolved preset, metres. */
+  corniceHeight: number;
   /** Resolved style recipe (family or legacy preset). */
   recipe: StyleRecipe;
   /** Reusable geometry modules the recipe allows (safe to attempt, each may skip). */
@@ -180,6 +184,8 @@ export function styleForBuilding(
     baseColor: srgbFromHex(baseHex),
     trimColor: srgbFromHex(trimColorFor(baseHex)),
     parapetHeight: 0.26 + 0.1 * noiseFromSeed(seed, 3),
+    bayWidth: preset.bayWidth,
+    corniceHeight: preset.corniceHeight,
     recipe,
     detailModules: recipe.details,
     profile: recipe.profile,

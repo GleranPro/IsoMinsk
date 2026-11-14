@@ -331,7 +331,13 @@ function addEaveClosings(
   }
 }
 
-/** Small parapet band around a flat roof (FACE_KIND.trim). */
+/**
+ * Small parapet band around a flat roof (FACE_KIND.trim).
+ *
+ * parapetTop lets the caller keep the declared total height: the wall eave is
+ * lowered by the parapet height and the trim band occupies that last slice of
+ * the source envelope instead of adding mass above the mapped maximum.
+ */
 function addParapet(
   sink: MeshSink,
   rings: readonly RingInfo[],
@@ -339,9 +345,12 @@ function addParapet(
   base: number,
   style: BuildingStyle,
   uStart: number,
+  parapetTop?: number,
 ): void {
   const surface = makeSurface(style, FACE_KIND.trim, style.trimColor, style.detailScale);
-  const top = eave + style.parapetHeight;
+  const requested = Number.isFinite(parapetTop) ? Math.min(parapetTop as number, eave + style.parapetHeight) : eave + style.parapetHeight;
+  const top = Math.max(eave + 0.05, requested);
+  if (top - eave < 0.02) return;
   let uCursor = uStart;
   for (const ring of rings) {
     const points = ring.points;
@@ -396,6 +405,7 @@ function addFlatRoof(
   style: BuildingStyle,
   uStart: number,
   warn: WarningSink,
+  parapetTop?: number,
 ): void {
   const polygon = rings.map((ring) => ring.points);
   const triangulation = triangulatePolygon(polygon);
@@ -406,7 +416,7 @@ function addFlatRoof(
   }
   const color = roofColorFor('flat', style.seed);
   emitFlatCap(sink, triangulation.triangles, eave, style, color, ROOF_SHAPE_ID.flat);
-  if (style.detail) addParapet(sink, rings, eave, base, style, uStart);
+  if (style.detail) addParapet(sink, rings, eave, base, style, uStart, parapetTop);
 }
 
 /**
@@ -471,6 +481,15 @@ function addSkirtedDome(
  * Add the roof of one volume. Never throws for sane input; unsupported shapes
  * degrade to a flat roof and record a warning.
  */
+export interface RoofOptions {
+  /**
+   * Absolute top of a flat-roof parapet. When provided, the parapet band is
+   * emitted between the (already lowered) eave and this top, so decorative
+   * trim never exceeds the declared source height.
+   */
+  readonly parapetTop?: number;
+}
+
 export function addRoof(
   sink: MeshSink,
   volume: BuildingVolume,
@@ -478,6 +497,7 @@ export function addRoof(
   style: BuildingStyle,
   uStart: number,
   warn: WarningSink,
+  options: RoofOptions = {},
 ): void {
   if (!rings.length) return;
   const eave = volume.height;
@@ -498,7 +518,7 @@ export function addRoof(
   const allPoints = allPointsOf(rings);
 
   if (shape === 'flat') {
-    addFlatRoof(sink, rings, eave, base, style, uStart, warn);
+    addFlatRoof(sink, rings, eave, base, style, uStart, warn, options.parapetTop);
     return;
   }
 
@@ -519,13 +539,13 @@ export function addRoof(
     const hullSurface = steppedDomeSurface(allPoints, eave, rise);
     if (!hullSurface) {
       warn('dome roof could not be built: rendered as a flat roof');
-      addFlatRoof(sink, rings, eave, base, style, uStart, warn);
+      addFlatRoof(sink, rings, eave, base, style, uStart, warn, options.parapetTop);
       return;
     }
     const hullTriangles = triangulatePolygon(polygon);
     if (!hullTriangles.triangles.length) {
       warn('dome roof footprint triangulation failed: rendered as a flat roof');
-      addFlatRoof(sink, rings, eave, base, style, uStart, warn);
+      addFlatRoof(sink, rings, eave, base, style, uStart, warn, options.parapetTop);
       return;
     }
     emitFacetRoof(
@@ -542,7 +562,7 @@ export function addRoof(
 
   if (rise < MIN_SLOPED_RISE) {
     warn(`sloped ${shape} roof rise below ${MIN_SLOPED_RISE} m: rendered as a flat roof`);
-    addFlatRoof(sink, rings, eave, base, style, uStart, warn);
+    addFlatRoof(sink, rings, eave, base, style, uStart, warn, options.parapetTop);
     return;
   }
 
@@ -572,7 +592,7 @@ export function addRoof(
 
   if (!surface) {
     warn(`could not build a ${shape} roof envelope: rendered as a flat roof`);
-    addFlatRoof(sink, rings, eave, base, style, uStart, warn);
+    addFlatRoof(sink, rings, eave, base, style, uStart, warn, options.parapetTop);
     return;
   }
 
@@ -582,7 +602,7 @@ export function addRoof(
   }
   if (!triangulation.triangles.length) {
     warn(`footprint triangulation failed for ${shape} roof: rendered as a flat roof`);
-    addFlatRoof(sink, rings, eave, base, style, uStart, warn);
+    addFlatRoof(sink, rings, eave, base, style, uStart, warn, options.parapetTop);
     return;
   }
 

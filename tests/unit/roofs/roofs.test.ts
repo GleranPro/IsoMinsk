@@ -349,9 +349,13 @@ describe('roofs â€” flat parapet', () => {
     expect(trim(minimal)).toHaveLength(0);
     expect(trim(detailed)).toHaveLength(8); // 4 edges * 2 triangles
     const eave = building.volumes[0].height;
-    const [, max] = heightRange(trim(detailed));
-    expect(max - eave).toBeGreaterThanOrEqual(0.25);
-    expect(max - eave).toBeLessThanOrEqual(0.4);
+    const [min, max] = heightRange(trim(detailed));
+    // The parapet occupies the top slice of the declared envelope: it never
+    // adds mass above the mapped height (design §8), so the trim band sits just
+    // below the eave and the maximum stays within the 0.05 m tolerance.
+    expect(max).toBeLessThanOrEqual(eave + 0.05);
+    expect(eave - min).toBeGreaterThanOrEqual(0.2);
+    expect(eave - min).toBeLessThanOrEqual(0.4);
   });
 });
 

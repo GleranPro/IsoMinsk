@@ -17,6 +17,7 @@ import type {
   RoofShape,
 } from '../../src/shared/types';
 import type { BuildingMeshResult } from '../../src/city/buildings/buildingsMesh';
+import { pointInPolygon, type Point2 } from '../../src/city/buildings/polygon2d';
 import { noiseFromSeed, seedFromId } from '../../src/city/buildings/seed';
 
 // ---------------------------------------------------------------------------
@@ -582,4 +583,77 @@ export function heightRange(triangles: readonly DecodedTriangle[]): [number, num
     }
   }
   return [min, max];
+}
+
+/** World-space AABB of a merged geometry (computes the bounding box if absent). */
+export function worldBounds(geometry: {
+  computeBoundingBox?: () => void;
+  boundingBox?: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } } | null;
+}): { min: [number, number, number]; max: [number, number, number] } {
+  if (!geometry.boundingBox && typeof geometry.computeBoundingBox === 'function') {
+    geometry.computeBoundingBox();
+  }
+  const box = geometry.boundingBox;
+  if (!box) return { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
+  return {
+    min: [box.min.x, box.min.y, box.min.z],
+    max: [box.max.x, box.max.y, box.max.z],
+  };
+}
+
+/** Squared distance from a point to a segment in the plan. */
+function pointSegmentDistanceSq(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-12) return (px - ax) ** 2 + (py - ay) ** 2;
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + dx * t;
+  const cy = ay + dy * t;
+  return (px - cx) ** 2 + (py - cy) ** 2;
+}
+
+/**
+ * True when a local (x, y) plan point is inside one of the source volumes
+ * (exterior ring minus courtyard holes), or within `allowance` metres of an
+ * approved exterior projection edge.
+ *
+ * This is the geometry-preservation oracle for style profiles and detail
+ * modules: every emitted vertex must satisfy it (design §8).
+ */
+export function pointInApprovedPlan(
+  x: number,
+  y: number,
+  volumes: readonly BuildingVolume[],
+  allowance = 0.45,
+): boolean {
+  for (const volume of volumes) {
+    const rings = volume.footprint;
+    if (!rings || !rings.length) continue;
+    if (pointInPolygon([rings[0] as Point2[]], x, y)) {
+      let inHole = false;
+      for (let i = 1; i < rings.length; i++) {
+        if (pointInPolygon([rings[i] as Point2[]], x, y)) {
+          inHole = true;
+          break;
+        }
+      }
+      if (!inHole) return true;
+    }
+    const exterior = rings[0];
+    for (let i = 0; i < exterior.length; i++) {
+      const a = exterior[i];
+      const b = exterior[(i + 1) % exterior.length];
+      if (pointSegmentDistanceSq(x, y, a[0], a[1], b[0], b[1]) <= allowance * allowance) return true;
+    }
+  }
+  return false;
 }
