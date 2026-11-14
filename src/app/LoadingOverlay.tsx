@@ -14,7 +14,7 @@ export function LoadingOverlay({ visible, progress, error }: LoadingOverlayProps
         <span style={{ width: `${Math.round(Math.min(Math.max(progress, 0), 1) * 100)}%` }} />
       </div>
       <div style={{ color: '#9fb0bd', fontSize: 12 }}>
-        loading central Minsk tiles… {Math.round(Math.min(Math.max(progress, 0), 1) * 100)}%
+        loading the whole city of Minsk… {Math.round(Math.min(Math.max(progress, 0), 1) * 100)}%
       </div>
       {error && (
         <div className="loading-error" data-testid="error-message">

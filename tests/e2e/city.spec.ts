@@ -22,6 +22,28 @@ import type {
   CityAppHandle,
   EngineStats,
 } from '../../src/shared/appApi';
+import {
+  resolveDataBaseUrl,
+  resolveDatasetName,
+  resolveManifestUrl,
+  resolveTileUrl,
+} from '../../src/shared/config';
+import { publicAssetUrl } from '../../src/shared/assets';
+
+/** Subset of the engine's QA debug surface used by these tests. */
+interface CityDebugApi {
+  datasetInfo(): {
+    dataset: string;
+    dataBaseUrl: string;
+    manifestUrl: string;
+    tileSize: number;
+    defaultView: { orthoHeight: number; targetLocalX: number; targetLocalY: number };
+  };
+  archetypeSamples(
+    archetype: string,
+    limit?: number,
+  ): Array<{ id: string; name: string; localX: number; localY: number; height: number }>;
+}
 
 declare global {
   interface Window {
@@ -29,6 +51,13 @@ declare global {
     __CITY_STATS__?: EngineStats;
   }
 }
+
+/**
+ * The engine's QA debug surface is declared in museum.spec.ts for the whole
+ * test project; this module only needs the subset below and types it locally,
+ * so no extra `Window` augmentation can conflict.
+ */
+type DebugWindow = Window & { __CITY_DEBUG__?: CityDebugApi };
 
 const READY_TIMEOUT_MS = 60_000;
 /** A drag/rotation/lighting change must move at least this fraction of sampled pixels. */
@@ -430,9 +459,9 @@ async function waitForDocumentBoot(page: Page, timeoutMs = 10_000): Promise<bool
 }
 
 /** Opens the app and waits for the renderer. Returns diagnostics collected from page load. */
-async function openApp(page: Page): Promise<Diagnostics> {
+async function openApp(page: Page, path = '/'): Promise<Diagnostics> {
   const diagnostics = watchPage(page);
-  await page.goto('/');
+  await page.goto(path);
   // Bounded infrastructure retry: if the document never executed (Vite reloaded
   // modules while another agent saved files), reload once. This cannot mask an
   // application bug: a real crash still fails on the reload attempt and is
@@ -453,8 +482,8 @@ async function openApp(page: Page): Promise<Diagnostics> {
 }
 
 /**
- * A building candidate derived from the generated tile data: footprint centroid
- * in local metres plus the data needed to describe it in diagnostics.
+ * A building candidate taken from the *loaded* complete-city tiles: footprint
+ * centroid in local metres plus the data needed to describe it in diagnostics.
  */
 interface BuildingCandidate {
   id: string;
@@ -466,94 +495,236 @@ interface BuildingCandidate {
 }
 
 /**
- * Finds a residential (khrushchev/panel) building in the *real* generated tile
- * data so the pick test can aim the camera at a known building instead of
- * blind-clicking. Returns local-metre coordinates of the footprint centroid.
+ * Finds a building in the *real* streamed city data so the pick test can aim
+ * the camera at a known building instead of blind-clicking.
+ *
+ * The public payload is the complete city (437 tiles), so the old helper that
+ * downloaded every tile from the test is no longer viable. The engine already
+ * has those same real OSM features resident: its QA debug surface exposes
+ * per-archetype samples with footprint centroids. We poll briefly because the
+ * resident set grows from the initial 48 tiles towards the full city after
+ * load; `?dataset=` legacy links are irrelevant here (there is only one
+ * dataset), and no fixture data is fabricated.
  */
-async function findResidentialBuilding(page: Page): Promise<BuildingCandidate> {
-  const target = await page.evaluate(async () => {
-    const manifestResponse = await fetch('/data/tiles/manifest.json');
-    if (!manifestResponse.ok) {
-      return { error: `manifest request failed: HTTP ${manifestResponse.status}` };
-    }
-    const contentType = manifestResponse.headers.get('content-type') ?? '';
-    if (!contentType.includes('json')) {
-      return {
-        error:
-          `manifest request returned content-type "${contentType}" instead of JSON — ` +
-          'public/data/tiles has not been generated yet',
-      };
-    }
-    const manifest = await manifestResponse.json();
-    if (!Array.isArray(manifest.tiles) || manifest.tiles.length === 0) {
-      return { error: 'manifest contains no tiles' };
-    }
-    const [minX, minY, maxX, maxY] = manifest.bounds as [number, number, number, number];
-    const centreX = (minX + maxX) / 2;
-    const centreY = (minY + maxY) / 2;
-    let best: {
-      id: string;
-      archetype: string;
-      height: number;
-      x: number;
-      y: number;
-      distance: number;
-    } | null = null;
-    let fallback: {
-      id: string;
-      archetype: string;
-      height: number;
-      x: number;
-      y: number;
-      distance: number;
-    } | null = null;
-    for (const entry of manifest.tiles as Array<{ file: string }>) {
-      const response = await fetch(`/data/${entry.file}`);
-      if (!response.ok) continue;
-      const tile = await response.json();
-      for (const building of tile.buildings ?? []) {
-        const ring = building.volumes?.[0]?.footprint?.[0];
-        if (!Array.isArray(ring) || ring.length < 3) continue;
-        let x = 0;
-        let y = 0;
-        for (const point of ring) {
-          x += point[0];
-          y += point[1];
+async function findClickableBuilding(page: Page): Promise<BuildingCandidate> {
+  const deadline = Date.now() + 60_000;
+  let lastError = 'the engine did not expose any loaded residential building';
+  while (Date.now() < deadline) {
+    const target = await page.evaluate(() => {
+      const debug = (window as DebugWindow).__CITY_DEBUG__;
+      if (!debug) return { error: 'window.__CITY_DEBUG__ is not exposed by the engine' };
+      const info = debug.datasetInfo();
+      const centreX = info.defaultView.targetLocalX;
+      const centreY = info.defaultView.targetLocalY;
+
+      // Prefer the archetypes the previous test used (dense, mid-rise, flat
+      // roofs are reliable click targets), then fall back to any loaded
+      // building archetype so a sparse loaded set cannot fail the test.
+      const priority = ['khrushchev', 'panel', 'stalin', 'historic', 'office', 'modern', 'small'];
+      for (const archetype of priority) {
+        const samples = debug.archetypeSamples(archetype, 240);
+        if (samples.length === 0) continue;
+        let best: BuildingCandidate | null = null;
+        for (const sample of samples) {
+          if (!(sample.height >= 8 && sample.height <= 60)) continue;
+          const distance = Math.hypot(sample.localX - centreX, sample.localY - centreY);
+          if (!best || distance < best.distance) {
+            best = {
+              id: sample.id,
+              archetype,
+              height: sample.height,
+              x: sample.localX,
+              y: sample.localY,
+              distance,
+            };
+          }
         }
-        x /= ring.length;
-        y /= ring.length;
-        const candidate = {
-          id: building.id as string,
-          archetype: building.archetype as string,
-          height: building.height as number,
-          x,
-          y,
-          distance: Math.hypot(x - centreX, y - centreY),
-        };
-        if (!fallback || candidate.distance < fallback.distance) fallback = candidate;
-        if (
-          ['khrushchev', 'panel'].includes(candidate.archetype) &&
-          candidate.height >= 8 &&
-          candidate.height <= 60 &&
-          (!best || candidate.distance < best.distance)
-        ) {
-          best = candidate;
-        }
+        if (best) return best;
+        // The archetype exists but has no mid-rise member loaded yet; keep
+        // looking rather than reporting a spurious failure.
       }
-    }
-    if (best) return best;
-    if (fallback) return fallback;
-    return { error: 'no buildings with valid footprints found in tile data' };
-  });
-  if ('error' in target) {
-    throw new Error(`Cannot locate a building from the generated data: ${target.error}`);
+      return {
+        error: `no loaded building with a valid footprint in the priority list (${priority.join(', ')})`,
+      };
+    });
+    if (!('error' in target)) return target;
+    lastError = String(target.error);
+    await page.waitForTimeout(500);
   }
-  return target;
+  throw new Error(`Cannot locate a building from the loaded complete-city data: ${lastError}`);
 }
 
 // ---------------------------------------------------------------------------
 // tests
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// public payload contract: the complete city only, below the deployment path
+// ---------------------------------------------------------------------------
+
+test.describe('Isometric Minsk — complete-city public payload', () => {
+  /**
+   * The public application serves exactly one payload: the complete city. No
+   * query parameter can select the pilot/staging dataset, every endpoint is
+   * project-relative (so GitHub Pages can serve it below /VoxelMinsk/), and the
+   * legacy `?dataset=` links keep working by resolving to that same city.
+   */
+  const LEGACY_SEARCHES = ['', '?dataset=city', '?dataset=central', '?dataset=potato'];
+
+  test('0. resolver always selects the complete city for legacy links', () => {
+    for (const search of LEGACY_SEARCHES) {
+      expect(resolveDatasetName(search), `dataset for "${search}"`).toBe('city');
+      expect(resolveDataBaseUrl(search), `data base for "${search}"`).toBe('./data/city-tiles');
+      expect(resolveManifestUrl(search), `manifest for "${search}"`).toBe(
+        './data/city-tiles/manifest.json',
+      );
+      expect(resolveTileUrl('tiles/-11_-9.json', search), `tile for "${search}"`).toBe(
+        './data/city-tiles/-11_-9.json',
+      );
+    }
+    // GitHub Pages serves the project below /VoxelMinsk/: the same helper must
+    // carry that prefix instead of a host-root path.
+    expect(publicAssetUrl('data/city-tiles', '/VoxelMinsk/')).toBe('/VoxelMinsk/data/city-tiles');
+  });
+
+  test('1. legacy ?dataset=central renders the complete city from relative data URLs', async ({ page }) => {
+    test.setTimeout(180_000);
+    const dataRequestPaths: string[] = [];
+    page.on('request', (request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname.includes('/data/')) dataRequestPaths.push(pathname);
+    });
+
+    const diagnostics = await openApp(page, '/?dataset=central');
+    // The HUD renders its payload summary once the manifest request resolves.
+    await page.waitForFunction(
+      () => Boolean(document.querySelector('[data-testid="data-note"]')?.textContent?.trim()),
+      null,
+      { timeout: 30_000 },
+    );
+    const pageDirectory = await page.evaluate(() => location.pathname.replace(/[^/]*$/, ''));
+
+    const contract = await page.evaluate(async () => {
+      const debug = (window as DebugWindow).__CITY_DEBUG__;
+      const info = debug?.datasetInfo() ?? null;
+      const response = await fetch('./data/city-tiles/manifest.json', { cache: 'no-cache' });
+      const manifest = response.ok ? await response.json() : null;
+      const tiles = Array.isArray(manifest?.tiles) ? manifest.tiles : [];
+      return {
+        info,
+        status: response.status,
+        tiles: tiles.length,
+        buildings: manifest?.counts?.buildings ?? 0,
+        tileSize: manifest?.tileSize ?? 0,
+        bounds: Array.isArray(manifest?.bounds)
+          ? (manifest.bounds as [number, number, number, number])
+          : null,
+        firstTileFile: (tiles[0] as { file?: string } | undefined)?.file ?? '',
+        dataNote: document.querySelector('[data-testid="data-note"]')?.textContent?.trim() ?? '',
+        subtitle: document.querySelector('[data-testid="app-subtitle"]')?.textContent?.trim() ?? '',
+        loadingText: document.querySelector('[data-testid="loading-overlay"]')?.textContent ?? '',
+      };
+    });
+
+    expect(contract.info, 'window.__CITY_DEBUG__.datasetInfo()').not.toBeNull();
+    expect(contract.info?.dataset, 'active dataset').toBe('city');
+    expect(contract.info?.dataBaseUrl, 'data base URL').toBe('./data/city-tiles');
+    expect(contract.info?.manifestUrl, 'manifest URL').toBe('./data/city-tiles/manifest.json');
+
+    expect(contract.status, 'manifest HTTP status').toBe(200);
+    expect(contract.tiles, 'manifest tile count').toBeGreaterThan(100);
+    expect(contract.buildings, 'manifest building count').toBeGreaterThan(10_000);
+
+    // The HUD must report the payload's own complete-city counts, not a pilot.
+    const reportedBuildings = Number(
+      (contract.dataNote.match(/^([\d,\s]+) buildings/) ?? [])[1]?.replace(/[^\d]/g, ''),
+    );
+    expect(reportedBuildings, `data-note building count (${contract.dataNote})`).toBe(
+      contract.buildings,
+    );
+    expect(contract.dataNote, 'data-note tile count').toContain(`${contract.tiles} tiles`);
+    expect(contract.dataNote, 'data-note grid').toContain(`${contract.tileSize} m grid`);
+    expect(contract.subtitle, 'subtitle').toContain('whole city');
+    expect(contract.subtitle, 'subtitle').not.toContain('central district');
+    expect(contract.loadingText, 'loading overlay').toContain('whole city');
+    expect(contract.loadingText, 'loading overlay').not.toContain('central');
+
+    // The initial camera fits the complete-city bounds, never a 1.6 km pilot
+    // subset: a pilot framing would be ~600 m high and hide the outer tiles.
+    const bounds = contract.bounds;
+    if (!bounds) throw new Error('manifest bounds are missing');
+    const [minX, minY, maxX, maxY] = bounds;
+    expect(contract.info?.defaultView.targetLocalX, 'initial view centre x').toBeCloseTo(
+      (minX + maxX) / 2,
+      0,
+    );
+    expect(contract.info?.defaultView.targetLocalY, 'initial view centre y').toBeCloseTo(
+      (minY + maxY) / 2,
+      0,
+    );
+    expect(contract.info?.defaultView.orthoHeight, 'initial view ortho height').toBeGreaterThan(
+      4_000,
+    );
+
+    // The first tile is resolved through the single public resolver and lives
+    // directly under the project-relative data base.
+    expect(contract.firstTileFile).toMatch(/^tiles\//);
+    const firstTileUrl = resolveTileUrl(contract.firstTileFile);
+    expect(firstTileUrl).toBe(
+      `./data/city-tiles/${contract.firstTileFile.replace(/^tiles\//, '')}`,
+    );
+    const firstTile = await page.evaluate(async (url) => {
+      const response = await fetch(url, { cache: 'no-cache' });
+      return { status: response.status, bytes: (await response.text()).length };
+    }, firstTileUrl);
+    expect(firstTile.status, `first tile HTTP status (${firstTileUrl})`).toBe(200);
+    expect(firstTile.bytes, 'first tile bytes').toBeGreaterThan(1_000);
+
+    // The museum payload resolves below the same project-relative base.
+    const museum = await page.evaluate(
+      async ([manifestPath, binaryPath]: [string, string]) => {
+        const [manifestResponse, binaryResponse] = await Promise.all([
+          fetch(manifestPath, { cache: 'no-cache' }),
+          fetch(binaryPath, { cache: 'no-cache' }),
+        ]);
+        return {
+          manifest: manifestResponse.status,
+          binary: binaryResponse.status,
+          binaryBytes: binaryResponse.ok ? (await binaryResponse.arrayBuffer()).byteLength : 0,
+        };
+      },
+      [
+        publicAssetUrl('data/museum/manifest.json'),
+        publicAssetUrl('data/museum/exhibits.bin'),
+      ] as [string, string],
+    );
+    expect(museum.manifest, 'museum manifest HTTP status').toBe(200);
+    expect(museum.binary, 'museum exhibits HTTP status').toBe(200);
+    expect(museum.binaryBytes, 'museum exhibits bytes').toBeGreaterThan(100_000);
+
+    // Every observed data request stayed below the application directory: no
+    // host-root /data/tiles pilot request, no alternate/reduced dataset.
+    expect(dataRequestPaths.length, 'observed data requests').toBeGreaterThan(0);
+    for (const requestPath of dataRequestPaths) {
+      expect(requestPath.startsWith('/data/tiles/'), `root pilot request: ${requestPath}`).toBe(
+        false,
+      );
+      expect(requestPath.includes('city-tiles-current'), `staging request: ${requestPath}`).toBe(
+        false,
+      );
+      expect(requestPath.includes('city-tiles-b2'), `staging request: ${requestPath}`).toBe(false);
+      const belowAppDirectory =
+        requestPath.startsWith(`${pageDirectory}data/city-tiles/`) ||
+        requestPath.startsWith(`${pageDirectory}data/museum/`);
+      expect(belowAppDirectory, `data request outside the app directory: ${requestPath}`).toBe(
+        true,
+      );
+    }
+
+    expect(unexpectedConsoleErrors(diagnostics), describeDiagnostics(diagnostics)).toEqual([]);
+    expect(diagnostics.pageErrors, describeDiagnostics(diagnostics)).toEqual([]);
+  });
+});
 
 test.describe('Isometric Minsk — shell and renderer readiness', () => {
   test('1. app shell loads with a non-zero WebGL canvas and no console/page errors', async ({ page }) => {
@@ -845,8 +1016,8 @@ test.describe('Isometric Minsk — selection and stability', () => {
   test('10. clicking a building opens the info panel with real OSM data', async ({ page }) => {
     await openApp(page);
 
-    // Aim the camera at a building we know exists in the generated data.
-    const target = await findResidentialBuilding(page);
+    // Aim the camera at a building we know exists in the streamed complete city.
+    const target = await findClickableBuilding(page);
     await callApp(page, 'focusOnLocal', target.x, target.y);
     await callApp(page, 'setCameraSettings', { orthoHeight: 110 });
     await settle(page, 900);

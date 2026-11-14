@@ -6,6 +6,8 @@
  * (see scripts/geo_config.py and src/shared/config.ts).
  */
 
+import { publicAssetUrl } from './assets';
+
 export const MUSEUM = {
   /** Centre of the exhibition grounds (the layer adds itself here). */
   origin: { x: 9300, y: 650 },
@@ -13,8 +15,11 @@ export const MUSEUM = {
   focus: { x: 9300, y: 655 },
   /** Orthographic height that frames the rows and the hangar. */
   orthoHeight: 170,
-  /** Static payload exported by scripts/qa/export_museum_web.py. */
-  dataUrl: '/data/museum',
+  /**
+   * Static payload exported by scripts/qa/export_museum_web.py. Resolved below
+   * the deployment base like every other public asset (see `publicAssetUrl`).
+   */
+  dataUrl: publicAssetUrl('data/museum'),
   /** Rows of open-air exhibits (used by labels/QA). */
   label: 'Авиамузей «Липки»',
 } as const;

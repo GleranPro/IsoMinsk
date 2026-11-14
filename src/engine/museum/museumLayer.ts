@@ -13,6 +13,7 @@
  */
 
 import * as THREE from 'three';
+import { publicAssetUrl } from '../../shared/assets';
 
 export interface MuseumExhibitMeta {
   slug: string;
@@ -44,7 +45,7 @@ export interface MuseumManifest {
 export type MuseumState = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface MuseumLayerOptions {
-  /** Base URL of the exported payload (default `/data/museum`). */
+  /** Base URL of the exported payload (default `data/museum` below the deployment base). */
   baseUrl?: string;
   /** Called once the exhibits are in the scene (refresh shadows etc.). */
   onReady?: () => void;
@@ -149,7 +150,7 @@ export class MuseumLayer {
     this.error = null;
     this.controller?.abort();
     this.controller = new AbortController();
-    const baseUrl = this.options.baseUrl ?? '/data/museum';
+    const baseUrl = this.options.baseUrl ?? publicAssetUrl('data/museum');
     try {
       const [manifestResponse, binaryResponse] = await Promise.all([
         fetch(`${baseUrl}/manifest.json`, { cache: 'no-cache', signal: this.controller.signal }),

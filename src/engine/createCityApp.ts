@@ -75,7 +75,7 @@ interface DebugGlobals {
   ready: boolean;
   app: CityAppHandle;
   stats: EngineStats;
-  /** Active dataset: 'central' | 'city' (see ?dataset=city). */
+  /** Active dataset: always 'city' (the only public payload). */
   dataset: string;
   errors: string[];
   diagnostics: string[];
@@ -226,17 +226,25 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     Number.isFinite(budgetParam) && budgetParam >= 4 ? Math.min(budgetParam, 800) : null;
 
   // --- dataset selection (single source of truth: src/shared/config.ts) ----
+  // The public application has exactly one dataset: the complete city. Legacy
+  // `?dataset=` links resolve to it, and every endpoint is project-relative so
+  // the app also works below a deployment prefix such as /VoxelMinsk/.
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const dataset = resolveDatasetName(search);
   const dataBaseUrl = resolveDataBaseUrl(search);
   const manifestUrl = resolveManifestUrl(search);
   /**
-   * Dataset runtime budgets. Central keeps the original 40-tile resident bubble
-   * (all 16 tiles are usually resident). At city scale the fitted overview sees
-   * ~400 tiles: we deterministically keep the nearest 200 resident (the rest
-   * show the ground plate) and become ready after the nearest 48 so the first
-   * render is quick; zooming into a district shrinks the visible set below the
-   * budget and restores full detail.
+   * Complete-city runtime budgets. The fitted overview sees ~400 tiles: we
+   * deterministically keep the nearest 400 resident (the rest show the ground
+   * plate) and become ready after the nearest 48 so the first render is quick;
+   * zooming into a district shrinks the visible set below the budget and
+   * restores full detail. The initial/hard + idle top-up split is kept for
+   * future, denser city payloads: the visible budget grows after the camera
+   * idles (memory-guarded), while the hard cap also bounds LRU eviction.
+   *
+   * `?nolimit=1` (with the optional `?budget=…` override) is a hidden QA
+   * escape hatch only; the public deployment must not rely on it to pretend
+   * the complete city is resident.
    */
   const datasetConfig = noLimit
     ? {
@@ -244,44 +252,27 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         // (used by QA/screenshots); the LRU still evicts beyond this cap.
         maxLoadedTiles: budgetOverride ?? 800,
         initialBudget: budgetOverride ?? 800,
-        initialTileTarget: dataset === 'city' ? 48 : Number.MAX_SAFE_INTEGER,
-        keepBasePlate: dataset === 'city',
+        initialTileTarget: 48,
+        keepBasePlate: true,
         workerCount: 3,
-        tileLayout: dataset === 'city' ? ('nested' as const) : ('flat' as const),
+        // The accepted city payload stores tiles directly under the data base;
+        // manifest entries only carry a legacy `tiles/` prefix to strip.
+        tileLayout: 'flat' as const,
         idleTopUpAfterMs: 0,
         topUpStepTiles: 0,
         maxTopUpGeometryMB: 0,
       }
-    : dataset === 'city'
-      ? {
-          // The real city dataset is 144 tiles (12 x 12 km at 1024 m), which all
-          // fit under this budget, so the fitted overview always completes to the
-          // full city (~600 MB geometry worst case on a 16 GB card). The
-          // initial/hard + idle top-up split is kept for future, denser city
-          // datasets: set initialBudget < maxLoadedTiles and the visible budget
-          // grows after the camera idles (memory-guarded), while the hard cap also
-          // bounds LRU eviction.
-          maxLoadedTiles: budgetOverride ?? 400,
-          initialBudget: budgetOverride ?? 400,
-          initialTileTarget: 48,
-          keepBasePlate: true,
-          workerCount: 3,
-          tileLayout: 'nested' as const,
-          idleTopUpAfterMs: 2000,
-          topUpStepTiles: 48,
-          maxTopUpGeometryMB: 700,
-        }
-      : {
-          maxLoadedTiles: budgetOverride ?? 40,
-          initialBudget: budgetOverride ?? 40,
-          initialTileTarget: Number.MAX_SAFE_INTEGER,
-          keepBasePlate: false,
-          workerCount: 2,
-          tileLayout: 'flat' as const,
-          idleTopUpAfterMs: 0,
-          topUpStepTiles: 0,
-          maxTopUpGeometryMB: 0,
-        };
+    : {
+        maxLoadedTiles: budgetOverride ?? 400,
+        initialBudget: budgetOverride ?? 400,
+        initialTileTarget: 48,
+        keepBasePlate: true,
+        workerCount: 3,
+        tileLayout: 'flat' as const,
+        idleTopUpAfterMs: 2000,
+        topUpStepTiles: 48,
+        maxTopUpGeometryMB: 700,
+      };
 
   const errors: string[] = [];
   const diagnostics: string[] = [];
@@ -362,8 +353,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   });
 
   /**
-   * Default isometric framing: the whole pilot district, centred on its centre
-   * (local metres). Recomputed from `manifest.pilotBounds` when the manifest
+   * Default isometric framing: the whole complete-city extent, centred on its
+   * centre (local metres). Recomputed from `manifest.bounds` when the manifest
    * arrives and when the viewport aspect changes.
    */
   const defaultView = {
@@ -429,11 +420,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     onError: recordDiagnostic,
   });
   scene.add(museum.root);
-  // The museum lies outside the central pilot dataset; only the city dataset
-  // covers it. Failure is non-fatal: the map renders without the exhibits.
-  if (dataset === 'city') {
-    void museum.load();
-  }
+  // The complete city always covers Lipki, so the static exhibit payload can be
+  // loaded unconditionally. Failure is non-fatal: the map renders without them.
+  void museum.load();
 
   const streamer = new TileStreamer({
     scene,
@@ -1161,17 +1150,13 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     // local metres -> world: X unchanged, Z = -localY.
     rig.setBounds({ minX, maxX, minZ: -maxY, maxZ: -minY });
 
-    const manifestWithPilot = manifest as TileManifest & {
-      pilotBounds?: [number, number, number, number];
-    };
-    const pilot = manifestWithPilot.pilotBounds;
-    const fitBounds: [number, number, number, number] =
-      Array.isArray(pilot) && pilot.length === 4
-        ? [pilot[0], pilot[1], pilot[2], pilot[3]]
-        : [minX, minY, maxX, maxY];
-    defaultFitBounds = fitBounds;
+    // The complete-city payload is the only public map, so the initial view
+    // always fits its full manifest bounds. `pilotBounds` is a legacy subset
+    // field: fitting it would hide missing outer tiles behind a central view
+    // and must never become the default framing.
+    defaultFitBounds = [minX, minY, maxX, maxY];
     refreshDefaultView();
-    // Initial framing: fit the whole district (manifest arrives before the user
+    // Initial framing: fit the whole city (the manifest arrives before the user
     // can interact in practice).
     rig.reset(defaultView.orthoHeight, defaultView.targetLocalX, defaultView.targetLocalY);
 
@@ -1212,8 +1197,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     defaultView.targetLocalX = (minX + maxX) / 2;
     defaultView.targetLocalY = (minY + maxY) / 2;
 
-    // Dataset-aware zoom-out limit: the central dataset keeps the shared 2600 m
-    // cap; the whole-city dataset can zoom out to its fitted overview * 1.35.
+    // Zoom-out limit follows the fitted complete-city view: never below the
+    // shared 2600 m cap, and allow 1.35× the fitted overview for context.
     const fitHeight = computeFitOrthoHeight();
     rig.setMaxOrthoHeight(Math.max(ISO_CAMERA.maxOrthoHeight, fitHeight * 1.35));
     defaultView.orthoHeight = clamp(
@@ -1305,10 +1290,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
   function currentFogRange(): { near: number; far: number } {
     const camDistance = rig.getCameraDistanceValue();
-    // Scale the preset fog distances with the visible extent: at the central
-    // default view (660 m) this is byte-identical to the old preset offsets, at
-    // the ~9.6 km city overview the haze grows with the view instead of fogging
-    // the whole city out.
+    // Scale the preset fog distances with the visible extent: at a district view
+    // (660 m) this is byte-identical to the old preset offsets, at the ~9.6 km
+    // complete-city overview the haze grows with the view instead of fogging the
+    // whole city out.
     const viewScale = Math.max(1, rig.getOrthoHeight() / 660);
     return {
       near: Math.max(60, camDistance + (look.fogNear - FOG_REFERENCE_DISTANCE) * viewScale),
@@ -1340,7 +1325,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     if (isMuseumFocus()) focusMuseum();
   }
 
-  /** Frame the Lipki exhibits; works on the city dataset (the pilot area has no Lipki tiles). */
+  /** Frame the Lipki exhibits; the complete city always contains them. */
   function focusMuseum(): void {
     if (disposed) return;
     rig.focusOnLocal(MUSEUM.focus.x, MUSEUM.focus.y, true);

@@ -26,7 +26,15 @@ import {
   PILOT_SIZE_M,
   TILE_SIZE_M,
   DEFAULT_FLOOR_HEIGHT_M,
+  DATA_BASE_URL,
+  TILE_MANIFEST_URL,
+  resolveDataBaseUrl,
+  resolveDatasetName,
+  resolveManifestUrl,
+  resolveTileUrl,
 } from '../../src/shared/config';
+import { publicAssetUrl } from '../../src/shared/assets';
+import { MUSEUM } from '../../src/shared/museum';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const PY_CONFIG_PATH = path.join(ROOT, 'scripts', 'geo_config.py');
@@ -154,5 +162,94 @@ describe('config — physical and pipeline invariants', () => {
     }
     expect(new Set(layers).size).toBe(layers.length);
     expect(GROUND_LAYER_Y.base).toBe(0);
+  });
+});
+
+describe('config — complete-city-only public payload', () => {
+  /**
+   * Every form that has ever been published or bookmarked. The application
+   * serves the complete city for all of them: there is no pilot, staging or
+   * central dataset behind a query parameter.
+   */
+  const LEGACY_SEARCHES = ['', '?dataset=city', '?dataset=central', '?dataset=potato'];
+
+  it('always serves the complete city, including legacy links', () => {
+    for (const search of LEGACY_SEARCHES) {
+      const label = `search "${search}"`;
+      expect(resolveDatasetName(search), `dataset for ${label}`).toBe('city');
+      expect(resolveDataBaseUrl(search), `data base for ${label}`).toBe('./data/city-tiles');
+      expect(resolveManifestUrl(search), `manifest for ${label}`).toBe(
+        './data/city-tiles/manifest.json',
+      );
+      expect(resolveTileUrl('tiles/-11_-9.json', search), `tile for ${label}`).toBe(
+        './data/city-tiles/-11_-9.json',
+      );
+    }
+  });
+
+  it('resolves the same complete-city endpoints without an explicit search', () => {
+    expect(resolveDatasetName()).toBe('city');
+    expect(resolveDataBaseUrl()).toBe('./data/city-tiles');
+    expect(resolveManifestUrl()).toBe('./data/city-tiles/manifest.json');
+    expect(resolveTileUrl('tiles/12_-4.json')).toBe('./data/city-tiles/12_-4.json');
+  });
+
+  it('keeps every public payload URL project-relative, never root-absolute', () => {
+    const urls = [
+      resolveDataBaseUrl(),
+      resolveManifestUrl(),
+      resolveTileUrl('tiles/0_0.json'),
+      resolveManifestUrl('?dataset=central'),
+    ];
+    for (const url of urls) {
+      expect(url.startsWith('/'), `${url} must not be root-absolute`).toBe(false);
+      expect(url.startsWith('./'), `${url} must be project-relative`).toBe(true);
+    }
+  });
+
+  it('exports the same endpoints the engine defaults consume', () => {
+    expect(DATA_BASE_URL).toBe(resolveDataBaseUrl());
+    expect(TILE_MANIFEST_URL).toBe(resolveManifestUrl());
+    expect(DATA_BASE_URL).toBe('./data/city-tiles');
+    expect(TILE_MANIFEST_URL).toBe('./data/city-tiles/manifest.json');
+  });
+
+  it('routes the museum payload below the same deployment base', () => {
+    expect(MUSEUM.dataUrl).toBe('./data/museum');
+    expect(publicAssetUrl('data/museum')).toBe('./data/museum');
+    expect(publicAssetUrl('data/museum', '/VoxelMinsk/')).toBe('/VoxelMinsk/data/museum');
+  });
+});
+
+describe('assets — public asset URLs below the deployment base', () => {
+  it('defaults to a document-relative path at the root base', () => {
+    expect(publicAssetUrl('data/city-tiles')).toBe('./data/city-tiles');
+    expect(publicAssetUrl('data/museum')).toBe('./data/museum');
+    expect(publicAssetUrl('data/museum/manifest.json')).toBe('./data/museum/manifest.json');
+  });
+
+  it('strips leading slashes so paths are never double-prefixed', () => {
+    expect(publicAssetUrl('/data/city-tiles')).toBe('./data/city-tiles');
+    expect(publicAssetUrl('///data/museum/exhibits.bin')).toBe('./data/museum/exhibits.bin');
+    expect(publicAssetUrl('/data/city-tiles', '/VoxelMinsk/')).toBe('/VoxelMinsk/data/city-tiles');
+  });
+
+  it('resolves below an explicit project base such as GitHub Pages', () => {
+    expect(publicAssetUrl('data/city-tiles', '/VoxelMinsk/')).toBe('/VoxelMinsk/data/city-tiles');
+    expect(publicAssetUrl('data/museum/manifest.json', '/VoxelMinsk/')).toBe(
+      '/VoxelMinsk/data/museum/manifest.json',
+    );
+  });
+
+  it('appends the trailing slash to a configured base that omits it', () => {
+    expect(publicAssetUrl('data/city-tiles', '/VoxelMinsk')).toBe('/VoxelMinsk/data/city-tiles');
+  });
+
+  it('keeps the root base relative and leaves absolute asset bases intact', () => {
+    expect(publicAssetUrl('data/city-tiles', '/')).toBe('./data/city-tiles');
+    expect(publicAssetUrl('data/city-tiles', '')).toBe('./data/city-tiles');
+    expect(publicAssetUrl('data/city-tiles', 'https://example.test/app/')).toBe(
+      'https://example.test/app/data/city-tiles',
+    );
   });
 });

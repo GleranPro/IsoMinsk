@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createCityApp } from '../engine/createCityApp';
 import type { BuildingSelection, CityAppHandle, EngineStats, MuseumExhibitSelection } from '../shared/appApi';
 import type { TileManifest } from '../shared/types';
-import { resolveDatasetName, resolveManifestUrl } from '../shared/config';
+import { resolveManifestUrl } from '../shared/config';
 import { MUSEUM } from '../shared/museum';
 import { InfoPanel } from './InfoPanel';
 import { MuseumPanel } from './MuseumPanel';
@@ -138,14 +138,8 @@ export function App() {
   const focusMuseum = useCallback(() => {
     const app = appRef.current;
     if (!app) return;
-    // The exhibits live at x ≈ 9.3 km east: only the city dataset covers Lipki.
-    if (resolveDatasetName() !== 'city') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('dataset', 'city');
-      url.searchParams.set('focus', 'lipki');
-      window.location.assign(url.toString());
-      return;
-    }
+    // The complete city always covers Lipki (x ≈ 9.3 km east of the pilot
+    // centre): focus in the same document, never reload or switch datasets.
     app.focusMuseum();
     setUi((prev) => ({ ...prev, orthoHeight: MUSEUM.orthoHeight }));
   }, []);
@@ -161,14 +155,13 @@ export function App() {
 
       <header className="hud hud-topleft">
         <h1>Isometric Minsk</h1>
-        <p className="subtitle">
-          pixel-art 3D map · {resolveDatasetName() === 'city' ? 'city of Minsk' : 'central district'} · OSM data
+        <p className="subtitle" data-testid="app-subtitle">
+          pixel-art 3D map · whole city of Minsk · OSM data
         </p>
         {manifest && (
-          <p className="data-note">
+          <p className="data-note" data-testid="data-note">
             {(manifest.counts.buildings ?? 0).toLocaleString()} buildings ·{' '}
-            {manifest.tiles.length} tiles · {manifest.tileSize} m grid
-            {resolveDatasetName() === 'city' ? ' · whole city' : ''}
+            {manifest.tiles.length} tiles · {manifest.tileSize} m grid · complete city
           </p>
         )}
       </header>
