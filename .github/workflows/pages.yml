@@ -78,11 +78,10 @@ jobs:
             appendFileSync(process.env.GITHUB_OUTPUT, `commit-sha=${manifest.commitSha ?? "unknown"}\n`);
           '
       - name: Configure GitHub Pages
+        # enablement: true needs repository admin rights, which GITHUB_TOKEN
+        # does not have. The owner enables Pages once (Settings -> Pages ->
+        # Source: GitHub Actions); after that this step only reads the config.
         uses: actions/configure-pages@v5
-        with:
-          # Create the Pages site on the first run instead of requiring a manual
-          # "Source: GitHub Actions" click in the repository settings.
-          enablement: true
       - name: Pack the verified artifact as the Pages deployment artifact
         # The artifact is the 307 MB complete-city site. `upload-pages-artifact`
         # stores it once for `deploy-pages` in the deploy job; an intermediate
