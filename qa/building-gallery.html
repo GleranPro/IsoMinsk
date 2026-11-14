@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Isometric Minsk — building family gallery (QA)</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #cfd6dc;
+        overflow: hidden;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      #gallery {
+        position: fixed;
+        inset: 0;
+      }
+      #gallery canvas {
+        display: block;
+      }
+      .gallery-label {
+        position: absolute;
+        transform: translate(4px, 4px);
+        padding: 2px 6px;
+        font-size: 11px;
+        line-height: 1.35;
+        color: #10161c;
+        background: rgba(255, 255, 255, 0.72);
+        border-left: 2px solid #2f3b42;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      #gallery-hud {
+        position: fixed;
+        top: 8px;
+        right: 10px;
+        font-size: 12px;
+        color: #10161c;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 4px 8px;
+        z-index: 5;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gallery"></div>
+    <div id="gallery-hud">building family gallery · <span id="gallery-start">booting…</span></div>
+    <script type="module" src="/src/qa/buildingGallery.ts"></script>
+  </body>
+</html>

@@ -46,6 +46,7 @@ import {
   type HeightFacet,
   type RoofSurface,
 } from './envelope';
+import { mansardEnvelope, sawtoothEnvelope } from './variantRoofs';
 
 /** Below this rise a sloped roof is meshed as a flat roof instead. */
 const MIN_SLOPED_RISE = 0.05;
@@ -229,6 +230,7 @@ function addEaveClosings(
   surface: RoofSurface,
   style: BuildingStyle,
   uStart: number,
+  sampleStep?: number,
 ): void {
   const wallSurface = makeSurface(style, FACE_KIND.wall, style.baseColor, style.detailScale);
   const breakLines = surface.breakLines;
@@ -255,6 +257,13 @@ function addEaveClosings(
         if ((f0 > 1e-9 && f1 < -1e-9) || (f0 < -1e-9 && f1 > 1e-9)) {
           const t = f0 / (f0 - f1);
           if (t > 1e-4 && t < 1 - 1e-4) params.push(t);
+        }
+      }
+      // Uniform sampling for height functions whose kinks are denser than the
+      // listed break lines (sawtooth clerestory strips).
+      if (sampleStep !== undefined && Number.isFinite(sampleStep) && sampleStep > 0) {
+        for (let s = sampleStep; s < len; s += sampleStep) {
+          params.push(s / len);
         }
       }
       params.sort((a, b) => a - b);
@@ -488,6 +497,111 @@ export interface RoofOptions {
    * trim never exceeds the declared source height.
    */
   readonly parapetTop?: number;
+  /**
+   * Style-recipe roof envelope to try when the mapped roof is flat and the
+   * volume is eligible (single ring, street level). A declared sloped
+   * `roof:shape` always stays authoritative: the variant is only an
+   * embellishment of a flat source roof, never a retag of a complex one.
+   */
+  readonly recipeRoof?: 'source' | 'hip' | 'mansard' | 'sawtooth' | 'clerestory';
+  /** Uniform boundary subdivision for eave closings (sawtooth needs it). */
+  readonly eaveSampleStep?: number;
+}
+
+/**
+ * Plan the recipe's distinctive roof envelope for one volume.
+ *
+ * The returned `rise` is the height slice the roof occupies *inside* the
+ * declared envelope: the caller lowers the wall eave by `rise` so the peak stays
+ * at the mapped maximum. Returns null when the volume is ineligible.
+ */
+export interface RecipeRoofPlan {
+  readonly kind: 'mansard' | 'sawtooth' | 'clerestory';
+  readonly rise: number;
+  readonly direction: number;
+  readonly bayCount?: number;
+  readonly sampleStep?: number;
+}
+
+export function planRecipeRoof(
+  volume: BuildingVolume,
+  rings: readonly RingInfo[],
+  recipeRoof: RoofOptions['recipeRoof'],
+): RecipeRoofPlan | null {
+  if (!recipeRoof || recipeRoof === 'source' || recipeRoof === 'hip') return null;
+  if (volume.roofShape !== 'flat') return null;
+  if (rings.length !== 1) return null;
+  if (volume.minHeight > 0.5) return null;
+  const exterior = rings[0].points;
+  const rect = minAreaRect(exterior);
+  if (!rect) return null;
+  const longSide = rect.halfLength * 2;
+  const shortSide = rect.halfWidth * 2;
+  if (!(shortSide > 3) || !(longSide > 6)) return null;
+  const direction = Math.atan2(rect.uy, rect.ux);
+  if (recipeRoof === 'mansard') {
+    return { kind: 'mansard', rise: Math.min(4.5, Math.max(1.2, shortSide * 0.32)), direction };
+  }
+  if (recipeRoof === 'sawtooth') {
+    const bayCount = longSide >= 36 ? 6 : longSide >= 28 ? 5 : longSide >= 20 ? 4 : 3;
+    return {
+      kind: 'sawtooth',
+      rise: Math.min(2.8, Math.max(1.2, shortSide * 0.24)),
+      direction,
+      bayCount,
+      sampleStep: 1.25,
+    };
+  }
+  return { kind: 'clerestory', rise: Math.min(2.2, Math.max(0.9, shortSide * 0.16)), direction };
+}
+
+/**
+ * Try the recipe's distinctive roof envelope on an eligible flat volume.
+ * Returns true when the variant roof was emitted.
+ */
+function addRecipeVariantRoof(
+  sink: MeshSink,
+  volume: BuildingVolume,
+  rings: readonly RingInfo[],
+  style: BuildingStyle,
+  uStart: number,
+  warn: WarningSink,
+  options: RoofOptions,
+): boolean {
+  const plan = planRecipeRoof(volume, rings, options.recipeRoof);
+  if (!plan) return false;
+  const exterior = rings[0].points;
+  const eave = volume.height;
+  const direction = plan.direction;
+  let surface: RoofSurface | null = null;
+  if (plan.kind === 'mansard') {
+    surface = mansardEnvelope({ rings: [exterior], eave, rise: plan.rise, direction });
+  } else if (plan.kind === 'sawtooth') {
+    surface = sawtoothEnvelope({
+      rings: [exterior],
+      eave,
+      rise: plan.rise,
+      bayCount: plan.bayCount,
+      direction,
+    });
+  } else {
+    surface = hipSurface(exterior, exterior, eave, plan.rise);
+  }
+  if (!surface) return false;
+
+  const triangulation = triangulatePolygon([exterior]);
+  if (!triangulation.triangles.length) return false;
+  emitFacetRoof(
+    sink,
+    triangulation.triangles,
+    surface,
+    style,
+    roofColorFor('hipped', style.seed),
+    ROOF_SHAPE_ID.hipped,
+  );
+  addEaveClosings(sink, rings, eave, volume.minHeight, surface, style, uStart, plan.sampleStep);
+  void warn;
+  return true;
 }
 
 export function addRoof(
@@ -518,6 +632,8 @@ export function addRoof(
   const allPoints = allPointsOf(rings);
 
   if (shape === 'flat') {
+    // Recipe-driven distinctive envelopes first (flat source roofs only).
+    if (addRecipeVariantRoof(sink, volume, rings, style, uStart, warn, options)) return;
     addFlatRoof(sink, rings, eave, base, style, uStart, warn, options.parapetTop);
     return;
   }

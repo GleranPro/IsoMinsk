@@ -34,7 +34,7 @@
 import type { BufferGeometry } from 'three';
 import { FACE_KIND } from '../../shared/geometry';
 import type { BuildingFeature, BuildingVolume, FeatureId } from '../../shared/types';
-import { addRoof } from '../roofs/roofMesh';
+import { addRoof, planRecipeRoof } from '../roofs/roofMesh';
 import { addCityGateCrown, isCityGateBuilding } from './cityGate';
 import { addCuratedLandmark } from './landmarks';
 import { MeshSink } from './meshSink';
@@ -252,19 +252,24 @@ export function buildBuildingsMesh(
           ? grandstandVolume(volume, baseStyle)
           : { volume, style: baseStyle };
         // Decorative trim must stay inside the declared envelope: a flat-roof
-        // parapet occupies the top slice of the source height (the wall eave is
-        // lowered by the parapet height), so no triangle exceeds the mapped
-        // maximum by more than the 0.05 m tolerance.
+        // parapet, or a recipe roof envelope (mansard/sawtooth/clerestory),
+        // occupies the top slice of the source height by lowering the wall eave,
+        // so no triangle exceeds the mapped maximum by more than the 0.05 m
+        // tolerance (design §8).
+        const recipeRoof =
+          !protectedRoute && baseStyle.motif !== 'legacy' ? baseStyle.recipe.roof : undefined;
+        const roofPlan = planRecipeRoof(meshed.volume, rings, recipeRoof);
         const parapetHeight =
-          detail && !protectedRoute && meshed.volume.roofShape === 'flat'
+          !roofPlan && detail && !protectedRoute && meshed.volume.roofShape === 'flat'
             ? Math.min(
                 baseStyle.parapetHeight,
                 Math.max(0.08, (meshed.volume.height - meshed.volume.minHeight) * 0.08),
               )
             : 0;
+        const reservedTop = roofPlan ? roofPlan.rise : parapetHeight;
         const meshedVolume =
-          parapetHeight > 0.02
-            ? { ...meshed.volume, height: meshed.volume.height - parapetHeight }
+          reservedTop > 0.02
+            ? { ...meshed.volume, height: meshed.volume.height - reservedTop }
             : meshed.volume;
         const volumeStyle = meshed.style;
 
@@ -273,7 +278,10 @@ export function buildBuildingsMesh(
         uCursor = addVolumeWalls(sink, meshedVolume, rings, volumeStyle, uCursor);
         addRoof(sink, meshedVolume, rings, volumeStyle, uStart, (message) => {
           warnings.push(`${label}: ${message}`);
-        }, parapetHeight > 0.02 ? { parapetTop: meshed.volume.height } : {});
+        }, {
+          ...(parapetHeight > 0.02 ? { parapetTop: meshed.volume.height } : {}),
+          ...(recipeRoof ? { recipeRoof } : {}),
+        });
         if (palace) addPalaceAccents(sink, meshedVolume, rings, volumeStyle);
         const skipped = sink.skippedTriangles - skippedBefore;
         if (skipped > 0) {
