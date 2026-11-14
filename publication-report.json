@@ -1,0 +1,204 @@
+{
+ "schemaVersion": 1,
+ "generatedAt": "2026-11-14T13:15:40.743Z",
+ "commitSha": "8975900ed158169de5ff7eabd1e2c48a5d7f65db",
+ "mode": "served",
+ "site": ".pages",
+ "artifactBase": "/VoxelMinsk/",
+ "artifact": {
+  "files": 450,
+  "totalBytes": 307436371,
+  "warningThresholdBytes": 524288000,
+  "warning": false,
+  "fatalError": false
+ },
+ "city": {
+  "version": "0.4.3",
+  "tileCount": 437,
+  "tileBytes": 295267617,
+  "manifestSha256": "8ae027c490420a31c3f446bd059431ca422b547fbf43994d180c261566d86524",
+  "buildings": 76004,
+  "trees": 1910624
+ },
+ "legal": {
+  "status": "pass_with_owner_required",
+  "ownerRequired": [
+   "source-code-license"
+  ],
+  "thirdPartyAssets": 27
+ },
+ "storedManifest": "pass",
+ "checks": [
+  {
+   "id": "artifact-contents",
+   "status": "pass",
+   "detail": "450 files, 307436371 bytes, 437 city tiles"
+  },
+  {
+   "id": "stored-manifest",
+   "status": "pass",
+   "detail": "pass"
+  },
+  {
+   "id": "index",
+   "status": "pass",
+   "detail": "200, 549 bytes"
+  },
+  {
+   "id": "app-bundle",
+   "status": "pass",
+   "detail": "200, 1266358 bytes"
+  },
+  {
+   "id": "city-manifest",
+   "status": "pass",
+   "detail": "200, 48772 bytes"
+  },
+  {
+   "id": "first-tile",
+   "status": "pass",
+   "detail": "200, 88034 bytes"
+  },
+  {
+   "id": "museum-manifest",
+   "status": "pass",
+   "detail": "200, 8026 bytes"
+  },
+  {
+   "id": "museum-exhibits",
+   "status": "pass",
+   "detail": "200, 2290464 bytes"
+  },
+  {
+   "id": "attribution",
+   "status": "pass",
+   "detail": "200, 7748 bytes"
+  },
+  {
+   "id": "odbl-licence",
+   "status": "pass",
+   "detail": "200, 27574 bytes"
+  },
+  {
+   "id": "licence-inventory",
+   "status": "pass",
+   "detail": "200, 31795 bytes"
+  },
+  {
+   "id": "site-manifest",
+   "status": "pass",
+   "detail": "200, 68106 bytes"
+  },
+  {
+   "id": "legacy-absent:data/tiles/manifest.json",
+   "status": "pass",
+   "detail": "404, 9 bytes"
+  },
+  {
+   "id": "legacy-absent:data/city-tiles-current/manifest.json",
+   "status": "pass",
+   "detail": "404, 9 bytes"
+  },
+  {
+   "id": "legacy-absent:data/city-tiles-b2/manifest.json",
+   "status": "pass",
+   "detail": "404, 9 bytes"
+  },
+  {
+   "id": "root-absent",
+   "status": "pass",
+   "detail": "404, 9 bytes"
+  }
+ ],
+ "requests": [
+  {
+   "route": "/VoxelMinsk/",
+   "status": 200,
+   "bytes": 549,
+   "contentType": "text/html; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/assets/index-DENMNAI8.js",
+   "status": 200,
+   "bytes": 1266358,
+   "contentType": "text/javascript; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/city-tiles/manifest.json",
+   "status": 200,
+   "bytes": 48772,
+   "contentType": "application/json; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/city-tiles/-11_-9.json",
+   "status": 200,
+   "bytes": 88034,
+   "contentType": "application/json; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/museum/manifest.json",
+   "status": 200,
+   "bytes": 8026,
+   "contentType": "application/json; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/museum/exhibits.bin",
+   "status": 200,
+   "bytes": 2290464,
+   "contentType": "application/octet-stream"
+  },
+  {
+   "route": "/VoxelMinsk/data/ATTRIBUTION.md",
+   "status": 200,
+   "bytes": 7748,
+   "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/LICENSE-ODbL.txt",
+   "status": 200,
+   "bytes": 27574,
+   "contentType": "text/plain; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/asset-licenses.json",
+   "status": 200,
+   "bytes": 31795,
+   "contentType": "application/json; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/site-manifest.json",
+   "status": 200,
+   "bytes": 68106,
+   "contentType": "application/json; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/tiles/manifest.json",
+   "status": 404,
+   "bytes": 9,
+   "contentType": "text/plain; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/city-tiles-current/manifest.json",
+   "status": 404,
+   "bytes": 9,
+   "contentType": "text/plain; charset=utf-8"
+  },
+  {
+   "route": "/VoxelMinsk/data/city-tiles-b2/manifest.json",
+   "status": 404,
+   "bytes": 9,
+   "contentType": "text/plain; charset=utf-8"
+  },
+  {
+   "route": "/data/city-tiles/manifest.json",
+   "status": 404,
+   "bytes": 9,
+   "contentType": "text/plain; charset=utf-8"
+  }
+ ],
+ "warnings": [
+  "[code-license-owner-required] the repository source code has no selected licence; it must not be described as open source",
+  "[licenses-report-stale] assets/aviation-museum/LICENSES.md does not list citation-x; regenerate scripts/qa/museum_licenses.py before release"
+ ],
+ "failures": []
+}

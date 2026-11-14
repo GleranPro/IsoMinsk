@@ -1,0 +1,714 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-14",
+  "project": "Isometric Minsk — complete-city tile map",
+  "note": "Machine-readable inventory for the published GitHub Pages artifact and the third-party assets redistributed by the repository. Rights are recorded from in-repository provenance (assets/aviation-museum/MODELS.json, per-model raw/<slug>/ATTRIBUTION.txt, docs/DATA_SOURCES.md). Upstream licence pages are not archived; the owner must re-verify them before commercial use. Anything whose rights are not evidenced must use \"redistribution\": null with \"status\": \"owner_required\" — the publication audit fails closed instead of claiming permission.",
+  "code": {
+    "name": "Isometric Minsk source code and project-authored curation",
+    "paths": [
+      "src/**",
+      "scripts/**",
+      "tests/**",
+      "docs/**",
+      "assets/aviation-museum/placement.json",
+      "assets/aviation-museum/analysis/**"
+    ],
+    "license": null,
+    "licenseUrl": null,
+    "source": null,
+    "redistribution": null,
+    "modified": false,
+    "attribution": null,
+    "status": "owner_required",
+    "ownerDecision": "No LICENSE or COPYING file exists in the repository. Publishing the repository on GitHub is not an open-source grant. The owner must select a source-code licence before the project may be described as open source; this file deliberately does not invent one."
+  },
+  "entries": [
+    {
+      "id": "openstreetmap-derived-tile-database",
+      "name": "Complete-city tile database derived from OpenStreetMap",
+      "kind": "database",
+      "thirdParty": true,
+      "artifactPaths": [
+        "data/city-tiles/**"
+      ],
+      "sourcePaths": [
+        "public/data/city-tiles/**",
+        "scripts/ingest/**",
+        "scripts/normalize/**"
+      ],
+      "license": "ODbL 1.0",
+      "licenseId": "ODbL-1.0",
+      "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "source": "OpenStreetMap contributors — BBBike Minsk city extract (Geofabrik Belarus extract as documented fallback)",
+      "author": null,
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Projected to UTM zone 35N, tiled at 1024 m, building volumes de-overlapped, heights and roof shapes inferred or curated, facades and road surfaces derived procedurally, trees inferred/placed. The adapted database is published under ODbL 1.0 with its notice in data/LICENSE-ODbL.txt.",
+      "attribution": "© OpenStreetMap contributors — ODbL 1.0; see data/ATTRIBUTION.md and data/LICENSE-ODbL.txt",
+      "status": "verified"
+    },
+    {
+      "id": "bundled-js-dependencies",
+      "name": "Bundled JavaScript dependencies (React, React DOM, three.js)",
+      "kind": "software",
+      "thirdParty": true,
+      "artifactPaths": [
+        "index.html",
+        "assets/*.js"
+      ],
+      "sourcePaths": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "license": "MIT",
+      "licenseId": "MIT",
+      "licenseUrl": "https://opensource.org/license/mit",
+      "source": "npm packages react, react-dom (including its bundled scheduler) and three, as locked by pnpm-lock.yaml",
+      "author": null,
+      "redistribution": true,
+      "modified": false,
+      "attribution": "MIT License notices retained with the bundle: React/React DOM © Meta Platforms, Inc. and affiliates; three.js © 2010-2025 three.js authors. Full licence texts are recorded in licenseTexts.",
+      "status": "verified",
+      "licenseTexts": [
+        {
+          "package": "react",
+          "copyright": "Copyright (c) Meta Platforms, Inc. and affiliates.",
+          "text": "MIT License\n\nCopyright (c) Meta Platforms, Inc. and affiliates.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        },
+        {
+          "package": "react-dom",
+          "copyright": "Copyright (c) Meta Platforms, Inc. and affiliates.",
+          "text": "React DOM is distributed under the same MIT License text as React; its bundled scheduler dependency is also MIT-licensed by Meta Platforms, Inc. and affiliates."
+        },
+        {
+          "package": "three",
+          "copyright": "Copyright © 2010-2025 three.js authors",
+          "text": "The MIT License\n\nCopyright © 2010-2025 three.js authors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        }
+      ]
+    },
+    {
+      "id": "museum-an-2",
+      "name": "Ан-2 (an-2) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "an-2",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/an-2/**",
+        "assets/aviation-museum/decimated/an-2/an-2.glb",
+        "assets/aviation-museum/baked/an-2.json"
+      ],
+      "license": "CC0 1.0",
+      "licenseId": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source": "https://opengameart.org/content/an-2-airplane-lowpoly",
+      "author": "Mehozavr",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated for web display (~1 848 triangles) and baked to vertex colours; original source textures remain in assets/aviation-museum/raw together with their CC0 record.",
+      "attribution": "Mehozavr — CC0 1.0 — OpenGameArt (Ан-2 low-poly)",
+      "status": "verified"
+    },
+    {
+      "id": "museum-an-26",
+      "name": "Ан-26 (an-26) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "an-26",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/an-26/**",
+        "assets/aviation-museum/decimated/an-26/an-26.glb",
+        "assets/aviation-museum/baked/an-26.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/df3d6b1359144a459d170abef262211d",
+      "author": "42manako",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~6 000 triangles) and baked to vertex colours.",
+      "attribution": "42manako — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/df3d6b1359144a459d170abef262211d",
+      "status": "verified"
+    },
+    {
+      "id": "museum-il-18",
+      "name": "Ил-18В (il-18) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "il-18",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/il-18/**",
+        "assets/aviation-museum/decimated/il-18/il-18.glb",
+        "assets/aviation-museum/baked/il-18.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/8293d12da39d4b6a94d892f7c0dd288c",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/8293d12da39d4b6a94d892f7c0dd288c",
+      "status": "verified"
+    },
+    {
+      "id": "museum-l-29",
+      "name": "Л-29 (l-29) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "l-29",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/l-29/**",
+        "assets/aviation-museum/decimated/l-29/l-29.glb",
+        "assets/aviation-museum/baked/l-29.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/d0a2ac6316514d2fb6328076e1d7a98b",
+      "author": "UraTera",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "UraTera — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/d0a2ac6316514d2fb6328076e1d7a98b",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-15",
+      "name": "МиГ-15УТИ (mig-15) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-15",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-15/**",
+        "assets/aviation-museum/decimated/mig-15/mig-15.glb",
+        "assets/aviation-museum/baked/mig-15.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/66d424d54ea64054aa37f15aa17df45c",
+      "author": "govindu94",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "govindu94 — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/66d424d54ea64054aa37f15aa17df45c",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-17",
+      "name": "МиГ-17 (mig-17) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-17",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-17/**",
+        "assets/aviation-museum/decimated/mig-17/mig-17.glb",
+        "assets/aviation-museum/baked/mig-17.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/672ef502523b4cbe9aced1e4252c0cca",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/672ef502523b4cbe9aced1e4252c0cca",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-19",
+      "name": "МиГ-19С (mig-19) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-19",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-19/**",
+        "assets/aviation-museum/decimated/mig-19/mig-19.glb",
+        "assets/aviation-museum/baked/mig-19.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/056bde58c01345c59793aaac7e1764bc",
+      "author": "KROTOS",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "KROTOS — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/056bde58c01345c59793aaac7e1764bc",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-21",
+      "name": "МиГ-21бис (mig-21) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-21",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-21/**",
+        "assets/aviation-museum/decimated/mig-21/mig-21.glb",
+        "assets/aviation-museum/baked/mig-21.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/dfa91ea83d484fd2b8d52034b582cc00",
+      "author": "42manako",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "42manako — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/dfa91ea83d484fd2b8d52034b582cc00",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-23",
+      "name": "МиГ-23УБ (mig-23) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-23",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-23/**",
+        "assets/aviation-museum/decimated/mig-23/mig-23.glb",
+        "assets/aviation-museum/baked/mig-23.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/dd4e5995803b4ba28929323f20a18b3d",
+      "author": "citizensnip",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "citizensnip — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/dd4e5995803b4ba28929323f20a18b3d",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-25",
+      "name": "МиГ-25ПУ/БМ (mig-25) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-25",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-25/**",
+        "assets/aviation-museum/decimated/mig-25/mig-25.glb",
+        "assets/aviation-museum/baked/mig-25.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/afe67617c5294dce9056106a22f640ff",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~3 000 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/afe67617c5294dce9056106a22f640ff",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-27",
+      "name": "МиГ-27К (mig-27) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-27",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-27/**",
+        "assets/aviation-museum/decimated/mig-27/mig-27.glb",
+        "assets/aviation-museum/baked/mig-27.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/a9d22acdb582444a91c2adc8b123d674",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/a9d22acdb582444a91c2adc8b123d674",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mig-29",
+      "name": "МиГ-29 (mig-29) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mig-29",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mig-29/**",
+        "assets/aviation-museum/decimated/mig-29/mig-29.glb",
+        "assets/aviation-museum/baked/mig-29.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/c0f08d656dae4214b82b8647614f3ec4",
+      "author": "lucas.rdrgz",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "lucas.rdrgz — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/c0f08d656dae4214b82b8647614f3ec4",
+      "status": "verified"
+    },
+    {
+      "id": "museum-su-17",
+      "name": "Су-17М (su-17) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "su-17",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/su-17/**",
+        "assets/aviation-museum/decimated/su-17/su-17.glb",
+        "assets/aviation-museum/baked/su-17.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/a5dfc3d488c8441c8468a75ffad1ab75",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/a5dfc3d488c8441c8468a75ffad1ab75",
+      "status": "verified"
+    },
+    {
+      "id": "museum-su-24",
+      "name": "Су-24М (su-24) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "su-24",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/su-24/**",
+        "assets/aviation-museum/decimated/su-24/su-24.glb",
+        "assets/aviation-museum/baked/su-24.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/17ca351ca78149d09393b3926db66454",
+      "author": "42manako",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "42manako — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/17ca351ca78149d09393b3926db66454",
+      "status": "verified"
+    },
+    {
+      "id": "museum-su-25",
+      "name": "Су-25 (su-25) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "su-25",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/su-25/**",
+        "assets/aviation-museum/decimated/su-25/su-25.glb",
+        "assets/aviation-museum/baked/su-25.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/947ef770b49742c3aa439177daabcf51",
+      "author": "42manako",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "42manako — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/947ef770b49742c3aa439177daabcf51",
+      "status": "verified"
+    },
+    {
+      "id": "museum-tu-134",
+      "name": "Ту-134 (tu-134) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "tu-134",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/tu-134/**",
+        "assets/aviation-museum/decimated/tu-134/tu-134.glb",
+        "assets/aviation-museum/baked/tu-134.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/2e6826aa0f2142cca046e7499305db6a",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/2e6826aa0f2142cca046e7499305db6a",
+      "status": "verified"
+    },
+    {
+      "id": "museum-yak-18",
+      "name": "Як-18 (yak-18) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "yak-18",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/yak-18/**",
+        "assets/aviation-museum/decimated/yak-18/yak-18.glb",
+        "assets/aviation-museum/baked/yak-18.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/2b6d63da394a47458e07d52f6b88f169",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/2b6d63da394a47458e07d52f6b88f169",
+      "status": "verified"
+    },
+    {
+      "id": "museum-yak-28",
+      "name": "Як-28ПП (yak-28) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "yak-28",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/yak-28/**",
+        "assets/aviation-museum/decimated/yak-28/yak-28.glb",
+        "assets/aviation-museum/baked/yak-28.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/d8fb2ad3d871437392453568c0c8bfe8",
+      "author": "42manako",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "42manako — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/d8fb2ad3d871437392453568c0c8bfe8",
+      "status": "verified"
+    },
+    {
+      "id": "museum-yak-40",
+      "name": "Як-40 (yak-40) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "yak-40",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/yak-40/**",
+        "assets/aviation-museum/decimated/yak-40/yak-40.glb",
+        "assets/aviation-museum/baked/yak-40.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/96ec4aa169e14c49ae7c268954bd0c21",
+      "author": "SeVka",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~6 000 triangles) and baked to vertex colours.",
+      "attribution": "SeVka — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/96ec4aa169e14c49ae7c268954bd0c21",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mi-1",
+      "name": "Ми-1 (mi-1) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mi-1",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mi-1/**",
+        "assets/aviation-museum/decimated/mi-1/mi-1.glb",
+        "assets/aviation-museum/baked/mi-1.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/33ab9ac87c7646eda6f0c6bba9dd68bf",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/33ab9ac87c7646eda6f0c6bba9dd68bf",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mi-2",
+      "name": "Ми-2 (mi-2) source model (not shipped in the current payload)",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mi-2",
+      "artifactPaths": [],
+      "sourceOnly": true,
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mi-2/**",
+        "assets/aviation-museum/decimated/mi-2/mi-2.glb"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/b3eac46b00c94b2d8f601ddee0150133",
+      "author": "manilov.ap",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated copy kept in the source repository; the current museum placement does not exhibit this model.",
+      "attribution": "manilov.ap — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/b3eac46b00c94b2d8f601ddee0150133",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mi-8",
+      "name": "Ми-8Т (mi-8) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mi-8",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mi-8/**",
+        "assets/aviation-museum/decimated/mi-8/mi-8.glb",
+        "assets/aviation-museum/baked/mi-8.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/aaa58674609e40feafe816909de65ff9",
+      "author": "tnikita",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "tnikita — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/aaa58674609e40feafe816909de65ff9",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mi-24",
+      "name": "Ми-24П (mi-24) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mi-24",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mi-24/**",
+        "assets/aviation-museum/decimated/mi-24/mi-24.glb",
+        "assets/aviation-museum/baked/mi-24.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/004d68143e1a4df88e136dbc0a05f181",
+      "author": "duanesmind",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "duanesmind — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/004d68143e1a4df88e136dbc0a05f181",
+      "status": "verified"
+    },
+    {
+      "id": "museum-mi-26",
+      "name": "Ми-26 (mi-26) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "mi-26",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/mi-26/**",
+        "assets/aviation-museum/decimated/mi-26/mi-26.glb",
+        "assets/aviation-museum/baked/mi-26.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/272597d721e74a45914f7ffb846dda2a",
+      "author": "SavyTheCreator",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~2 500 triangles) and baked to vertex colours.",
+      "attribution": "SavyTheCreator — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/272597d721e74a45914f7ffb846dda2a",
+      "status": "verified"
+    },
+    {
+      "id": "museum-citation-x",
+      "name": "Cessna 750 Citation X (citation-x) museum exhibit model",
+      "kind": "3d-model",
+      "thirdParty": true,
+      "exhibitSlug": "citation-x",
+      "artifactPaths": [
+        "data/museum/exhibits.bin"
+      ],
+      "sourcePaths": [
+        "assets/aviation-museum/raw/citation-x/**",
+        "assets/aviation-museum/decimated/citation-x/citation-x.glb",
+        "assets/aviation-museum/baked/citation-x.json"
+      ],
+      "license": "CC BY (Sketchfab \"CC Attribution\"; version not recorded upstream)",
+      "licenseId": "CC-BY",
+      "licenseUrl": null,
+      "source": "https://sketchfab.com/3d-models/1d7bb0b48301482f8145cb121268dd7f",
+      "author": "SnowCrow",
+      "redistribution": true,
+      "modified": true,
+      "modificationNote": "Decimated (~4 000 triangles) and baked to vertex colours. This exhibit is absent from the committed generated LICENSES.md report (regenerate scripts/qa/museum_licenses.py before release).",
+      "attribution": "SnowCrow — CC Attribution (as recorded on Sketchfab) — https://sketchfab.com/3d-models/1d7bb0b48301482f8145cb121268dd7f",
+      "status": "verified"
+    }
+  ]
+}

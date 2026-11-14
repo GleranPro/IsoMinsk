@@ -35,3 +35,10 @@ tmp_*.py
 
 # DSH harness local plugin state
 .dsh-plugins/
+
+# GitHub Pages artifact assembled by scripts/qa/build-pages.mjs (never committed).
+# Only its compact publication-report.json is committable.
+.pages/
+
+# Local staging output for regenerated data (never committed).
+data/staging/
