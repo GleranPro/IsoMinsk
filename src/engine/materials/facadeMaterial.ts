@@ -33,7 +33,8 @@
 import * as THREE from 'three';
 import type { Archetype } from '../../shared/types';
 import { ARCHETYPE_BY_ID } from '../../shared/geometry';
-import { presetFor } from '../../city/facades/presets';
+import { FACADE_PRESET_COUNT } from '../../shared/buildingStyles';
+import { motifRowsForUniforms, presetRowsForUniforms } from '../../city/facades/presets';
 import { hexToRgb, PIXEL_PALETTE, paletteToFloat32 } from '../postprocess/palette';
 import {
   FACADE_PROGRAM_CACHE_KEY,
@@ -58,10 +59,15 @@ export interface FacadeUniformSet {
   uPixelSize: THREE.IUniform<number>;
   uPaletteMix: THREE.IUniform<number>;
   uTimeHours: THREE.IUniform<number>;
-  /** vec4[9]: bayWidth, windowWidthRatio, windowHeightRatio, sillRatio. */
+  /**
+   * vec4[38]: bayWidth, windowWidthRatio, windowHeightRatio, sillRatio, indexed
+   * by the packed recipe id (27 families + 11 legacy archetype presets).
+   */
   uPresetA: THREE.IUniform<Float32Array>;
-  /** vec4[9]: floorHeight, groundFloorHeight, balconyRatio, corniceHeight. */
+  /** vec4[38]: floorHeight, groundFloorHeight, balconyRatio, corniceHeight. */
   uPresetB: THREE.IUniform<Float32Array>;
+  /** float[38]: shader motif id per recipe row (-1 = legacy archetype preset). */
+  uRecipeMotif: THREE.IUniform<Float32Array>;
   uGlassColor: THREE.IUniform<THREE.Vector3>;
   uGlassLightColor: THREE.IUniform<THREE.Vector3>;
   uNightDarkColor: THREE.IUniform<THREE.Vector3>;
@@ -105,12 +111,12 @@ function finiteOr(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function buildPresetUniforms(): { a: Float32Array; b: Float32Array } {
-  const archetypes: Archetype[] = ARCHETYPE_BY_ID;
-  const a = new Float32Array(archetypes.length * 4);
-  const b = new Float32Array(archetypes.length * 4);
-  for (let i = 0; i < archetypes.length; i++) {
-    const preset = presetFor(archetypes[i]);
+function buildPresetUniforms(): { a: Float32Array; b: Float32Array; motif: Float32Array } {
+  const rows = presetRowsForUniforms();
+  const a = new Float32Array(rows.length * 4);
+  const b = new Float32Array(rows.length * 4);
+  for (let i = 0; i < rows.length; i++) {
+    const preset = rows[i];
     a[i * 4] = preset.bayWidth;
     a[i * 4 + 1] = preset.windowWidthRatio;
     a[i * 4 + 2] = preset.windowHeightRatio;
@@ -120,7 +126,10 @@ function buildPresetUniforms(): { a: Float32Array; b: Float32Array } {
     b[i * 4 + 2] = preset.balconyRatio;
     b[i * 4 + 3] = preset.corniceHeight;
   }
-  return { a, b };
+  if (rows.length !== FACADE_PRESET_COUNT) {
+    throw new Error(`facade preset rows ${rows.length} != ${FACADE_PRESET_COUNT}`);
+  }
+  return { a, b, motif: motifRowsForUniforms() };
 }
 
 /**
@@ -141,6 +150,7 @@ export function createFacadeUniforms(options: {
     uTimeHours: { value: 13 },
     uPresetA: { value: presets.a },
     uPresetB: { value: presets.b },
+    uRecipeMotif: { value: presets.motif },
     uGlassColor: { value: srgbVec3(WINDOW_COLORS.glass) },
     uGlassLightColor: { value: srgbVec3(WINDOW_COLORS.glassLight) },
     uNightDarkColor: { value: srgbVec3(WINDOW_COLORS.nightDark) },

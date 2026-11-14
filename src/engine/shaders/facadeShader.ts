@@ -23,19 +23,26 @@
 
 import { PIXEL_PALETTE_SIZE } from '../postprocess/palette';
 import { ARCHETYPE_BY_ID } from '../../shared/geometry';
+import { FACADE_PRESET_COUNT } from '../../shared/buildingStyles';
 
 /** Compile-time size of the `uPalette` uniform array (mirrors PIXEL_PALETTE). */
 export const FACADE_PALETTE_SIZE = PIXEL_PALETTE_SIZE;
 
 /**
- * Compile-time number of archetype entries in the `uPresetA/B` uniform arrays.
- * Follows the shared ARCHETYPE_BY_ID contract so adding an archetype there only
- * requires a preset + palette entry, never a shader edit.
+ * Compile-time number of archetype entries used for the broad-archetype
+ * semantics (`aStyle.x`): palace/stadium material handling stays keyed on this.
  */
 export const FACADE_ARCHETYPE_COUNT = ARCHETYPE_BY_ID.length;
 
+/**
+ * Compile-time number of preset rows in `uPresetA/B` and `uRecipeMotif`:
+ * 27 family recipes + 11 legacy archetype presets = 38, indexed by the packed
+ * recipe id (bits 8..15 of `aFace.y`).
+ */
+export const FACADE_PRESET_ROWS = FACADE_PRESET_COUNT;
+
 /** Program cache key for facade materials (identical GLSL for all instances). */
-export const FACADE_PROGRAM_CACHE_KEY = 'isometric-minsk-facade-v1';
+export const FACADE_PROGRAM_CACHE_KEY = 'isometric-minsk-facade-v2';
 
 /** Float uniforms the facade shader exposes (for tests / renderer wiring). */
 export const FACADE_FLOAT_UNIFORMS = [
@@ -48,6 +55,24 @@ export const FACADE_FLOAT_UNIFORMS = [
 
 /** Vertex attributes the facade shader consumes. */
 export const FACADE_VERTEX_ATTRIBUTES = ['aUV', 'aColor', 'aStyle', 'aFace'] as const;
+
+/**
+ * Shader motif ids, matching `FACADE_MOTIFS` order in buildingStyles.ts.
+ * `-1` marks a legacy archetype preset row (pre-recipe branches only).
+ */
+export const FACADE_MOTIF_IDS = {
+  legacy: -1,
+  monument: 0,
+  historic: 1,
+  grid: 2,
+  loggia: 3,
+  balcony_stack: 4,
+  staircore: 5,
+  ribbon: 6,
+  clerestory: 7,
+  blank_service: 8,
+  assembly_hall: 9,
+} as const;
 
 export const FACADE_VERTEX_DECLARATIONS = /* glsl */ `
 attribute vec2 aUV;
@@ -71,6 +96,20 @@ vFacadeFace = aFace;
 export const FACADE_FRAGMENT_DECLARATIONS = /* glsl */ `
 #define FACADE_PALETTE_SIZE ${FACADE_PALETTE_SIZE}
 #define FACADE_ARCHETYPE_COUNT ${FACADE_ARCHETYPE_COUNT}
+#define FACADE_PRESET_ROWS ${FACADE_PRESET_ROWS}
+
+// Motif ids, matching FACADE_MOTIFS order in src/shared/buildingStyles.ts.
+#define FACADE_MOTIF_LEGACY -1
+#define FACADE_MOTIF_MONUMENT 0
+#define FACADE_MOTIF_HISTORIC 1
+#define FACADE_MOTIF_GRID 2
+#define FACADE_MOTIF_LOGGIA 3
+#define FACADE_MOTIF_BALCONY_STACK 4
+#define FACADE_MOTIF_STAIRCORE 5
+#define FACADE_MOTIF_RIBBON 6
+#define FACADE_MOTIF_CLERESTORY 7
+#define FACADE_MOTIF_BLANK_SERVICE 8
+#define FACADE_MOTIF_ASSEMBLY_HALL 9
 
 uniform float uNight;
 uniform float uDetailScale;
@@ -78,8 +117,10 @@ uniform float uPixelSize;
 uniform float uPaletteMix;
 uniform float uTimeHours;
 
-uniform vec4 uPresetA[FACADE_ARCHETYPE_COUNT];
-uniform vec4 uPresetB[FACADE_ARCHETYPE_COUNT];
+uniform vec4 uPresetA[FACADE_PRESET_ROWS];
+uniform vec4 uPresetB[FACADE_PRESET_ROWS];
+// Per-recipe-row motif id (-1 = legacy archetype preset row).
+uniform float uRecipeMotif[FACADE_PRESET_ROWS];
 
 uniform vec3 uGlassColor;
 uniform vec3 uGlassLightColor;
@@ -270,6 +311,7 @@ vec3 facadeUpperFloors(
   float seed,
   int flags,
   int archetype,
+  int motif,
   float mPerPx,
   float detail,
   out vec3 emit
@@ -367,6 +409,71 @@ vec3 facadeUpperFloors(
   if (stadiumity > 0.5) {
     float joint = facadeBand(fract(uv.y / 2.4), 0.0, 0.03, 0.02) * 0.10 * detail;
     outWall *= 1.0 - joint;
+  }
+
+  // --------------------------------------------------------- motif grammar
+  // Recipe-driven facade families. Every branch reuses the same real-metre
+  // coordinates as the punched windows, so painted openings and the geometry
+  // frames added by the detail modules stay aligned. Legacy preset rows
+  // (motif < 0) never enter these branches, so old tiles are unchanged.
+  if (motif >= 0 && !blank) {
+    if (motif == FACADE_MOTIF_LOGGIA) {
+      // Whole-bay loggia: dark recessed band bounded by a slab and a rail.
+      float bayRun = step(0.34, facadeHash11(col * 1.7 + seed * 13.0));
+      float band = facadeRect(vec2(u, v), vec2(0.05, 0.14), vec2(0.95, 0.88), vec2(aaU, aaV));
+      band *= bayRun * crisp * detail;
+      vec3 loggiaGlass = mix(uShopfrontColor, uGlassColor, 0.42);
+      loggiaGlass = mix(loggiaGlass, uGlassLightColor, 0.16);
+      outWall = mix(outWall, loggiaGlass, band * 0.94);
+      float loggiaSlab = facadeBand(v, 0.02, 0.13, aaV) * bayRun * detail;
+      outWall = mix(outWall, uTrimColor * 0.94, loggiaSlab * 0.85);
+      float loggiaRail = facadeBand(v, 0.88, 0.93, aaV) * bayRun * crisp * detail;
+      outWall = mix(outWall, uTrimColor * 0.80, loggiaRail * 0.75);
+      win *= 1.0 - band;
+    } else if (motif == FACADE_MOTIF_STAIRCORE) {
+      // One continuous glazed stair core against subdued panel bands.
+      float coreCol = floor(facadeHash11(seed * 3.71 + 0.19) * 4.0);
+      float core = step(abs(col - coreCol), 0.5) * detail;
+      float coreGlass = facadeRect(vec2(u, v), vec2(0.26, 0.0), vec2(0.74, 1.0), vec2(aaU, aaV));
+      coreGlass *= core * mix(0.55, 1.0, crisp);
+      vec3 coreDay = mix(uGlassColor, uGlassLightColor, 0.34);
+      outWall = mix(outWall, coreDay, coreGlass * 0.92);
+      float coreMullF = fract(v * 2.4);
+      float coreMull = facadeBand(min(coreMullF, 1.0 - coreMullF), 0.0, max(0.9 * px, 0.02), 0.02) * core;
+      outWall = mix(outWall, uTrimColor * 0.6, coreMull * 0.5);
+      win *= 1.0 - coreGlass;
+    } else if (motif == FACADE_MOTIF_RIBBON) {
+      // Continuous ribbon glazing: the slab line is painted, not carved.
+      float spandrel = facadeBand(v, 0.0, 0.16, aaV) * detail;
+      outWall *= 1.0 - spandrel * 0.10;
+    } else if (motif == FACADE_MOTIF_CLERESTORY) {
+      // Industrial halls: tall openings in the upper band over a solid sill.
+      float clerestoryTop = min(0.60 + 0.28, 0.96);
+      float clerestory = facadeRect(vec2(uWin, v), vec2(0.02, 0.60), vec2(0.98, clerestoryTop), vec2(aaWin, aaV));
+      clerestory *= crisp * detail;
+      outWall = mix(outWall, mix(uGlassColor, uGlassLightColor, 0.3), clerestory * 0.88);
+      win = mix(win, clerestory, 0.85);
+    } else if (motif == FACADE_MOTIF_BLANK_SERVICE) {
+      // Bounded blank service zones, never a fully windowless facade.
+      float zone = step(0.55, u) * step(0.5, facadeHash11(col * 1.31 + seed * 5.0));
+      win *= 1.0 - zone * 0.9;
+    } else if (motif == FACADE_MOTIF_ASSEMBLY_HALL) {
+      // Higher blank wall mass with sparse high glazing only.
+      float highGlazing = facadeRect(vec2(uWin, v), vec2(0.18, 0.72), vec2(0.82, 0.90), vec2(aaWin, aaV));
+      highGlazing *= step(0.5, mod(row, 2.0)) * crisp * detail;
+      win = highGlazing;
+    } else if (
+      motif == FACADE_MOTIF_MONUMENT
+      || motif == FACADE_MOTIF_GRID
+      || motif == FACADE_MOTIF_HISTORIC
+    ) {
+      // Ordered accents on the same rows as the openings.
+      float course = facadeBand(v, 0.0, 0.05, aaV) * detail;
+      outWall *= 1.0 - course * 0.06;
+      float pier = facadeBand(min(u, 1.0 - u), 0.0, 0.05, aaU) * detail;
+      pier *= (motif == FACADE_MOTIF_MONUMENT) ? 0.5 : 0.3;
+      outWall = mix(outWall, uTrimColor * 0.86, pier * 0.35);
+    }
   }
 
   if (pilasters && !blank) {
@@ -481,6 +588,7 @@ vec3 facadeGroundFloor(
   float seed,
   int flags,
   int archetype,
+  int motif,
   float mPerPx,
   float detail,
   out vec3 emit
@@ -614,6 +722,22 @@ vec3 facadeGroundFloor(
     outWall = mix(outWall, uTrimColor * 0.86, lintel * 0.45);
   }
 
+  // Recipe motif ground treatment: a bounded recessed/loggia or service band.
+  // Elevated parts never reach here (aStyle.z = -1 forces groundBlend 0 upstream).
+  if (motif == FACADE_MOTIF_LOGGIA && !blank) {
+    float recess = facadeRect(
+      vec2(u, uv.y), vec2(0.06, 0.9), vec2(0.94, max(gh - 1.2, 1.8)), vec2(aaU, aaM)
+    ) * groundDetail;
+    outWall = mix(outWall, mix(uShopfrontColor, uGlassColor, 0.4), recess * 0.9);
+  } else if (motif == FACADE_MOTIF_BLANK_SERVICE || motif == FACADE_MOTIF_ASSEMBLY_HALL) {
+    // Service halls: blank wall with a single wide utility door per few bays.
+    float utility = facadeRect(
+      vec2(u, uv.y), vec2(0.34, 0.0), vec2(0.66, min(2.6, gh - 0.4)), vec2(aaU, aaM)
+    ) * groundDetail;
+    float gate = step(0.7, facadeHash11(col * 0.7 + seed * 3.1));
+    outWall = mix(outWall, mix(uNightDarkColor, wallSrgb * 0.34, 0.3), utility * gate * 0.9);
+  }
+
   // Far LOD: an averaged ground-floor band with a light reveal at its top edge,
   // so the building always reads as "shopfront/base + upper floors". The band
   // contrast is deliberately strong: 1-2 px of ground floor is all that
@@ -654,8 +778,15 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
 
   float archetypeF = clamp(vFacadeStyle.x, 0.0, float(FACADE_ARCHETYPE_COUNT - 1));
   int archetype = int(archetypeF + 0.5);
-  vec4 presetA = uPresetA[archetype];
-  vec4 presetB = uPresetB[archetype];
+  // aFace.y packs the style flag byte and the recipe id byte (schema 1):
+  //   flags = packed & 255, recipe = packed >> 8 (clamped to the preset rows).
+  float packedStyle = max(vFacadeFace.y, 0.0) + 0.5;
+  int flags = int(mod(floor(packedStyle), 256.0));
+  int recipe = int(clamp(floor(packedStyle / 256.0), 0.0, float(FACADE_PRESET_ROWS - 1)));
+  vec4 presetA = uPresetA[recipe];
+  vec4 presetB = uPresetB[recipe];
+  // Motif id of the selected row (-1 = legacy archetype preset: old branches).
+  int motif = int(floor(uRecipeMotif[recipe] + 0.5));
   float styleGround = vFacadeStyle.z;
   // aStyle.z < -0.5 marks elevated building:part volumes (no ground floor).
   bool hasGround = styleGround > -0.5;
@@ -665,7 +796,6 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
   float seed = fract(vFacadeStyle.w * 1.618 + 0.137);
 
   float faceKind = vFacadeFace.x;
-  int flags = int(clamp(vFacadeFace.y, 0.0, 255.0) + 0.5);
   float trimK = clamp(vFacadeFace.z, 0.0, 1.0);
   float faceW = clamp(vFacadeFace.w, 0.0, 10.0);
 
@@ -706,7 +836,7 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
       vec3 palaceGroundEmit;
       outAlbedo = facadeGroundFloor(
         uv, baseSrgb, groundHeight, presetA, floorHeight,
-        seed, flags, archetype, mPerPx, detail, palaceGroundEmit
+        seed, flags, archetype, motif, mPerPx, detail, palaceGroundEmit
       );
       outEmissive = palaceGroundEmit;
       return;
@@ -723,11 +853,11 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
   vec3 groundEmit;
   vec3 upper = facadeUpperFloors(
     uv, baseSrgb, floorHeight, groundHeight, presetA, balconyRatio,
-    seed, flags, archetype, mPerPx, detail, upperEmit
+    seed, flags, archetype, motif, mPerPx, detail, upperEmit
   );
   vec3 ground = facadeGroundFloor(
     uv, baseSrgb, groundHeight, presetA, floorHeight,
-    seed, flags, archetype, mPerPx, detail, groundEmit
+    seed, flags, archetype, motif, mPerPx, detail, groundEmit
   );
 
   float groundBlend;

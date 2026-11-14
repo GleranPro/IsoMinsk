@@ -9,6 +9,7 @@
 import type {
   Archetype,
   BuildingFeature,
+  BuildingStyleVariant,
   BuildingVolume,
   FeatureId,
   Polygon,
@@ -87,6 +88,10 @@ export interface MakeBuildingOptions {
   roofShape?: RoofShape;
   name?: string;
   roofDirection?: number;
+  /** Offline-assigned style recipe (payload schema 1); omitted = legacy default. */
+  styleVariant?: BuildingStyleVariant;
+  /** Input volumes recorded when a style profile changed `volumes`. */
+  sourceVolumes?: BuildingVolume[];
 }
 
 export function makeBuilding(
@@ -107,6 +112,8 @@ export function makeBuilding(
     volumes,
     tags: {},
     name: options.name,
+    ...(options.styleVariant ? { styleVariant: options.styleVariant } : {}),
+    ...(options.sourceVolumes ? { sourceVolumes: options.sourceVolumes } : {}),
   };
 }
 

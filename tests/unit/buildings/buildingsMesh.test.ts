@@ -12,6 +12,7 @@ import { buildBuildingsMesh } from '../../../src/city/buildings/buildingsMesh';
 import { FACE_KIND, ROOF_SHAPE_ID, ARCHETYPE_ID } from '../../../src/shared/geometry';
 import { hexToRgb, pickFacadeColor, pickRoofColor, trimColorFor } from '../../../src/engine/materials/palette';
 import { presetFor } from '../../../src/city/facades/presets';
+import { legacyRecipeId, unpackStyleBits } from '../../../src/shared/buildingStyles';
 import { seedFromId } from '../../../src/city/buildings/seed';
 import { pointInPolygon, type Point2 } from '../../../src/city/buildings/polygon2d';
 import type { Polygon } from '../../../src/shared/types';
@@ -270,7 +271,7 @@ describe('buildBuildingsMesh — walls', () => {
 });
 
 describe('buildBuildingsMesh — facade attributes', () => {
-  it('writes archetype style, flags, trim intensity and seed', () => {
+  it('writes archetype style, packed flags, trim intensity and seed', () => {
     const building = squarePrismBuilding();
     const seed = seedFromId(building.id);
     const preset = presetFor('panel');
@@ -281,7 +282,12 @@ describe('buildBuildingsMesh — facade attributes', () => {
         expectClose(vertex.style[1], preset.floorHeight);
         expectClose(vertex.style[2], preset.groundFloorHeight);
         expectClose(vertex.style[3], seed, 1e-6);
-        expect(vertex.face[1]).toBe(preset.flags);
+        // aFace.y packs flags | recipeId << 8; an unstyled feature resolves the
+        // legacy panel preset (27 + ARCHETYPE_ID.panel = 29) with the old flags.
+        expect(unpackStyleBits(vertex.face[1])).toEqual({
+          flags: preset.flags,
+          recipeId: legacyRecipeId('panel'),
+        });
         expectClose(vertex.face[2], Math.min(1, preset.corniceHeight / 1.1));
       }
     }

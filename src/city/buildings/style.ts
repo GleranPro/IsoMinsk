@@ -2,14 +2,30 @@
  * Per-building style context + vertex attribute surfaces.
  *
  * Colours follow src/shared/geometry.ts: `aColor` carries **sRGB** values in
- * 0..1 (the facade shader linearises in GLSL). All presets are read through
- * `src/city/facades/presets.ts` so facade value refinements propagate.
+ * 0..1 (the facade shader linearises in GLSL). Facade values come from the
+ * recipe-driven preset rows (`src/city/facades/presets.ts`), so a legacy tile
+ * reproduces its exact previous preset and a family recipe gets its own rhythm
+ * and coordinated palette.
+ *
+ * Packing contract: `BuildingStyle.flags` holds the *packed* style integer
+ * (`flags | recipeId << 8`) written straight into `aFace.y`. Consumers that test
+ * a flag must mask the low byte — which is automatic for single-bit tests
+ * (`packed & STYLE_FLAG.x`), but never compare `flags` to a raw preset value.
  */
 
 import type { Archetype, BuildingFeature, RoofShape } from '../../shared/types';
 import { ARCHETYPE_ID } from '../../shared/geometry';
+import {
+  LEGACY_RECIPE_OFFSET,
+  getStyleRecipe,
+  packStyleBits,
+  type DetailKind,
+  type FacadeMotif,
+  type StyleProfileName,
+  type StyleRecipe,
+} from '../../shared/buildingStyles';
 import { hexToRgb, pickFacadeColor, pickRoofColor, trimColorFor } from '../../engine/materials/palette';
-import { presetFor } from '../facades/presets';
+import { presetForRecipe, recipePresetForId } from '../facades/presets';
 import { noiseFromSeed, seedFromId } from './seed';
 import type { RGB, SurfaceStyle, Vec4 } from './meshSink';
 
@@ -24,6 +40,7 @@ export interface BuildingStyle {
   floorHeight: number;
   groundFloorHeight: number;
   seed: number;
+  /** Packed `aFace.y`: style flag byte + recipe id byte. */
   flags: number;
   /** 0..1 cornice / trim strength hint for the facade shader. */
   trimIntensity: number;
@@ -39,6 +56,14 @@ export interface BuildingStyle {
   trimColor: RGB;
   /** Parapet height in metres for flat roofs. */
   parapetHeight: number;
+  /** Resolved style recipe (family or legacy preset). */
+  recipe: StyleRecipe;
+  /** Reusable geometry modules the recipe allows (safe to attempt, each may skip). */
+  detailModules: readonly DetailKind[];
+  /** Massing profile the recipe requests. */
+  profile: StyleProfileName;
+  /** Shader motif family (`legacy` keeps the pre-recipe branches). */
+  motif: FacadeMotif;
 }
 
 export const SURFACE_DETAIL = {
@@ -68,6 +93,47 @@ export function roofColorFor(shape: RoofShape, seed: number): RGB {
   return srgbFromHex(pickRoofColor(paletteShape, seed));
 }
 
+function fract(value: number): number {
+  return value - Math.floor(value);
+}
+
+/**
+ * The GLSL `facadeHash11` function, reproduced on the CPU.
+ *
+ * Recipe palettes are chosen with this hash of the per-building seed only — no
+ * geometry-dependent seeding, so the colour of a building never depends on how
+ * its volumes were cut by the tile de-overlap.
+ */
+export function facadeHash11(p: number): number {
+  let x = fract(p * 0.1031);
+  x = fract(x * (x + 33.33));
+  x = fract(x * (x + x));
+  return x;
+}
+
+/** Pick a recipe palette colour deterministically from the building seed. */
+export function pickRecipeColor(recipe: StyleRecipe, seed: number): string {
+  const palette = recipe.palette;
+  if (!palette.length) return '#b2bcbf';
+  const index = Math.floor(facadeHash11(seed) * palette.length) % palette.length;
+  return palette[index];
+}
+
+/**
+ * Keep the resolved ground/floor band inside the real source height: a modern
+ * family's 5.2 m podium must not paint a second storey on a 4 m kiosk.
+ */
+function clampFacadeMetrics(
+  floorHeight: number,
+  groundFloorHeight: number,
+  height: number,
+): { floorHeight: number; groundFloorHeight: number } {
+  if (!Number.isFinite(height) || height <= 0) return { floorHeight, groundFloorHeight };
+  const safeFloor = clamp(floorHeight, 2.0, Math.max(2.4, height * 0.75));
+  const safeGround = clamp(groundFloorHeight, 2.0, Math.max(2.4, Math.min(height * 0.6, 7.5)));
+  return { floorHeight: safeFloor, groundFloorHeight: safeGround };
+}
+
 /** Build the style context for one building. */
 export function styleForBuilding(
   building: BuildingFeature,
@@ -75,23 +141,38 @@ export function styleForBuilding(
   detail: boolean,
   detailScale: number,
 ): BuildingStyle {
-  const preset = presetFor(building.archetype);
-  const seed = seedFromId(building.id);
-  const baseHex = pickFacadeColor(building.archetype, seed);
+  const archetype: Archetype =
+    building && ARCHETYPE_ID[building.archetype] !== undefined ? building.archetype : 'small';
+  const seed = seedFromId(building.id ?? `#${owner}`);
+  const recipe = getStyleRecipe(building?.styleVariant?.recipeId, archetype);
+  const isLegacy = recipe.id >= LEGACY_RECIPE_OFFSET;
+  const preset = isLegacy
+    ? presetForRecipe(recipe)
+    : recipePresetForId(recipe.id, archetype);
+  // Legacy features keep the exact previous numeric values (byte-compatible
+  // facades); modern families are clamped inside the real source height so a
+  // 5.2 m podium cannot paint a second storey on a 4 m kiosk.
+  const metrics = isLegacy
+    ? { floorHeight: preset.floorHeight, groundFloorHeight: preset.groundFloorHeight }
+    : clampFacadeMetrics(preset.floorHeight, preset.groundFloorHeight, building?.height ?? 0);
+  const baseHex = isLegacy
+    ? // Old features keep the exact previous palette pick.
+      pickFacadeColor(archetype, seed)
+    : pickRecipeColor(recipe, seed);
   const style: Vec4 = [
-    ARCHETYPE_ID[building.archetype] ?? ARCHETYPE_ID.small,
-    preset.floorHeight,
-    preset.groundFloorHeight,
+    ARCHETYPE_ID[archetype] ?? ARCHETYPE_ID.small,
+    metrics.floorHeight,
+    metrics.groundFloorHeight,
     seed,
   ];
   return {
     owner,
-    archetype: building.archetype,
+    archetype,
     archetypeId: style[0],
-    floorHeight: preset.floorHeight,
-    groundFloorHeight: preset.groundFloorHeight,
+    floorHeight: metrics.floorHeight,
+    groundFloorHeight: metrics.groundFloorHeight,
     seed,
-    flags: preset.flags,
+    flags: packStyleBits(preset.flags, recipe.id),
     trimIntensity: clamp(preset.corniceHeight / 1.1, 0, 1),
     detailScale,
     detail,
@@ -99,6 +180,10 @@ export function styleForBuilding(
     baseColor: srgbFromHex(baseHex),
     trimColor: srgbFromHex(trimColorFor(baseHex)),
     parapetHeight: 0.26 + 0.1 * noiseFromSeed(seed, 3),
+    recipe,
+    detailModules: recipe.details,
+    profile: recipe.profile,
+    motif: recipe.facade,
   };
 }
 
@@ -112,6 +197,11 @@ export function withNoGroundBand(style: BuildingStyle): BuildingStyle {
     ...style,
     style: [style.style[0], style.style[1], -1, style.style[3]],
   };
+}
+
+/** True when the style carries a recipe detail module (safe to attempt). */
+export function hasDetailModule(style: BuildingStyle, kind: DetailKind): boolean {
+  return style.detailModules.includes(kind);
 }
 
 /** Assemble the complete vertex attribute payload for one surface. */
