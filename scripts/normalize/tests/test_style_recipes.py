@@ -782,6 +782,7 @@ class NormalizeStyleIntegrationTest(unittest.TestCase):
             '"styleSchema"',
             '"sourceDatasetId"',
             '"sourceInputSha256"',
+            '"styleRunId"',
             '"styleRecipeCounts"',
             "PAYLOAD_VERSION",
         ):

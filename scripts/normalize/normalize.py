@@ -2569,6 +2569,11 @@ def main() -> int:
     roof_explicit_count = sum(1 for b in buildings if b.get("roofShapeExplicit"))
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
+    # Deterministic identity of one styled run: the reviewed area/source inputs
+    # and geometry rule version. No wall clock, so re-runs of the same accepted
+    # inputs produce the same run id and byte-identical tiles.
+    style_run_id = source_input_sha256(args.area, raw_meta, tile_size, bounds)
+
     manifest = {
         "version": PAYLOAD_VERSION,
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
@@ -2592,7 +2597,8 @@ def main() -> int:
         # id 0..37 so unused families and legacy 27..37 presets are auditable.
         "styleSchema": STYLE_SCHEMA_VERSION,
         "sourceDatasetId": source_dataset_id(args.area, raw_meta),
-        "sourceInputSha256": source_input_sha256(args.area, raw_meta, tile_size, bounds),
+        "sourceInputSha256": style_run_id,
+        "styleRunId": style_run_id,
         "styleRecipeCounts": style_recipe_counts(buildings),
         "tiles": manifest_tiles,
         "counts": {
