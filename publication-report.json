@@ -1,13 +1,13 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-11-14T13:15:40.743Z",
- "commitSha": "8975900ed158169de5ff7eabd1e2c48a5d7f65db",
+ "generatedAt": "2026-11-14T20:13:13.129Z",
+ "commitSha": "e514fa6afb55885836ee9d03276b0b458e14b6ba",
  "mode": "served",
  "site": ".pages",
  "artifactBase": "/VoxelMinsk/",
  "artifact": {
   "files": 450,
-  "totalBytes": 307436371,
+  "totalBytes": 307646562,
   "warningThresholdBytes": 524288000,
   "warning": false,
   "fatalError": false
@@ -32,7 +32,7 @@
   {
    "id": "artifact-contents",
    "status": "pass",
-   "detail": "450 files, 307436371 bytes, 437 city tiles"
+   "detail": "450 files, 307646562 bytes, 437 city tiles"
   },
   {
    "id": "stored-manifest",
@@ -47,7 +47,7 @@
   {
    "id": "app-bundle",
    "status": "pass",
-   "detail": "200, 1266358 bytes"
+   "detail": "200, 1280812 bytes"
   },
   {
    "id": "city-manifest",
@@ -118,9 +118,9 @@
    "contentType": "text/html; charset=utf-8"
   },
   {
-   "route": "/VoxelMinsk/assets/index-DENMNAI8.js",
+   "route": "/VoxelMinsk/assets/index-Dk5oFbQs.js",
    "status": 200,
-   "bytes": 1266358,
+   "bytes": 1280812,
    "contentType": "text/javascript; charset=utf-8"
   },
   {
@@ -197,8 +197,7 @@
   }
  ],
  "warnings": [
-  "[code-license-owner-required] the repository source code has no selected licence; it must not be described as open source",
-  "[licenses-report-stale] assets/aviation-museum/LICENSES.md does not list citation-x; regenerate scripts/qa/museum_licenses.py before release"
+  "[code-license-owner-required] the repository source code has no selected licence; it must not be described as open source"
  ],
  "failures": []
 }

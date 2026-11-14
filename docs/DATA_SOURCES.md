@@ -157,3 +157,28 @@ introduced — the corrections are metadata overrides of ODbL data.
 - **Microsoft footprint quality in Minsk — UNVERIFIED.** Only global/Europe metrics published; no local validation.
 - National Belarus LoD2/orthophoto sources were **not investigated** in this pass (no open equivalent to Poland's GUGiK identified).
 - Commercial status: treated as a non-commercial prototype per the project brief. Any monetisation invalidates the CC BY-NC row.
+
+## 9. Procedural building style recipes (2026-11-14)
+
+The style layer is **derived from OSM data, not a new source**:
+
+- The catalog `src/shared/building-style-recipes.json` and its Python mirror
+  define 27 visual families. They are authored design data (like the palette),
+  not OSM facts.
+- The offline selector reads only mapped tags and footprint geometry:
+  `building`, `building:material`, `building:levels`, `amenity`, `start_date`,
+  `roof:shape`, the footprint rings and documented district context. It never
+  reads rendered colour, other buildings, process state or random seeds.
+- Every building record keeps its `styleVariant` provenance (`osm_hint` when a
+  mapped tag actually constrained the family, `heuristic` otherwise,
+  `legacy_default` for protected routes) so the choice can be audited without
+  claiming surveyed architecture.
+- Derived tiles remain ODbL 1.0 data (see �5): the recipe id, provenance and
+  eligibility tokens travel with the derived database, so the same share-alike
+  and attribution obligations apply to them.
+- `public/data/LICENSE-ODbL.txt` and `public/data/ATTRIBUTION.md` are shipped in
+  the Pages artifact; `public/asset-licenses.json` records the licence inventory
+  (including the museum model terms) and fails closed for unverified rights.
+- The source-code licence is **not selected** in this repository. The artifact is
+  source-available; describing it as open source requires the owner's licence
+  choice (see `docs/building-quality/REVIEW.md`).

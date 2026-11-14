@@ -11,6 +11,22 @@ Remaining work and completed shared prerequisites: [`docs/BACKLOG.md`](BACKLOG.m
 
 ## Current state
 
+**Procedural building variety — 2026-11-14:** 27 coherent architectural
+families were added as a versioned recipe layer (payload 0.5.0). The offline
+selector assigns a recipe per building from mapped evidence plus a stable hash;
+the renderer resolves it through 38 facade preset rows (27 families + 11 frozen
+legacy presets), a motif-dispatch shader, bounded massing profiles, modular
+facade geometry and analytic mansard/sawtooth roof envelopes. The complete city
+was regenerated and audited: 437 tiles, 76,004 buildings, 1,910,624 trees, 309 MB,
+**27 family recipes used**, ≥3 recipes for every generic archetype, and **0**
+source-geometry contract failures (`docs/building-quality/style-audit.json`).
+The L1 gallery renders 27/27 panels on software WebGL. Not finished in this
+session: the full L2 before/after capture matrix and owner visual sign-off, the
+full/far LOD state machine (L3), the hardware-GPU performance gate, and the
+GitHub Pages release (owner inputs outstanding). Honest per-gate status:
+`docs/building-quality/REVIEW.md`.
+
+
 **Rail LOD fix — 2026-11-06:** ground and bridge heads share one painter,
 unchanged family colours, 0.15 m width and 1.44 m gauge across tiers. Same-camera
 OSM/synthetic captures, real Canvas coverage and ground/deck pixel checks are

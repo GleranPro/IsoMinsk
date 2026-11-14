@@ -1,28 +1,30 @@
 # Isometric Minsk
 
-Interactive isometric **pixel-art 3D map of central Minsk**, generated from real
-OpenStreetMap geometry: real buildings with walls, roofs and procedural facades;
-real avenues, squares, parks and the Svislach embankment; an orthographic
-isometric camera you can pan, zoom and rotate; and a real pixel-art rendering
-pipeline (low-resolution rasterisation → outline/quantise → nearest-neighbour
-upscale).
+Interactive isometric **pixel-art 3D map of the complete city of Minsk**,
+generated from real OpenStreetMap geometry: real buildings with walls, roofs and
+procedural facades; real avenues, squares, parks and the Svislach embankment; an
+orthographic isometric camera you can pan, zoom and rotate; and a real pixel-art
+rendering pipeline (low-resolution rasterisation → outline/quantise →
+nearest-neighbour upscale).
 
 Inspired by [bedirhanyildirim.com/warsaw-izo](https://bedirhanyildirim.com/warsaw-izo/).
 
-**Status:** the October Square / Independence Avenue pilot (1.6 × 1.6 km, 512 m
-tiles) plus a generated 12 × 12 km city-belt dataset (`?dataset=city`), fully
-generated offline, streamed and rendered in the browser (current tile payload
-**0.4.3**). The road topology introduced in **payload 0.3.0** uses a
-non-overlapping surface partition
-(asphalt/stone/concrete/unpaved material zones, pavements, kerbs, medians and
-one asphalt face per graph junction) plus an **OSM topology graph** with
-per-direction lane tags, junction faces and pedestrian crossings — so road
+**Status:** the application exposes **one dataset only — the complete expanded
+city** (437 × 1024 m tiles, 76,004 source buildings, 1,910,624 trees, ~295 MB of
+tile payload, current tile payload **0.5.0**). There is no central-district
+selector, no reduced public extent and no pilot fallback: legacy links such as
+`?dataset=city` or `?dataset=central` simply load the whole city. Buildings now
+carry a **versioned procedural style recipe** (27 coherent architectural
+families in 11 broad archetypes) assigned offline, rendered with shared massing
+profiles, modular facade geometry, distinctive roof envelopes and recipe-driven
+facade material presets.
+
+The road topology introduced in **payload 0.3.0** uses a non-overlapping surface
+partition (asphalt/stone/concrete/unpaved material zones, pavements, kerbs,
+medians and one asphalt face per graph junction) plus an **OSM topology graph**
+with per-direction lane tags, junction faces and pedestrian crossings — so road
 seams, junction patchwork and stacked detail layers are gone. Lane markings,
-zebras and tram rails are derived from that network: double solid centres on
-merged four-lane corridors, asymmetric per-direction lane layouts (a tagged
-3-lane street renders 3 lanes), link/service/channelization roads rendered as
-paving instead of painted streets, paint clipped out of junction faces, and
-rails that run continuously through junctions and tile borders (see
+zebras and tram rails are derived from that network (see
 `docs/ROAD_NETWORK.md`). See `docs/REQUIREMENTS_ORIGINAL.md` for the original
 brief, `docs/REQUIREMENTS.md` for the compliance matrix, `docs/PROGRESS.md` for
 milestone/roadmap status and `docs/LIMITATIONS.md` for what is inferred vs.
@@ -33,7 +35,7 @@ surveyed.
 ## Quick start (Windows 11 / PowerShell)
 
 Requirements: **Node.js 24+**, **pnpm 10+**, **Python 3.11+** (only needed to
-regenerate the data; the generated tiles are committed).
+regenerate the data; the accepted tile payload is generated locally).
 
 ```powershell
 cd D:\Workk\VoxelMinsk
@@ -41,31 +43,34 @@ cd D:\Workk\VoxelMinsk
 # 1. Install JavaScript dependencies
 pnpm install
 
-# 2. Start the app (data is already generated in public/data)
+# 2. Start the app (the complete city must be present in public/data/city-tiles)
 pnpm dev
 #    → open http://127.0.0.1:5173
 ```
 
 The app needs no backend: it is a static Vite site plus JSON tiles.
 
-## Two datasets: the pilot district and the whole city belt
+## One dataset: the complete city
 
-The repository ships a **1.6 × 1.6 km central district** (16 × 512 m tiles,
-~2.6 MiB JSON) so the app runs immediately after `pnpm install`.
-
-A **12 × 12 km city dataset** (144 × 1024 m tiles, ~93 MB JSON, 31 783 buildings
-including panel/historic/industrial/stadium/palace archetypes across all inner
-districts, plus five curated landmarks: Minsk Gate clock/emblem towers, National
-Library diamond, Victory Square obelisk, the Red Church and the TV tower) can be
-generated locally from the same OSM extract — it is git-ignored because of its
-size:
+The public application serves exactly `public/data/city-tiles`: **437 tiles of
+1024 m** covering the first MKAD ring and the Lipki airfield complex, with
+**76,004 source buildings**, **1,910,624 trees**, five curated landmarks (Minsk
+Gate clock/emblem towers, National Library diamond, Victory Square obelisk, the
+Red Church and the TV tower) and the Lipki aviation museum. Regenerate it from
+the frozen OSM extract with:
 
 ```powershell
-pnpm run data:city        # extract + normalise + validate, ~6 min, no new downloads
+pnpm run data:city:extract     # B-2 area window from scripts/geo_config.py
+pnpm run data:city:normalize   # writes public/data/city-tiles
+pnpm run data:city:validate    # coverage report
 ```
 
-Then open **http://127.0.0.1:5173/?dataset=city** — the engine fits the camera
-to the city bounds, streams tiles nearest-first and keeps a bounded resident set.
+The tile payload carries an optional per-building `styleVariant` record
+(`schema: 1`, recipe id `0..37`, provenance, eligibility tokens) and the manifest
+records `styleSchema`, `sourceDatasetId`, `sourceInputSha256`, `styleRunId` and
+`styleRecipeCounts`. Older payloads without the style record still render: they
+resolve the frozen legacy archetype presets (`27..37`) and reproduce the exact
+previous facade values.
 
 ### Lipki aviation museum
 
@@ -75,10 +80,10 @@ drone photo, with 9 empty spots where no 3D model exists. The exhibits are a
 static payload (`public/data/museum/`, ~2.3 MiB binary, 87 k triangles) loaded
 next to the streamed tiles.
 
-Open **http://127.0.0.1:5173/?dataset=city&focus=lipki** or press
-**«Авиамузей «Липки»»** in the control panel (from the central district the
-button switches to the city dataset). Clicking an aircraft opens a card with a rotatable 3D model, a short description and links to the museum website. Regenerate the payload after changing the
-placement with:
+Open **http://127.0.0.1:5173/?focus=lipki** or press
+**«Авиамузей «Липки»»** in the control panel. Clicking an aircraft opens a card
+with a rotatable 3D model, a short description and links to the museum website.
+Regenerate the payload after changing the placement with:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/qa/export_museum_web.py
@@ -89,10 +94,11 @@ and the per-exhibit checks are documented in
 [`assets/aviation-museum/analysis/report_lipki.md`](assets/aviation-museum/analysis/report_lipki.md).
 
 
-## Regenerating the pilot data (optional)
+## Regenerating the complete-city data (optional)
 
-The offline pipeline downloads the OSM extract for Minsk, extracts the pilot
-area, normalises/projects/infers heights and writes the tile payloads.
+The offline pipeline extracts the B-2 area window from the frozen OSM extract,
+normalises/projects/infers heights, assigns the style recipes and writes the tile
+payloads.
 
 ```powershell
 # once: python environment with the geospatial stack
@@ -102,8 +108,8 @@ python -m venv .venv
 # download the BBBike Minsk OSM extract (~35 MB, cached; -Full for Geofabrik Belarus)
 pnpm run data:download
 
-# extract → normalise → validate (≈1 min total)
-pnpm run data:all
+# complete city: extract → normalise → validate (≈9 min; the tree budget is 2 M)
+pnpm run data:city
 ```
 
 Outputs:
@@ -111,50 +117,52 @@ Outputs:
 | Path | Content |
 | --- | --- |
 | `data/raw/Minsk.osm.pbf` | raw BBBike Minsk extract (git-ignored) |
-| `data/interim/minsk_raw.geojson` | pilot-area features in WGS84 (git-ignored) |
-| `public/data/tiles/manifest.json` | tile index, counts, attribution |
-| `public/data/tiles/<x>_<y>.json` | per-tile renderer payload (512 m tiles) |
-| `data/processed/coverage.json` | coverage + provenance statistics |
-| `docs/COVERAGE_REPORT.md` | generated coverage/validity report |
+| `data/interim/city_raw_b2.geojson` | complete-city features in WGS84 (git-ignored) |
+| `public/data/city-tiles/manifest.json` | tile index, counts, attribution, style run |
+| `public/data/city-tiles/<x>_<y>.json` | per-tile renderer payload (1024 m tiles) |
+| `data/processed/coverage_city_b2.json` | coverage + provenance statistics |
+| `docs/COVERAGE_REPORT_CITY.md` | generated coverage/validity report |
 
-The pilot area and tile size are configured in `scripts/geo_config.py`
-(mirrored in `src/shared/config.ts`). The whole pipeline (`data:all`) takes about
-two minutes from scratch and is deterministic: the same PBF produces byte-identical
-tiles.
+The area rectangle and tile size are configured in `scripts/geo_config.py`
+(mirrored in `src/shared/config.ts`). The same PBF produces byte-identical tiles
+apart from the deliberately recorded `generatedAt` field.
 
 ## Tests
 
 ```powershell
 pnpm run typecheck      # TypeScript, strict
-pnpm test               # Vitest: geometry, roofs, facades, environment,
-                        #   road surfaces/network, tile maths, config sync,
-                        #   curated landmarks, real-tile data
-pnpm run test:data      # Python unit tests of the road normalization rules
+pnpm test               # Vitest: geometry, roofs, facades, style registry,
+                        #   environment, road surfaces/network, tile maths,
+                        #   config sync, curated landmarks, real-tile data
+pnpm run test:data      # Python unit tests (style selector, road rules, trees)
 pnpm run qa:road-audit  # independent audit of the generated road payload
-pnpm run test:e2e       # Playwright: 13 browser tests (WebGL; SwiftShader by default)
+pnpm run test:e2e       # Playwright: browser tests (WebGL; SwiftShader by default)
 $env:QA_GPU='1'; pnpm run test:e2e   # same, but on the hardware GPU (faster, realistic FPS)
+pnpm run qa:buildings:gallery   # 27-recipe L1 gallery capture + gallery-results.json
+pnpm run qa:buildings:audit     # styled-city contract audit (source preservation)
 pnpm run qa:capture     # 6 canonical screenshots + stats.json + console.log
 pnpm run qa:road-shots  # close-up road/junction screenshot sweep
-pnpm exec tsx scripts/qa/geometryAudit.ts  # headless geometry audit of pilot tiles
 ```
 
-**Verified 2026-11-06:** TypeScript/build passed, **440 Vitest passed (5 skipped)**
-and **14 hardware-WebGL Playwright tests passed**. Rail heads now keep the same
-palette and physical width across ground/deck LODs; see
-[`docs/RAIL_LOD_2026-11-06.md`](docs/RAIL_LOD_2026-11-06.md). The default trees use
-rounded, asymmetric instanced crowns (review C); all **316 704 city trees** retain
-their positions and nominal dimensions. Canopy palette/visibility can change
-without rebuilding tiles; mobile/touch and full seasons remain unfinished.
+**Building-quality evidence:** `docs/building-quality/` holds the frozen baseline,
+the L0 review-case registry, the style-selection rules, the L1 gallery results and
+the styled-city contract audit; `docs/building-quality/REVIEW.md` records the
+honest L0–L4 status. Screenshots live in the git-ignored
+`screenshots/building-quality/<sha>/`.
 
-On the reference RTX 3080 Laptop (ANGLE/D3D11, 1600×900, internal 640×360),
-the same 144-tile comparison reduces tree buffers by **87.95%** and the resident
-buffer counter from **731.20 to 378.42 MiB**. The detailed crowns increase
-overview frame time from **4.70 to 6.46 ms** (p95 6.10 → 8.10 ms), with
-**593 draw calls / 7 875 933 visible triangles**. Vsync and the FPS cap were off
-for this benchmark; these are desktop results, not phone verification. See
-[`docs/TREE_INSTANCING_2026-11-06.md`](docs/TREE_INSTANCING_2026-11-06.md)
-for per-view results and review commands. Screenshots are in `screenshots/`
-(git-ignored); current comparisons are under `screenshots/tree-instancing/`.
+**Verified 2026-11-06 (historical, before the building-variety work):** TypeScript/build
+passed, **440 Vitest passed (5 skipped)** and **14 hardware-WebGL Playwright tests
+passed**. Rail heads keep the same palette and physical width across ground/deck
+LODs; see [`docs/RAIL_LOD_2026-11-06.md`](docs/RAIL_LOD_2026-11-06.md). The default
+trees use rounded, asymmetric instanced crowns (review C). Canopy
+palette/visibility can change without rebuilding tiles; mobile/touch and full
+seasons remain unfinished.
+
+On the reference RTX 3080 Laptop (ANGLE/D3D11, 1600×900, internal 640×360), the
+historical 144-tile comparison reduced tree buffers by **87.95%** and the resident
+buffer counter from **731.20 to 378.42 MiB**. Those numbers describe the old
+12 × 12 km dataset and are kept as dated evidence only; see
+[`docs/TREE_INSTANCING_2026-11-06.md`](docs/TREE_INSTANCING_2026-11-06.md).
 
 ## Controls
 

@@ -197,6 +197,14 @@
 - Оригинал: `raw/mi-26/mi-26.glb`
 - Децимированная копия: `decimated/mi-26/mi-26.glb`
 
+## Cessna Citation X (citation-x)
+
+- Автор: SnowCrow
+- Лицензия: CC Attribution
+- Источник: https://sketchfab.com/3d-models/1d7bb0b48301482f8145cb121268dd7f
+- Оригинал: `raw/citation-x/citation-x.glb`
+- Децимированная копия: `decimated/citation-x/citation-x.glb`
+
 ## Нет CC-модели (нужно моделирование или покупка)
 
 - Ил-14П (il-14)

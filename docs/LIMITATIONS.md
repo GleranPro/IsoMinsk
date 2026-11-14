@@ -301,3 +301,37 @@ Pilot manifest provenance (654 buildings; not city-wide percentages):
 - Architectural heuristics, inferred heights and procedurally placed trees are
   original work and are not OSM facts; they should not be presented as surveyed
   data.
+
+## 9. Procedural building style recipes (payload 0.5.0)
+
+- The 27 style recipes are **visual families, not surveyed architectural
+  attribution**. A recipe is chosen from mapped evidence (broad archetype,
+  explicit `building:material`, `roof:shape`, `start_date`, `building:levels`,
+  footprint geometry) plus a stable hash of the feature id; the payload records
+  whether the choice was `osm_hint` or `heuristic`. The info panel must not
+  present it as a measured era or construction material.
+- Massing profiles (`end_pavilion`, `stepped`) only split convex single-ring
+  footprints inside the declared envelope. Courtyards, concave rings, explicit
+  `building:part` topology and small volumes deliberately keep the source
+  massing, so some buildings of a family look simpler than the family's
+  catalogue description.
+- Facade detail modules (piers, cornices, balconies, canopies, roof boxes) are
+  bounded decorative geometry: they never exceed the mapped total height and
+  never project more than 0.45 m outside the source footprint. They are not
+  surveyed balconies or entrances.
+- Variant roof envelopes (mansard, sawtooth, clerestory) are only attempted on
+  flat mapped roofs whose footprint is eligible; a declared sloped `roof:shape`
+  always stays authoritative. The roof rise is taken from the top slice of the
+  declared height, so the silhouette maximum is preserved but the eave line can
+  sit slightly lower than the source `height`.
+- The far representation of the same territory is still the single accepted
+  streamer path in this branch: the atomic full/far state machine, far export and
+  transition probe specified for Task 7 are **not implemented**, so no L3
+  full/far coverage or journey evidence exists yet.
+- Performance evidence for the heavier geometry is **not** recorded in this
+  branch: SwiftShader captures prove correctness only, and the hardware-GPU
+  near-scene triangle/byte/frame-time gate (Task 8) still has to be run on the
+  reference machine.
+- L1 gallery captures are software-WebGL correctness images; L2 neighbourhood
+  pairs are scripted but the complete 31-case before/after matrix and the
+  owner's visual sign-off are outstanding (see `docs/building-quality/REVIEW.md`).
