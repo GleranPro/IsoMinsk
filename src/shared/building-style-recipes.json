@@ -1,0 +1,272 @@
+[
+  {
+    "id": 0,
+    "name": "ensemble_symmetric",
+    "archetype": "stalin",
+    "profile": "frame",
+    "facade": "monument",
+    "roof": "source",
+    "details": ["entrance", "pilasters", "cornice"],
+    "palette": ["#c39a63", "#cba66f", "#d0b078"]
+  },
+  {
+    "id": 1,
+    "name": "end_pavilion",
+    "archetype": "stalin",
+    "profile": "end_pavilion",
+    "facade": "monument",
+    "roof": "source",
+    "details": ["entrance", "cornice", "pavilion"],
+    "palette": ["#c7a166", "#bd955f", "#c39a63"]
+  },
+  {
+    "id": 2,
+    "name": "restrained_monument",
+    "archetype": "stalin",
+    "profile": "frame",
+    "facade": "grid",
+    "roof": "source",
+    "details": ["cornice", "pilasters"],
+    "palette": ["#c0aa86", "#b8a27e", "#c9b490"]
+  },
+  {
+    "id": 3,
+    "name": "brick_punched",
+    "archetype": "khrushchev",
+    "profile": "base",
+    "facade": "grid",
+    "roof": "source",
+    "details": ["entrance", "cornice"],
+    "palette": ["#a86a52", "#b07a5e", "#a3674f"]
+  },
+  {
+    "id": 4,
+    "name": "balcony_slab",
+    "archetype": "khrushchev",
+    "profile": "base",
+    "facade": "balcony_stack",
+    "roof": "source",
+    "details": ["balconies", "cornice", "entrance"],
+    "palette": ["#b7bda4", "#c1c7af", "#adb39a"]
+  },
+  {
+    "id": 5,
+    "name": "pitched_low_block",
+    "archetype": "khrushchev",
+    "profile": "base",
+    "facade": "historic",
+    "roof": "hip",
+    "details": ["cornice", "parapet"],
+    "palette": ["#b4b9a0", "#adb39a", "#c1c7af"]
+  },
+  {
+    "id": 6,
+    "name": "recessed_loggia",
+    "archetype": "panel",
+    "profile": "base",
+    "facade": "loggia",
+    "roof": "source",
+    "details": ["loggia", "rail", "entrance"],
+    "palette": ["#a6b1b5", "#9fabb0", "#aab5b9"]
+  },
+  {
+    "id": 7,
+    "name": "endwall_tower",
+    "archetype": "panel",
+    "profile": "base",
+    "facade": "grid",
+    "roof": "source",
+    "details": ["endwall_blank", "parapet"],
+    "palette": ["#b2bcbf", "#bfc5c5", "#b8c0c1"]
+  },
+  {
+    "id": 8,
+    "name": "staircore_spine",
+    "archetype": "panel",
+    "profile": "base",
+    "facade": "staircore",
+    "roof": "source",
+    "details": ["staircore", "parapet"],
+    "palette": ["#aab5b9", "#b2bcbf", "#9fabb0"]
+  },
+  {
+    "id": 9,
+    "name": "podium_tower",
+    "archetype": "modern",
+    "profile": "base",
+    "facade": "ribbon",
+    "roof": "source",
+    "details": ["entrance", "canopy", "parapet"],
+    "palette": ["#93b6ba", "#8fb0b3", "#9dbdc0"]
+  },
+  {
+    "id": 10,
+    "name": "stepped_residential",
+    "archetype": "modern",
+    "profile": "stepped",
+    "facade": "balcony_stack",
+    "roof": "source",
+    "details": ["balconies", "stepped", "parapet"],
+    "palette": ["#b7cfcd", "#a7c3c5", "#9dbdc0"]
+  },
+  {
+    "id": 11,
+    "name": "framed_residential",
+    "archetype": "modern",
+    "profile": "frame",
+    "facade": "loggia",
+    "roof": "source",
+    "details": ["pilasters", "loggia", "parapet"],
+    "palette": ["#9dbdc0", "#a7c3c5", "#93b6ba"]
+  },
+  {
+    "id": 12,
+    "name": "curtain_ribbon",
+    "archetype": "office",
+    "profile": "base",
+    "facade": "ribbon",
+    "roof": "source",
+    "details": ["cornice", "canopy"],
+    "palette": ["#a9b1b3", "#b3b8b4", "#9ba5a9"]
+  },
+  {
+    "id": 13,
+    "name": "framed_stone_grid",
+    "archetype": "office",
+    "profile": "frame",
+    "facade": "grid",
+    "roof": "source",
+    "details": ["pilasters", "cornice", "entrance"],
+    "palette": ["#b7bdbb", "#c0c5c2", "#a9b1b3"]
+  },
+  {
+    "id": 14,
+    "name": "commercial_podium",
+    "archetype": "office",
+    "profile": "base",
+    "facade": "ribbon",
+    "roof": "source",
+    "details": ["canopy", "entrance", "cornice"],
+    "palette": ["#9ba5a9", "#909ba0", "#a9b1b3"]
+  },
+  {
+    "id": 15,
+    "name": "plaster_street_house",
+    "archetype": "historic",
+    "profile": "base",
+    "facade": "historic",
+    "roof": "source",
+    "details": ["entrance", "cornice"],
+    "palette": ["#c9a181", "#c49a76", "#b98b76"]
+  },
+  {
+    "id": 16,
+    "name": "brick_gabled_house",
+    "archetype": "historic",
+    "profile": "base",
+    "facade": "historic",
+    "roof": "source",
+    "details": ["gable", "cornice"],
+    "palette": ["#a97a58", "#b07a62", "#b98a63"]
+  },
+  {
+    "id": 17,
+    "name": "mansard_attic",
+    "archetype": "historic",
+    "profile": "base",
+    "facade": "historic",
+    "roof": "mansard",
+    "details": ["cornice", "roof_service"],
+    "palette": ["#b98a63", "#c49a76", "#b07a62"]
+  },
+  {
+    "id": 18,
+    "name": "sawtooth_factory",
+    "archetype": "industrial",
+    "profile": "base",
+    "facade": "clerestory",
+    "roof": "sawtooth",
+    "details": ["industrial_roof", "clerestory"],
+    "palette": ["#9a9b8e", "#8f9186", "#a4a496"]
+  },
+  {
+    "id": 19,
+    "name": "broad_clerestory_hall",
+    "archetype": "industrial",
+    "profile": "base",
+    "facade": "clerestory",
+    "roof": "clerestory",
+    "details": ["industrial_roof", "clerestory", "parapet"],
+    "palette": ["#95968a", "#9a9b8e", "#8f9186"]
+  },
+  {
+    "id": 20,
+    "name": "service_workshop",
+    "archetype": "industrial",
+    "profile": "base",
+    "facade": "blank_service",
+    "roof": "source",
+    "details": ["entrance", "parapet", "roof_service"],
+    "palette": ["#8f9186", "#95968a", "#9a9b8e"]
+  },
+  {
+    "id": 21,
+    "name": "hipped_house",
+    "archetype": "small",
+    "profile": "base",
+    "facade": "historic",
+    "roof": "hip",
+    "details": ["entrance", "cornice"],
+    "palette": ["#b0a694", "#b8ae9c", "#a89d8a"]
+  },
+  {
+    "id": 22,
+    "name": "flat_service_annex",
+    "archetype": "small",
+    "profile": "base",
+    "facade": "blank_service",
+    "roof": "source",
+    "details": ["parapet"],
+    "palette": ["#a1968a", "#a89d8a", "#b0a694"]
+  },
+  {
+    "id": 23,
+    "name": "gabled_workshop",
+    "archetype": "small",
+    "profile": "base",
+    "facade": "blank_service",
+    "roof": "source",
+    "details": ["gable", "entrance"],
+    "palette": ["#a89d8a", "#b0a694", "#a1968a"]
+  },
+  {
+    "id": 24,
+    "name": "school_hospital_wings",
+    "archetype": "civic",
+    "profile": "base",
+    "facade": "grid",
+    "roof": "source",
+    "details": ["entrance", "canopy", "cornice"],
+    "palette": ["#c6beac", "#bdb7a6", "#cbc2ad"]
+  },
+  {
+    "id": 25,
+    "name": "public_colonnade",
+    "archetype": "civic",
+    "profile": "frame",
+    "facade": "monument",
+    "roof": "source",
+    "details": ["pilasters", "entrance", "cornice"],
+    "palette": ["#d2ccbb", "#cbc2ad", "#c6beac"]
+  },
+  {
+    "id": 26,
+    "name": "assembly_hall",
+    "archetype": "civic",
+    "profile": "base",
+    "facade": "assembly_hall",
+    "roof": "source",
+    "details": ["clerestory", "parapet"],
+    "palette": ["#bdb7a6", "#c6beac", "#cbc2ad"]
+  }
+]

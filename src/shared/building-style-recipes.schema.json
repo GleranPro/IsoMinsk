@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://voxelminsk.invalid/schemas/building-style-recipes.schema.json",
+  "title": "Isometric Minsk procedural building style recipe catalog",
+  "description": "Canonical schema-1 recipe catalog shared by the TypeScript registry (src/shared/buildingStyles.ts) and the offline Python selector (scripts/normalize/style_recipes.py). Exactly 27 family recipes with stable ids 0..26. Recipe ids 27..37 are reserved at runtime for the 11 legacy archetype presets and must never appear in this catalog.",
+  "type": "array",
+  "minItems": 27,
+  "maxItems": 27,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "name", "archetype", "profile", "facade", "roof", "details", "palette"],
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 26,
+        "description": "Stable family id. Never renumber an existing family."
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 48,
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "description": "Stable family name, unique in the catalog."
+      },
+      "archetype": {
+        "type": "string",
+        "enum": [
+          "stalin",
+          "khrushchev",
+          "panel",
+          "modern",
+          "office",
+          "historic",
+          "industrial",
+          "small",
+          "civic",
+          "palace",
+          "stadium"
+        ],
+        "description": "Broad archetype the family is compatible with. A family never overrides palace/stadium, which keep their legacy presets."
+      },
+      "profile": {
+        "type": "string",
+        "enum": ["base", "frame", "end_pavilion", "stepped"],
+        "description": "Massing profile adapter: base keeps the source volumes unchanged."
+      },
+      "facade": {
+        "type": "string",
+        "enum": [
+          "monument",
+          "historic",
+          "grid",
+          "loggia",
+          "balcony_stack",
+          "staircore",
+          "ribbon",
+          "clerestory",
+          "blank_service",
+          "assembly_hall"
+        ],
+        "description": "Shader motif family; dispatched by one integer per recipe, never by 27 branches."
+      },
+      "roof": {
+        "type": "string",
+        "enum": ["source", "hip", "mansard", "sawtooth", "clerestory"],
+        "description": "Roof envelope the family may use when the source roof is compatible; source keeps the mapped roof."
+      },
+      "details": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "enum": [
+            "entrance",
+            "pilasters",
+            "cornice",
+            "parapet",
+            "balconies",
+            "loggia",
+            "rail",
+            "pavilion",
+            "stepped",
+            "canopy",
+            "roof_service",
+            "industrial_roof",
+            "clerestory",
+            "gable",
+            "endwall_blank",
+            "staircore"
+          ]
+        },
+        "description": "Reusable geometry modules this family may emit. Each module has a safe skip condition."
+      },
+      "palette": {
+        "type": "array",
+        "minItems": 3,
+        "maxItems": 3,
+        "items": {
+          "type": "string",
+          "pattern": "^#[0-9a-f]{6}$"
+        },
+        "description": "Coordinated sRGB facade colours picked by the per-building hash only."
+      }
+    }
+  }
+}

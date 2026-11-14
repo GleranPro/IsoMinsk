@@ -17,11 +17,26 @@
  *   aColor    vec3  sRGB base colour (linearised in the shader)
  *   aStyle    vec4  x = archetype id, y = floor height (m),
  *                   z = ground floor height (m), w = per-building seed [0,1]
- *   aFace     vec4  x = face kind (see FACE_KIND), y = style flags bitmask,
- *                   z = trim/cornice intensity [0,1], w = detail scale hint
+ *   aFace     vec4  x = face kind (see FACE_KIND),
+ *                   y = packed style integer: bits 0..7 = STYLE_FLAG bitmask,
+ *                       bits 8..15 = style recipe id (0..255; schema 1 uses
+ *                       0..26 for the family catalog and 27..37 for the legacy
+ *                       archetype presets),
+ *                   z = trim/cornice intensity [0..1], w = detail scale hint
+ *
+ * The packed integer stays exactly representable in float32 (<= 16 bits), so the
+ * shader can mask the flag byte and read the recipe index without precision
+ * loss. Roof faces keep aFace.w = ROOF_SHAPE_ID.
  */
 
 import type { Archetype, RoofShape } from './types';
+
+/** Bit position of the recipe id inside the packed `aFace.y` integer. */
+export const STYLE_RECIPE_SHIFT = 8;
+/** Mask of the style flag byte inside the packed `aFace.y` integer. */
+export const STYLE_FLAG_MASK = 0xff;
+/** Largest recipe id schema 1 may transmit (bits 8..15). */
+export const STYLE_RECIPE_MAX = 255;
 
 /** Face kinds understood by the facade shader. */
 export const FACE_KIND = {
