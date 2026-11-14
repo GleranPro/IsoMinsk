@@ -12,7 +12,7 @@
    "url": "https://opengameart.org/content/an-2-airplane-lowpoly",
    "status": "downloaded",
    "decimated": "decimated/an-2/an-2.glb",
-   "triangles": "[decimate] an2.fbx: 1848 -> 1848 tris (ratio 1.000), glb 0.37 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\an-2\\an-2.glb"
+   "triangles": "[decimate] an2.fbx: 1848 -> 1848 tris (ratio 1.000), glb 0.37 MB -> <repo>\\assets\\aviation-museum\\decimated\\an-2\\an-2.glb"
   },
   {
    "slug": "an-26",
@@ -25,7 +25,7 @@
    "raw": "raw/an-26/an-26.glb",
    "bytes": 9514208,
    "decimated": "decimated/an-26/an-26.glb",
-   "triangles": "[decimate] an-26.glb: 62782 -> 6000 tris (ratio 0.096), glb 3.39 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\an-26\\an-26.glb"
+   "triangles": "[decimate] an-26.glb: 62782 -> 6000 tris (ratio 0.096), glb 3.39 MB -> <repo>\\assets\\aviation-museum\\decimated\\an-26\\an-26.glb"
   },
   {
    "slug": "il-14",
@@ -47,7 +47,7 @@
    "raw": "raw/il-18/il-18.glb",
    "bytes": 3066820,
    "decimated": "decimated/il-18/il-18.glb",
-   "triangles": "[decimate] il-18.glb: 48779 -> 2500 tris (ratio 0.051), glb 0.61 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\il-18\\il-18.glb"
+   "triangles": "[decimate] il-18.glb: 48779 -> 2500 tris (ratio 0.051), glb 0.61 MB -> <repo>\\assets\\aviation-museum\\decimated\\il-18\\il-18.glb"
   },
   {
    "slug": "l-29",
@@ -60,7 +60,7 @@
    "raw": "raw/l-29/l-29.glb",
    "bytes": 10039952,
    "decimated": "decimated/l-29/l-29.glb",
-   "triangles": "[decimate] l-29.glb: 85481 -> 2500 tris (ratio 0.029), glb 6.05 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\l-29\\l-29.glb"
+   "triangles": "[decimate] l-29.glb: 85481 -> 2500 tris (ratio 0.029), glb 6.05 MB -> <repo>\\assets\\aviation-museum\\decimated\\l-29\\l-29.glb"
   },
   {
    "slug": "mig-15",
@@ -73,7 +73,7 @@
    "raw": "raw/mig-15/mig-15.glb",
    "bytes": 2054440,
    "decimated": "decimated/mig-15/mig-15.glb",
-   "triangles": "[decimate] mig-15.glb: 13272 -> 2500 tris (ratio 0.188), glb 1.56 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-15\\mig-15.glb"
+   "triangles": "[decimate] mig-15.glb: 13272 -> 2500 tris (ratio 0.188), glb 1.56 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-15\\mig-15.glb"
   },
   {
    "slug": "mig-17",
@@ -86,7 +86,7 @@
    "bytes": 2823232,
    "raw": "raw/mig-17/mig-17.glb",
    "decimated": "decimated/mig-17/mig-17.glb",
-   "triangles": "[decimate] mig-17.glb: 30250 -> 2500 tris (ratio 0.083), glb 1.14 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-17\\mig-17.glb"
+   "triangles": "[decimate] mig-17.glb: 30250 -> 2500 tris (ratio 0.083), glb 1.14 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-17\\mig-17.glb"
   },
   {
    "slug": "mig-19",
@@ -99,7 +99,7 @@
    "raw": "raw/mig-19/mig-19.glb",
    "bytes": 5580460,
    "decimated": "decimated/mig-19/mig-19.glb",
-   "triangles": "[decimate] mig-19.glb: 14928 -> 2500 tris (ratio 0.167), glb 4.37 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-19\\mig-19.glb"
+   "triangles": "[decimate] mig-19.glb: 14928 -> 2500 tris (ratio 0.167), glb 4.37 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-19\\mig-19.glb"
   },
   {
    "slug": "mig-21",
@@ -112,7 +112,7 @@
    "bytes": 1633552,
    "raw": "raw/mig-21/mig-21.glb",
    "decimated": "decimated/mig-21/mig-21.glb",
-   "triangles": "[decimate] mig-21.glb: 33343 -> 2500 tris (ratio 0.075), glb 0.32 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-21\\mig-21.glb"
+   "triangles": "[decimate] mig-21.glb: 33343 -> 2500 tris (ratio 0.075), glb 0.32 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-21\\mig-21.glb"
   },
   {
    "slug": "mig-23",
@@ -125,7 +125,7 @@
    "bytes": 15143016,
    "raw": "raw/mig-23/mig-23.glb",
    "decimated": "decimated/mig-23/mig-23.glb",
-   "triangles": "[decimate] mig-23.glb: 45500 -> 2500 tris (ratio 0.055), glb 11.71 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-23\\mig-23.glb"
+   "triangles": "[decimate] mig-23.glb: 45500 -> 2500 tris (ratio 0.055), glb 11.71 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-23\\mig-23.glb"
   },
   {
    "slug": "mig-25",
@@ -138,7 +138,7 @@
    "bytes": 2167972,
    "raw": "raw/mig-25/mig-25.glb",
    "decimated": "decimated/mig-25/mig-25.glb",
-   "triangles": "[decimate] mig-25.glb: 25523 -> 3000 tris (ratio 0.118), glb 0.92 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-25\\mig-25.glb"
+   "triangles": "[decimate] mig-25.glb: 25523 -> 3000 tris (ratio 0.118), glb 0.92 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-25\\mig-25.glb"
   },
   {
    "slug": "mig-27",
@@ -151,7 +151,7 @@
    "raw": "raw/mig-27/mig-27.glb",
    "bytes": 4462824,
    "decimated": "decimated/mig-27/mig-27.glb",
-   "triangles": "[decimate] mig-27.glb: 49063 -> 2499 tris (ratio 0.051), glb 1.15 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-27\\mig-27.glb"
+   "triangles": "[decimate] mig-27.glb: 49063 -> 2499 tris (ratio 0.051), glb 1.15 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-27\\mig-27.glb"
   },
   {
    "slug": "mig-29",
@@ -164,7 +164,7 @@
    "raw": "raw/mig-29/mig-29.glb",
    "bytes": 520244,
    "decimated": "decimated/mig-29/mig-29.glb",
-   "triangles": "[decimate] mig-29.glb: 5931 -> 2500 tris (ratio 0.422), glb 0.24 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mig-29\\mig-29.glb"
+   "triangles": "[decimate] mig-29.glb: 5931 -> 2500 tris (ratio 0.422), glb 0.24 MB -> <repo>\\assets\\aviation-museum\\decimated\\mig-29\\mig-29.glb"
   },
   {
    "slug": "su-7",
@@ -186,7 +186,7 @@
    "bytes": 2001024,
    "raw": "raw/su-17/su-17.glb",
    "decimated": "decimated/su-17/su-17.glb",
-   "triangles": "[decimate] su-17.glb: 26406 -> 2500 tris (ratio 0.095), glb 0.83 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\su-17\\su-17.glb"
+   "triangles": "[decimate] su-17.glb: 26406 -> 2500 tris (ratio 0.095), glb 0.83 MB -> <repo>\\assets\\aviation-museum\\decimated\\su-17\\su-17.glb"
   },
   {
    "slug": "su-24",
@@ -199,7 +199,7 @@
    "raw": "raw/su-24/su-24.glb",
    "bytes": 892800,
    "decimated": "decimated/su-24/su-24.glb",
-   "triangles": "[decimate] su-24.glb: 9408 -> 2500 tris (ratio 0.266), glb 0.45 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\su-24\\su-24.glb"
+   "triangles": "[decimate] su-24.glb: 9408 -> 2500 tris (ratio 0.266), glb 0.45 MB -> <repo>\\assets\\aviation-museum\\decimated\\su-24\\su-24.glb"
   },
   {
    "slug": "su-25",
@@ -212,7 +212,7 @@
    "raw": "raw/su-25/su-25.glb",
    "bytes": 4650200,
    "decimated": "decimated/su-25/su-25.glb",
-   "triangles": "[decimate] su-25.glb: 5165 -> 2500 tris (ratio 0.484), glb 4.46 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\su-25\\su-25.glb"
+   "triangles": "[decimate] su-25.glb: 5165 -> 2500 tris (ratio 0.484), glb 4.46 MB -> <repo>\\assets\\aviation-museum\\decimated\\su-25\\su-25.glb"
   },
   {
    "slug": "tu-134",
@@ -225,7 +225,7 @@
    "bytes": 1526236,
    "raw": "raw/tu-134/tu-134.glb",
    "decimated": "decimated/tu-134/tu-134.glb",
-   "triangles": "[decimate] tu-134.glb: 18580 -> 2500 tris (ratio 0.135), glb 0.73 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\tu-134\\tu-134.glb"
+   "triangles": "[decimate] tu-134.glb: 18580 -> 2500 tris (ratio 0.135), glb 0.73 MB -> <repo>\\assets\\aviation-museum\\decimated\\tu-134\\tu-134.glb"
   },
   {
    "slug": "yak-18",
@@ -238,7 +238,7 @@
    "raw": "raw/yak-18/yak-18.glb",
    "bytes": 2243836,
    "decimated": "decimated/yak-18/yak-18.glb",
-   "triangles": "[decimate] yak-18.glb: 29783 -> 2500 tris (ratio 0.084), glb 0.75 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\yak-18\\yak-18.glb"
+   "triangles": "[decimate] yak-18.glb: 29783 -> 2500 tris (ratio 0.084), glb 0.75 MB -> <repo>\\assets\\aviation-museum\\decimated\\yak-18\\yak-18.glb"
   },
   {
    "slug": "yak-25",
@@ -260,7 +260,7 @@
    "raw": "raw/yak-28/yak-28.glb",
    "bytes": 7991336,
    "decimated": "decimated/yak-28/yak-28.glb",
-   "triangles": "[decimate] yak-28.glb: 15216 -> 2500 tris (ratio 0.164), glb 7.22 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\yak-28\\yak-28.glb"
+   "triangles": "[decimate] yak-28.glb: 15216 -> 2500 tris (ratio 0.164), glb 7.22 MB -> <repo>\\assets\\aviation-museum\\decimated\\yak-28\\yak-28.glb"
   },
   {
    "slug": "yak-40",
@@ -273,7 +273,7 @@
    "raw": "raw/yak-40/yak-40.glb",
    "bytes": 1393192,
    "decimated": "decimated/yak-40/yak-40.glb",
-   "triangles": "[decimate] yak-40.glb: 12019 -> 6000 tris (ratio 0.499), glb 1.11 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\yak-40\\yak-40.glb"
+   "triangles": "[decimate] yak-40.glb: 12019 -> 6000 tris (ratio 0.499), glb 1.11 MB -> <repo>\\assets\\aviation-museum\\decimated\\yak-40\\yak-40.glb"
   },
   {
    "slug": "ka-26",
@@ -295,7 +295,7 @@
    "raw": "raw/mi-1/mi-1.glb",
    "bytes": 1529196,
    "decimated": "decimated/mi-1/mi-1.glb",
-   "triangles": "[decimate] mi-1.glb: 16504 -> 2500 tris (ratio 0.151), glb 0.79 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mi-1\\mi-1.glb"
+   "triangles": "[decimate] mi-1.glb: 16504 -> 2500 tris (ratio 0.151), glb 0.79 MB -> <repo>\\assets\\aviation-museum\\decimated\\mi-1\\mi-1.glb"
   },
   {
    "slug": "mi-2",
@@ -308,7 +308,7 @@
    "raw": "raw/mi-2/mi-2.glb",
    "bytes": 2319484,
    "decimated": "decimated/mi-2/mi-2.glb",
-   "triangles": "[decimate] mi-2.glb: 35169 -> 2500 tris (ratio 0.071), glb 0.63 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mi-2\\mi-2.glb"
+   "triangles": "[decimate] mi-2.glb: 35169 -> 2500 tris (ratio 0.071), glb 0.63 MB -> <repo>\\assets\\aviation-museum\\decimated\\mi-2\\mi-2.glb"
   },
   {
    "slug": "mi-8",
@@ -321,7 +321,7 @@
    "raw": "raw/mi-8/mi-8.glb",
    "bytes": 1157008,
    "decimated": "decimated/mi-8/mi-8.glb",
-   "triangles": "[decimate] mi-8.glb: 8414 -> 2500 tris (ratio 0.297), glb 0.75 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mi-8\\mi-8.glb"
+   "triangles": "[decimate] mi-8.glb: 8414 -> 2500 tris (ratio 0.297), glb 0.75 MB -> <repo>\\assets\\aviation-museum\\decimated\\mi-8\\mi-8.glb"
   },
   {
    "slug": "mi-24",
@@ -334,7 +334,7 @@
    "raw": "raw/mi-24/mi-24.glb",
    "bytes": 1634184,
    "decimated": "decimated/mi-24/mi-24.glb",
-   "triangles": "[decimate] mi-24.glb: 4111 -> 2500 tris (ratio 0.608), glb 1.56 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mi-24\\mi-24.glb"
+   "triangles": "[decimate] mi-24.glb: 4111 -> 2500 tris (ratio 0.608), glb 1.56 MB -> <repo>\\assets\\aviation-museum\\decimated\\mi-24\\mi-24.glb"
   },
   {
    "slug": "mi-26",
@@ -347,7 +347,7 @@
    "raw": "raw/mi-26/mi-26.glb",
    "bytes": 3017380,
    "decimated": "decimated/mi-26/mi-26.glb",
-   "triangles": "[decimate] mi-26.glb: 24218 -> 2500 tris (ratio 0.103), glb 2.12 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\mi-26\\mi-26.glb"
+   "triangles": "[decimate] mi-26.glb: 24218 -> 2500 tris (ratio 0.103), glb 2.12 MB -> <repo>\\assets\\aviation-museum\\decimated\\mi-26\\mi-26.glb"
   },
   {
    "slug": "citation-x",
@@ -361,7 +361,7 @@
    "raw": "raw/citation-x/citation-x.glb",
    "bytes": 1488888,
    "decimated": "decimated/citation-x/citation-x.glb",
-   "triangles": "[decimate] citation-x.glb: 43787 -> 4000 tris (ratio 0.091), glb 0.18 MB -> D:\\Workk\\VoxelMinsk\\assets\\aviation-museum\\decimated\\citation-x\\citation-x.glb"
+   "triangles": "[decimate] citation-x.glb: 43787 -> 4000 tris (ratio 0.091), glb 0.18 MB -> <repo>\\assets\\aviation-museum\\decimated\\citation-x\\citation-x.glb"
   }
  ]
 }

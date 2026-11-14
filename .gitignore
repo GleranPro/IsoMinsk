@@ -19,6 +19,11 @@ __pycache__/
 # the GitHub Pages workflow builds the artifact from a clean checkout and cannot
 # regenerate or download the accepted dataset. Regenerate it locally with
 # `pnpm run data:city` only when intentionally replacing the release.
+# Working datasets that must never be published or committed: the old B-2
+# candidate and the previous city duplicate. Only public/data/city-tiles is the
+# release payload.
+public/data/city-tiles-b2/
+public/data/city-tiles-current/
 data/interim/city_*.geojson
 data/interim/city_*.json
 data/processed/coverage_city.json

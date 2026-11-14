@@ -2,7 +2,7 @@
  "schema": 2,
  "tilesDir": "public/data/city-tiles-b2",
  "coverage": "data/processed/coverage_city_b2.json",
- "protectedBaseline": "D:\\Workk\\VoxelMinsk\\.agents\\worktrees\\procedural-building-variety\\docs\\building-quality\\BASELINE.json",
+ "protectedBaseline": "<repo>\\docs\\building-quality\\BASELINE.json",
  "addressReconciliation": {
   "frozenAreaAddresses": 437,
   "derivedAreaAddresses": 437,
@@ -151,12 +151,12 @@
   {
    "name": "accepted baseline present",
    "ok": true,
-   "detail": "D:\\Workk\\VoxelMinsk\\.agents\\worktrees\\procedural-building-variety\\docs\\building-quality\\BASELINE.json"
+   "detail": "<repo>\\docs\\building-quality\\BASELINE.json"
   },
   {
    "name": "working dataset unchanged",
    "ok": true,
-   "detail": "public/data/city-tiles manifest differs from D:\\Workk\\VoxelMinsk\\.agents\\worktrees\\procedural-building-variety\\docs\\building-quality\\BASELINE.json"
+   "detail": "public/data/city-tiles manifest differs from <repo>\\docs\\building-quality\\BASELINE.json"
   },
   {
    "name": "protected input untouched: data/processed/coverage_city_b2.json",
