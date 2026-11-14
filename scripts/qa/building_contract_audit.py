@@ -345,7 +345,7 @@ def main() -> int:
             "familyRecipeIdsUsed": family_ids,
             "legacyRecipeIdsUsed": legacy_ids,
             "recipeCounts": {str(key): value for key, value in sorted(recipe_counts.items())},
-            "paletteCounts": {str(key): len(value) for key, value in sorted(palette_by_recipe.items())},
+            "paletteFamilies": {str(key): len(value) for key, value in sorted(palette_by_recipe.items())},
             "perArchetype": per_archetype,
             "galleryAvailable": gallery_available,
             "galleryRecipeIds": sorted(set(gallery_ids)),

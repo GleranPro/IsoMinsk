@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "generatedAt": "2026-11-14T13:52:59+00:00",
+ "generatedAt": "2026-11-14T20:18:04+00:00",
  "before": {
   "directory": "public\\data\\city-tiles",
   "manifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da",
@@ -98,7 +98,7 @@
    "36": 2,
    "37": 19
   },
-  "paletteCounts": {
+  "paletteFamilies": {
    "0": 1,
    "1": 1,
    "2": 1,
@@ -225,8 +225,36 @@
     "eligible": true
    }
   },
-  "galleryAvailable": false,
-  "galleryRecipeIds": []
+  "galleryAvailable": true,
+  "galleryRecipeIds": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26
+  ]
  },
  "failures": [],
  "checks": [
