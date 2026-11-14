@@ -38,6 +38,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import sys
 import time
 from collections import Counter, defaultdict
@@ -59,7 +60,6 @@ from shapely.geometry import (  # noqa: E402
 from shapely.ops import linemerge, polygonize, unary_union  # noqa: E402
 
 from geo_config import (  # noqa: E402
-    CITY_SIZE_M,
     CITY_TILE_SIZE_M,
     DEFAULT_FLOOR_HEIGHT_M,
     EPSG_UTM35N,
@@ -70,7 +70,11 @@ from geo_config import (  # noqa: E402
     PILOT_CENTER_LON,
     PILOT_SIZE_M,
     TILE_SIZE_M,
+    area_bounds_m,
+    tile_index_for_point,
+    tile_range,
 )
+from geo_window import area_window_wgs84, window_covers  # noqa: E402
 from road_network import build_road_network  # noqa: E402
 from bridge_decks import bridge_decks, stroke_footprint  # noqa: E402
 from trees import build_trees  # noqa: E402
@@ -82,6 +86,7 @@ from ground_strokes import (  # noqa: E402
     rail_strokes,
     tram_platforms,
 )
+from aeroway import build_aeroway  # noqa: E402
 
 GROUND_STROKE_MARGIN_M = 64.0
 
@@ -855,6 +860,198 @@ ATTRACTION_CURATION: dict[int, dict] = {
 
 # --- main normalisation -----------------------------------------------------
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_input_meta(
+    meta: dict, area: str, *, required: bool, label: str
+) -> str | None:
+    """Reject inputs extracted for another area / snapshot / origin.
+
+    A stale `city_raw.geojson` from the pre-B-2 12 km extraction would otherwise
+    produce 399 formally existing but geographically incomplete tiles. The window
+    check uses the same exact UTM conversion as the extractor, not the
+    metres-per-degree approximation.
+
+    `required=True` (the city area) additionally demands every field, including
+    the PBF SHA-256; the pilot keeps the legacy tolerant mode.
+    """
+    if not meta:
+        return (
+            f"{label} has no meta block; re-run scripts/ingest/extract.py"
+            if required else None
+        )
+    required_fields = ("area", "epsg", "center", "window", "pbf", "pbf_size", "pbf_sha256")
+    missing = [key for key in required_fields if key not in meta]
+    if required and missing:
+        return f"{label} meta is missing: {', '.join(missing)}"
+    if meta.get("area") != area:
+        return f"{label} was extracted for area '{meta.get('area')}', not '{area}'"
+    if meta.get("epsg") != EPSG_UTM35N:
+        return f"{label} EPSG {meta.get('epsg')} != {EPSG_UTM35N}"
+    center = meta.get("center")
+    if center is not None:
+        if not (
+            isinstance(center, (list, tuple))
+            and len(center) == 2
+            and all(isinstance(value, (int, float)) for value in center)
+        ):
+            return f"{label} has a malformed extraction center"
+        if (
+            abs(center[0] - PILOT_CENTER_LAT) > 1e-6
+            or abs(center[1] - PILOT_CENTER_LON) > 1e-6
+        ):
+            return f"{label} was extracted with a different local origin"
+    elif required:
+        return f"{label} meta has no extraction center"
+    window = meta.get("window")
+    if not window:
+        return f"{label} has no extraction window"
+    expected = area_window_wgs84(area)
+    if not window_covers(tuple(window), expected):
+        return (
+            f"{label} extraction window does not cover the required area + halo "
+            f"'{area}': window {window} vs needed {expected}"
+        )
+    size = meta.get("pbf_size")
+    if required and not (isinstance(size, int) and size > 0):
+        return f"{label} meta has no positive pbf_size"
+    recorded_sha = meta.get("pbf_sha256")
+    if required and not (
+        isinstance(recorded_sha, str)
+        and len(recorded_sha) == 64
+        and all(ch in "0123456789abcdefABCDEF" for ch in recorded_sha)
+    ):
+        return f"{label} meta has no valid pbf_sha256"
+    pbf = meta.get("pbf")
+    pbf_path = ROOT / "data" / "raw" / pbf if pbf else None
+    if pbf_path is None:
+        if required:
+            return f"{label} meta has no pbf name"
+        return None
+    if not pbf_path.exists():
+        if required:
+            return f"{label} references a missing PBF: {pbf_path}"
+        return None
+    if size is not None and pbf_path.stat().st_size != size:
+        return (
+            f"{label} was extracted from a different PBF ({pbf}: {size} bytes, "
+            f"file is {pbf_path.stat().st_size})"
+        )
+    if recorded_sha:
+        actual_sha = _sha256_file(pbf_path)
+        if actual_sha != recorded_sha:
+            return (
+                f"{label} was extracted from a PBF with a different SHA-256: "
+                f"meta {recorded_sha[:12]}… vs file {actual_sha[:12]}…"
+            )
+    elif required:
+        return f"{label} meta has no pbf_sha256; re-run extract with the pinned PBF"
+    return None
+
+
+def smallest_containing_building(
+    centroid: Point,
+    polygons: "list[Polygon]",
+    tree: "STRtree | None",
+    extra: "list[tuple[int, Polygon]]" = (),
+) -> int | None:
+    """Index of the smallest building polygon that contains `centroid`.
+
+    `tree` indexes `polygons`; `extra` holds synthetic orphan parents created
+    later in the loop (they keep the historical behaviour where an orphan part
+    becomes a building and can parent a subsequent part). Kept as a pure helper
+    so the association rules stay unit-tested after moving from O(parts x
+    buildings) to an STRtree candidate query.
+    """
+    best_index = None
+    best_area = float("inf")
+    candidates = tree.query(centroid) if tree is not None else range(len(polygons))
+    for raw_index in candidates:
+        index = int(raw_index)
+        poly = polygons[index]
+        if poly.area < best_area and poly.contains(centroid):
+            best_area = poly.area
+            best_index = index
+    for index, poly in extra:
+        if poly.area < best_area and poly.contains(centroid):
+            best_area = poly.area
+            best_index = index
+    return best_index
+
+
+def tree_budget_policy_error(
+    scale: float, *, is_city: bool, allow_thinning: bool
+) -> str | None:
+    """Refuse an implicit global tree thinning for the city dataset.
+
+    `trees_budget_scale < 1` means every vegetation zone was scaled down, i.e.
+    the whole city (including the already accepted centre) got sparser. That
+    must be an explicit decision (`--allow-tree-thinning`) or a raised
+    `--max-trees`, never a silent side effect of growing the area.
+    """
+    if is_city and not allow_thinning and scale < 0.999:
+        return (
+            f"global tree budget scale is {scale:.3f} (< 1): the whole city "
+            "would be thinned. Raise --max-trees or pass --allow-tree-thinning."
+        )
+    return None
+
+
+def _peak_rss_mb() -> float | None:
+    """Peak resident set size of this process in MiB (Windows, best effort)."""
+    try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            class _ProcessMemoryCounters(ctypes.Structure):
+                _fields_ = [
+                    ("cb", wintypes.DWORD),
+                    ("PageFaultCount", wintypes.DWORD),
+                    ("PeakWorkingSetSize", ctypes.c_size_t),
+                    ("WorkingSetSize", ctypes.c_size_t),
+                    ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                    ("PagefileUsage", ctypes.c_size_t),
+                    ("PeakPagefileUsage", ctypes.c_size_t),
+                ]
+
+            counters = _ProcessMemoryCounters()
+            counters.cb = ctypes.sizeof(counters)
+            kernel32 = ctypes.windll.kernel32
+            psapi = ctypes.windll.psapi
+            # GetCurrentProcess returns the pseudo-handle -1 as HANDLE; without
+            # explicit restype/argtypes ctypes truncates it to 32 bits and
+            # GetProcessMemoryInfo fails with ERROR_INVALID_HANDLE (6).
+            kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+            kernel32.GetCurrentProcess.argtypes = []
+            psapi.GetProcessMemoryInfo.argtypes = [
+                wintypes.HANDLE,
+                ctypes.POINTER(_ProcessMemoryCounters),
+                wintypes.DWORD,
+            ]
+            psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+            handle = kernel32.GetCurrentProcess()
+            if not psapi.GetProcessMemoryInfo(
+                handle, ctypes.byref(counters), counters.cb
+            ):
+                return None
+            return counters.PeakWorkingSetSize / (1024 * 1024)
+        import resource  # type: ignore[import-not-found]
+
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+    except Exception:
+        return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--area", choices=["pilot", "city"], default="pilot",
@@ -862,13 +1059,22 @@ def main() -> int:
     parser.add_argument("--raw", default=None)
     parser.add_argument("--trees-raw", default=None)
     parser.add_argument("--max-trees", type=int, default=None,
-                        help="city-wide safety cap on trees (default 600000 city / 90000 pilot)")
+                        help="city-wide safety cap on trees (default 1200000 city / 90000 pilot)")
+    parser.add_argument("--allow-tree-thinning", action="store_true",
+                        help="allow trees_budget_scale < 1 (global thinning of every "
+                             "vegetation zone); off by default for the city area")
     parser.add_argument("--tree-triangle-budget", type=int, default=None,
                         help="optional tiered tree-triangle budget (default: off; 0.4.2 used 1603664)")
     parser.add_argument("--max-trees-per-tile", type=int, default=None,
                         help="per-tile tree cap (default trees.MAX_TREES_PER_TILE, mirrors treeMeshes.ts)")
     parser.add_argument("--out", default=None)
     parser.add_argument("--tiles-dir", default=None)
+    parser.add_argument("--coverage-out", default=None,
+                        help="write the coverage report here (default: data/processed/...); "
+                             "use for staging runs so the live report is not overwritten")
+    parser.add_argument("--profile", action="store_true",
+                        help="print stage timings and the peak working set (RSS) "
+                             "at key checkpoints (B-2 staging evidence)")
     parser.add_argument("--tile-size", type=float, default=None)
     parser.add_argument("--pilot-size", type=float, default=None)
     parser.add_argument("--legacy-roads", action="store_true",
@@ -886,33 +1092,113 @@ def main() -> int:
     out_path = Path(args.out) if args.out else OUT_DIR / (
         "city_area_normalized.json" if is_city else "city_normalized.json"
     )
-    coverage_path = OUT_DIR / ("coverage_city.json" if is_city else "coverage.json")
+    coverage_path = (
+        Path(args.coverage_out) if args.coverage_out
+        else OUT_DIR / ("coverage_city.json" if is_city else "coverage.json")
+    )
     tiles_dir = (
         Path(args.tiles_dir) if args.tiles_dir
         else (TILES_DIR.parent / "city-tiles" if is_city else TILES_DIR)
     )
     tile_size = args.tile_size if args.tile_size else (CITY_TILE_SIZE_M if is_city else TILE_SIZE_M)
-    pilot_size = args.pilot_size if args.pilot_size else (CITY_SIZE_M if is_city else PILOT_SIZE_M)
-    # Full density (B-1): the cap is only a safety net; the city needs ~317 000.
-    max_total_trees = args.max_trees or (600000 if is_city else 90000)
+    bounds = area_bounds_m(args.area)
+    if args.pilot_size:
+        half = args.pilot_size / 2.0
+        bounds = (-half, -half, half, half)
+    minx, miny, maxx, maxy = bounds
+    pilot_rect = box(*bounds)
+
+    def inside(x: float, y: float, pad: float = 0.0) -> bool:
+        """True when a local-metre point lies in the target area (+pad)."""
+        return minx - pad <= x <= maxx + pad and miny - pad <= y <= maxy + pad
+    # Full density: the cap is only a safety net. B-2 grows the city to 23 x 19
+    # tiles (~3x the old 12 km area), so the default must not trigger the global
+    # thinning scale; the policy guard below turns an unexpected overflow into an
+    # explicit error instead of a silently sparser map.
+    max_total_trees = args.max_trees or (1200000 if is_city else 90000)
 
     if not raw_path.exists():
         print(f"ERROR: raw data not found: {raw_path}\n"
               f"Run: python scripts/ingest/extract.py --area {args.area}", file=sys.stderr)
         return 1
     t_start = time.time()
+
+    def profile(label: str) -> None:
+        """Stage timing + peak RSS checkpoint (B-2 staging evidence)."""
+        if not args.profile:
+            return
+        rss = _peak_rss_mb()
+        suffix = f", peak RSS {rss:.0f} MiB" if rss is not None else ""
+        print(f"[profile] {label}: {time.time() - t_start:.1f}s{suffix}")
     with raw_path.open(encoding="utf-8") as fh:
         raw = json.load(fh)
     features = raw["features"]
     print(f"Loaded {len(features):,} raw features from {raw_path.name} (area: {args.area})")
+    profile("raw load")
 
-    half = pilot_size / 2.0
-    pilot_rect = box(-half, -half, half, half)
-    print(f"Area: {pilot_size / 1000:.1f} x {pilot_size / 1000:.1f} km, "
+    raw_meta = raw.get("meta") or {}
+    input_error = _validate_input_meta(
+        raw_meta, args.area, required=is_city, label="raw data"
+    )
+    if input_error:
+        print(f"ERROR: {input_error}", file=sys.stderr)
+        return 1
+
+    print(f"Area: {(maxx - minx) / 1000:.3f} x {(maxy - miny) / 1000:.3f} km "
+          f"({'x'.join(str(round(v)) for v in bounds)} m), "
           f"tile size {tile_size:.0f} m, output {tiles_dir}")
 
     stats = Counter()
     warnings: list[str] = []
+
+    # --- mapped tree input (loaded and validated before any processing) ----
+    # Placement lives in trees.py; here the raw/trees pair is validated so a
+    # stale 12 km trees file cannot slip into a 399-tile build.
+    tree_doc: dict = {}
+    if not trees_raw_path.exists():
+        if is_city:
+            print(
+                f"ERROR: mapped tree input not found: {trees_raw_path}\n"
+                f"Run: python scripts/ingest/extract.py --area {args.area}",
+                file=sys.stderr,
+            )
+            return 1
+        warnings.append(f"Mapped tree data missing ({trees_raw_path.name}).")
+    else:
+        with trees_raw_path.open(encoding="utf-8") as fh:
+            tree_doc = json.load(fh)
+        print(f"Mapped tree input: {len(tree_doc.get('trees', [])):,} points, "
+              f"{len(tree_doc.get('rows', [])):,} rows")
+        tree_meta = tree_doc.get("meta") or {}
+        tree_error = _validate_input_meta(
+            tree_meta, args.area, required=is_city, label="mapped tree input"
+        )
+        if tree_error:
+            print(f"ERROR: {tree_error}", file=sys.stderr)
+            return 1
+        if tree_meta:
+            if (
+                raw_meta.get("pbf_sha256")
+                and tree_meta.get("pbf_sha256")
+                and raw_meta["pbf_sha256"] != tree_meta["pbf_sha256"]
+            ):
+                print(
+                    "ERROR: tree input and raw data were extracted from "
+                    "different PBF snapshots",
+                    file=sys.stderr,
+                )
+                return 1
+            if (
+                raw_meta.get("window")
+                and tree_meta.get("window")
+                and list(tree_meta["window"]) != list(raw_meta["window"])
+            ):
+                print(
+                    "ERROR: tree input and raw data come from different "
+                    "extraction windows",
+                    file=sys.stderr,
+                )
+                return 1
 
     # --- park attractions (ferris wheels) ---------------------------------
     # OSM nodes (`attraction=big_wheel`) with a curated radius / cabin count /
@@ -929,7 +1215,7 @@ def main() -> int:
         if not isinstance(coords, (list, tuple)) or len(coords) < 2:
             continue
         x, y = to_local(coords[0], coords[1])
-        if not (-half <= x <= half and -half <= y <= half):
+        if not inside(x, y):
             continue
         tags = feature.get("tags", {})
         osm_id = int(feature["osm_id"])
@@ -963,6 +1249,7 @@ def main() -> int:
     # --- pass 1: project / validate all polygons ---------------------------
     buildings_raw: list[dict] = []
     parts_raw: list[dict] = []
+    aeroway_raw: list[dict] = []
     surfaces: list[dict] = []
     roads_raw: list[tuple[dict, LineString]] = []
     rails_raw: list[tuple[dict, LineString]] = []
@@ -1005,6 +1292,33 @@ def main() -> int:
                     if piece.area < 8.0:
                         continue
                     surfaces.append({"tags": tags, "polygon": piece, "name": tags.get("name")})
+        elif kind == "aeroway":
+            aeroway_kind = tags.get("aeroway")
+            if aeroway_kind in {"apron", "helipad"}:
+                for poly in feature_polygons(feature):
+                    clipped = poly.intersection(pilot_rect) if not poly.within(pilot_rect) else poly
+                    for piece in iter_polygons(repair(clipped)):
+                        if piece.area < 20.0:
+                            continue
+                        aeroway_raw.append({
+                            "tags": tags,
+                            "osm_id": feature["osm_id"],
+                            "type": "polygon",
+                            "polygon": piece,
+                        })
+            elif aeroway_kind in {"runway", "taxiway"}:
+                line = feature_line(feature)
+                if line is None or not line.intersects(pilot_rect):
+                    continue
+                clipped = line.intersection(pilot_rect)
+                if clipped.is_empty:
+                    continue
+                aeroway_raw.append({
+                    "tags": tags,
+                    "osm_id": feature["osm_id"],
+                    "type": "line",
+                    "line": clipped,
+                })
         elif kind in {"highway", "railway", "waterway"}:
             line = feature_line(feature)
             if line is None:
@@ -1035,7 +1349,7 @@ def main() -> int:
                 stats["crossings_invalid"] += 1
                 continue
             x, y = to_local(coords[0], coords[1])
-            if not (-half <= x <= half and -half <= y <= half):
+            if not inside(x, y):
                 stats["crossings_outside"] += 1
                 continue
             crossing_nodes.append({
@@ -1072,7 +1386,7 @@ def main() -> int:
         avenue_is_real = True
     else:
         # fallback: roughly the real axis of the avenue through the pilot centre
-        avenue_geom = LineString([(0, -half * 2), (60, half * 2)])
+        avenue_geom = LineString([(0, miny - 500.0), (60, maxy + 500.0)])
         avenue_is_real = False
         warnings.append(
             "Independence Avenue geometry not found by name; using a straight fallback axis "
@@ -1099,6 +1413,12 @@ def main() -> int:
         building_index_by_key.setdefault(
             (feature["osm_type"], int(feature["osm_id"])), index
         )
+    # Candidate query instead of parts x buildings: an STRtree over the building
+    # footprints keeps the "smallest containing polygon" rule while the city
+    # grows from ~32k to ~95k raw buildings.
+    building_polygons = [entry["polygon"] for entry in buildings_raw]
+    building_tree = STRtree(building_polygons) if building_polygons else None
+    synthetic_parents: list[tuple[int, Polygon]] = []
     for part in parts_raw:
         part_feature = part["feature"]
         forced_parent = (
@@ -1112,17 +1432,14 @@ def main() -> int:
             curated_parts += 1
             continue
         centroid = part["polygon"].representative_point()
-        best_index = None
-        best_area = float("inf")
-        for index, building in enumerate(buildings_raw):
-            poly = building["polygon"]
-            if poly.area < best_area and poly.contains(centroid):
-                best_area = poly.area
-                best_index = index
+        best_index = smallest_containing_building(
+            centroid, building_polygons, building_tree, synthetic_parents
+        )
         if best_index is None:
             orphan_parts += 1
             # orphan parts become their own volumes via a synthetic building
             buildings_raw.append({"feature": part["feature"], "polygon": part["polygon"]})
+            synthetic_parents.append((len(buildings_raw) - 1, part["polygon"]))
             part_groups[len(buildings_raw) - 1].append(part)
         else:
             part_groups[best_index].append(part)
@@ -1556,7 +1873,7 @@ def main() -> int:
         if not isinstance(coords, (list, tuple)) or len(coords) < 2:
             continue
         x, y = to_local(coords[0], coords[1])
-        if not (-half - 64.0 <= x <= half + 64.0 and -half - 64.0 <= y <= half + 64.0):
+        if not inside(x, y, GROUND_STROKE_MARGIN_M):
             continue
         tags = feature.get("tags", {})
         if tags.get("railway") == "tram_stop" or tags.get("public_transport") == "stop_position":
@@ -1566,6 +1883,18 @@ def main() -> int:
     platforms, platform_stats = tram_platforms(tram_stop_points, tram_platform_points, tram_lines)
     stats.update(platform_stats)
     ground_fills.extend(platforms)
+    # Aerodrome surfaces (B-2): runways/taxiways as wide concrete strokes,
+    # aprons/helipads as concrete fills — same ground raster compositor.
+    aeroway_strokes, aeroway_fills, aeroway_stats = build_aeroway(aeroway_raw)
+    ground_strokes.extend(aeroway_strokes)
+    ground_fills.extend(aeroway_fills)
+    stats["aeroway_strokes"] = aeroway_stats.get("strokes", 0)
+    stats["aeroway_fills"] = aeroway_stats.get("fills", 0)
+    if aeroway_raw:
+        print(f"Aeroway: {aeroway_stats.get('stroke_runway', 0)} runway / "
+              f"{aeroway_stats.get('stroke_taxiway', 0)} taxiway stroke(s), "
+              f"{aeroway_stats.get('fill_apron', 0)} apron / "
+              f"{aeroway_stats.get('fill_helipad', 0)} helipad fill(s)")
     print(f"Ground: {median_stats.get('median_asphalt_runs', 0)} asphalt median run(s) "
           f"({median_stats.get('median_asphalt_m', 0)} m), "
           f"{median_stats.get('median_tram_runs', 0)} tram reservation run(s) "
@@ -1645,14 +1974,8 @@ def main() -> int:
     # builds the exclusion geometry and reports statistics. W4-W6 (disjoint
     # vegetation zones, cemetery grid, budget scale and per-tile/triangle caps)
     # all live in the module.
-    tree_doc: dict = {}
-    if trees_raw_path.exists():
-        with trees_raw_path.open(encoding="utf-8") as fh:
-            tree_doc = json.load(fh)
-        print(f"Mapped tree input: {len(tree_doc.get('trees', [])):,} points, "
-              f"{len(tree_doc.get('rows', [])):,} rows")
-    else:
-        warnings.append("Mapped tree data missing (data/interim/minsk_trees.json).")
+    # `tree_doc` was loaded and validated before the heavy passes (raw/trees
+    # pair checks: area, origin, snapshot SHA-256 and extraction window).
 
     # Exclusion masks. Mapped trees (nodes and tree rows) are authoritative and
     # are dropped only on hard surfaces: buildings, water, rail and the
@@ -1756,7 +2079,7 @@ def main() -> int:
         hard_masks=hard_mask_geoms,
         soft_masks=soft_mask_geoms,
         to_local=to_local,
-        half=half,
+        bounds=bounds,
         max_total_trees=max_total_trees,
         tile_size=tile_size,
         **({"triangle_budget": args.tree_triangle_budget} if args.tree_triangle_budget else {}),
@@ -1790,12 +2113,21 @@ def main() -> int:
     print(f"Trees: max {tree_stats['trees_max_per_tile']:,} per tile, "
           f"{tree_stats['trees_triangles']:,} triangles total, "
           f"max {tree_stats['trees_max_triangles_per_tile']:,} per tile")
+    profile("buildings + roads + trees")
+
+    # Fail before writing any tile: an implicit thinning of every vegetation
+    # zone is a product decision, not a side effect of a larger area.
+    tree_policy_error = tree_budget_policy_error(
+        tree_stats["trees_budget_scale"],
+        is_city=is_city,
+        allow_thinning=args.allow_tree_thinning,
+    )
+    if tree_policy_error:
+        print(f"ERROR: {tree_policy_error}", file=sys.stderr)
+        return 1
 
     # --- tile assignment --------------------------------------------------
-    min_tx = math.floor(-half / tile_size)
-    max_tx = math.floor((half - 1e-6) / tile_size)
-    min_ty = math.floor(-half / tile_size)
-    max_ty = math.floor((half - 1e-6) / tile_size)
+    min_tx, min_ty, max_tx, max_ty = tile_range(bounds, tile_size)
 
     tiles: dict[tuple[int, int], dict] = {}
     for tx in range(min_tx, max_tx + 1):
@@ -1817,8 +2149,7 @@ def main() -> int:
             }
 
     def tile_of_point(x: float, y: float) -> tuple[int, int] | None:
-        tx = math.floor(x / tile_size)
-        ty = math.floor(y / tile_size)
+        tx, ty = tile_index_for_point(x, y, bounds, tile_size)
         return (tx, ty) if (tx, ty) in tiles else None
 
     for building in buildings:
@@ -1929,9 +2260,9 @@ def main() -> int:
         points = [(flat[i], flat[i + 1]) for i in range(0, len(flat) - 1, 2)]
         line = LineString(points)
         base = {key: value for key, value in piece.items() if key != "centerline"}
-        minx, miny, maxx, maxy = line.bounds
-        for tx in range(math.floor((minx - 4.0) / tile_size), math.floor((maxx + 4.0) / tile_size) + 1):
-            for ty in range(math.floor((miny - 4.0) / tile_size), math.floor((maxy + 4.0) / tile_size) + 1):
+        seg_minx, seg_miny, seg_maxx, seg_maxy = line.bounds
+        for tx in range(math.floor((seg_minx - 4.0) / tile_size), math.floor((seg_maxx + 4.0) / tile_size) + 1):
+            for ty in range(math.floor((seg_miny - 4.0) / tile_size), math.floor((seg_maxy + 4.0) / tile_size) + 1):
                 if (tx, ty) not in tiles:
                     continue
                 tile_rect = box(tx * tile_size, ty * tile_size, (tx + 1) * tile_size, (ty + 1) * tile_size)
@@ -2088,7 +2419,7 @@ def main() -> int:
     # Data extent: the renderer clips the ground to it, so ways cut at the area
     # border end in a straight edge instead of round stroke caps.
     for key in tiles:
-        tiles[key]["ground"]["clip"] = [-half, -half, half, half]
+        tiles[key]["ground"]["clip"] = list(bounds)
 
     # Ground compositor crossings: attached to every tile within 12 m so a zebra
     # straddling a tile border is painted identically on both sides.
@@ -2104,10 +2435,20 @@ def main() -> int:
         if owner is not None:
             tiles[owner]["crossings"].append(crossing)
 
+    assigned_trees = 0
     for tree in trees:
         owner = tile_of_point(tree["x"], tree["y"])
-        if owner is not None:
-            tiles[owner]["trees"].append(tree)
+        if owner is None:
+            continue
+        tiles[owner]["trees"].append(tree)
+        assigned_trees += 1
+    if assigned_trees != len(trees):
+        print(
+            f"ERROR: {len(trees) - assigned_trees:,} trees have no owning tile "
+            "(boundary ownership bug); refusing to write a partial dataset",
+            file=sys.stderr,
+        )
+        return 1
 
     for attraction in attractions:
         owner = tile_of_point(attraction["x"], attraction["y"])
@@ -2149,14 +2490,16 @@ def main() -> int:
         "tileSize": tile_size,
         "tileRange": {"minX": min_tx, "minY": min_ty, "maxX": max_tx, "maxY": max_ty},
         # bounds = full extent covered by the tile grid (what the renderer can
-        # stream); pilotBounds = the requested pilot area inside it.
+        # stream); areaBounds = the requested map area inside it. `pilotBounds`
+        # is kept as a deprecated alias of areaBounds for older consumers.
         "bounds": [
             min_tx * tile_size,
             min_ty * tile_size,
             (max_tx + 1) * tile_size,
             (max_ty + 1) * tile_size,
         ],
-        "pilotBounds": [-half, -half, half, half],
+        "areaBounds": list(bounds),
+        "pilotBounds": list(bounds),
         "tiles": manifest_tiles,
         "counts": {
             "buildings": len(buildings),
@@ -2197,9 +2540,9 @@ def main() -> int:
         "generatedAt": manifest["generatedAt"],
         "source": raw["meta"],
         "area": {
-            "pilotSizeM": pilot_size,
             "tileSizeM": tile_size,
-            "boundsLocal": [-half, -half, half, half],
+            "boundsLocal": list(bounds),
+            "spanM": [maxx - minx, maxy - miny],
             "originUtm": manifest["originUtm"],
         },
         "buildings": {
@@ -2332,6 +2675,7 @@ def main() -> int:
     print(f"Coverage report: {coverage_path}")
     print(json.dumps(coverage["buildings"], ensure_ascii=False)[:400])
     print(f"Done in {time.time() - t_start:.1f}s")
+    profile("tiles written + coverage")
     return 0
 
 

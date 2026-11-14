@@ -29,7 +29,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -46,9 +48,9 @@ from geo_config import (  # noqa: E402
     EPSG_WGS84,
     PILOT_CENTER_LAT,
     PILOT_CENTER_LON,
-    area_bbox,
     ingest_bbox,
 )
+from geo_window import area_window_wgs84  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -75,10 +77,20 @@ MIN_LAT, MIN_LON, MAX_LAT, MAX_LON = (
 )
 
 
+def _city_window() -> tuple[float, float, float, float]:
+    """Exact WGS84 window for the city area: target rectangle + CITY_HALO_M."""
+    return area_window_wgs84("city")
+
+
 def configure_window(area: str) -> None:
     """Set the extraction window for 'pilot' (default) or 'city'."""
     global _BBOX, MIN_LAT, MIN_LON, MAX_LAT, MAX_LON
-    _BBOX = area_bbox(area)
+    if area == "city":
+        # The halo is already part of the window: no extra PAD for geometry.
+        _BBOX = _city_window()
+        MIN_LAT, MIN_LON, MAX_LAT, MAX_LON = _BBOX
+        return
+    _BBOX = ingest_bbox()
     MIN_LAT = _BBOX[0] - PAD_LAT
     MIN_LON = _BBOX[1] - PAD_LON
     MAX_LAT = _BBOX[2] + PAD_LAT
@@ -89,10 +101,16 @@ def inside_window(lat: float, lon: float) -> bool:
     return MIN_LAT <= lat <= MAX_LAT and MIN_LON <= lon <= MAX_LON
 
 
-# Extra margin used for the cheap first-node early-out on ways (a road segment
-# crossing the window may have its first vertex a little outside it).
-EARLY_OUT_PAD_LAT = 0.02
-EARLY_OUT_PAD_LON = 0.03
+# A way that crosses the window may have every vertex outside it (a bridge over
+# the area, a ring enclosing it): selection is bbox-based, never first-node
+# based, so such geometries are kept instead of being silently dropped.
+def bbox_intersects_window(
+    min_lat: float, min_lon: float, max_lat: float, max_lon: float
+) -> bool:
+    return not (
+        max_lat < MIN_LAT or min_lat > MAX_LAT
+        or max_lon < MIN_LON or min_lon > MAX_LON
+    )
 
 
 # --- tag filters ------------------------------------------------------------
@@ -129,6 +147,8 @@ KEEP_TAGS = {
     "width", "lanes", "surface", "bridge", "tunnel", "layer", "oneway",
     "place", "admin_level", "building:levels", "building:min_level",
     "roof:levels", "start_date", "ele",
+    # Airfield geometry (B-2: Lipki runways/taxiways/aprons/helipads).
+    "aeroway",
     # Tags that drive road material, lane markings, pavements, crossings and
     # traffic signals (payload 0.2.0, see scripts/normalize/road_network.py).
     "cycleway", "cycleway:left", "cycleway:right",
@@ -167,6 +187,15 @@ def surface_kind(tags: dict[str, str]) -> str | None:
 
 def round_coords(coords: list[tuple[float, float]]) -> list[list[float]]:
     return [[round(lon, 7), round(lat, 7)] for lon, lat in coords]
+
+
+def sha256_file(path: Path) -> str:
+    """SHA-256 of the pinned source file, recorded in the extraction metadata."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 # --- pass A: relations ------------------------------------------------------
@@ -251,20 +280,26 @@ class WayCollector:
                 self.way_coords[way.id] = coords
         if not tags:
             return
-        # cheap early-out: a feature that matters for the pilot window has at
-        # least one vertex near it; testing the first node avoids building
-        # coordinate lists for the rest of the city extract.
-        first = None
+        # Window selection uses the way's node bbox: a geometry crossing the
+        # window may have no vertex inside it (a bridge over the area, a ring
+        # enclosing it), so a first-node test would drop valid features.
+        min_lat = min_lon = math.inf
+        max_lat = max_lon = -math.inf
         for n in way.nodes:
-            if n.location.valid():
-                first = n.location
-                break
-        if first is None:
+            if not n.location.valid():
+                continue
+            lat, lon = n.location.lat, n.location.lon
+            if lat < min_lat:
+                min_lat = lat
+            if lat > max_lat:
+                max_lat = lat
+            if lon < min_lon:
+                min_lon = lon
+            if lon > max_lon:
+                max_lon = lon
+        if math.isinf(min_lat):
             return
-        if not (
-            MIN_LAT - EARLY_OUT_PAD_LAT <= first.lat <= MAX_LAT + EARLY_OUT_PAD_LAT
-            and MIN_LON - EARLY_OUT_PAD_LON <= first.lon <= MAX_LON + EARLY_OUT_PAD_LON
-        ):
+        if not bbox_intersects_window(min_lat, min_lon, max_lat, max_lon):
             return
         coords = self._coords(way)
         if len(coords) < 2:
@@ -288,6 +323,13 @@ class WayCollector:
             return
         if closed and surface_kind(tags):
             self._add(way.id, stags, {"type": "Polygon", "coordinates": [coords]}, "surface")
+            return
+        aeroway = tags.get("aeroway")
+        if aeroway in {"runway", "taxiway", "apron", "helipad"}:
+            if closed and aeroway in {"apron", "helipad"}:
+                self._add(way.id, stags, {"type": "Polygon", "coordinates": [coords]}, "aeroway")
+            elif not closed:
+                self._add(way.id, stags, {"type": "LineString", "coordinates": coords}, "aeroway")
 
 
 # --- pass C: trees ----------------------------------------------------------
@@ -453,18 +495,38 @@ class CrossingCollector:
 # --- helpers ----------------------------------------------------------------
 
 def feature_in_window(feature: dict) -> bool:
-    """Keep features that have at least one vertex inside the padded window."""
-    geom = feature["geometry"]
+    """Keep features whose geometry bbox intersects the extraction window.
 
-    def any_point_inside(coords) -> bool:
-        if isinstance(coords, (list, tuple)):
-            if len(coords) == 2 and all(isinstance(value, (int, float)) for value in coords):
-                lon, lat = coords[0], coords[1]
-                return inside_window(lat, lon)
-            return any(any_point_inside(child) for child in coords)
+    A polygon that encloses the window, or a line crossing it with both end
+    points outside, has no vertex inside the window; a vertex test would drop
+    it. The bbox test is conservative (over-inclusion is clipped later by the
+    normaliser).
+    """
+    coords = feature["geometry"].get("coordinates", [])
+    min_lat = min_lon = math.inf
+    max_lat = max_lon = -math.inf
+
+    def scan(node) -> None:
+        nonlocal min_lat, min_lon, max_lat, max_lon
+        if isinstance(node, (list, tuple)):
+            if len(node) == 2 and all(isinstance(value, (int, float)) for value in node):
+                lon, lat = node
+                if lat < min_lat:
+                    min_lat = lat
+                if lat > max_lat:
+                    max_lat = lat
+                if lon < min_lon:
+                    min_lon = lon
+                if lon > max_lon:
+                    max_lon = lon
+                return
+            for child in node:
+                scan(child)
+
+    scan(coords)
+    if math.isinf(min_lat):
         return False
-
-    return any_point_inside(geom.get("coordinates", []))
+    return bbox_intersects_window(min_lat, min_lon, max_lat, max_lon)
 
 
 def assemble_relation_features(
@@ -491,7 +553,18 @@ def assemble_relation_features(
         "fallbacks": 0,
         "missing_outer": 0,
         "empty": 0,
+        "emptyRelations": [],
     }
+
+    def note_empty(reason: str) -> None:
+        """Record which relations assembled to nothing (review evidence)."""
+        if len(stats["emptyRelations"]) < 20:
+            stats["emptyRelations"].append({
+                "osm_id": relation["osm_id"],
+                "name": relation["tags"].get("name"),
+                "kind": relation["kind"],
+                "reason": reason,
+            })
     for relation in relations:
         outer_lines: list[LineString] = []
         inner_rings: list[list[list[float]]] = []
@@ -541,15 +614,18 @@ def assemble_relation_features(
                 geometry = None
         if geometry is None or geometry.is_empty:
             stats["empty"] += 1
+            note_empty("no assembled geometry")
             continue
         if not geometry.is_valid:
             geometry = geometry.buffer(0)
         if geometry.is_empty:
             stats["empty"] += 1
+            note_empty("empty after validity repair")
             continue
         mapped = mapping(geometry)
         if mapped["type"] not in {"Polygon", "MultiPolygon"}:
             stats["empty"] += 1
+            note_empty("assembled geometry is not a polygon")
             continue
         stats["assembled"] += 1
         if mapped["type"] == "MultiPolygon":
@@ -588,10 +664,38 @@ def main() -> int:
         return 1
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"PBF: {pbf} ({pbf.stat().st_size / 1e6:.1f} MB)")
+    pbf_sha256 = sha256_file(pbf)
+    print(f"PBF: {pbf} ({pbf.stat().st_size / 1e6:.1f} MB, sha256 {pbf_sha256[:12]}…)")
     print(f"Area: {args.area}")
     print(f"Window (lat_min, lon_min, lat_max, lon_max): "
           f"{MIN_LAT:.6f}, {MIN_LON:.6f}, {MAX_LAT:.6f}, {MAX_LON:.6f}")
+
+    # The header bbox is a cheap sanity check that the pinned extract really
+    # covers the requested window; it is not proof of relation completeness.
+    header = osmium.io.Reader(str(pbf)).header()
+    header_box = header.box()
+    if header_box is not None:
+        min_lon = header_box.bottom_left.lon
+        min_lat = header_box.bottom_left.lat
+        max_lon = header_box.top_right.lon
+        max_lat = header_box.top_right.lat
+        print(f"PBF header bbox: lon {min_lon:.4f}..{max_lon:.4f}, "
+              f"lat {min_lat:.4f}..{max_lat:.4f}")
+        covered = (
+            MIN_LAT >= min_lat - 1e-6 and MAX_LAT <= max_lat + 1e-6
+            and MIN_LON >= min_lon - 1e-6 and MAX_LON <= max_lon + 1e-6
+        )
+        if not covered:
+            print(
+                "ERROR: PBF header bbox does not cover the extraction window.\n"
+                f"  window: lat {MIN_LAT:.6f}..{MAX_LAT:.6f}, "
+                f"lon {MIN_LON:.6f}..{MAX_LON:.6f}\n"
+                f"  header: lat {min_lat:.6f}..{max_lat:.6f}, "
+                f"lon {min_lon:.6f}..{max_lon:.6f}\n"
+                "Pass a larger extract with --pbf.",
+                file=sys.stderr,
+            )
+            return 1
 
     t0 = time.time()
 
@@ -692,6 +796,7 @@ def main() -> int:
             "source_url": str(pbf.name),
             "pbf": pbf.name,
             "pbf_size": pbf.stat().st_size,
+            "pbf_sha256": pbf_sha256,
             "extracted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "bbox": list(_BBOX),
             "area": args.area,
@@ -707,8 +812,22 @@ def main() -> int:
     }
     with out.open("w", encoding="utf-8") as fh:
         json.dump(doc, fh, ensure_ascii=False, separators=(",", ":"))
+    trees_doc = {
+        "meta": {
+            "area": args.area,
+            "epsg": EPSG_UTM35N,
+            "center": [PILOT_CENTER_LAT, PILOT_CENTER_LON],
+            "pbf": pbf.name,
+            "pbf_size": pbf.stat().st_size,
+            "pbf_sha256": pbf_sha256,
+            "window": [MIN_LAT, MIN_LON, MAX_LAT, MAX_LON],
+            "extracted_at": doc["meta"]["extracted_at"],
+        },
+        "trees": tc.trees,
+        "rows": tc.rows,
+    }
     with trees_out.open("w", encoding="utf-8") as fh:
-        json.dump({"trees": tc.trees, "rows": tc.rows}, fh, ensure_ascii=False, separators=(",", ":"))
+        json.dump(trees_doc, fh, ensure_ascii=False, separators=(",", ":"))
     print(f"Wrote {out.name} ({out.stat().st_size / 1e6:.2f} MB) and {trees_out.name}")
     print(f"Counts: {counts}")
     print(f"Total time: {time.time() - t0:.1f}s")
