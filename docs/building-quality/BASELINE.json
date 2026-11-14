@@ -1,0 +1,3305 @@
+{
+ "schema": 1,
+ "generatedAt": "2026-11-14T12:54:37+00:00",
+ "startCommit": "9dcf7e0bf0afb5051bb0ede51fe8e398c3efd024",
+ "purpose": "Frozen before-state for the procedural building variety work: exact suite results, accepted complete-city manifest, per-tile hashes and the locked review camera.",
+ "suites": {
+  "typecheck": {
+   "status": "pass",
+   "summary": {
+    "result": "tsc --noEmit completed"
+   },
+   "logFile": ".agent-scratch\\baseline-typecheck.txt",
+   "verbatimTail": [
+    "pnpm.exe : [WARN] The \"pnpm\" field in package.json is no longer read by pnpm. The following keys were ignored:",
+    "\"pnpm.onlyBuiltDependencies\". See https://pnpm.io/settings for the new home of each setting.",
+    "At C:\\Users\\DELL\\AppData\\Local\\pnpm\\bin\\pnpm.ps1:14 char:3",
+    "+   & \"$basedir/../global/v11/933b1afb8467659abb23695dcb8cd7f3bad564cb2 ...",
+    "+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+    "    + CategoryInfo          : NotSpecified: ([WARN] The \"pnp...f each setting.:String) [], RemoteException",
+    "    + FullyQualifiedErrorId : NativeCommandError",
+    "$ tsc --noEmit"
+   ]
+  },
+  "vitest": {
+   "status": "pass",
+   "summary": {
+    "testFiles": "Test Files  27 passed (27)",
+    "tests": "Tests  443 passed | 5 skipped (448)",
+    "duration": "Duration  4.38s (transform 4.72s, setup 0ms, collect 17.06s, tests 3.89s, environment 9ms, prepare 16.99s)"
+   },
+   "logFile": ".agent-scratch\\baseline-vitest.txt",
+   "verbatimTail": [
+    "pnpm.exe : [WARN] The \"pnpm\" field in package.json is no longer read by pnpm. The following keys were ignored:",
+    "\"pnpm.onlyBuiltDependencies\". See https://pnpm.io/settings for the new home of each setting.",
+    "At C:\\Users\\DELL\\AppData\\Local\\pnpm\\bin\\pnpm.ps1:14 char:3",
+    "+   & \"$basedir/../global/v11/933b1afb8467659abb23695dcb8cd7f3bad564cb2 ...",
+    "+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+    "    + CategoryInfo          : NotSpecified: ([WARN] The \"pnp...f each setting.:String) [], RemoteException",
+    "    + FullyQualifiedErrorId : NativeCommandError",
+    "$ vitest run",
+    " RUN  v3.2.7 D:/Workk/VoxelMinsk/.agents/worktrees/procedural-building-variety",
+    " ✓ tests/unit/tile_math.test.ts (20 tests) 95ms",
+    " ✓ tests/unit/museum/museumPayload.test.ts (3 tests) 126ms",
+    " ✓ tests/unit/environment/trees.test.ts (11 tests) 167ms",
+    " ✓ tests/unit/environment/treeInstances.test.ts (23 tests) 414ms",
+    " ✓ tests/unit/data/tiles.test.ts (19 tests | 5 skipped) 171ms",
+    " ✓ tests/unit/environment/environmentMeshes.test.ts (12 tests) 216ms",
+    " ✓ tests/unit/environment/roadNetworks.test.ts (47 tests) 208ms",
+    " ✓ tests/unit/roofs/roofs.test.ts (21 tests) 71ms",
+    " ✓ tests/unit/landmarksVictoryRedChurch.test.ts (19 tests) 64ms",
+    " ✓ tests/unit/cityGate.test.ts (16 tests) 90ms",
+    " ✓ tests/unit/tvTower.test.ts (13 tests) 138ms",
+    " ✓ tests/unit/buildings/stadiumPalace.test.ts (9 tests) 238ms",
+    " ✓ tests/unit/buildings/buildingsMesh.test.ts (22 tests) 448ms",
+    " ✓ tests/unit/environment/ferrisWheel.test.ts (19 tests) 859ms",
+    " ✓ tests/unit/facades/palette.test.ts (23 tests) 49ms",
+    " ✓ tests/unit/nationalLibrary.test.ts (17 tests) 61ms",
+    " ✓ tests/unit/facades/presets.test.ts (18 tests) 35ms",
+    " ✓ tests/unit/environment/instancedTreeLifecycle.test.ts (7 tests) 223ms",
+    " ✓ tests/unit/ground/groundRaster.test.ts (26 tests) 35ms",
+    " ✓ tests/unit/environment/roadSurfaces.test.ts (6 tests) 39ms",
+    " ✓ tests/unit/environment/roadAnalysis.test.ts (17 tests) 27ms",
+    " ✓ tests/unit/environment/layers.test.ts (14 tests) 22ms",
+    " ✓ tests/unit/buildings/triangulate.test.ts (10 tests) 17ms",
+    " ✓ tests/unit/environment/triangulation.test.ts (14 tests) 16ms",
+    " ✓ tests/unit/facades/facadeMaterial.test.ts (23 tests) 35ms",
+    " ✓ tests/unit/config_sync.test.ts (13 tests) 10ms",
+    " ✓ tests/unit/ground/groundDecks.test.ts (6 tests) 15ms",
+    " Test Files  27 passed (27)",
+    "      Tests  443 passed | 5 skipped (448)",
+    "   Start at  13:51:24",
+    "   Duration  4.38s (transform 4.72s, setup 0ms, collect 17.06s, tests 3.89s, environment 9ms, prepare 16.99s)"
+   ]
+  },
+  "pythonDataTests": {
+   "status": "pass",
+   "summary": {
+    "ran": "Ran 157 tests in 1.751s",
+    "result": "OK"
+   },
+   "logFile": ".agent-scratch\\baseline-python.txt",
+   "verbatimTail": [
+    "(test_trees.CemeteryTests.test_cemetery_respects_building_and_path_masks) ... ok",
+    "test_grid_follows_a_rotated_long_axis (test_trees.CemeteryTests.test_grid_follows_a_rotated_long_axis) ... ok",
+    "test_grid_is_aligned_with_the_long_axis_of_the_rectangle",
+    "(test_trees.CemeteryTests.test_grid_is_aligned_with_the_long_axis_of_the_rectangle) ... ok",
+    "test_grid_offset_stays_under_one_metre (test_trees.CemeteryTests.test_grid_offset_stays_under_one_metre) ... ok",
+    "test_global_cap_applies_to_heuristic_fill (test_trees.HeuristicTests.test_global_cap_applies_to_heuristic_fill) ... ok",
+    "test_heuristic_fill_is_deterministic (test_trees.HeuristicTests.test_heuristic_fill_is_deterministic) ... ok",
+    "test_heuristic_trees_respect_soft_masks (test_trees.HeuristicTests.test_heuristic_trees_respect_soft_masks) ... ok",
+    "test_building_margin_half_a_metre (test_trees.MappedNodeTests.test_building_margin_half_a_metre) ... ok",
+    "test_carriageway_drops_mapped_tree (test_trees.MappedNodeTests.test_carriageway_drops_mapped_tree) ... ok",
+    "test_inside_building_is_dropped (test_trees.MappedNodeTests.test_inside_building_is_dropped) ... ok",
+    "test_mapped_payload_fields_are_unchanged (test_trees.MappedNodeTests.test_mapped_payload_fields_are_unchanged) ... ok",
+    "test_pedestrian_path_never_drops_a_mapped_tree",
+    "(test_trees.MappedNodeTests.test_pedestrian_path_never_drops_a_mapped_tree) ... ok",
+    "test_water_and_rail_drop_mapped_tree (test_trees.MappedNodeTests.test_water_and_rail_drop_mapped_tree) ... ok",
+    "test_needleleaved_is_counted_without_new_payload_field",
+    "(test_trees.TreeRowTests.test_needleleaved_is_counted_without_new_payload_field) ... ok",
+    "test_row_becomes_points_every_seven_metres (test_trees.TreeRowTests.test_row_becomes_points_every_seven_metres) ... ok",
+    "test_row_height_fallback (test_trees.TreeRowTests.test_row_height_fallback) ... ok",
+    "test_row_is_clipped_to_the_area (test_trees.TreeRowTests.test_row_is_clipped_to_the_area) ... ok",
+    "test_row_is_deterministic (test_trees.TreeRowTests.test_row_is_deterministic) ... ok",
+    "test_row_payload_fields_are_unchanged (test_trees.TreeRowTests.test_row_payload_fields_are_unchanged) ... ok",
+    "test_row_point_inside_building_is_dropped (test_trees.TreeRowTests.test_row_point_inside_building_is_dropped) ... ok",
+    "test_row_point_near_mapped_node_is_dropped (test_trees.TreeRowTests.test_row_point_near_mapped_node_is_dropped) ... ok",
+    "test_duplicate_polygons_are_merged_into_one_zone",
+    "(test_trees.VegetationZoneTests.test_duplicate_polygons_are_merged_into_one_zone) ... ok",
+    "test_forest_inside_cemetery_stays_forest (test_trees.VegetationZoneTests.test_forest_inside_cemetery_stays_forest) ...",
+    "ok",
+    "test_grass_inside_park_stays_grass (test_trees.VegetationZoneTests.test_grass_inside_park_stays_grass) ... ok",
+    "test_open_surface_is_excluded_from_zones (test_trees.VegetationZoneTests.test_open_surface_is_excluded_from_zones) ...",
+    "ok",
+    "test_smaller_polygon_wins_in_overlap (test_trees.VegetationZoneTests.test_smaller_polygon_wins_in_overlap) ... ok",
+    "test_zone_result_is_independent_of_input_order",
+    "(test_trees.VegetationZoneTests.test_zone_result_is_independent_of_input_order) ... ok",
+    "test_zones_do_not_overlap (test_trees.VegetationZoneTests.test_zones_do_not_overlap) ... ok",
+    "test_zones_smaller_than_the_class_minimum_are_dropped",
+    "(test_trees.VegetationZoneTests.test_zones_smaller_than_the_class_minimum_are_dropped) ... ok",
+    "----------------------------------------------------------------------",
+    "Ran 157 tests in 1.751s",
+    "OK"
+   ]
+  }
+ },
+ "dataset": {
+  "directory": "public\\data\\city-tiles",
+  "payloadVersion": "0.4.3",
+  "manifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da",
+  "generatedAt": "2026-11-10",
+  "epsg": 32635,
+  "originUtm": [
+   536859.254,
+   5972786.284
+  ],
+  "tileSize": 1024.0,
+  "tileRange": {
+   "minX": -11,
+   "minY": -9,
+   "maxX": 11,
+   "maxY": 9
+  },
+  "bounds": [
+   -11264.0,
+   -9216.0,
+   12288.0,
+   10240.0
+  ],
+  "areaBounds": [
+   -11264.0,
+   -9216.0,
+   12288.0,
+   10240.0
+  ],
+  "tileCount": 437,
+  "totalTileBytes": 295267617,
+  "counts": {
+   "buildings": 76004,
+   "buildingsWithExplicitHeight": 1361,
+   "buildingsWithLevels": 27463,
+   "buildingsWithRoofShape": 9825,
+   "surfaces": 43806,
+   "roads": 0,
+   "roadSurfaces": 0,
+   "roadNetwork": 0,
+   "junctions": 17244,
+   "crossings": 8939,
+   "trees": 1910624,
+   "attractions": 2
+  },
+  "tiles": [
+   {
+    "x": -11,
+    "y": -9,
+    "file": "tiles/-11_-9.json",
+    "bytes": 88034,
+    "sha256": "37811fe09fffca765c49e7c620f8f5bd14119cad3dad3ba436b10a45e972116e"
+   },
+   {
+    "x": -11,
+    "y": -8,
+    "file": "tiles/-11_-8.json",
+    "bytes": 109264,
+    "sha256": "ce6a90098485dda898a14cc80bc00e44fb09d6d62e619f83da40b41a4f65645e"
+   },
+   {
+    "x": -11,
+    "y": -7,
+    "file": "tiles/-11_-7.json",
+    "bytes": 484343,
+    "sha256": "cac56ae22f827325ecd4bf288babdb6033e546a39fdb0bdece917e67f7d290b9"
+   },
+   {
+    "x": -11,
+    "y": -6,
+    "file": "tiles/-11_-6.json",
+    "bytes": 167704,
+    "sha256": "4a9dfefcfdd8eacc0810d8cd94687a517029221bdcedc1c66c8aa1fdf6f87d63"
+   },
+   {
+    "x": -11,
+    "y": -5,
+    "file": "tiles/-11_-5.json",
+    "bytes": 523483,
+    "sha256": "3cd435957a9c2534304edb08065571507d83cac37bb586ed3cc59da4dd5b2822"
+   },
+   {
+    "x": -11,
+    "y": -4,
+    "file": "tiles/-11_-4.json",
+    "bytes": 273575,
+    "sha256": "66d969c14bf03a9c65d8dd44c58db889147631848b794279e88953acfa61cfbb"
+   },
+   {
+    "x": -11,
+    "y": -3,
+    "file": "tiles/-11_-3.json",
+    "bytes": 190421,
+    "sha256": "2f24ae0324dbbdbcfc3dd2c9b3fb09934484398e30be6c3c586620ff475bf276"
+   },
+   {
+    "x": -11,
+    "y": -2,
+    "file": "tiles/-11_-2.json",
+    "bytes": 123639,
+    "sha256": "c7e212abd090b4c6e418005dc3b9c9faa5df805bceb667ce9965f4677a4298c8"
+   },
+   {
+    "x": -11,
+    "y": -1,
+    "file": "tiles/-11_-1.json",
+    "bytes": 77550,
+    "sha256": "3d0cc9c7b67270b192eabd020f5383d5c5d1c57a52d99f8df9cda9af5d0f26f0"
+   },
+   {
+    "x": -11,
+    "y": 0,
+    "file": "tiles/-11_0.json",
+    "bytes": 846705,
+    "sha256": "34572d421f57794f1a70185cbedf38167d57e100f47b53ad9de52178ad68a9ba"
+   },
+   {
+    "x": -11,
+    "y": 1,
+    "file": "tiles/-11_1.json",
+    "bytes": 353017,
+    "sha256": "f8146adc9e1f624de22184ceec7c1c6664456b0561be3b30f0caaab4b48f35c3"
+   },
+   {
+    "x": -11,
+    "y": 2,
+    "file": "tiles/-11_2.json",
+    "bytes": 258530,
+    "sha256": "fdc3581b0bdda3893b4cd2bc8bee315c113c1fadf8798d0feb68c57c6266c89f"
+   },
+   {
+    "x": -11,
+    "y": 3,
+    "file": "tiles/-11_3.json",
+    "bytes": 104667,
+    "sha256": "fff4ed0dad0a2f6176ed40ae279d93f918fe1db94608e6af6b7df0de19a57cb9"
+   },
+   {
+    "x": -11,
+    "y": 4,
+    "file": "tiles/-11_4.json",
+    "bytes": 522450,
+    "sha256": "cbe1b6ad8526c3af7a1c656ec3bf78ef4a6623fb717b8239b66e068df7bc9afe"
+   },
+   {
+    "x": -11,
+    "y": 5,
+    "file": "tiles/-11_5.json",
+    "bytes": 456308,
+    "sha256": "3a961e80087c158db97229d9d961d3d59d19d83dee7a0592cc4d51c1d580671f"
+   },
+   {
+    "x": -11,
+    "y": 6,
+    "file": "tiles/-11_6.json",
+    "bytes": 440130,
+    "sha256": "6c54b3a59eeba3c670ca1c183093d9cdedcb5f550d3c624d3c98328eb51ae487"
+   },
+   {
+    "x": -11,
+    "y": 7,
+    "file": "tiles/-11_7.json",
+    "bytes": 1393,
+    "sha256": "ee5cbc9e37dadddaa154e08d8c5fe5bafa52cc435e3cb3bb10e2771f8f39421b"
+   },
+   {
+    "x": -11,
+    "y": 8,
+    "file": "tiles/-11_8.json",
+    "bytes": 48119,
+    "sha256": "1ff9284a16ba7cfbc0efc7df5320a3d1c32b8c53522e76db2eed9735898e02f8"
+   },
+   {
+    "x": -11,
+    "y": 9,
+    "file": "tiles/-11_9.json",
+    "bytes": 445,
+    "sha256": "315e92e296e8b2e32cde0068fa8b7eb625274a8e771d3b98aa70faa5455695fe"
+   },
+   {
+    "x": -10,
+    "y": -9,
+    "file": "tiles/-10_-9.json",
+    "bytes": 923838,
+    "sha256": "0a9047dce8a4ac591894494957ff040f8d41bb7e806889cc15365ede512d7e0e"
+   },
+   {
+    "x": -10,
+    "y": -8,
+    "file": "tiles/-10_-8.json",
+    "bytes": 704657,
+    "sha256": "b049c67cdf5755ce45bff05902f8f2b542e7e9f4729a0ec04dc0b46908f40426"
+   },
+   {
+    "x": -10,
+    "y": -7,
+    "file": "tiles/-10_-7.json",
+    "bytes": 787643,
+    "sha256": "be9d52a9bc1ee2e2cba5f88afd5c04c251eaa95f8ffce871182dde191fdcf22d"
+   },
+   {
+    "x": -10,
+    "y": -6,
+    "file": "tiles/-10_-6.json",
+    "bytes": 955615,
+    "sha256": "a76344ec9abffe12a11daba6b14f167004cd18477dc9607113a884af45e3088f"
+   },
+   {
+    "x": -10,
+    "y": -5,
+    "file": "tiles/-10_-5.json",
+    "bytes": 958444,
+    "sha256": "1e316d7fa9d1717747aee2102ed9d5cc5626681b3602446f0af95c7833b9b346"
+   },
+   {
+    "x": -10,
+    "y": -4,
+    "file": "tiles/-10_-4.json",
+    "bytes": 239451,
+    "sha256": "1cbdcc6aebd6d4d5947e52c9f66c0344f7e24eba748773c38a38597b7d3d114e"
+   },
+   {
+    "x": -10,
+    "y": -3,
+    "file": "tiles/-10_-3.json",
+    "bytes": 268242,
+    "sha256": "92c26996bcc9b5eaab510d9714b41890b14c3803add97d57c6175f1a218c888e"
+   },
+   {
+    "x": -10,
+    "y": -2,
+    "file": "tiles/-10_-2.json",
+    "bytes": 231357,
+    "sha256": "cea011f9948d3234acc880e9b35a61c3f3b5e6cfd61c1797f92b57b350ef90bc"
+   },
+   {
+    "x": -10,
+    "y": -1,
+    "file": "tiles/-10_-1.json",
+    "bytes": 270042,
+    "sha256": "7feac8ff70a22d1246c04e1100f709add182f6dc64fd1d54e2d962e9f7312ba3"
+   },
+   {
+    "x": -10,
+    "y": 0,
+    "file": "tiles/-10_0.json",
+    "bytes": 547394,
+    "sha256": "b25853de74bfe3f4b43dddc8b6178b4ebf325bba636d38520d232954e7528d66"
+   },
+   {
+    "x": -10,
+    "y": 1,
+    "file": "tiles/-10_1.json",
+    "bytes": 404916,
+    "sha256": "a2fa204039491a83b7257e097bd76791e8581143a873a447dc7b092479156c29"
+   },
+   {
+    "x": -10,
+    "y": 2,
+    "file": "tiles/-10_2.json",
+    "bytes": 337674,
+    "sha256": "398ecc11895b62cb727ef73635db4f62ebe6eccb0e757866e2f54d3811b21459"
+   },
+   {
+    "x": -10,
+    "y": 3,
+    "file": "tiles/-10_3.json",
+    "bytes": 387319,
+    "sha256": "00f8dff04eaa26f36c83b3a9741df90b00c10935dbfcdc553ac194d10dcfc934"
+   },
+   {
+    "x": -10,
+    "y": 4,
+    "file": "tiles/-10_4.json",
+    "bytes": 473197,
+    "sha256": "a184f192d51c337b4981c1b33264a79ded82678eadd597b2d0e8bc24826e5c2d"
+   },
+   {
+    "x": -10,
+    "y": 5,
+    "file": "tiles/-10_5.json",
+    "bytes": 468147,
+    "sha256": "8cf6610e22d09fa937f7e7ccc7fdae01505a341d6ea7738f0756b503c555f0b3"
+   },
+   {
+    "x": -10,
+    "y": 6,
+    "file": "tiles/-10_6.json",
+    "bytes": 1049208,
+    "sha256": "5a0cc2cc7617c85585ab5272b7812f3a5b0ac7f8acd9f6068b7c0c864df688d5"
+   },
+   {
+    "x": -10,
+    "y": 7,
+    "file": "tiles/-10_7.json",
+    "bytes": 760054,
+    "sha256": "d2587bc43d075a78971414b7309ce3a2c8a6886ecf096b8b9b57cd554e764306"
+   },
+   {
+    "x": -10,
+    "y": 8,
+    "file": "tiles/-10_8.json",
+    "bytes": 135989,
+    "sha256": "850513792829e69dc441765bf9fca8ade9cc9cfc3bb26ed90e519c2871d1bbda"
+   },
+   {
+    "x": -10,
+    "y": 9,
+    "file": "tiles/-10_9.json",
+    "bytes": 20864,
+    "sha256": "be989698d3fa3aceaf74ff63cfa03a10ce9fd2c920080b08e4c4c8d6dcc96967"
+   },
+   {
+    "x": -9,
+    "y": -9,
+    "file": "tiles/-9_-9.json",
+    "bytes": 483693,
+    "sha256": "627f820defc8cccad5bceeb253ccf2ac79ce0a08b464cdf65a15af814e12bb9e"
+   },
+   {
+    "x": -9,
+    "y": -8,
+    "file": "tiles/-9_-8.json",
+    "bytes": 67097,
+    "sha256": "3a5d0c896ee792c2f509e2f5e42e80a338eabd36408d7fd7a9461a53ac3615e8"
+   },
+   {
+    "x": -9,
+    "y": -7,
+    "file": "tiles/-9_-7.json",
+    "bytes": 459081,
+    "sha256": "8a5ba8f3e761adf88257ef4d83ec1877299cfb05988fc68676e3d8604b931b52"
+   },
+   {
+    "x": -9,
+    "y": -6,
+    "file": "tiles/-9_-6.json",
+    "bytes": 369813,
+    "sha256": "7b013a284b093ac89f4627f1cfd09ad19251f37df63cb7ba939ab1b9ded27a29"
+   },
+   {
+    "x": -9,
+    "y": -5,
+    "file": "tiles/-9_-5.json",
+    "bytes": 321208,
+    "sha256": "2449ecdb1aa11fa4ba6b81ed106bfdf648bbfe7eb01784daf1418c414dd75db1"
+   },
+   {
+    "x": -9,
+    "y": -4,
+    "file": "tiles/-9_-4.json",
+    "bytes": 234917,
+    "sha256": "c2a1aed5690e32d30ca27f2acf675a0d1197f7f986db50333b3d10ddc909e4d2"
+   },
+   {
+    "x": -9,
+    "y": -3,
+    "file": "tiles/-9_-3.json",
+    "bytes": 350648,
+    "sha256": "a39e323e0ed70f7efe732ea4d049b19be084ef70ce9186fd45822100f5eaa4a3"
+   },
+   {
+    "x": -9,
+    "y": -2,
+    "file": "tiles/-9_-2.json",
+    "bytes": 581212,
+    "sha256": "cb9f83547b8f967ce2d62bc295097b25c4820aef32a4b9f6e044f2c9d60c1e7a"
+   },
+   {
+    "x": -9,
+    "y": -1,
+    "file": "tiles/-9_-1.json",
+    "bytes": 523457,
+    "sha256": "52aebd8416a833e66b64d416260fd84a960b29d2c561d36f0ed5a610fff7ac86"
+   },
+   {
+    "x": -9,
+    "y": 0,
+    "file": "tiles/-9_0.json",
+    "bytes": 572807,
+    "sha256": "ecb3a2e8d846ded58612556aeefb9432f8aae63d5c9768ffa8f537bde3a03cea"
+   },
+   {
+    "x": -9,
+    "y": 1,
+    "file": "tiles/-9_1.json",
+    "bytes": 631519,
+    "sha256": "0f0950f4056580cf8741437cf5a591243bce76e7b9778dab01e03ad75c3b22ca"
+   },
+   {
+    "x": -9,
+    "y": 2,
+    "file": "tiles/-9_2.json",
+    "bytes": 474312,
+    "sha256": "19bee8b90ebbfa546845882600fe034c05d86752ed2bad19b52606213cf39d17"
+   },
+   {
+    "x": -9,
+    "y": 3,
+    "file": "tiles/-9_3.json",
+    "bytes": 438783,
+    "sha256": "a010e6b26923fe859d04a7efb5ad650ed9ea90d10a21e38f28660b958b2b7311"
+   },
+   {
+    "x": -9,
+    "y": 4,
+    "file": "tiles/-9_4.json",
+    "bytes": 634425,
+    "sha256": "3ddb30a5a70a99b7f7d9e829c60398392af469347cf81991c0631fc5490b2c63"
+   },
+   {
+    "x": -9,
+    "y": 5,
+    "file": "tiles/-9_5.json",
+    "bytes": 1225950,
+    "sha256": "d61e7f2a291945f1ebb4ac188610101b44ec1e6fc74866e55cc0bb9ed4fc1416"
+   },
+   {
+    "x": -9,
+    "y": 6,
+    "file": "tiles/-9_6.json",
+    "bytes": 829569,
+    "sha256": "13945ab25df594039196250145464e2818070c39fd0bc2bba7fd5df8a557206d"
+   },
+   {
+    "x": -9,
+    "y": 7,
+    "file": "tiles/-9_7.json",
+    "bytes": 1325047,
+    "sha256": "3495028793a9d1dcb42ca58c40dd3f5da9246c4a222e91006c4f31173d265b87"
+   },
+   {
+    "x": -9,
+    "y": 8,
+    "file": "tiles/-9_8.json",
+    "bytes": 1426728,
+    "sha256": "96f821675660d80d70c16831ae01080366bfa9d42495d4082129eae2cec59c05"
+   },
+   {
+    "x": -9,
+    "y": 9,
+    "file": "tiles/-9_9.json",
+    "bytes": 370649,
+    "sha256": "1f0ac6741c1d737a1a203d7beabb2a0478c3133143b3ed0f8538aad4034b9e73"
+   },
+   {
+    "x": -8,
+    "y": -9,
+    "file": "tiles/-8_-9.json",
+    "bytes": 319054,
+    "sha256": "a5f342b65875aedcc19692b68fed3ba451d99a6e76255caa50feef3e330067b6"
+   },
+   {
+    "x": -8,
+    "y": -8,
+    "file": "tiles/-8_-8.json",
+    "bytes": 43054,
+    "sha256": "10b6909d2c3b7c693f94729c27fb689fd32e2a11f588f97b026c0d05cd2d12a3"
+   },
+   {
+    "x": -8,
+    "y": -7,
+    "file": "tiles/-8_-7.json",
+    "bytes": 164072,
+    "sha256": "b75a48d438f5e8ebce4f2c9cb5f2c4af88438d6dc95a390d9df3c93afae2cdcc"
+   },
+   {
+    "x": -8,
+    "y": -6,
+    "file": "tiles/-8_-6.json",
+    "bytes": 486319,
+    "sha256": "7d8db50c1009fb1dae14b8c743e1db7cb2351be9567cf312c6dc4b331082efa8"
+   },
+   {
+    "x": -8,
+    "y": -5,
+    "file": "tiles/-8_-5.json",
+    "bytes": 587370,
+    "sha256": "a23060bf4b7fa07e396e0ea633c03fc729efb66015713e6517e4533c1eac888e"
+   },
+   {
+    "x": -8,
+    "y": -4,
+    "file": "tiles/-8_-4.json",
+    "bytes": 319700,
+    "sha256": "98ab9db44a595d91dcd07f978688d8c40aff10033d4816913af49888a774fb9e"
+   },
+   {
+    "x": -8,
+    "y": -3,
+    "file": "tiles/-8_-3.json",
+    "bytes": 534451,
+    "sha256": "c4d5d598399936937cc46bc008eaca5c635287765b22cf536f7557d228a06111"
+   },
+   {
+    "x": -8,
+    "y": -2,
+    "file": "tiles/-8_-2.json",
+    "bytes": 822730,
+    "sha256": "c729505d6e635a74c0e452464495a4a90c559f9acd3e3b0ba6f2c8981c48f48b"
+   },
+   {
+    "x": -8,
+    "y": -1,
+    "file": "tiles/-8_-1.json",
+    "bytes": 499260,
+    "sha256": "67da0a9fd8878f3cbecb5dd88a592be93d94011aa7a8a96dc0f808ca70d9442e"
+   },
+   {
+    "x": -8,
+    "y": 0,
+    "file": "tiles/-8_0.json",
+    "bytes": 438837,
+    "sha256": "f718fba78870762f78aaf87bf129f7f8967efb03f3b045d6bf46705ea476f682"
+   },
+   {
+    "x": -8,
+    "y": 1,
+    "file": "tiles/-8_1.json",
+    "bytes": 667306,
+    "sha256": "acfe19db217c5dc83709f63fe5484a09699be05d4781c22f773e16580ddd44ee"
+   },
+   {
+    "x": -8,
+    "y": 2,
+    "file": "tiles/-8_2.json",
+    "bytes": 501904,
+    "sha256": "80220e9f633af9e0620597448ff2291e1e11d8a48e6bae0124d252ab32fa5ea3"
+   },
+   {
+    "x": -8,
+    "y": 3,
+    "file": "tiles/-8_3.json",
+    "bytes": 599840,
+    "sha256": "a85b5a75a86f2e40e6d0e36cb727badd6c90e2ef48257828aaafbd9907c40eaf"
+   },
+   {
+    "x": -8,
+    "y": 4,
+    "file": "tiles/-8_4.json",
+    "bytes": 967225,
+    "sha256": "f53c427581abcdd7b5844570c6da90be6643285e912b97940f5abcdbd37929d2"
+   },
+   {
+    "x": -8,
+    "y": 5,
+    "file": "tiles/-8_5.json",
+    "bytes": 956355,
+    "sha256": "b10ae63084b0ee37d3e233482ef642b4cf5febbb547dceea477b8d338a06a949"
+   },
+   {
+    "x": -8,
+    "y": 6,
+    "file": "tiles/-8_6.json",
+    "bytes": 742669,
+    "sha256": "d7c3c33bd7a5ae15fbd8949e82f3f2d0060cc5d1b28b2d545af6b2da33620817"
+   },
+   {
+    "x": -8,
+    "y": 7,
+    "file": "tiles/-8_7.json",
+    "bytes": 1253030,
+    "sha256": "d30dfb2403f835d634f78e2161b83a313c63ec46cdafab9cbf6d0da3d8af18e3"
+   },
+   {
+    "x": -8,
+    "y": 8,
+    "file": "tiles/-8_8.json",
+    "bytes": 1071950,
+    "sha256": "1f8d98c24e8739b86fa248c552fbb2fb7aa9cec64ace155a07b7516baeb1c6e3"
+   },
+   {
+    "x": -8,
+    "y": 9,
+    "file": "tiles/-8_9.json",
+    "bytes": 235792,
+    "sha256": "0fcd6099bcd3f6c69819e9810c89eb78fe52b00350e9183a45e982a95ce7cef4"
+   },
+   {
+    "x": -7,
+    "y": -9,
+    "file": "tiles/-7_-9.json",
+    "bytes": 606240,
+    "sha256": "f8bb2aad4cfd9eb9bd5fb86d57ad35fe2e611cd428ce0f166917e84646e40ffa"
+   },
+   {
+    "x": -7,
+    "y": -8,
+    "file": "tiles/-7_-8.json",
+    "bytes": 255117,
+    "sha256": "eb507ae94eddb386bff2b5d91d350913418892107e25cdf4831be40e3e0d5cb8"
+   },
+   {
+    "x": -7,
+    "y": -7,
+    "file": "tiles/-7_-7.json",
+    "bytes": 463897,
+    "sha256": "fdb40f5fb8456cbd131cb62250e245788fda8c11ada559120eda4864ef537d7e"
+   },
+   {
+    "x": -7,
+    "y": -6,
+    "file": "tiles/-7_-6.json",
+    "bytes": 659465,
+    "sha256": "f859e8395b312f425275eea86d88ffccd9b68fca0f95d31b8d10fd9af4ce3c4a"
+   },
+   {
+    "x": -7,
+    "y": -5,
+    "file": "tiles/-7_-5.json",
+    "bytes": 374108,
+    "sha256": "4cd22a1cb75ae28bcf252cba743c43f7a389484ace36d7d874feb922342cf067"
+   },
+   {
+    "x": -7,
+    "y": -4,
+    "file": "tiles/-7_-4.json",
+    "bytes": 506831,
+    "sha256": "9622ff82c4a7251d077f5131a38436a7414427dbc6a70f9ef89ac0226a3f8eda"
+   },
+   {
+    "x": -7,
+    "y": -3,
+    "file": "tiles/-7_-3.json",
+    "bytes": 249888,
+    "sha256": "9a49a71dcf463da7e6163a477c97d0126beb2422ad5cf0106ad810ddff89932d"
+   },
+   {
+    "x": -7,
+    "y": -2,
+    "file": "tiles/-7_-2.json",
+    "bytes": 600146,
+    "sha256": "54ef32f76d9b48b0813cfd39ef8432c5421bcee748fe02be3e947ad753d24dfd"
+   },
+   {
+    "x": -7,
+    "y": -1,
+    "file": "tiles/-7_-1.json",
+    "bytes": 464503,
+    "sha256": "36a91f57d3074b1e1964155ff01eb7abc1c7db7ed15a0b3de3e7e3b2588d70e8"
+   },
+   {
+    "x": -7,
+    "y": 0,
+    "file": "tiles/-7_0.json",
+    "bytes": 579782,
+    "sha256": "075250431e87a079f9a1bd97aad57ce3be8a7545547ff38321a6b929ed91ac63"
+   },
+   {
+    "x": -7,
+    "y": 1,
+    "file": "tiles/-7_1.json",
+    "bytes": 492047,
+    "sha256": "9a0439161ce44b8455436915defc6b403b5205accd2c1c34f94ff0b2734989f1"
+   },
+   {
+    "x": -7,
+    "y": 2,
+    "file": "tiles/-7_2.json",
+    "bytes": 345985,
+    "sha256": "32e5be59bdf01dd470ff8aee6cd7a81b1af27e4d570dacfed5f6fcb0dee5700b"
+   },
+   {
+    "x": -7,
+    "y": 3,
+    "file": "tiles/-7_3.json",
+    "bytes": 575383,
+    "sha256": "95a54e621de09db14ca498132b7800d1c6fe7a2085480c4f9c4e70004d6162cb"
+   },
+   {
+    "x": -7,
+    "y": 4,
+    "file": "tiles/-7_4.json",
+    "bytes": 439545,
+    "sha256": "abf7dbd35e263db7e284fb2e398e25787b0d6863c356f3f967a10baa63709875"
+   },
+   {
+    "x": -7,
+    "y": 5,
+    "file": "tiles/-7_5.json",
+    "bytes": 495875,
+    "sha256": "0e500333978e51eb8f10660a9a7841c7bf1971ec97203160048eb6016da3d48f"
+   },
+   {
+    "x": -7,
+    "y": 6,
+    "file": "tiles/-7_6.json",
+    "bytes": 1401260,
+    "sha256": "d9b9444aee3e10dfbae6a9995e91294ef28b37cbffbc80995de1c56b96eea4ed"
+   },
+   {
+    "x": -7,
+    "y": 7,
+    "file": "tiles/-7_7.json",
+    "bytes": 1461022,
+    "sha256": "c89ed52e948e739bca2406ffd5632a7aecb13d444d22d199dd437119ad63a30a"
+   },
+   {
+    "x": -7,
+    "y": 8,
+    "file": "tiles/-7_8.json",
+    "bytes": 1170390,
+    "sha256": "66510cb6e2e4714feff8912a3d29aa81fa8945d5df78fafb03b4df3bdb842585"
+   },
+   {
+    "x": -7,
+    "y": 9,
+    "file": "tiles/-7_9.json",
+    "bytes": 858832,
+    "sha256": "7dc9dfccc2b3ebc87a0bf10855aa0535d3e53f7391e95f28367d47e14fb69625"
+   },
+   {
+    "x": -6,
+    "y": -9,
+    "file": "tiles/-6_-9.json",
+    "bytes": 306027,
+    "sha256": "851041e1294a63f041f0f0cbc9f8ec4e5168a69fea466c5f1e03631e624a1376"
+   },
+   {
+    "x": -6,
+    "y": -8,
+    "file": "tiles/-6_-8.json",
+    "bytes": 754027,
+    "sha256": "16bc3842a7d1e0019e10bf023f7b6a9096e6d14d42d013b85a2d8fbb87cff08f"
+   },
+   {
+    "x": -6,
+    "y": -7,
+    "file": "tiles/-6_-7.json",
+    "bytes": 657771,
+    "sha256": "4811f3413eccfed2c70a9cbe9e2691f93900a2409e7a81e24533d6ad2c45c9d2"
+   },
+   {
+    "x": -6,
+    "y": -6,
+    "file": "tiles/-6_-6.json",
+    "bytes": 860481,
+    "sha256": "59c3f6b65b7dfe60ffedbc4ee2d545929072c8cfcb48f7dda5d8c96c4f062d8f"
+   },
+   {
+    "x": -6,
+    "y": -5,
+    "file": "tiles/-6_-5.json",
+    "bytes": 592516,
+    "sha256": "b6cf53552d691005abef66636a79939d9c0d4d19dfe26fe65983e8291dc66e87"
+   },
+   {
+    "x": -6,
+    "y": -4,
+    "file": "tiles/-6_-4.json",
+    "bytes": 446063,
+    "sha256": "809192b10c48c84498b3d6946eb1f7741830fff312ec5b976baa647987960425"
+   },
+   {
+    "x": -6,
+    "y": -3,
+    "file": "tiles/-6_-3.json",
+    "bytes": 399190,
+    "sha256": "6197a19c2cc9983fb3f28d8397448efc7dc411c05f5a44a1e7a6bbfd8fe2a2ef"
+   },
+   {
+    "x": -6,
+    "y": -2,
+    "file": "tiles/-6_-2.json",
+    "bytes": 873566,
+    "sha256": "0a3bd89b761cdd3749af355d0aee15401c4762a2a0d8801236f17d8c4bd6c2de"
+   },
+   {
+    "x": -6,
+    "y": -1,
+    "file": "tiles/-6_-1.json",
+    "bytes": 642163,
+    "sha256": "ba0645f98ca6000d99d9fa1e0b93a7874aa9c87fa1b80832fcaa1635077670ae"
+   },
+   {
+    "x": -6,
+    "y": 0,
+    "file": "tiles/-6_0.json",
+    "bytes": 616702,
+    "sha256": "ceac6e3a4c6595762540b1eee9451902527aef88c6fe67b856d5a2f534c39257"
+   },
+   {
+    "x": -6,
+    "y": 1,
+    "file": "tiles/-6_1.json",
+    "bytes": 583111,
+    "sha256": "aa093f810aec7a0e655f2ae55521cdb72427599df17d753f39c9ff2a86adaf1b"
+   },
+   {
+    "x": -6,
+    "y": 2,
+    "file": "tiles/-6_2.json",
+    "bytes": 730178,
+    "sha256": "4557845e5bc2e12c7416b9b9016532ca1d0bdf8dc360609efc7d5a126ff603f1"
+   },
+   {
+    "x": -6,
+    "y": 3,
+    "file": "tiles/-6_3.json",
+    "bytes": 747950,
+    "sha256": "8131325421a92dbe53aecc3da2a1caa57f58eb9a07e89404710f96d8b39394cb"
+   },
+   {
+    "x": -6,
+    "y": 4,
+    "file": "tiles/-6_4.json",
+    "bytes": 390903,
+    "sha256": "a1a5471c0f7a59c9ca1de010efda5c37848201d854d1f80c3c2125642b338ce2"
+   },
+   {
+    "x": -6,
+    "y": 5,
+    "file": "tiles/-6_5.json",
+    "bytes": 311578,
+    "sha256": "7cf79368548ef46125be6e1ee4de6e071511d8bf0eb75b73bdbb4af83db8f726"
+   },
+   {
+    "x": -6,
+    "y": 6,
+    "file": "tiles/-6_6.json",
+    "bytes": 1448372,
+    "sha256": "c62cd467b95baa13ee0817c53bf7820b2688f9357135fbd873961f4322d14274"
+   },
+   {
+    "x": -6,
+    "y": 7,
+    "file": "tiles/-6_7.json",
+    "bytes": 1430925,
+    "sha256": "049524419a4649e5d2f03e88da07e768b7da24aada71e9c3df50f6bfe8b83974"
+   },
+   {
+    "x": -6,
+    "y": 8,
+    "file": "tiles/-6_8.json",
+    "bytes": 1419058,
+    "sha256": "f7ee94a9645f8a84ffc961165ed3ba0deeb729760906bf74465272c8fbd405fd"
+   },
+   {
+    "x": -6,
+    "y": 9,
+    "file": "tiles/-6_9.json",
+    "bytes": 924468,
+    "sha256": "58be3e50ef7e5ec7ef2f74db5096fa9ef2ba52551152c0b25343285097644583"
+   },
+   {
+    "x": -5,
+    "y": -9,
+    "file": "tiles/-5_-9.json",
+    "bytes": 267485,
+    "sha256": "4bda93d71fb2594dd95ac49ceef7c5a0cba4ecab371c603c8e867a761518ab2e"
+   },
+   {
+    "x": -5,
+    "y": -8,
+    "file": "tiles/-5_-8.json",
+    "bytes": 92702,
+    "sha256": "f6219d8f2eae5e098d2d77b4f7395c768bbe358311ae8e27a09f05bc42a103b9"
+   },
+   {
+    "x": -5,
+    "y": -7,
+    "file": "tiles/-5_-7.json",
+    "bytes": 526701,
+    "sha256": "7561c0da307d1063c7b48ecc34da78c5a7399f0afeb74f67ce6f5a79b4574277"
+   },
+   {
+    "x": -5,
+    "y": -6,
+    "file": "tiles/-5_-6.json",
+    "bytes": 605813,
+    "sha256": "4e79693392dbef79c5147a4cf0f09febe8038995c91d3f686b9228c804104f04"
+   },
+   {
+    "x": -5,
+    "y": -5,
+    "file": "tiles/-5_-5.json",
+    "bytes": 626680,
+    "sha256": "907d3782647ee065396b1e47b04f722b33ec1c137c90da4145ba7c35eecb397d"
+   },
+   {
+    "x": -5,
+    "y": -4,
+    "file": "tiles/-5_-4.json",
+    "bytes": 749292,
+    "sha256": "76f847d08d6826d267a52a15d89eacaacdef1a6e39fd48fd97e4ced0d859ff92"
+   },
+   {
+    "x": -5,
+    "y": -3,
+    "file": "tiles/-5_-3.json",
+    "bytes": 668257,
+    "sha256": "914b79df43722ac42936cb9ecdc86d914afcc1c9988391d8b5b91cfd91aa69d7"
+   },
+   {
+    "x": -5,
+    "y": -2,
+    "file": "tiles/-5_-2.json",
+    "bytes": 352128,
+    "sha256": "f01d1865f3fe97d20136e642f19b764de255b4c2e5200b7bbfa4fe1bb1328dd8"
+   },
+   {
+    "x": -5,
+    "y": -1,
+    "file": "tiles/-5_-1.json",
+    "bytes": 428003,
+    "sha256": "fa61c8c898fa26b6f0ecf9b005d654f91964c12d76403f7dc702b0777516096a"
+   },
+   {
+    "x": -5,
+    "y": 0,
+    "file": "tiles/-5_0.json",
+    "bytes": 508855,
+    "sha256": "3baca0756388062bafed321687ecf9f5855146236adcc5987f56a60c063fbbb4"
+   },
+   {
+    "x": -5,
+    "y": 1,
+    "file": "tiles/-5_1.json",
+    "bytes": 657259,
+    "sha256": "674fea2a9a7862d820d2df8443e16774f0342d969518785c8c5b527b0d6f4014"
+   },
+   {
+    "x": -5,
+    "y": 2,
+    "file": "tiles/-5_2.json",
+    "bytes": 845162,
+    "sha256": "4515f31fa1dd8422a67292c9d5aa8483e8c48118142f812061058a115e8400be"
+   },
+   {
+    "x": -5,
+    "y": 3,
+    "file": "tiles/-5_3.json",
+    "bytes": 652283,
+    "sha256": "818bd82f4dfecd03d62cc2cc6bfdb0ac744d1bb570c706fb7efe4c90e4702b55"
+   },
+   {
+    "x": -5,
+    "y": 4,
+    "file": "tiles/-5_4.json",
+    "bytes": 1110011,
+    "sha256": "5d5094f6aefb5c5c3d28e03aad72a2e3c6d3a27b2ac4239bd53dd65bfcae53fd"
+   },
+   {
+    "x": -5,
+    "y": 5,
+    "file": "tiles/-5_5.json",
+    "bytes": 765930,
+    "sha256": "e111e8fa378cfbe9bfcc151e1eae3e210c529eed75cf125a0ccba99743a5e3f7"
+   },
+   {
+    "x": -5,
+    "y": 6,
+    "file": "tiles/-5_6.json",
+    "bytes": 315224,
+    "sha256": "5ec0fe848f943037de4d852715f2ca4b6daee660fac0e4661f763034d856fb71"
+   },
+   {
+    "x": -5,
+    "y": 7,
+    "file": "tiles/-5_7.json",
+    "bytes": 1348665,
+    "sha256": "95a442abbff71f099da62ed68ec63280aea22fc9c610f350fc851c7ded3f23aa"
+   },
+   {
+    "x": -5,
+    "y": 8,
+    "file": "tiles/-5_8.json",
+    "bytes": 1286305,
+    "sha256": "41579c6b2bf3eec28c059ea92bbaf1b743c9934fadb8ac7e714648ba0e59c76e"
+   },
+   {
+    "x": -5,
+    "y": 9,
+    "file": "tiles/-5_9.json",
+    "bytes": 352828,
+    "sha256": "4a07a0ff2df77d3a2d6f5739f6e563027c7dc43447e3fec96d1daef5a5cfee2a"
+   },
+   {
+    "x": -4,
+    "y": -9,
+    "file": "tiles/-4_-9.json",
+    "bytes": 447927,
+    "sha256": "b6fb146bc76be6d64574d017185286c42946fef44373ee392808fef09c46ed28"
+   },
+   {
+    "x": -4,
+    "y": -8,
+    "file": "tiles/-4_-8.json",
+    "bytes": 230649,
+    "sha256": "b0418778e77397e262ef0e58e43ac730e4d906cad221cc01b7ec6882ad7e01d7"
+   },
+   {
+    "x": -4,
+    "y": -7,
+    "file": "tiles/-4_-7.json",
+    "bytes": 657983,
+    "sha256": "4336a62a1a402dc5d05ba33bd951eddd6c171b060af1e69b82869d24f868b592"
+   },
+   {
+    "x": -4,
+    "y": -6,
+    "file": "tiles/-4_-6.json",
+    "bytes": 668259,
+    "sha256": "bd3e145a99e3d8f84b133781fc13a9da5a7ab98ac2d9586a19ca37c64ae8513d"
+   },
+   {
+    "x": -4,
+    "y": -5,
+    "file": "tiles/-4_-5.json",
+    "bytes": 555117,
+    "sha256": "0b1813f841c721a6c4868c09d6a7f5e513d36eab7c653b00cb1d5c58d24a07b0"
+   },
+   {
+    "x": -4,
+    "y": -4,
+    "file": "tiles/-4_-4.json",
+    "bytes": 489892,
+    "sha256": "639056084571713f670d62476669f57421450354e9bab81c17d0d68efe511b6d"
+   },
+   {
+    "x": -4,
+    "y": -3,
+    "file": "tiles/-4_-3.json",
+    "bytes": 814352,
+    "sha256": "e0c52878bb3b9fd72e28dab01d06a0b70c1cbd7b33a3492ef1b2de990cb94303"
+   },
+   {
+    "x": -4,
+    "y": -2,
+    "file": "tiles/-4_-2.json",
+    "bytes": 965650,
+    "sha256": "8ef2c97cd898d05c707581900dd337f93ed044244e9900415a9c758e8e136124"
+   },
+   {
+    "x": -4,
+    "y": -1,
+    "file": "tiles/-4_-1.json",
+    "bytes": 673878,
+    "sha256": "55cba8764b59568df40672519effc01a951d96592f9de3cdbaf9f6ccedeffc73"
+   },
+   {
+    "x": -4,
+    "y": 0,
+    "file": "tiles/-4_0.json",
+    "bytes": 705255,
+    "sha256": "7601e692502072dd958b479abb70be20b775165ecd3b63eb776e904623f07cad"
+   },
+   {
+    "x": -4,
+    "y": 1,
+    "file": "tiles/-4_1.json",
+    "bytes": 520957,
+    "sha256": "abc781d640d7572f591593b62f04e8244ac37b99fbafaf8047c04b4d71c40970"
+   },
+   {
+    "x": -4,
+    "y": 2,
+    "file": "tiles/-4_2.json",
+    "bytes": 840989,
+    "sha256": "f46cd3b2b0dc331b25e6d06d94c37020c1c8bf4e2178354aa9002ab280a16927"
+   },
+   {
+    "x": -4,
+    "y": 3,
+    "file": "tiles/-4_3.json",
+    "bytes": 555339,
+    "sha256": "9987e7cc606f34aee32a910e4def811d143a2db69307e413bd91ae35c3f91395"
+   },
+   {
+    "x": -4,
+    "y": 4,
+    "file": "tiles/-4_4.json",
+    "bytes": 831859,
+    "sha256": "81bb5caa976f61111a17271d249a58c8f19dd0580f675a40c78654b900d3000b"
+   },
+   {
+    "x": -4,
+    "y": 5,
+    "file": "tiles/-4_5.json",
+    "bytes": 633960,
+    "sha256": "31411800c0406f2b782cf94b469ae2ad221cb29e04ad44dbfb516c0bbd996fd7"
+   },
+   {
+    "x": -4,
+    "y": 6,
+    "file": "tiles/-4_6.json",
+    "bytes": 520502,
+    "sha256": "2327239914083320c3cbc8019f256caf61adf64cfe0778be0df4db4c040bd3fd"
+   },
+   {
+    "x": -4,
+    "y": 7,
+    "file": "tiles/-4_7.json",
+    "bytes": 383888,
+    "sha256": "66845b831da2ab5b83fda9c19c705f367ef0b1704ea4801c50b6c1d3a2e1d0a6"
+   },
+   {
+    "x": -4,
+    "y": 8,
+    "file": "tiles/-4_8.json",
+    "bytes": 1233382,
+    "sha256": "2cfc4174610f8ce2f95d2bcab0c5f2ce5d30d03e5da7cc130534dbdb05ffa45d"
+   },
+   {
+    "x": -4,
+    "y": 9,
+    "file": "tiles/-4_9.json",
+    "bytes": 734274,
+    "sha256": "cfb79490a08a6edf51cc872e37941dc11c44b0ed57d6e7a5967e39186e9ebc2e"
+   },
+   {
+    "x": -3,
+    "y": -9,
+    "file": "tiles/-3_-9.json",
+    "bytes": 458643,
+    "sha256": "db040f30c5007d2bfe6449724efa3ed4ce3ad71aa8ee650f335b70410eeff283"
+   },
+   {
+    "x": -3,
+    "y": -8,
+    "file": "tiles/-3_-8.json",
+    "bytes": 254072,
+    "sha256": "193f7649e4661c8b2b9fe48094d5ff4042d90031128fab55868c64b2bde5c749"
+   },
+   {
+    "x": -3,
+    "y": -7,
+    "file": "tiles/-3_-7.json",
+    "bytes": 709276,
+    "sha256": "fd92b3bf44ecc8b5de82576abf5d2e8b651691b29c091a7782b682a6c6f7008e"
+   },
+   {
+    "x": -3,
+    "y": -6,
+    "file": "tiles/-3_-6.json",
+    "bytes": 653580,
+    "sha256": "e0bd9a262bf3ce88eb650136a761e3ecc351d4f91c8589a2f3a7f909d8599f83"
+   },
+   {
+    "x": -3,
+    "y": -5,
+    "file": "tiles/-3_-5.json",
+    "bytes": 589225,
+    "sha256": "6e839d199ce09f6ae82fe3e0c5a4b29ebdf7d28da7541d5212adbc97521ab2c3"
+   },
+   {
+    "x": -3,
+    "y": -4,
+    "file": "tiles/-3_-4.json",
+    "bytes": 635635,
+    "sha256": "d4cfd7760792bed73744f5b72e1d9d65bb3322c8ed9363a55e8011f6eb674abd"
+   },
+   {
+    "x": -3,
+    "y": -3,
+    "file": "tiles/-3_-3.json",
+    "bytes": 754582,
+    "sha256": "a813bc6742f06804703db57a7f726b626e25d7b363378a35eaeb707c1a965b77"
+   },
+   {
+    "x": -3,
+    "y": -2,
+    "file": "tiles/-3_-2.json",
+    "bytes": 847820,
+    "sha256": "aa7a9143faccc8781e07079759a7cf9e7bef6ff872567b2339c8850cf7965277"
+   },
+   {
+    "x": -3,
+    "y": -1,
+    "file": "tiles/-3_-1.json",
+    "bytes": 794355,
+    "sha256": "642e12e57ef7a35b22661350ffca1a79865c54fb5761f5f2b7a6ce674f6a2b5c"
+   },
+   {
+    "x": -3,
+    "y": 0,
+    "file": "tiles/-3_0.json",
+    "bytes": 901210,
+    "sha256": "b378df2e2275e0f0e0a285cb09e7a12eeb77235eb3ea160509bd28e6c64a483d"
+   },
+   {
+    "x": -3,
+    "y": 1,
+    "file": "tiles/-3_1.json",
+    "bytes": 593517,
+    "sha256": "d7e702ba823fc3732dfcb3a3ff9ca97a0d248bca541c4bfe76b96020ca2556c2"
+   },
+   {
+    "x": -3,
+    "y": 2,
+    "file": "tiles/-3_2.json",
+    "bytes": 678307,
+    "sha256": "7c37cc2f88582d0cca30cb5a6acabe3d252fcb7953877a29b1f5b0a1f24028b4"
+   },
+   {
+    "x": -3,
+    "y": 3,
+    "file": "tiles/-3_3.json",
+    "bytes": 447126,
+    "sha256": "02772044650a269ea3d9ecf687ac9f8a64c395f32979c70021e7545e1504b5bb"
+   },
+   {
+    "x": -3,
+    "y": 4,
+    "file": "tiles/-3_4.json",
+    "bytes": 191103,
+    "sha256": "16a902f08bace90e07e29939d23833dff4fc495dbf9529ebb7da6cd9062bdee9"
+   },
+   {
+    "x": -3,
+    "y": 5,
+    "file": "tiles/-3_5.json",
+    "bytes": 16385,
+    "sha256": "d7152bfd7243874ce4d329c160a1cfb0dca20dae9eebfff7e14c6074f00cd71e"
+   },
+   {
+    "x": -3,
+    "y": 6,
+    "file": "tiles/-3_6.json",
+    "bytes": 707395,
+    "sha256": "99a54dbc0a07339203590412b1ba00e54eea05dfc5b69b12631c7dafb62d7748"
+   },
+   {
+    "x": -3,
+    "y": 7,
+    "file": "tiles/-3_7.json",
+    "bytes": 294687,
+    "sha256": "a721a0ec82ae6d5d7d12b5600d52953eb1016148f0d560520e4ad085349224e3"
+   },
+   {
+    "x": -3,
+    "y": 8,
+    "file": "tiles/-3_8.json",
+    "bytes": 854350,
+    "sha256": "2e6e55d4cc1d374ef5bb4f2cadecc2114583f6010637cd0f4b86433b4b712026"
+   },
+   {
+    "x": -3,
+    "y": 9,
+    "file": "tiles/-3_9.json",
+    "bytes": 225940,
+    "sha256": "5832044b238e801fe8d640e6e917e06a6583b5657724847ef9a325e7b04cf016"
+   },
+   {
+    "x": -2,
+    "y": -9,
+    "file": "tiles/-2_-9.json",
+    "bytes": 428622,
+    "sha256": "d2b45618cdd78152968b1395892b24603c71aa96baa60ea09859243e5591f7c3"
+   },
+   {
+    "x": -2,
+    "y": -8,
+    "file": "tiles/-2_-8.json",
+    "bytes": 570187,
+    "sha256": "bff48c92ad4cfcca9f652565acf22c37910dba2c87609aae7d0b1b05a77c8e10"
+   },
+   {
+    "x": -2,
+    "y": -7,
+    "file": "tiles/-2_-7.json",
+    "bytes": 433665,
+    "sha256": "66744fbcd997a2dbe652d66e4b92631b84dd74665f5417bd3116d49517334b0a"
+   },
+   {
+    "x": -2,
+    "y": -6,
+    "file": "tiles/-2_-6.json",
+    "bytes": 799262,
+    "sha256": "4787bdf2c1a429b05d91311c5d585f5f63371b188616a82da9f26b9593ef4855"
+   },
+   {
+    "x": -2,
+    "y": -5,
+    "file": "tiles/-2_-5.json",
+    "bytes": 715184,
+    "sha256": "12f391911ae68bb7172f2d10a4b97c19ee2aa7509fb8f11a221217ca8d3c3dc3"
+   },
+   {
+    "x": -2,
+    "y": -4,
+    "file": "tiles/-2_-4.json",
+    "bytes": 749565,
+    "sha256": "83e9f3f401270e8c368d607f83dea610879162573ee50e1ba716edc4648a152e"
+   },
+   {
+    "x": -2,
+    "y": -3,
+    "file": "tiles/-2_-3.json",
+    "bytes": 668613,
+    "sha256": "048df45ca76544313e17f36cd10f461282ce12ba84291cbb16eb9d89944dcaea"
+   },
+   {
+    "x": -2,
+    "y": -2,
+    "file": "tiles/-2_-2.json",
+    "bytes": 931950,
+    "sha256": "7ff03b1ad6a1c1d5e429adbde1a811fa765836da0b0ac5323f2c568667432c95"
+   },
+   {
+    "x": -2,
+    "y": -1,
+    "file": "tiles/-2_-1.json",
+    "bytes": 900610,
+    "sha256": "99b5442a96d1f1bdfc76a6393074506fba63724340f2f1c7bae66544d100ee69"
+   },
+   {
+    "x": -2,
+    "y": 0,
+    "file": "tiles/-2_0.json",
+    "bytes": 690011,
+    "sha256": "94a2c731e50551e92dcfb8e64e666de0f3b14bf668f726ea669a059eedfbd77a"
+   },
+   {
+    "x": -2,
+    "y": 1,
+    "file": "tiles/-2_1.json",
+    "bytes": 845410,
+    "sha256": "dff3ab99e8503f6d461d122981718f23cf0d37b322b8fdcdcf5008ba3b5ff9c3"
+   },
+   {
+    "x": -2,
+    "y": 2,
+    "file": "tiles/-2_2.json",
+    "bytes": 933119,
+    "sha256": "9e9b0bdf6d856c7c3434158e8a93a7cbbf061e00cc0d6468c43eb92d4e4fbee0"
+   },
+   {
+    "x": -2,
+    "y": 3,
+    "file": "tiles/-2_3.json",
+    "bytes": 717501,
+    "sha256": "45334640873fa1a8c9d2fc02acd442446070ad56eace48ab97f2e36e8ede7c31"
+   },
+   {
+    "x": -2,
+    "y": 4,
+    "file": "tiles/-2_4.json",
+    "bytes": 246682,
+    "sha256": "51853edb366f7ef3dce777a04d0e8850313d55736cc6397b592e0de427169e69"
+   },
+   {
+    "x": -2,
+    "y": 5,
+    "file": "tiles/-2_5.json",
+    "bytes": 329338,
+    "sha256": "7c580cbf0c539f4835b5d2d419d5eb61bc55ebcfb9a1930838d65588a3c0d066"
+   },
+   {
+    "x": -2,
+    "y": 6,
+    "file": "tiles/-2_6.json",
+    "bytes": 488310,
+    "sha256": "c28518cbcc55ad4f55ce80c9e98452548aae291263f671ec6baf8bdbfd8a6f89"
+   },
+   {
+    "x": -2,
+    "y": 7,
+    "file": "tiles/-2_7.json",
+    "bytes": 568339,
+    "sha256": "af4cab8adfb1bb83b2b9a4e51e68f39dc2d646d1c3ef5237ee49c9983f027cd4"
+   },
+   {
+    "x": -2,
+    "y": 8,
+    "file": "tiles/-2_8.json",
+    "bytes": 503895,
+    "sha256": "5e8c41a267847f6eff278e1c0f2aabb41f73133337783e8aa0e8e73725ff7f20"
+   },
+   {
+    "x": -2,
+    "y": 9,
+    "file": "tiles/-2_9.json",
+    "bytes": 519338,
+    "sha256": "8edd085985da686610a08e5870679dfa53e1ffd30525edb9d91b5a07c84ff765"
+   },
+   {
+    "x": -1,
+    "y": -9,
+    "file": "tiles/-1_-9.json",
+    "bytes": 25948,
+    "sha256": "27fbc8f89990086c951aaea6ede280a1443f63cfed48432c8c71d1b5eec737c1"
+   },
+   {
+    "x": -1,
+    "y": -8,
+    "file": "tiles/-1_-8.json",
+    "bytes": 373176,
+    "sha256": "e3aac2a865b1892366fdca41f767aeb8c58a547e369b99a9c67fb35f0b250a18"
+   },
+   {
+    "x": -1,
+    "y": -7,
+    "file": "tiles/-1_-7.json",
+    "bytes": 378537,
+    "sha256": "ea4e93930761e7d20aba646648d53b294798dfd2a074e548cb059cc7d3c5609f"
+   },
+   {
+    "x": -1,
+    "y": -6,
+    "file": "tiles/-1_-6.json",
+    "bytes": 489148,
+    "sha256": "1e88c686fd7a21ee8d74487d02d16de4d22a0b748ba4c6252742ff1690fb9fbd"
+   },
+   {
+    "x": -1,
+    "y": -5,
+    "file": "tiles/-1_-5.json",
+    "bytes": 503925,
+    "sha256": "8eb4609a4db35547e837784ed7f61d898c459cb05933b2dc10a1b69a2a31893f"
+   },
+   {
+    "x": -1,
+    "y": -4,
+    "file": "tiles/-1_-4.json",
+    "bytes": 861087,
+    "sha256": "11688e50bff169900d20bcb35454fe7016221dae7c8b84228b4ed03907f8cc1e"
+   },
+   {
+    "x": -1,
+    "y": -3,
+    "file": "tiles/-1_-3.json",
+    "bytes": 553736,
+    "sha256": "cd11a28080d086bd5464aaab9a0d3769e539fba284a50f81ab0467f103dbc707"
+   },
+   {
+    "x": -1,
+    "y": -2,
+    "file": "tiles/-1_-2.json",
+    "bytes": 789443,
+    "sha256": "4f31614718805002387aeb39cbb5025084f2dde09b3135b1327fb6bd3dd9bc99"
+   },
+   {
+    "x": -1,
+    "y": -1,
+    "file": "tiles/-1_-1.json",
+    "bytes": 858114,
+    "sha256": "5ed265f5c9502837fe82aa2db442d0e537976868fa95056b6dae44ed7cda8cd5"
+   },
+   {
+    "x": -1,
+    "y": 0,
+    "file": "tiles/-1_0.json",
+    "bytes": 984764,
+    "sha256": "160b43f1e49fb8f07d6063e6968aa5e90a9ddf102de5ca921e94e2edf0e16dbb"
+   },
+   {
+    "x": -1,
+    "y": 1,
+    "file": "tiles/-1_1.json",
+    "bytes": 731223,
+    "sha256": "e593bf1ce67d1ce2020b2bb523e9c4f76497a5920b4c74e2f5df02a4881fe49b"
+   },
+   {
+    "x": -1,
+    "y": 2,
+    "file": "tiles/-1_2.json",
+    "bytes": 580464,
+    "sha256": "31cf27d1f06cd62c9812ec04249d9c5225a386180dcd2bb0d7e1914bfe2790a0"
+   },
+   {
+    "x": -1,
+    "y": 3,
+    "file": "tiles/-1_3.json",
+    "bytes": 989261,
+    "sha256": "9566de3c1036f9d42e579a5fce5ab771d7a862c0955673b33d77171314c4187e"
+   },
+   {
+    "x": -1,
+    "y": 4,
+    "file": "tiles/-1_4.json",
+    "bytes": 458830,
+    "sha256": "ad921702338880b0e97f51a0d67fbe1fd56c875b56d2dd139a04c61ccb857139"
+   },
+   {
+    "x": -1,
+    "y": 5,
+    "file": "tiles/-1_5.json",
+    "bytes": 312589,
+    "sha256": "dd6674984937f676964ae35412f5a6d426c4db499deddc296cd6b68b5aaf4ef6"
+   },
+   {
+    "x": -1,
+    "y": 6,
+    "file": "tiles/-1_6.json",
+    "bytes": 295174,
+    "sha256": "3c7d315bab0cd4d272624fedcf3b93f98c5013347433c3b8ee553bb5468a1662"
+   },
+   {
+    "x": -1,
+    "y": 7,
+    "file": "tiles/-1_7.json",
+    "bytes": 396677,
+    "sha256": "df8fd2f116abc1832dc18bf249fa20ec89564a407a0474ee0033bb564d7fc2dc"
+   },
+   {
+    "x": -1,
+    "y": 8,
+    "file": "tiles/-1_8.json",
+    "bytes": 522066,
+    "sha256": "600b89fc4c0248e51ecc31059fc76e3f77dc21063527609bbdaf885296350782"
+   },
+   {
+    "x": -1,
+    "y": 9,
+    "file": "tiles/-1_9.json",
+    "bytes": 409226,
+    "sha256": "055b3c77e60902d155ddcaaf915c8e434f052ec486b853328172aae3d9a8b138"
+   },
+   {
+    "x": 0,
+    "y": -9,
+    "file": "tiles/0_-9.json",
+    "bytes": 261328,
+    "sha256": "acbf0f42dfb5780fe92e9918b5275d903ab087dabddf1ab08adb2e2640381c59"
+   },
+   {
+    "x": 0,
+    "y": -8,
+    "file": "tiles/0_-8.json",
+    "bytes": 479708,
+    "sha256": "7793784f5afddd89b8a6f050a1ff0734e639b4276232f68041cf7ed0ff6d5816"
+   },
+   {
+    "x": 0,
+    "y": -7,
+    "file": "tiles/0_-7.json",
+    "bytes": 611742,
+    "sha256": "ae085182a6cb6a07eb885e41edfd7940061c79aaf03e001f5f81a0193f04492d"
+   },
+   {
+    "x": 0,
+    "y": -6,
+    "file": "tiles/0_-6.json",
+    "bytes": 655224,
+    "sha256": "d44e0dad8381b065c68a5da11ad16ff61f4b3f96a1728d58d164f000c5f999dd"
+   },
+   {
+    "x": 0,
+    "y": -5,
+    "file": "tiles/0_-5.json",
+    "bytes": 533285,
+    "sha256": "5fcc0de5206633ff7972a566f3bf5c965f02453c763bd87f5a882786c16972ab"
+   },
+   {
+    "x": 0,
+    "y": -4,
+    "file": "tiles/0_-4.json",
+    "bytes": 679933,
+    "sha256": "d62b51ab02acb26f7de9ac32c326792a79610778e1b289caecdca4a284b78782"
+   },
+   {
+    "x": 0,
+    "y": -3,
+    "file": "tiles/0_-3.json",
+    "bytes": 506411,
+    "sha256": "eddc4572a23ac6734577317b7fb04225bcafb0d1aa4fa3d9ef20f4a2855fe9ec"
+   },
+   {
+    "x": 0,
+    "y": -2,
+    "file": "tiles/0_-2.json",
+    "bytes": 898539,
+    "sha256": "57c4a6c3513a54a94d82f8c2d2634dad0a65d4609967ae2ae1dccf13d2c8eb44"
+   },
+   {
+    "x": 0,
+    "y": -1,
+    "file": "tiles/0_-1.json",
+    "bytes": 1062055,
+    "sha256": "209dd87cfb498d7908a356c4d9aacb6ec39e8b98b52003b01411cf0504a1be96"
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "file": "tiles/0_0.json",
+    "bytes": 1130779,
+    "sha256": "52bf4556582b9e08f01b90b3141b95829dabffb4267fb6970dcb0698bf2e580b"
+   },
+   {
+    "x": 0,
+    "y": 1,
+    "file": "tiles/0_1.json",
+    "bytes": 631171,
+    "sha256": "c40ad28d23e0856a971a7f134097e48c5bb8f90bb685d6c5f3ffb655e8b8a0e6"
+   },
+   {
+    "x": 0,
+    "y": 2,
+    "file": "tiles/0_2.json",
+    "bytes": 583145,
+    "sha256": "d94542f57f8b476a317a98a688c75a935abb166597108b1e05286de3984c3ecd"
+   },
+   {
+    "x": 0,
+    "y": 3,
+    "file": "tiles/0_3.json",
+    "bytes": 820505,
+    "sha256": "86dbaface0f131b750742717d9faa14be7f03ae1559a970eea48f41c75b758e6"
+   },
+   {
+    "x": 0,
+    "y": 4,
+    "file": "tiles/0_4.json",
+    "bytes": 520957,
+    "sha256": "1fdb9ebba23923a5da8fe3c814e11a450d349187ac994493284742f8cddddaaf"
+   },
+   {
+    "x": 0,
+    "y": 5,
+    "file": "tiles/0_5.json",
+    "bytes": 561577,
+    "sha256": "204ed902ba386b98c1381ae29298295bfd0c7b8ea3eefc2475b3bf925f33e3b9"
+   },
+   {
+    "x": 0,
+    "y": 6,
+    "file": "tiles/0_6.json",
+    "bytes": 348446,
+    "sha256": "2e5569407176d2c9926d38e08f134ff628585ad4a7ff798abeeb1268d4561eaa"
+   },
+   {
+    "x": 0,
+    "y": 7,
+    "file": "tiles/0_7.json",
+    "bytes": 301453,
+    "sha256": "18037131201b674999c83af891c1165eada01570295033a66eec3ac397f44ac0"
+   },
+   {
+    "x": 0,
+    "y": 8,
+    "file": "tiles/0_8.json",
+    "bytes": 420388,
+    "sha256": "4ceb0c888fbe53681d06418ad2ee9ddaf46826bacb88eb00fcb68358312faf24"
+   },
+   {
+    "x": 0,
+    "y": 9,
+    "file": "tiles/0_9.json",
+    "bytes": 865589,
+    "sha256": "cd3105dc48aefe9bd90d71a5ed65671d1dbd7916e2f734260819c3b25d1dc831"
+   },
+   {
+    "x": 1,
+    "y": -9,
+    "file": "tiles/1_-9.json",
+    "bytes": 185967,
+    "sha256": "010be0aa63815c5e60aef1cb83db956d0ad88f446df0e5eecdb824b818d8c31b"
+   },
+   {
+    "x": 1,
+    "y": -8,
+    "file": "tiles/1_-8.json",
+    "bytes": 310421,
+    "sha256": "7719f407b949af119ae05d6805dd10870023e132db1faa2c6bb79c0f259f0c2c"
+   },
+   {
+    "x": 1,
+    "y": -7,
+    "file": "tiles/1_-7.json",
+    "bytes": 438752,
+    "sha256": "1dd3ab11acd33d82e639894ce80752a718cbc5c4edf4380a39437255f6160875"
+   },
+   {
+    "x": 1,
+    "y": -6,
+    "file": "tiles/1_-6.json",
+    "bytes": 978651,
+    "sha256": "b1ae00b133b14087b9f3997b3866c1cf1f22b7a505c670160bdab9d64e0b5f63"
+   },
+   {
+    "x": 1,
+    "y": -5,
+    "file": "tiles/1_-5.json",
+    "bytes": 883806,
+    "sha256": "70586853f45b0c295b475c7400d6b16317f8bcb04651049587e1c2fa7ef28239"
+   },
+   {
+    "x": 1,
+    "y": -4,
+    "file": "tiles/1_-4.json",
+    "bytes": 728242,
+    "sha256": "15bec59232e8c344768c68cbcd3b617075291056431752cf0e026ccead256491"
+   },
+   {
+    "x": 1,
+    "y": -3,
+    "file": "tiles/1_-3.json",
+    "bytes": 468094,
+    "sha256": "165f8b4b91d0f87fe6dd85d77dfd5f95bee1a557055d8cb3a391fa35cb34bae9"
+   },
+   {
+    "x": 1,
+    "y": -2,
+    "file": "tiles/1_-2.json",
+    "bytes": 894872,
+    "sha256": "82da338ffbd37592c72b8a55f78e57e8ad3947a0acddfecf1336bdebfedaaa79"
+   },
+   {
+    "x": 1,
+    "y": -1,
+    "file": "tiles/1_-1.json",
+    "bytes": 551722,
+    "sha256": "0870f19ed986a9df6d71354782de754c8303372321293715fd571c41555153a9"
+   },
+   {
+    "x": 1,
+    "y": 0,
+    "file": "tiles/1_0.json",
+    "bytes": 836775,
+    "sha256": "d1988767f0bf15779e85c8ba6e9cf2bfeab1cafd87c75e2d10a8b39125915f62"
+   },
+   {
+    "x": 1,
+    "y": 1,
+    "file": "tiles/1_1.json",
+    "bytes": 641566,
+    "sha256": "ac9e8a1536f429094813ee3ed43697aad9189192e3ac43cdbda90a24cd4970ac"
+   },
+   {
+    "x": 1,
+    "y": 2,
+    "file": "tiles/1_2.json",
+    "bytes": 569336,
+    "sha256": "ef4584904d23f885e6b8085d3c65b86d9f659ea141d16aa50fd04feb1508111c"
+   },
+   {
+    "x": 1,
+    "y": 3,
+    "file": "tiles/1_3.json",
+    "bytes": 591338,
+    "sha256": "8a40c37108c86fae262e06b4019bab03741ed72a447c648d5e7a0a4fc9d0b611"
+   },
+   {
+    "x": 1,
+    "y": 4,
+    "file": "tiles/1_4.json",
+    "bytes": 856795,
+    "sha256": "9c4eba783d1667adedc164636ba3917170de240fc6415bb6b4066614bef378c5"
+   },
+   {
+    "x": 1,
+    "y": 5,
+    "file": "tiles/1_5.json",
+    "bytes": 550377,
+    "sha256": "c23ea77dbbb00f3f0e619368851e3ba5cf85244bcb49556414b519c2e9c4d33e"
+   },
+   {
+    "x": 1,
+    "y": 6,
+    "file": "tiles/1_6.json",
+    "bytes": 650346,
+    "sha256": "f994516857915b9044e4d75762f20f7d8c8579954fca5dc2eacd6a5c0192c97f"
+   },
+   {
+    "x": 1,
+    "y": 7,
+    "file": "tiles/1_7.json",
+    "bytes": 292521,
+    "sha256": "c2c0edca56864001c6c3d2c801c0e1762d3c4890d38a2b89b52364fa8d7a218e"
+   },
+   {
+    "x": 1,
+    "y": 8,
+    "file": "tiles/1_8.json",
+    "bytes": 29099,
+    "sha256": "c6898017e02186152831ff9a5e855c64e20622e4a7a2b3cae1415ce3b460cbbb"
+   },
+   {
+    "x": 1,
+    "y": 9,
+    "file": "tiles/1_9.json",
+    "bytes": 218094,
+    "sha256": "3c383099bab4472555988da5edaa762b2f987353b78dddeb1b9fd70772fad450"
+   },
+   {
+    "x": 2,
+    "y": -9,
+    "file": "tiles/2_-9.json",
+    "bytes": 16058,
+    "sha256": "6314a6fea81d4eae49d7793cbd777be95c83cac4a8ce7a57c99cd6923a0600fc"
+   },
+   {
+    "x": 2,
+    "y": -8,
+    "file": "tiles/2_-8.json",
+    "bytes": 338320,
+    "sha256": "2a94f7c811bd757f547beee3e4fb64d180451a00d1ac1c2d8e8241117f08006e"
+   },
+   {
+    "x": 2,
+    "y": -7,
+    "file": "tiles/2_-7.json",
+    "bytes": 389490,
+    "sha256": "8523f72583fa53d495a46ddf1053c584d899ddff2c50448b9702f32e81b016fc"
+   },
+   {
+    "x": 2,
+    "y": -6,
+    "file": "tiles/2_-6.json",
+    "bytes": 587589,
+    "sha256": "e70fd4c5176c279e65e9fc4defc40b8fcf579377e34e31987615695e87f4800a"
+   },
+   {
+    "x": 2,
+    "y": -5,
+    "file": "tiles/2_-5.json",
+    "bytes": 583782,
+    "sha256": "fc4f7a27e1ab5ad23e863b166da9f7b750ec1427588d3d97ab31b5aeb3d83629"
+   },
+   {
+    "x": 2,
+    "y": -4,
+    "file": "tiles/2_-4.json",
+    "bytes": 567138,
+    "sha256": "20b4bacfcfbbecbba7f2d1f36e4475c085ab47f50e5e00c337b60b5bd0c038b1"
+   },
+   {
+    "x": 2,
+    "y": -3,
+    "file": "tiles/2_-3.json",
+    "bytes": 695740,
+    "sha256": "aa455c8a8b585d33b18ceabc822846a1e3d25baf3726ab3790bbe9f443d25b4d"
+   },
+   {
+    "x": 2,
+    "y": -2,
+    "file": "tiles/2_-2.json",
+    "bytes": 629497,
+    "sha256": "819d8f718316ab18e0cc1e756d349b40e27f953f2b3793052dbde9ba1ab8680a"
+   },
+   {
+    "x": 2,
+    "y": -1,
+    "file": "tiles/2_-1.json",
+    "bytes": 741040,
+    "sha256": "cca8ce3e722c25155f3d129e52a392ed4a649974917d8ef5ab323c1cc2bdda6b"
+   },
+   {
+    "x": 2,
+    "y": 0,
+    "file": "tiles/2_0.json",
+    "bytes": 602117,
+    "sha256": "e28ada9f3ecd691046a4a29ba6cda31e8fcff7e75d190b3aba1de42dce889916"
+   },
+   {
+    "x": 2,
+    "y": 1,
+    "file": "tiles/2_1.json",
+    "bytes": 541135,
+    "sha256": "afcdc30993d7720c583dd9a86cf775def8259a3ceb7bb9172e8490b39f01616d"
+   },
+   {
+    "x": 2,
+    "y": 2,
+    "file": "tiles/2_2.json",
+    "bytes": 688066,
+    "sha256": "897d3e45e31f3af82410bef6b79efc3daaac52bf6538d46e819f433001fb2e27"
+   },
+   {
+    "x": 2,
+    "y": 3,
+    "file": "tiles/2_3.json",
+    "bytes": 537298,
+    "sha256": "9de8588e58ed8de83d543f9ab13a8cfd24ea511ce299da14d5fceb5fc43249a3"
+   },
+   {
+    "x": 2,
+    "y": 4,
+    "file": "tiles/2_4.json",
+    "bytes": 648439,
+    "sha256": "7aa48f189bf52ec15d931b53db4f9728cf1582534fd1dce27965e1ab232d77e0"
+   },
+   {
+    "x": 2,
+    "y": 5,
+    "file": "tiles/2_5.json",
+    "bytes": 543852,
+    "sha256": "b22e0e380bbcf90ee5ceae39e584bc599fe79686d35d38d9bc8926070b437595"
+   },
+   {
+    "x": 2,
+    "y": 6,
+    "file": "tiles/2_6.json",
+    "bytes": 942671,
+    "sha256": "4321fc9e060dd535b7175269c0a12bbebebf2b67ac6691497456803f0914c142"
+   },
+   {
+    "x": 2,
+    "y": 7,
+    "file": "tiles/2_7.json",
+    "bytes": 695050,
+    "sha256": "9e8a3b568ecad4919f1c338a25695d478de31244c5fd0b758e5db2944ba672ce"
+   },
+   {
+    "x": 2,
+    "y": 8,
+    "file": "tiles/2_8.json",
+    "bytes": 932148,
+    "sha256": "1b5de4dbd87345b423241c0ca926fa166f42138b695fed22f359d1c002e9a216"
+   },
+   {
+    "x": 2,
+    "y": 9,
+    "file": "tiles/2_9.json",
+    "bytes": 162044,
+    "sha256": "df8896e50db6e6e1ef6bf39be979296646dd0d22128b01625daff3c26e2a5e21"
+   },
+   {
+    "x": 3,
+    "y": -9,
+    "file": "tiles/3_-9.json",
+    "bytes": 7081,
+    "sha256": "08c9b80d0263b46e83587e71d7db37cbb1c0a89e9989514f9f64dfe2e8943373"
+   },
+   {
+    "x": 3,
+    "y": -8,
+    "file": "tiles/3_-8.json",
+    "bytes": 252609,
+    "sha256": "c49cb1e5c3a0aacae3eab0384c7a7d96c4ceda56b2931d46882593330a5c5b1b"
+   },
+   {
+    "x": 3,
+    "y": -7,
+    "file": "tiles/3_-7.json",
+    "bytes": 177377,
+    "sha256": "c5e7955a1e4b0ccc32cb9644e5b84b8899fe2cb6bb10eb7a23a0008b65871903"
+   },
+   {
+    "x": 3,
+    "y": -6,
+    "file": "tiles/3_-6.json",
+    "bytes": 591157,
+    "sha256": "1bc1648cd2cecffe82d3ca9e60e888b91be3279a3941e5475eb94755019dd782"
+   },
+   {
+    "x": 3,
+    "y": -5,
+    "file": "tiles/3_-5.json",
+    "bytes": 527090,
+    "sha256": "397ad156672c3a077062542ee666a71d76d9c2ebf8dd464544957153f89ecfd6"
+   },
+   {
+    "x": 3,
+    "y": -4,
+    "file": "tiles/3_-4.json",
+    "bytes": 728617,
+    "sha256": "51b4b1503c4b0c3ddf5fe1033bcec2c0eed6b375c9346656dc3996367fa288fe"
+   },
+   {
+    "x": 3,
+    "y": -3,
+    "file": "tiles/3_-3.json",
+    "bytes": 763023,
+    "sha256": "3b7a9ff92d72e30771512114d746dc31c74ec50a1f238b3a21e8ce066f582128"
+   },
+   {
+    "x": 3,
+    "y": -2,
+    "file": "tiles/3_-2.json",
+    "bytes": 774413,
+    "sha256": "b9ded82dc4215b6c2747277a1a18042d92ca60f68df692511893709912c49a90"
+   },
+   {
+    "x": 3,
+    "y": -1,
+    "file": "tiles/3_-1.json",
+    "bytes": 371975,
+    "sha256": "cdaaa370591eb769cef98afac241a16fdd521daad2ccaa116105d3aeaa48b49c"
+   },
+   {
+    "x": 3,
+    "y": 0,
+    "file": "tiles/3_0.json",
+    "bytes": 811254,
+    "sha256": "2f4400a5f2b4c3b60241555815e357fa7726e22a528c3c6168e314bc93d536b0"
+   },
+   {
+    "x": 3,
+    "y": 1,
+    "file": "tiles/3_1.json",
+    "bytes": 1196114,
+    "sha256": "18cb2c993e7187c1201e485c5e358ab30f88e7a5df70aee9c83886c19af87181"
+   },
+   {
+    "x": 3,
+    "y": 2,
+    "file": "tiles/3_2.json",
+    "bytes": 1053342,
+    "sha256": "7f703bb32073b3c128516c35967a622727397a2256178e39f48a7aeb8e9ca658"
+   },
+   {
+    "x": 3,
+    "y": 3,
+    "file": "tiles/3_3.json",
+    "bytes": 598830,
+    "sha256": "85f8cce1d6907a39c2ff392abc84f7c46a26e2ced24d60c659d04e63cb7a397c"
+   },
+   {
+    "x": 3,
+    "y": 4,
+    "file": "tiles/3_4.json",
+    "bytes": 709476,
+    "sha256": "7d90201b76d70d96525d76ff89d76859d6d77d2d04e56e5cf6ba550173ebe1c4"
+   },
+   {
+    "x": 3,
+    "y": 5,
+    "file": "tiles/3_5.json",
+    "bytes": 605293,
+    "sha256": "6d1af90dcb33d95641b3ae914bc1b3b3a643fd40a852276005efc1ae844d0bbd"
+   },
+   {
+    "x": 3,
+    "y": 6,
+    "file": "tiles/3_6.json",
+    "bytes": 478326,
+    "sha256": "97bcfcfa2a4b0ff542fb28b95a7ab1f2831527e3cf4ee512df0eac9e6f38cd5c"
+   },
+   {
+    "x": 3,
+    "y": 7,
+    "file": "tiles/3_7.json",
+    "bytes": 886013,
+    "sha256": "e48413eefb5b930b395f0bb2b6881c77c324cfddc4c584ac297455a1200e2ce4"
+   },
+   {
+    "x": 3,
+    "y": 8,
+    "file": "tiles/3_8.json",
+    "bytes": 1345281,
+    "sha256": "411a4e58bfb0fab75e0b5a1dec366bed99d449f12869540f9fb17da0d1b1bff1"
+   },
+   {
+    "x": 3,
+    "y": 9,
+    "file": "tiles/3_9.json",
+    "bytes": 434288,
+    "sha256": "0535a2853caa7a2ee903836c4c41307bd8e3af4ffeced534e72dcfca9603bd55"
+   },
+   {
+    "x": 4,
+    "y": -9,
+    "file": "tiles/4_-9.json",
+    "bytes": 15982,
+    "sha256": "bd9b677a4b232a540034dde9681b15b87e6f36a55ae222a0405fc3ff66c9a006"
+   },
+   {
+    "x": 4,
+    "y": -8,
+    "file": "tiles/4_-8.json",
+    "bytes": 210477,
+    "sha256": "b1978cf57041bb75253530134ceb9574263a135a70d9166b86a22f5596c7fff1"
+   },
+   {
+    "x": 4,
+    "y": -7,
+    "file": "tiles/4_-7.json",
+    "bytes": 422449,
+    "sha256": "3552784da0911c97f3766da17f51c84b423a7a3090c21aef9dcc335541389cf3"
+   },
+   {
+    "x": 4,
+    "y": -6,
+    "file": "tiles/4_-6.json",
+    "bytes": 658754,
+    "sha256": "373c500eb2b7f7b8f526ced354635a5251e2b890d8670d80a29c115f922afdf5"
+   },
+   {
+    "x": 4,
+    "y": -5,
+    "file": "tiles/4_-5.json",
+    "bytes": 841000,
+    "sha256": "bf8d039d5bc8e7f0d6c64dcde62a7b862f0a05f8a40ae1bddb6183c9b1e0d237"
+   },
+   {
+    "x": 4,
+    "y": -4,
+    "file": "tiles/4_-4.json",
+    "bytes": 661236,
+    "sha256": "581bef15d2d1dd7626d2a1d59e9cb134ac57ed40135e8efa1b83ad8ff0549e00"
+   },
+   {
+    "x": 4,
+    "y": -3,
+    "file": "tiles/4_-3.json",
+    "bytes": 1095638,
+    "sha256": "e20020a1a226a80a7067bd921b0393fc52abf7134aafcedb7b6e3f2a480c7389"
+   },
+   {
+    "x": 4,
+    "y": -2,
+    "file": "tiles/4_-2.json",
+    "bytes": 531617,
+    "sha256": "864134f5717941bbe7a06f759d9530e6ca851b8c576068cee5be0b5b2e1acca5"
+   },
+   {
+    "x": 4,
+    "y": -1,
+    "file": "tiles/4_-1.json",
+    "bytes": 275672,
+    "sha256": "57a85101af9d02a085308ecb6810bc6b24931bb8d256bba189bb77087743abeb"
+   },
+   {
+    "x": 4,
+    "y": 0,
+    "file": "tiles/4_0.json",
+    "bytes": 728204,
+    "sha256": "fc9dc422f6a6c3e3e7bc1ca041026092b60246806f232c12e0cf310dbd3db2f5"
+   },
+   {
+    "x": 4,
+    "y": 1,
+    "file": "tiles/4_1.json",
+    "bytes": 781505,
+    "sha256": "55968321643cba46b912b66b0eb8c25bc0d5dd60ca9bbcd6e91db9f6b4923f03"
+   },
+   {
+    "x": 4,
+    "y": 2,
+    "file": "tiles/4_2.json",
+    "bytes": 486866,
+    "sha256": "b342266a82c1bf21019d59fc9f7d187427291d525cad0081aefb848157c0ab84"
+   },
+   {
+    "x": 4,
+    "y": 3,
+    "file": "tiles/4_3.json",
+    "bytes": 628326,
+    "sha256": "db0da796bc1050676f6ec5bb3d85b831efb7f5ef1cab908f3cb60225729036e9"
+   },
+   {
+    "x": 4,
+    "y": 4,
+    "file": "tiles/4_4.json",
+    "bytes": 496827,
+    "sha256": "b562d3a6608ec90db296820c10f92fe45bf860c3d7d2e3af0801904e7a350d4b"
+   },
+   {
+    "x": 4,
+    "y": 5,
+    "file": "tiles/4_5.json",
+    "bytes": 755949,
+    "sha256": "b0b229a8fbc8ff9cc97661f67a8c2ea92fbaceaec96dafc2277c768d6a0c942c"
+   },
+   {
+    "x": 4,
+    "y": 6,
+    "file": "tiles/4_6.json",
+    "bytes": 924327,
+    "sha256": "9e42f4ea5b43031b4096281612421841fe80cbccb339f8a9c254d1648ce4cf31"
+   },
+   {
+    "x": 4,
+    "y": 7,
+    "file": "tiles/4_7.json",
+    "bytes": 676956,
+    "sha256": "3174a2adb9bd101c2f9bab9b2ae3bbf5ffa6806a74d8a3ccc50fe20bf5702cf5"
+   },
+   {
+    "x": 4,
+    "y": 8,
+    "file": "tiles/4_8.json",
+    "bytes": 1402033,
+    "sha256": "3b1cb1fdf0352bf8984e822b17bf6c3416de6604c6b6c6ea4df6945e7d2bd58f"
+   },
+   {
+    "x": 4,
+    "y": 9,
+    "file": "tiles/4_9.json",
+    "bytes": 863703,
+    "sha256": "e8c674f881f4e087895a84a24facb05868ea41cc983173bf22d830c2068adda4"
+   },
+   {
+    "x": 5,
+    "y": -9,
+    "file": "tiles/5_-9.json",
+    "bytes": 458239,
+    "sha256": "a4fc50220cd0b0aaeb71757c1d5d4fc2ab39f367e7356c057a4706483e3e788a"
+   },
+   {
+    "x": 5,
+    "y": -8,
+    "file": "tiles/5_-8.json",
+    "bytes": 951337,
+    "sha256": "514b1f159e5af788cc1fa1df46c489e46275c6aeff5f8d13519197c559d805bb"
+   },
+   {
+    "x": 5,
+    "y": -7,
+    "file": "tiles/5_-7.json",
+    "bytes": 549674,
+    "sha256": "d158984b2b4b979b0ee2c0d9fc0611023825ed6b8596269ac5e756897f11fc27"
+   },
+   {
+    "x": 5,
+    "y": -6,
+    "file": "tiles/5_-6.json",
+    "bytes": 614438,
+    "sha256": "030f1339673076c7115de8f609ec62497656d16aea1771e6ece2d88b2f8b4178"
+   },
+   {
+    "x": 5,
+    "y": -5,
+    "file": "tiles/5_-5.json",
+    "bytes": 308326,
+    "sha256": "1001d179c6f595c70db1d67af62c43fe66b076c1c9e3a90c650e179815bba443"
+   },
+   {
+    "x": 5,
+    "y": -4,
+    "file": "tiles/5_-4.json",
+    "bytes": 616035,
+    "sha256": "5281624d3b67f409747df9a9e974fd6695b0819d4d034aa3f4f4d8db31cc36b2"
+   },
+   {
+    "x": 5,
+    "y": -3,
+    "file": "tiles/5_-3.json",
+    "bytes": 495068,
+    "sha256": "855684959ef0be5490ab23f134553dea6172d2d9fdec92cb7a04121c5c4acee7"
+   },
+   {
+    "x": 5,
+    "y": -2,
+    "file": "tiles/5_-2.json",
+    "bytes": 535906,
+    "sha256": "d52b88f7d1cf21b308123645a7f3a29728bf9fb797af0a97a6e12d3ef662fed9"
+   },
+   {
+    "x": 5,
+    "y": -1,
+    "file": "tiles/5_-1.json",
+    "bytes": 480556,
+    "sha256": "802ef4c2fe72dea75be07d2beaa3bcfa3b20ef78e353ad737e1727dd49012fea"
+   },
+   {
+    "x": 5,
+    "y": 0,
+    "file": "tiles/5_0.json",
+    "bytes": 631919,
+    "sha256": "5e52b2f5a15ae50c8d19e0ec0d1d0839da34e36422d76851d2608b52af5d3faa"
+   },
+   {
+    "x": 5,
+    "y": 1,
+    "file": "tiles/5_1.json",
+    "bytes": 1314901,
+    "sha256": "c1c43471a0bd5de102dbe3bd29da20b94d17707fc10b119f7e9800f349883e0d"
+   },
+   {
+    "x": 5,
+    "y": 2,
+    "file": "tiles/5_2.json",
+    "bytes": 865767,
+    "sha256": "29dccd1dbe4ec1d6689d313779a4de63482028926c28d06525f8c4abe43672d7"
+   },
+   {
+    "x": 5,
+    "y": 3,
+    "file": "tiles/5_3.json",
+    "bytes": 589578,
+    "sha256": "d1582dafe11ff9bbeb5b5675493023c84ba32a5e59e6af252ec516387ee53630"
+   },
+   {
+    "x": 5,
+    "y": 4,
+    "file": "tiles/5_4.json",
+    "bytes": 646664,
+    "sha256": "4ace9f8133d315c9ece4d0f052208c429045404cf0eb60db42db66149871dac1"
+   },
+   {
+    "x": 5,
+    "y": 5,
+    "file": "tiles/5_5.json",
+    "bytes": 1408075,
+    "sha256": "b703cdc3141b3df6a3bc02c17174c8e6a1a572672fc43f05325723af229c0e70"
+   },
+   {
+    "x": 5,
+    "y": 6,
+    "file": "tiles/5_6.json",
+    "bytes": 911313,
+    "sha256": "ad84ec20fa52a339c8b10bd92b5e3e21d3f883d0f00ea3101ed103963f3645d8"
+   },
+   {
+    "x": 5,
+    "y": 7,
+    "file": "tiles/5_7.json",
+    "bytes": 696992,
+    "sha256": "3a732e957ee4625d2dbadc75ab36a160e8b362f0d71c561918aec761155cd801"
+   },
+   {
+    "x": 5,
+    "y": 8,
+    "file": "tiles/5_8.json",
+    "bytes": 876209,
+    "sha256": "3b096d94751a2a74e1807336bd4fd1df8368d8fcef8a3425832acdac3c74eda0"
+   },
+   {
+    "x": 5,
+    "y": 9,
+    "file": "tiles/5_9.json",
+    "bytes": 1477445,
+    "sha256": "a439b2a5af6d11a4af84ff6f40db20d7a61c194a31e197df86be991b08ae4ce9"
+   },
+   {
+    "x": 6,
+    "y": -9,
+    "file": "tiles/6_-9.json",
+    "bytes": 602283,
+    "sha256": "8e780c0175adec57d615f8f266d5093bde969144123aaa496e5368236a07ec34"
+   },
+   {
+    "x": 6,
+    "y": -8,
+    "file": "tiles/6_-8.json",
+    "bytes": 218521,
+    "sha256": "a2f9fd3eaa95f5bbbbe24d00c765b7a4ad84dd87f6bbfa78bd03069fff42aed0"
+   },
+   {
+    "x": 6,
+    "y": -7,
+    "file": "tiles/6_-7.json",
+    "bytes": 546781,
+    "sha256": "b1280df07911aaf163a68e639dc9d271ce271e8387a6acf29f43a8475fe02aab"
+   },
+   {
+    "x": 6,
+    "y": -6,
+    "file": "tiles/6_-6.json",
+    "bytes": 319286,
+    "sha256": "17a28419a38b7b32665055f9142b1e27d6caee9d3b7ef5f017b1f2bd022ac869"
+   },
+   {
+    "x": 6,
+    "y": -5,
+    "file": "tiles/6_-5.json",
+    "bytes": 338506,
+    "sha256": "1571c2cd47e0cd9f0f1c53d72c0a7b809a5b5f5975931dcc7dc8b80679e58061"
+   },
+   {
+    "x": 6,
+    "y": -4,
+    "file": "tiles/6_-4.json",
+    "bytes": 739108,
+    "sha256": "3b860d1fe50c6618ca8334f5288968005d7af153d79d457bf10e72daa3eecace"
+   },
+   {
+    "x": 6,
+    "y": -3,
+    "file": "tiles/6_-3.json",
+    "bytes": 546013,
+    "sha256": "f0c10b2f64440c915666a473e9fffb4c092567809f99e9ef15344e130e271285"
+   },
+   {
+    "x": 6,
+    "y": -2,
+    "file": "tiles/6_-2.json",
+    "bytes": 802550,
+    "sha256": "d5f73c389fa91144bc3972c600a8f5ae074bd058b37d75445c88b69eb6a08aa7"
+   },
+   {
+    "x": 6,
+    "y": -1,
+    "file": "tiles/6_-1.json",
+    "bytes": 1127893,
+    "sha256": "d90757f99c89201560479e8eb1fb0f8119bf77cf2d635a68cba946ce74846f7c"
+   },
+   {
+    "x": 6,
+    "y": 0,
+    "file": "tiles/6_0.json",
+    "bytes": 1168363,
+    "sha256": "2a994d7ecf5021059281ce437baf5c2110562f577772c88cba29fb48f9975f8c"
+   },
+   {
+    "x": 6,
+    "y": 1,
+    "file": "tiles/6_1.json",
+    "bytes": 793790,
+    "sha256": "062345265bbbf5d5e12f76b202199c9e40f4e38ae49f667f8a328778e56d5d86"
+   },
+   {
+    "x": 6,
+    "y": 2,
+    "file": "tiles/6_2.json",
+    "bytes": 1077763,
+    "sha256": "cd9b8ce186a2be5b85ef677e577ae7ed569621510a692b711637fc559aa163e7"
+   },
+   {
+    "x": 6,
+    "y": 3,
+    "file": "tiles/6_3.json",
+    "bytes": 1040576,
+    "sha256": "27817a9d0dd4849659ff5fb68ebc0e5a2d3e8d0c03cc0079a5d7cf4412884baf"
+   },
+   {
+    "x": 6,
+    "y": 4,
+    "file": "tiles/6_4.json",
+    "bytes": 911649,
+    "sha256": "cd9a0a1bbcdb4a24408b4d095c482513712888d647131dac036901202dac5dd1"
+   },
+   {
+    "x": 6,
+    "y": 5,
+    "file": "tiles/6_5.json",
+    "bytes": 889611,
+    "sha256": "a8e2870e6aeef63d1236be19448dd282c7c2498fb2da6a253364bed161843fa4"
+   },
+   {
+    "x": 6,
+    "y": 6,
+    "file": "tiles/6_6.json",
+    "bytes": 617069,
+    "sha256": "5ec6c36e85b67397ad0689d542564596898c4e9b67ae90af80638d108fe7a0bc"
+   },
+   {
+    "x": 6,
+    "y": 7,
+    "file": "tiles/6_7.json",
+    "bytes": 798919,
+    "sha256": "a30cf6bd3d135b9f9cbf376ee9040d3b4a043ed06921f281213017839712780c"
+   },
+   {
+    "x": 6,
+    "y": 8,
+    "file": "tiles/6_8.json",
+    "bytes": 1072350,
+    "sha256": "8d8d5bb6d04f0dc28ff615cad490cc36608c455a12629f9b96a7593ed540f3f4"
+   },
+   {
+    "x": 6,
+    "y": 9,
+    "file": "tiles/6_9.json",
+    "bytes": 930081,
+    "sha256": "041020c9dc9b6b980f7ba9348af2abaab55491e20db893ec6ed26052b153e897"
+   },
+   {
+    "x": 7,
+    "y": -9,
+    "file": "tiles/7_-9.json",
+    "bytes": 330022,
+    "sha256": "b72ecb13f5075cac09b26d25a135d2c70d4df96050960f8cdceff3b6b4025797"
+   },
+   {
+    "x": 7,
+    "y": -8,
+    "file": "tiles/7_-8.json",
+    "bytes": 335682,
+    "sha256": "27f32c260764cfbcfb9d8497c1b81a0b9aa385931d8ba5fc705404ea6b975ddf"
+   },
+   {
+    "x": 7,
+    "y": -7,
+    "file": "tiles/7_-7.json",
+    "bytes": 425816,
+    "sha256": "fa5e3a1ebd8852b8ce6820561060b6b6e6c391c639281befcd1b37cb9aa50a43"
+   },
+   {
+    "x": 7,
+    "y": -6,
+    "file": "tiles/7_-6.json",
+    "bytes": 403548,
+    "sha256": "58812ea6c5d2c1ab33df92e621e6ffea30939dac625f0755423fefb951e6186f"
+   },
+   {
+    "x": 7,
+    "y": -5,
+    "file": "tiles/7_-5.json",
+    "bytes": 560798,
+    "sha256": "7ee3f13426e93454e56302db67f0b40885b1a2a6124cf90799995d4490d67389"
+   },
+   {
+    "x": 7,
+    "y": -4,
+    "file": "tiles/7_-4.json",
+    "bytes": 745330,
+    "sha256": "f76b585cee38190b56361a2cb508bb629aa5095f6776cfec16eddd8bb62b84ef"
+   },
+   {
+    "x": 7,
+    "y": -3,
+    "file": "tiles/7_-3.json",
+    "bytes": 952122,
+    "sha256": "c8001dde6a953be347be08b0e3804e0ceea1eca514bb040003cf879065acb54e"
+   },
+   {
+    "x": 7,
+    "y": -2,
+    "file": "tiles/7_-2.json",
+    "bytes": 515998,
+    "sha256": "d416d6d66037609cdd9f13026b9ab167b99d8e8e00d606cfdfdd16c3802f69a7"
+   },
+   {
+    "x": 7,
+    "y": -1,
+    "file": "tiles/7_-1.json",
+    "bytes": 1289451,
+    "sha256": "9ff12ca14d1aff24c2a5a07fa6e5fb30df406b3c6618d992a347831b9ceca518"
+   },
+   {
+    "x": 7,
+    "y": 0,
+    "file": "tiles/7_0.json",
+    "bytes": 625867,
+    "sha256": "0e4ea13346d5ea38826b1885e83a969d3b605afd0e8c1129dd1f95e3890137ce"
+   },
+   {
+    "x": 7,
+    "y": 1,
+    "file": "tiles/7_1.json",
+    "bytes": 647027,
+    "sha256": "0bf3f48b0dafc5a5d0d4daba4ca01fe1f68d260918fba8ed8b593d9883e98aea"
+   },
+   {
+    "x": 7,
+    "y": 2,
+    "file": "tiles/7_2.json",
+    "bytes": 919658,
+    "sha256": "0be4efc135880f0f89133d5de7725dbc5a62a7ecf2f7731bef433f18720ccbdc"
+   },
+   {
+    "x": 7,
+    "y": 3,
+    "file": "tiles/7_3.json",
+    "bytes": 787938,
+    "sha256": "478c4e2c1be69159370c46d36a4a30eddc7b56e8000b1f2ec7b9a3bdff906571"
+   },
+   {
+    "x": 7,
+    "y": 4,
+    "file": "tiles/7_4.json",
+    "bytes": 791112,
+    "sha256": "32f1cbdb8be1bac6b35b2e137e89892122c94cf42a892ead55bb6e9df8c6e7d3"
+   },
+   {
+    "x": 7,
+    "y": 5,
+    "file": "tiles/7_5.json",
+    "bytes": 779596,
+    "sha256": "1d8ece28c08299fc17855b608181d32a37a1d0414d82a74a50c7ef833a863e30"
+   },
+   {
+    "x": 7,
+    "y": 6,
+    "file": "tiles/7_6.json",
+    "bytes": 1229850,
+    "sha256": "8231c99658c536cad71b0c886ec611765f33e0857634e9754fac13e765955e02"
+   },
+   {
+    "x": 7,
+    "y": 7,
+    "file": "tiles/7_7.json",
+    "bytes": 1481386,
+    "sha256": "2b3846424203a96b34f50669183e393fc576d437217ce1b1a890b1b6cef0d06f"
+   },
+   {
+    "x": 7,
+    "y": 8,
+    "file": "tiles/7_8.json",
+    "bytes": 1480201,
+    "sha256": "432d594b731723c6c8b95588e3353e7e47d0f4e8522a4ec7bcb6019dada7afe2"
+   },
+   {
+    "x": 7,
+    "y": 9,
+    "file": "tiles/7_9.json",
+    "bytes": 540161,
+    "sha256": "ff2f1e1b03de188d6083d8d41e580f3fa4fae8158652d5caeec8b2304c7b6817"
+   },
+   {
+    "x": 8,
+    "y": -9,
+    "file": "tiles/8_-9.json",
+    "bytes": 144845,
+    "sha256": "81c25833486ee332bd45eb714b8dc3ee200339b45c39c35cc6b6b4b59c9c8e8c"
+   },
+   {
+    "x": 8,
+    "y": -8,
+    "file": "tiles/8_-8.json",
+    "bytes": 342193,
+    "sha256": "49048099d35bd1c6fd1eb5da1f37787cb16553101bfa734a43d0319655d828f5"
+   },
+   {
+    "x": 8,
+    "y": -7,
+    "file": "tiles/8_-7.json",
+    "bytes": 344040,
+    "sha256": "e56bcf1c04ba1b7963aa7f468689e6cdf049cf6b8fc6c8461ae6cf7dfabfe37b"
+   },
+   {
+    "x": 8,
+    "y": -6,
+    "file": "tiles/8_-6.json",
+    "bytes": 316403,
+    "sha256": "b4e2cf464eedd9fc25fdfd51fd5923d1bc8bc8c9d0ab82f3f026cabc08ec2be8"
+   },
+   {
+    "x": 8,
+    "y": -5,
+    "file": "tiles/8_-5.json",
+    "bytes": 208814,
+    "sha256": "3e0c59e741dd734ca9a8e53062145f70a876ff8521b154a69b7b7136bcca53cc"
+   },
+   {
+    "x": 8,
+    "y": -4,
+    "file": "tiles/8_-4.json",
+    "bytes": 609179,
+    "sha256": "7d3cf53310707ddcc7c387738a49076d32b3220735c3e1117c1ff997c63163df"
+   },
+   {
+    "x": 8,
+    "y": -3,
+    "file": "tiles/8_-3.json",
+    "bytes": 1236247,
+    "sha256": "e900bd0a5057efc25341de4752a87b0133de7b8a8282ff62ae42693cd58b359d"
+   },
+   {
+    "x": 8,
+    "y": -2,
+    "file": "tiles/8_-2.json",
+    "bytes": 980346,
+    "sha256": "081aa8a027f27760b24abfb39ce3c7d56525c0dd7800fdbccdceb45dba37fec1"
+   },
+   {
+    "x": 8,
+    "y": -1,
+    "file": "tiles/8_-1.json",
+    "bytes": 1375541,
+    "sha256": "613167ffcd0af541b70ac87b84a1cc276f9a8dfd86fb877369e9fc97c8ae8b82"
+   },
+   {
+    "x": 8,
+    "y": 0,
+    "file": "tiles/8_0.json",
+    "bytes": 1487997,
+    "sha256": "a5b91e95b7ae50fc19ba07193b6ab12ca449a0c3c5b34c8187a2422d1fd2afbf"
+   },
+   {
+    "x": 8,
+    "y": 1,
+    "file": "tiles/8_1.json",
+    "bytes": 1491573,
+    "sha256": "274f8cba5884dc076c776ae3663424c89c459fd8e353f796b2a9381151e6d1c4"
+   },
+   {
+    "x": 8,
+    "y": 2,
+    "file": "tiles/8_2.json",
+    "bytes": 753880,
+    "sha256": "b9afb7200b111a4ec34302215267b48e9e330dc4fae001c52e6202f369000195"
+   },
+   {
+    "x": 8,
+    "y": 3,
+    "file": "tiles/8_3.json",
+    "bytes": 841411,
+    "sha256": "4d1ea9117aff7549aefd1745a46de0a28d20be7fe8fdfff46f3bff8049608b77"
+   },
+   {
+    "x": 8,
+    "y": 4,
+    "file": "tiles/8_4.json",
+    "bytes": 727211,
+    "sha256": "2f7ec7a61e599a9126eeb883d29290143a9f3b2fcc066e95e8e2af1c1b8c4c8e"
+   },
+   {
+    "x": 8,
+    "y": 5,
+    "file": "tiles/8_5.json",
+    "bytes": 625069,
+    "sha256": "339c8c27fd7c7a4ec13cedeb63f3964e595d57d1339a22feafdba163752bbff7"
+   },
+   {
+    "x": 8,
+    "y": 6,
+    "file": "tiles/8_6.json",
+    "bytes": 1334508,
+    "sha256": "48ec5150581d7c862de78a1f6ab9d40affe58f3bd3c53cc60da8ad285a47147a"
+   },
+   {
+    "x": 8,
+    "y": 7,
+    "file": "tiles/8_7.json",
+    "bytes": 1410024,
+    "sha256": "c81c15e04d66daf08f349cb0d7ab6cbb262f5329ec4b6a6019beed501193ab19"
+   },
+   {
+    "x": 8,
+    "y": 8,
+    "file": "tiles/8_8.json",
+    "bytes": 1403000,
+    "sha256": "0b6b843f39d593334b6fcf8a7dd57c1ebc81fbc8423b493bc40d5698dba7f88a"
+   },
+   {
+    "x": 8,
+    "y": 9,
+    "file": "tiles/8_9.json",
+    "bytes": 1202216,
+    "sha256": "c5f4dea6585abd50f0784918af97c616219156905b8a369f8494cba8db9fba61"
+   },
+   {
+    "x": 9,
+    "y": -9,
+    "file": "tiles/9_-9.json",
+    "bytes": 493226,
+    "sha256": "420025ce7f7e4a4a8828827bfd504804ef3c52f2bfc95f4e29d60e842217cbb0"
+   },
+   {
+    "x": 9,
+    "y": -8,
+    "file": "tiles/9_-8.json",
+    "bytes": 493524,
+    "sha256": "5510373cc17a2a4b86d1fa44fd57b46baf4d615d89d3994ef6571bf781a1b56b"
+   },
+   {
+    "x": 9,
+    "y": -7,
+    "file": "tiles/9_-7.json",
+    "bytes": 492484,
+    "sha256": "fffc9922a40fcaadd47fb5f56914fa35f67580bd567b3248e1a92b8b362f6bec"
+   },
+   {
+    "x": 9,
+    "y": -6,
+    "file": "tiles/9_-6.json",
+    "bytes": 650889,
+    "sha256": "de977e368d95aaa942e7c1e172648d77296f6ffab1e014777e182a153b1e0d81"
+   },
+   {
+    "x": 9,
+    "y": -5,
+    "file": "tiles/9_-5.json",
+    "bytes": 266628,
+    "sha256": "59a5d973364d03b032071b4522ad5a6779edc5d86000e261f0787073b67678b9"
+   },
+   {
+    "x": 9,
+    "y": -4,
+    "file": "tiles/9_-4.json",
+    "bytes": 475979,
+    "sha256": "84b5f9841ea53a6c7103b92a305d334b11dc346308b0c6919625b23ccb8dfa50"
+   },
+   {
+    "x": 9,
+    "y": -3,
+    "file": "tiles/9_-3.json",
+    "bytes": 1474997,
+    "sha256": "8ab7c97a2f14ee0160d5591772008dce0c7ee97255910e560a432e9b2b0b9f3e"
+   },
+   {
+    "x": 9,
+    "y": -2,
+    "file": "tiles/9_-2.json",
+    "bytes": 1426828,
+    "sha256": "2887c9cf948df170f9a22a58ed68d78a69fcd487eb6bacbf7668ab12d55d45e3"
+   },
+   {
+    "x": 9,
+    "y": -1,
+    "file": "tiles/9_-1.json",
+    "bytes": 1419541,
+    "sha256": "46bf75511893f3d38031f8dca18159eb7f187a8bb0152577fe4d54ba567ad975"
+   },
+   {
+    "x": 9,
+    "y": 0,
+    "file": "tiles/9_0.json",
+    "bytes": 1177973,
+    "sha256": "1cb4af066211632780719471b9771e5e789f72683c22363f68a57015882b0ab0"
+   },
+   {
+    "x": 9,
+    "y": 1,
+    "file": "tiles/9_1.json",
+    "bytes": 860568,
+    "sha256": "024b74f3ab25ed1dc866eb9049490a7fe760edede5b5f17e6c360e2cb0d35f9b"
+   },
+   {
+    "x": 9,
+    "y": 2,
+    "file": "tiles/9_2.json",
+    "bytes": 1226103,
+    "sha256": "97759ca981fa3a57a86fce1205215f6d250e569c6f2c8dd5b3ea5c331bea5483"
+   },
+   {
+    "x": 9,
+    "y": 3,
+    "file": "tiles/9_3.json",
+    "bytes": 1014072,
+    "sha256": "349c35da5e566c637549e49a6025a3a51633aa7ec814545d6cc31552c2c8f008"
+   },
+   {
+    "x": 9,
+    "y": 4,
+    "file": "tiles/9_4.json",
+    "bytes": 657902,
+    "sha256": "80c7066c9819ae7bdb4213914b6784d9e990cca5ea0c209bd387079772ded6d1"
+   },
+   {
+    "x": 9,
+    "y": 5,
+    "file": "tiles/9_5.json",
+    "bytes": 552518,
+    "sha256": "2eb622e07ab9dbf8d87043f0cfcea25bb970710531f54488e6eb357f1fb102a3"
+   },
+   {
+    "x": 9,
+    "y": 6,
+    "file": "tiles/9_6.json",
+    "bytes": 731506,
+    "sha256": "5cf033ca27f639582622a22d65f58de8737e2f34ff81532befe14c5f56f171b1"
+   },
+   {
+    "x": 9,
+    "y": 7,
+    "file": "tiles/9_7.json",
+    "bytes": 1310062,
+    "sha256": "4010757e5e0dfa22b5aa93325022bbaeb70c312656b191895c45d9f83d474dca"
+   },
+   {
+    "x": 9,
+    "y": 8,
+    "file": "tiles/9_8.json",
+    "bytes": 1405453,
+    "sha256": "d4d9c218290bb7bb4eca1326157d19ac89e601f843350c312742bd3744ebac17"
+   },
+   {
+    "x": 9,
+    "y": 9,
+    "file": "tiles/9_9.json",
+    "bytes": 1196624,
+    "sha256": "539760b3f342e5575738a513ac8be745672806a154d84843b2487d7a8ce384ab"
+   },
+   {
+    "x": 10,
+    "y": -9,
+    "file": "tiles/10_-9.json",
+    "bytes": 216125,
+    "sha256": "ed4c8f3f65743cb508b6b13ae801c54c3ec529b0f3087bed7bd7e44851731ed1"
+   },
+   {
+    "x": 10,
+    "y": -8,
+    "file": "tiles/10_-8.json",
+    "bytes": 37819,
+    "sha256": "8012229e0b7cb69e9723d3e4bf5ccf8e1276f9fde02b4c5b13a3ed9c8dd21a9e"
+   },
+   {
+    "x": 10,
+    "y": -7,
+    "file": "tiles/10_-7.json",
+    "bytes": 142914,
+    "sha256": "11a1327d491ec7c7ba701ebe11ecf419250f5fa573e563463836946cdcbbdcd1"
+   },
+   {
+    "x": 10,
+    "y": -6,
+    "file": "tiles/10_-6.json",
+    "bytes": 49537,
+    "sha256": "e98ca0d5bbc3945100512af076c1e311a2a98a34943470178c197143ee604bea"
+   },
+   {
+    "x": 10,
+    "y": -5,
+    "file": "tiles/10_-5.json",
+    "bytes": 243882,
+    "sha256": "3e5f42c23a209957d76330505b7dc4a534d957b67cb26ea03d25b57ff42edf01"
+   },
+   {
+    "x": 10,
+    "y": -4,
+    "file": "tiles/10_-4.json",
+    "bytes": 451712,
+    "sha256": "b7fbc9b2f6f192d62ae14dd63bfffdbe670b13bc93fd4fde3458d58af6557e60"
+   },
+   {
+    "x": 10,
+    "y": -3,
+    "file": "tiles/10_-3.json",
+    "bytes": 1439000,
+    "sha256": "91f2f756cc9c6463f12631ad0aadf503c7ae95d84ed3e09c446ba5714c305bb2"
+   },
+   {
+    "x": 10,
+    "y": -2,
+    "file": "tiles/10_-2.json",
+    "bytes": 1352901,
+    "sha256": "383a2a5afcf8e676088ea182a0170c433af8ff4d007c5af2f577ad2cf6180545"
+   },
+   {
+    "x": 10,
+    "y": -1,
+    "file": "tiles/10_-1.json",
+    "bytes": 1305557,
+    "sha256": "b217d58144a0c9ce262e4705169bff2b4d35262733197f38dfb0891600221fc4"
+   },
+   {
+    "x": 10,
+    "y": 0,
+    "file": "tiles/10_0.json",
+    "bytes": 1405570,
+    "sha256": "a33ad4df60be53f37edfd8a8f2d3af5d269d9b8100ef08cad183af477b745fe4"
+   },
+   {
+    "x": 10,
+    "y": 1,
+    "file": "tiles/10_1.json",
+    "bytes": 1418768,
+    "sha256": "677a1c4f0931b8310d86dce5748cf4e637416eb5696881c91ee6371e9faa7f08"
+   },
+   {
+    "x": 10,
+    "y": 2,
+    "file": "tiles/10_2.json",
+    "bytes": 1424532,
+    "sha256": "af7a63d2316c99b45aaf371432a970443e96a665895155c0ef6e5ac2053feb1b"
+   },
+   {
+    "x": 10,
+    "y": 3,
+    "file": "tiles/10_3.json",
+    "bytes": 1078301,
+    "sha256": "88538a326607f54c620d9634d1bdf3ba28a71062191b4d3ca89bc6ab499efb7c"
+   },
+   {
+    "x": 10,
+    "y": 4,
+    "file": "tiles/10_4.json",
+    "bytes": 539325,
+    "sha256": "2cfe676136c8436c96ad49dbd9a8edc491d35c3f1da933b12ae2d35a53468d93"
+   },
+   {
+    "x": 10,
+    "y": 5,
+    "file": "tiles/10_5.json",
+    "bytes": 499238,
+    "sha256": "1b795e287ff6b7af6b1e26284a0d688f6df6e1b09db78456b8446983de360235"
+   },
+   {
+    "x": 10,
+    "y": 6,
+    "file": "tiles/10_6.json",
+    "bytes": 1185566,
+    "sha256": "82f77baa7a6d736163a736810df66cb45f0ec0600b0ee838834410b410c9abf0"
+   },
+   {
+    "x": 10,
+    "y": 7,
+    "file": "tiles/10_7.json",
+    "bytes": 1333116,
+    "sha256": "0eeef26e05ed7ce321b1c48a73bf6ca35e24264df33f555d0539232029ec66e6"
+   },
+   {
+    "x": 10,
+    "y": 8,
+    "file": "tiles/10_8.json",
+    "bytes": 1422013,
+    "sha256": "840128c95b9e5bd80cdd1ddb0d2ae56b21fadc4a718f7a2fd6daee6d2b593b79"
+   },
+   {
+    "x": 10,
+    "y": 9,
+    "file": "tiles/10_9.json",
+    "bytes": 1389089,
+    "sha256": "5644c782b0633a865e75e9e61e68e37a80b601724653204b8f67049d5d9418b4"
+   },
+   {
+    "x": 11,
+    "y": -9,
+    "file": "tiles/11_-9.json",
+    "bytes": 180817,
+    "sha256": "410ac7c19dced7fd0f2f44292cc113ce4e087a0166b27e172c19f780f3eba47f"
+   },
+   {
+    "x": 11,
+    "y": -8,
+    "file": "tiles/11_-8.json",
+    "bytes": 875548,
+    "sha256": "378494487196480b072030f8aad9bdc8b5f91bf7c362801c34bda951b822e882"
+   },
+   {
+    "x": 11,
+    "y": -7,
+    "file": "tiles/11_-7.json",
+    "bytes": 1125912,
+    "sha256": "e87bc52ed35ca1349a07c3e3ef6bc1bbdc5a6c0137072c5948a5fef9b75dd24d"
+   },
+   {
+    "x": 11,
+    "y": -6,
+    "file": "tiles/11_-6.json",
+    "bytes": 727087,
+    "sha256": "a00e7f78bcd0db4198ae9c8d83c03cb55ebfb258cf13576e3e3b5e31393b18ce"
+   },
+   {
+    "x": 11,
+    "y": -5,
+    "file": "tiles/11_-5.json",
+    "bytes": 589008,
+    "sha256": "3e33f43f728b18cd37894b55f4aacdd41d3f585aea2021dd5fa939dd8d5b1620"
+   },
+   {
+    "x": 11,
+    "y": -4,
+    "file": "tiles/11_-4.json",
+    "bytes": 1160156,
+    "sha256": "fca3cb79c0f75574651ed026778c8a0a0ab3758cdd90d21426af1201e7e72044"
+   },
+   {
+    "x": 11,
+    "y": -3,
+    "file": "tiles/11_-3.json",
+    "bytes": 1437805,
+    "sha256": "0a91e9d005e874d4dd272bc8d8cef7d5bc42d45e3ebdb8f07caaaeae0b9da7c5"
+   },
+   {
+    "x": 11,
+    "y": -2,
+    "file": "tiles/11_-2.json",
+    "bytes": 1073219,
+    "sha256": "a4c611c26a1392ab4b51b55953746899ed661fc914a40f5072e21c8fd6dc3f33"
+   },
+   {
+    "x": 11,
+    "y": -1,
+    "file": "tiles/11_-1.json",
+    "bytes": 1211728,
+    "sha256": "571e4508f5ef1a187255e3eccdd1e0d8c4d82d8ac86d900f0a8c7831de2db600"
+   },
+   {
+    "x": 11,
+    "y": 0,
+    "file": "tiles/11_0.json",
+    "bytes": 1301412,
+    "sha256": "81a99265fe4c2b37c312b42c1c12c7f3599365eacde1ea71fabf31c3bf5da4a9"
+   },
+   {
+    "x": 11,
+    "y": 1,
+    "file": "tiles/11_1.json",
+    "bytes": 1456030,
+    "sha256": "00a789bb0459b34ed596c1e682a5d8137cbe3ed10da7c7b37d0b48336a1abf5b"
+   },
+   {
+    "x": 11,
+    "y": 2,
+    "file": "tiles/11_2.json",
+    "bytes": 1320652,
+    "sha256": "37652a70246dab7ff52fdd838ea82aa3b200f1306fe0fd712ff21dc2a1cdf4d3"
+   },
+   {
+    "x": 11,
+    "y": 3,
+    "file": "tiles/11_3.json",
+    "bytes": 1477580,
+    "sha256": "60708c254c9b1d3d980bb0d6bf7d027f4046cd5ab603e05342e16df2b02090f5"
+   },
+   {
+    "x": 11,
+    "y": 4,
+    "file": "tiles/11_4.json",
+    "bytes": 830767,
+    "sha256": "beba3e0f6e750d077533f37fa340f9541009deb3005145d49152485f3d319390"
+   },
+   {
+    "x": 11,
+    "y": 5,
+    "file": "tiles/11_5.json",
+    "bytes": 792157,
+    "sha256": "00de5a0bd0f7c308ff2060d61adad4d82ad72883a7498c9975238adc224d2846"
+   },
+   {
+    "x": 11,
+    "y": 6,
+    "file": "tiles/11_6.json",
+    "bytes": 1006907,
+    "sha256": "ed9926f0bdedd2c732a93c249987811840b09115b462ca658956591a156139a2"
+   },
+   {
+    "x": 11,
+    "y": 7,
+    "file": "tiles/11_7.json",
+    "bytes": 1342271,
+    "sha256": "78db91295042813db3f190909f2e2cdc40aff5cf801e87362c886f2d64163a2d"
+   },
+   {
+    "x": 11,
+    "y": 8,
+    "file": "tiles/11_8.json",
+    "bytes": 1424753,
+    "sha256": "4b30d8e5fdebd85b219f46ed5b625a1e16c6e822f32f9c9984e91cf66f302e57"
+   },
+   {
+    "x": 11,
+    "y": 9,
+    "file": "tiles/11_9.json",
+    "bytes": 1421871,
+    "sha256": "60d4c3af833e20ff8de20209e9b3fff24877b7914b80e73e8f054180406adde2"
+   }
+  ]
+ },
+ "review": {
+  "viewport": {
+   "width": 1600,
+   "height": 900
+  },
+  "pixelArt": {
+   "enabled": true,
+   "resolution": 360,
+   "outline": 0.55,
+   "colorLevels": 20,
+   "dither": 0.35
+  },
+  "camera": {
+   "overview": {
+    "orthoHeight": 420.0,
+    "azimuth": 0.7853981633974483,
+    "elevation": 0.6154797086703873,
+    "timeHours": 13.0
+   },
+   "close": {
+    "orthoHeight": 90.0,
+    "azimuth": 0.7853981633974483,
+    "elevation": 0.6154797086703873,
+    "timeHours": 13.0
+   },
+   "closeOpposite": {
+    "orthoHeight": 90.0,
+    "azimuth": 3.9269908169872414,
+    "elevation": 0.6154797086703873,
+    "timeHours": 13.0
+   }
+  },
+  "times": {
+   "day": 13.0,
+   "warmEvening": 18.5,
+   "night": 22.0
+  }
+ },
+ "protectedInputs": {
+  "data/processed/coverage_city_b2.json": {
+   "sizeBytes": 8181,
+   "sha256": "6529cb3b5c70ddee8edf0c38c0daa736b0cf4de4e6bb288466c277200bc41a72"
+  },
+  "data/processed/city_area_b2_normalized.json": {
+   "sizeBytes": 231163726,
+   "sha256": "be74d68ff7492e3a7913a571355bccb2f717ba5be0859da4b2e6f20a495d90a0"
+  },
+  "data/processed/coverage_city.json": {
+   "sizeBytes": 7713,
+   "sha256": "7622fa2da90591a4f2f838bead7c274a81cc1f1613d76f9b1b520c662bd6fc86"
+  },
+  "data/processed/city_area_normalized.json": {
+   "sizeBytes": 58828316,
+   "sha256": "d9fa7d8cce8fdd6c8f1133fad8965e1519f78db0cca16cb077963c856d5c868f"
+  },
+  "data/processed/city_normalized.json": {
+   "sizeBytes": 1430166,
+   "sha256": "8afaf64175d3211f03582133a49bdd7c58857bcffc32e42edae0f2ff8eca7d69"
+  },
+  "data/processed/coverage.json": {
+   "sizeBytes": 7258,
+   "sha256": "211034f0f70f250a91f0ff14e5a7372bc47b7b2214d17e7121e9299227064d45"
+  },
+  "docs/COVERAGE_REPORT_CITY.md": {
+   "sizeBytes": 4850,
+   "sha256": "2e878e2eec75ce431ff28fa46a94062479ee336a186fb13594d1f8b4493211a5"
+  }
+ },
+ "notes": [
+  "Baseline observed on the B-2 437-address complete-city candidate already promoted to public/data/city-tiles; recompute before every release instead of treating the numbers as constants.",
+  "The root checkout's uncommitted B-2 data-pipeline state was imported as the prerequisite commit so this branch can regenerate the same complete city."
+ ]
+}

@@ -1,9 +1,10 @@
-"""B-2 staging audit: verify a 399-tile candidate before it can replace the map.
+"""B-2 staging audit: verify the complete-city candidate before it can replace the map.
 
 Checks (fail-closed, exit code 1 on any failure):
 
-* the tile set is exactly the address book frozen in `docs/B2/area.json`
-  (399 addresses, correct bounds, 1024 m tile size);
+* the tile set is exactly the address book derived from the reviewed raw-input
+  bounds in ``scripts/geo_config.py`` (currently 437 addresses, 1024 m tiles)
+  and matches the frozen ``docs/B2/area.json`` address list;
 * every tile file exists, parses, matches the manifest size/bounds and its
   building count;
 * manifest counts equal the payload counts (buildings, trees, attractions,
@@ -11,11 +12,14 @@ Checks (fail-closed, exit code 1 on any failure):
   `crossingBuildingIds` point at real buildings;
 * the staging coverage report matches the target area, has
   `treesBudgetScale == 1` and reports the tree duties honestly;
-* the staging run did not touch the working datasets or derived files
-  (`docs/B2/BASELINE.json` hashes);
+* the staging run did not touch the accepted complete-city dataset or the
+  protected derived files recorded in ``docs/building-quality/BASELINE.json``
+  (the pre-B2 ``docs/B2/BASELINE.json`` hashes are used as a fallback and are
+  reported as historical);
 * the tiles directory is not the working dataset directory.
 
-Writes `docs/B2/STAGING_AUDIT.json` with every check and its details.
+Writes `docs/B2/STAGING_AUDIT.json` with every check, the address
+reconciliation record and its details.
 
 Run (after the staging normalisation):
 
@@ -35,8 +39,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 AREA_SCHEMA = ROOT / "docs" / "B2" / "area.json"
 BASELINE = ROOT / "docs" / "B2" / "BASELINE.json"
+ACCEPTED_BASELINE = ROOT / "docs" / "building-quality" / "BASELINE.json"
 OUT = ROOT / "docs" / "B2" / "STAGING_AUDIT.json"
 WORKING_TILES = ROOT / "public" / "data" / "city-tiles"
+
+sys.path.insert(0, str(ROOT / "scripts"))
+import geo_config  # noqa: E402 - repository-local contract module
+
+
+def derived_address_book(bounds: tuple[float, float, float, float], tile_size: float) -> set[str]:
+    """Inclusive tile address book derived from the reviewed area bounds."""
+    min_x, min_y, max_x, max_y = geo_config.tile_range(bounds, tile_size)
+    return {f"{x}_{y}" for x in range(min_x, max_x + 1) for y in range(min_y, max_y + 1)}
+
 
 
 def sha256_file(path: Path) -> str:
@@ -73,7 +88,10 @@ def main() -> int:
     parser.add_argument("--tiles-dir", required=True)
     parser.add_argument("--coverage", required=True)
     parser.add_argument("--area-schema", default=str(AREA_SCHEMA))
-    parser.add_argument("--baseline", default=str(BASELINE))
+    parser.add_argument("--baseline", default=str(BASELINE),
+                        help="historical pre-B-2 baseline (fallback only)")
+    parser.add_argument("--accepted-baseline", default=str(ACCEPTED_BASELINE),
+                        help="accepted complete-city baseline frozen for the current work")
     parser.add_argument("--out", default=str(OUT))
     parser.add_argument("--trees-per-tile-cap", type=int, default=16000,
                         help="per-tile tree cap mirrored from treeMeshes.ts")
@@ -96,6 +114,49 @@ def main() -> int:
     expected_addresses = set(area["area"]["addresses"])
     expected_range = area["area"]["tileRange"]
 
+    # --- area contract: derive everything from the reviewed raw-input bounds ---
+    reviewed_bounds = tuple(geo_config.area_bounds_m("city"))
+    audit.check(
+        "area bounds come from reviewed geo_config",
+        [round(value, 6) for value in reviewed_bounds] == expected_bounds,
+        f"geo_config {list(reviewed_bounds)} vs area.json {expected_bounds}",
+    )
+    audit.check(
+        "area tile size matches geo_config",
+        float(geo_config.CITY_TILE_SIZE_M) == float(expected_tile),
+        f"geo_config {geo_config.CITY_TILE_SIZE_M} vs area.json {expected_tile}",
+    )
+    reviewed_range = geo_config.tile_range(reviewed_bounds, float(expected_tile))
+    audit.check(
+        "area tile range derives from reviewed bounds",
+        {
+            "minX": reviewed_range[0],
+            "minY": reviewed_range[1],
+            "maxX": reviewed_range[2],
+            "maxY": reviewed_range[3],
+        }
+        == expected_range,
+        f"derived {reviewed_range} vs area.json {expected_range}",
+    )
+    derived_addresses = derived_address_book(reviewed_bounds, float(expected_tile))
+    audit.check(
+        "area address book derives from reviewed bounds",
+        derived_addresses == expected_addresses,
+        f"derived {len(derived_addresses)} addresses vs frozen {len(expected_addresses)}; "
+        f"missing={sorted(expected_addresses - derived_addresses)[:5]} "
+        f"extra={sorted(derived_addresses - expected_addresses)[:5]}",
+    )
+    address_reconciliation = {
+        "frozenAreaAddresses": len(expected_addresses),
+        "derivedAreaAddresses": len(derived_addresses),
+        "tileRange": expected_range,
+        "note": (
+            "Older B-2 reports (399/400 addresses) predate the reviewed rectangle in "
+            "scripts/geo_config.py; the 437-address book is derived from those bounds and "
+            "the inclusive manifest range, not copied from a historical report."
+        ),
+    }
+
     manifest_path = tiles_dir / "manifest.json"
     if not audit.check("manifest present", manifest_path.exists(), str(manifest_path)):
         _write(args, audit)
@@ -116,6 +177,14 @@ def main() -> int:
                     f"{len(actual_addresses)} addresses, expected {len(expected_addresses)}; "
                     f"missing={sorted(expected_addresses - actual_addresses)[:5]} "
                     f"extra={sorted(actual_addresses - expected_addresses)[:5]}")
+        audit.check("address book derives from reviewed bounds",
+                    actual_addresses == derived_addresses,
+                    f"{len(actual_addresses)} manifest addresses vs {len(derived_addresses)} derived")
+        address_reconciliation.update({
+            "manifestAddresses": len(actual_addresses),
+            "missing": sorted(expected_addresses - actual_addresses)[:10],
+            "extra": sorted(actual_addresses - expected_addresses)[:10],
+        })
     audit.check("tile count", len(tiles) == area["area"]["tileCount"],
                 f"{len(tiles)} tiles vs expected {area['area']['tileCount']}")
 
@@ -220,35 +289,55 @@ def main() -> int:
             )
 
     # --- working data untouched --------------------------------------------
-    baseline_path = Path(args.baseline)
-    if audit.check("baseline present", baseline_path.exists(), str(baseline_path)):
-        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-        city = baseline.get("datasets", {}).get("city", {})
-        working_manifest = WORKING_TILES / "manifest.json"
-        if working_manifest.exists() and city.get("manifestSha256"):
-            current = json.loads(working_manifest.read_text(encoding="utf-8"))
-            audit.check(
-                "working dataset unchanged",
-                stable_manifest_hash(current) == city["manifestSha256"],
-                "public/data/city-tiles manifest differs from BASELINE.json",
-            )
-        for relative, recorded in baseline.get("derived", {}).items():
-            if recorded.get("missing"):
-                continue
-            # Only the city dataset's derived files are produced/at risk in a
-            # city staging run. Pilot artifacts (city_normalized.json,
-            # coverage.json) are regenerated by pilot smoke runs and are not
-            # evidence about this staging build.
-            if "city" not in relative.lower():
-                continue
-            path = ROOT / relative
-            audit.check(
-                f"derived untouched: {relative}",
-                path.exists() and sha256_file(path) == recorded["sha256"],
-                f"{relative} changed during staging",
-            )
+    # Prefer the accepted complete-city baseline frozen for the building-quality
+    # work (post-B-2 promotion); fall back to the pre-B-2 baseline and say so.
+    accepted_path = Path(args.accepted_baseline)
+    legacy_path = Path(args.baseline)
+    working_manifest = WORKING_TILES / "manifest.json"
+    protected_baseline = None
+    protected_inputs: dict = {}
+    expected_working_hash = None
+    if accepted_path.exists():
+        accepted = json.loads(accepted_path.read_text(encoding="utf-8"))
+        protected_baseline = str(accepted_path)
+        expected_working_hash = (accepted.get("dataset") or {}).get("manifestSha256")
+        protected_inputs = accepted.get("protectedInputs") or {}
+        audit.check("accepted baseline present", True, str(accepted_path))
+    elif legacy_path.exists():
+        legacy = json.loads(legacy_path.read_text(encoding="utf-8"))
+        protected_baseline = str(legacy_path)
+        expected_working_hash = ((legacy.get("datasets") or {}).get("city") or {}).get("manifestSha256")
+        protected_inputs = {
+            relative: recorded
+            for relative, recorded in (legacy.get("derived") or {}).items()
+            if "city" in relative.lower()
+        }
+        audit.check(
+            "accepted baseline present",
+            False,
+            f"{accepted_path} missing; using historical pre-B-2 hashes from {legacy_path}",
+        )
+    else:
+        audit.check("accepted baseline present", False, "no baseline file found")
 
-    _write(args, audit)
+    if working_manifest.exists() and expected_working_hash:
+        current = json.loads(working_manifest.read_text(encoding="utf-8"))
+        audit.check(
+            "working dataset unchanged",
+            stable_manifest_hash(current) == expected_working_hash,
+            f"public/data/city-tiles manifest differs from {protected_baseline}",
+        )
+    for relative, recorded in protected_inputs.items():
+        if recorded.get("missing"):
+            continue
+        path = ROOT / relative
+        audit.check(
+            f"protected input untouched: {relative}",
+            path.exists() and sha256_file(path) == recorded["sha256"],
+            f"{relative} changed during staging",
+        )
+
+    _write(args, audit, address_reconciliation, protected_baseline)
     print(
         f"Audit: {len(audit.checks)} checks, {audit.failed} failed; "
         f"{len(tiles)} tiles, {total_bytes / 1e6:.2f} MB, "
@@ -257,15 +346,22 @@ def main() -> int:
     return 0 if audit.failed == 0 else 1
 
 
-def _write(args, audit: Audit) -> None:
+def _write(
+    args,
+    audit: Audit,
+    address_reconciliation: dict | None = None,
+    protected_baseline: str | None = None,
+) -> None:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(
             {
-                "schema": 1,
+                "schema": 2,
                 "tilesDir": args.tiles_dir,
                 "coverage": args.coverage,
+                "protectedBaseline": protected_baseline,
+                "addressReconciliation": address_reconciliation,
                 "checks": audit.checks,
                 "failed": audit.failed,
             },

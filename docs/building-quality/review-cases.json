@@ -1,0 +1,900 @@
+{
+ "schema": 1,
+ "generatedAt": "2026-11-14T12:54:38+00:00",
+ "dataset": {
+  "directory": "public\\data\\city-tiles",
+  "manifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da",
+  "tileCount": 437,
+  "buildingCount": 76004,
+  "bounds": [
+   -11264.0,
+   -9216.0,
+   12288.0,
+   10240.0
+  ],
+  "tileSize": 1024.0
+ },
+ "capture": {
+  "viewport": {
+   "width": 1600,
+   "height": 900
+  },
+  "pixelArt": {
+   "enabled": true,
+   "resolution": 360,
+   "outline": 0.55,
+   "colorLevels": 20,
+   "dither": 0.35
+  },
+  "camera": {
+   "overview": {
+    "orthoHeight": 420.0,
+    "azimuth": 0.7853981633974483,
+    "elevation": 0.6154797086703873,
+    "timeHours": 13.0
+   },
+   "close": {
+    "orthoHeight": 90.0,
+    "azimuth": 0.7853981633974483,
+    "elevation": 0.6154797086703873,
+    "timeHours": 13.0
+   },
+   "closeOpposite": {
+    "orthoHeight": 90.0,
+    "azimuth": 3.9269908169872414,
+    "elevation": 0.6154797086703873,
+    "timeHours": 13.0
+   }
+  },
+  "times": {
+   "day": 13.0,
+   "warmEvening": 18.5,
+   "night": 22.0
+  },
+  "levels": {
+   "overview": 420.0,
+   "close": 90.0
+  }
+ },
+ "cases": [
+  {
+   "kind": "building",
+   "id": "w25432792",
+   "tileKey": "0_-4",
+   "localX": 216.81,
+   "localY": -3198.68,
+   "height": 18.0,
+   "archetype": "stalin",
+   "roofShape": "flat",
+   "levels": 5,
+   "name": "Інтэрнат # 3 Мінсктранс філіял Тралейбусны парк # 2",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "27",
+    "addr:street": "Надзеждзінская вуліца",
+    "building": "dormitory",
+    "building:levels": "5"
+   },
+   "areaM2": 929.63,
+   "inputBounds": [
+    205.46,
+    -3233.82,
+    228.16,
+    -3163.54
+   ],
+   "volumeCount": 1,
+   "category": "archetype_stalin",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25430120",
+   "tileKey": "3_-3",
+   "localX": 3221.261,
+   "localY": -3019.159,
+   "height": 14.0,
+   "archetype": "khrushchev",
+   "roofShape": "gabled",
+   "levels": 5,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "5",
+    "addr:street": "вуліца Яна Райніса",
+    "building": "apartments",
+    "building:levels": "5",
+    "roof:shape": "gabled"
+   },
+   "areaM2": 990.53,
+   "inputBounds": [
+    3203.88,
+    -3056.09,
+    3238.64,
+    -2982.22
+   ],
+   "volumeCount": 1,
+   "category": "archetype_khrushchev",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25438021",
+   "tileKey": "-6_-5",
+   "localX": -5703.138,
+   "localY": -4641.58,
+   "height": 25.2,
+   "archetype": "panel",
+   "roofShape": "flat",
+   "levels": 9,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "54",
+    "addr:street": "праспект Газеты Праўда",
+    "building": "apartments",
+    "building:levels": "9",
+    "roof:shape": "flat"
+   },
+   "areaM2": 3404.47,
+   "inputBounds": [
+    -5732.74,
+    -4712.08,
+    -5630.25,
+    -4595.58
+   ],
+   "volumeCount": 1,
+   "category": "archetype_panel",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25437973",
+   "tileKey": "-6_-4",
+   "localX": -5276.357,
+   "localY": -3246.181,
+   "height": 31.0,
+   "archetype": "modern",
+   "roofShape": "flat",
+   "levels": 10,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "18",
+    "addr:street": "вуліца Алібегава",
+    "building": "apartments",
+    "building:levels": "10",
+    "roof:shape": "flat",
+    "start_date": "2003"
+   },
+   "areaM2": 1020.14,
+   "inputBounds": [
+    -5284.4,
+    -3279.67,
+    -5268.4,
+    -3212.87
+   ],
+   "volumeCount": 1,
+   "category": "archetype_modern",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25326892",
+   "tileKey": "0_-3",
+   "localX": 392.491,
+   "localY": -2752.148,
+   "height": 17.5,
+   "archetype": "office",
+   "roofShape": "flat",
+   "levels": 5,
+   "name": "Камітэт па працы, занятасці і сацыяльнай абароне Мінгарвыканкама",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "22 к2",
+    "addr:street": "вуліца Маякоўскага",
+    "building": "yes",
+    "building:levels": "5"
+   },
+   "areaM2": 1028.15,
+   "inputBounds": [
+    384.05,
+    -2789.78,
+    401.02,
+    -2714.77
+   ],
+   "volumeCount": 1,
+   "category": "archetype_office",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25320041",
+   "tileKey": "5_-4",
+   "localX": 5623.275,
+   "localY": -3260.095,
+   "height": 10.35,
+   "archetype": "historic",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "building": "yes"
+   },
+   "areaM2": 826.77,
+   "inputBounds": [
+    5575.9,
+    -3269.54,
+    5661.73,
+    -3243.41
+   ],
+   "volumeCount": 1,
+   "category": "archetype_historic",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25321394",
+   "tileKey": "4_1",
+   "localX": 4387.906,
+   "localY": 1410.291,
+   "height": 7.99,
+   "archetype": "industrial",
+   "roofShape": "skillion",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "23/26",
+    "addr:street": "вуліца Макаёнка",
+    "building": "industrial"
+   },
+   "areaM2": 2026.44,
+   "inputBounds": [
+    4354.3,
+    1379.15,
+    4421.94,
+    1442.57
+   ],
+   "volumeCount": 1,
+   "category": "archetype_industrial",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w1286222891",
+   "tileKey": "5_9",
+   "localX": 5273.388,
+   "localY": 10049.239,
+   "height": 3.82,
+   "archetype": "small",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "21",
+    "addr:street": "вуліца Залатая Горка",
+    "building": "yes"
+   },
+   "areaM2": 168.4,
+   "inputBounds": [
+    5265.33,
+    10042.35,
+    5282.7,
+    10056.32
+   ],
+   "volumeCount": 1,
+   "category": "archetype_small",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25322904",
+   "tileKey": "3_-3",
+   "localX": 3139.476,
+   "localY": -2166.261,
+   "height": 16.8,
+   "archetype": "civic",
+   "roofShape": "gabled",
+   "levels": 4,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "1",
+    "addr:street": "вуліца Шчарбакова",
+    "building": "hospital",
+    "building:levels": "4",
+    "roof:shape": "gabled"
+   },
+   "areaM2": 784.68,
+   "inputBounds": [
+    3116.9,
+    -2189.49,
+    3164.48,
+    -2146.1
+   ],
+   "volumeCount": 1,
+   "category": "archetype_civic",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25327560",
+   "tileKey": "-1_0",
+   "localX": -36.417,
+   "localY": 123.138,
+   "height": 45.0,
+   "archetype": "palace",
+   "roofShape": "flat",
+   "levels": null,
+   "name": "Палац Рэспублікі",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "1",
+    "addr:street": "Кастрычніцкая плошча",
+    "amenity": "arts_centre",
+    "building": "public"
+   },
+   "areaM2": 4605.55,
+   "inputBounds": [
+    -124.79,
+    34.77,
+    49.9,
+    213.91
+   ],
+   "volumeCount": 4,
+   "category": "archetype_palace",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "r8414582",
+   "tileKey": "-1_-1",
+   "localX": -50.349,
+   "localY": -783.148,
+   "height": 12.0,
+   "archetype": "stadium",
+   "roofShape": "flat",
+   "levels": 4,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "building": "stadium",
+    "building:levels": "4"
+   },
+   "areaM2": 22622.98,
+   "inputBounds": [
+    -156.39,
+    -905.35,
+    49.51,
+    -664.37
+   ],
+   "volumeCount": 1,
+   "category": "archetype_stadium",
+   "selectionRule": "median height/area/id member of the archetype (area >= 40 m2)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25438891",
+   "tileKey": "-7_-6",
+   "localX": -7167.019,
+   "localY": -6074.06,
+   "height": 25.2,
+   "archetype": "panel",
+   "roofShape": "flat",
+   "levels": 9,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "40 к1",
+    "addr:street": "вуліца Касманаўтаў",
+    "building": "apartments",
+    "building:levels": "9",
+    "roof:shape": "flat"
+   },
+   "areaM2": 993.73,
+   "inputBounds": [
+    -7199.67,
+    -6081.89,
+    -7134.37,
+    -6066.23
+   ],
+   "volumeCount": 1,
+   "category": "panel_neighborhood_1",
+   "selectionRule": "densest panel-residential tiles ranked by count then tile key",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w445461345",
+   "tileKey": "6_6",
+   "localX": 6684.476,
+   "localY": 6226.488,
+   "height": 25.2,
+   "archetype": "panel",
+   "roofShape": "flat",
+   "levels": 9,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "13",
+    "addr:street": "Авіяцыйная вуліца",
+    "building": "apartments",
+    "building:levels": "9"
+   },
+   "areaM2": 2833.68,
+   "inputBounds": [
+    6634.77,
+    6177.54,
+    6742.73,
+    6269.57
+   ],
+   "volumeCount": 1,
+   "category": "panel_neighborhood_2",
+   "selectionRule": "densest panel-residential tiles ranked by count then tile key",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w552797264",
+   "tileKey": "-1_-3",
+   "localX": -750.945,
+   "localY": -2463.352,
+   "height": 25.2,
+   "archetype": "panel",
+   "roofShape": "flat",
+   "levels": 9,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "10 к1",
+    "addr:street": "вуліца Жукоўскага",
+    "building": "apartments",
+    "building:levels": "9",
+    "roof:shape": "flat"
+   },
+   "areaM2": 1935.15,
+   "inputBounds": [
+    -767.04,
+    -2530.85,
+    -734.23,
+    -2391.22
+   ],
+   "volumeCount": 1,
+   "category": "panel_neighborhood_3",
+   "selectionRule": "densest panel-residential tiles ranked by count then tile key",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w63096110",
+   "tileKey": "-1_3",
+   "localX": -16.109,
+   "localY": 3502.608,
+   "height": 9.73,
+   "archetype": "historic",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "10",
+    "addr:street": "7-ы Арлоўскі завулак",
+    "building": "yes"
+   },
+   "areaM2": 136.8,
+   "inputBounds": [
+    -22.1,
+    3496.81,
+    -10.12,
+    3508.41
+   ],
+   "volumeCount": 1,
+   "category": "prewar_lowrise_1",
+   "selectionRule": "densest historic/pre-war tiles ranked by count then tile key",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w394594924",
+   "tileKey": "-7_-9",
+   "localX": -6233.023,
+   "localY": -9181.965,
+   "height": 11.02,
+   "archetype": "historic",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "8",
+    "addr:street": "Пінская вуліца",
+    "building": "residential"
+   },
+   "areaM2": 270.0,
+   "inputBounds": [
+    -6245.13,
+    -9193.49,
+    -6220.86,
+    -9170.5
+   ],
+   "volumeCount": 1,
+   "category": "prewar_lowrise_2",
+   "selectionRule": "densest historic/pre-war tiles ranked by count then tile key",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w446116696",
+   "tileKey": "-8_-9",
+   "localX": -7859.398,
+   "localY": -9065.254,
+   "height": 10.82,
+   "archetype": "historic",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "80",
+    "addr:street": "вуліца Жукоўскага",
+    "building": "residential"
+   },
+   "areaM2": 88.43,
+   "inputBounds": [
+    -7865.94,
+    -9072.39,
+    -7852.86,
+    -9058.12
+   ],
+   "volumeCount": 1,
+   "category": "prewar_lowrise_3",
+   "selectionRule": "densest historic/pre-war tiles ranked by count then tile key",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "r9383682",
+   "tileKey": "-1_-2",
+   "localX": -642.369,
+   "localY": -1135.076,
+   "height": 38.5,
+   "archetype": "stalin",
+   "roofShape": "flat",
+   "levels": null,
+   "name": "Вароты Мінска",
+   "landmark": "minsk-gate",
+   "tags": {
+    "building": "apartments"
+   },
+   "areaM2": 309.77,
+   "inputBounds": [
+    -653.09,
+    -1146.58,
+    -631.65,
+    -1123.58
+   ],
+   "volumeCount": 5,
+   "category": "landmark_minsk-gate",
+   "selectionRule": "every curated landmark building in the accepted dataset",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w100418249",
+   "tileKey": "-1_-1",
+   "localX": -878.982,
+   "localY": -637.154,
+   "height": 50.0,
+   "archetype": "civic",
+   "roofShape": "gabled",
+   "levels": 1,
+   "name": "Касцёл Святога Сымона і Святой Алены",
+   "landmark": "red-church",
+   "tags": {
+    "addr:housenumber": "15",
+    "addr:street": "Савецкая вуліца",
+    "amenity": "place_of_worship",
+    "building": "church",
+    "building:levels": "1",
+    "building:material": "brick",
+    "roof:shape": "gabled",
+    "start_date": "1910"
+   },
+   "areaM2": 250.19,
+   "inputBounds": [
+    -891.15,
+    -647.49,
+    -866.82,
+    -626.82
+   ],
+   "volumeCount": 16,
+   "category": "landmark_red-church",
+   "selectionRule": "every curated landmark building in the accepted dataset",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w346312699",
+   "tileKey": "0_0",
+   "localX": 919.711,
+   "localY": 727.667,
+   "height": 38.2,
+   "archetype": "civic",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "Манумент Перамогі",
+   "landmark": "victory-obelisk",
+   "tags": {
+    "building": "yes",
+    "start_date": "1954"
+   },
+   "areaM2": 137.35,
+   "inputBounds": [
+    911.66,
+    719.63,
+    927.76,
+    735.7
+   ],
+   "volumeCount": 3,
+   "category": "landmark_victory-obelisk",
+   "selectionRule": "every curated landmark building in the accepted dataset",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w1158101395",
+   "tileKey": "0_0",
+   "localX": 710.669,
+   "localY": 826.356,
+   "height": 176.0,
+   "archetype": "civic",
+   "roofShape": "pyramidal",
+   "levels": null,
+   "name": "",
+   "landmark": "tv-tower",
+   "tags": {
+    "building": "tower",
+    "roof:height": "170",
+    "roof:shape": "pyramidal"
+   },
+   "areaM2": 461.27,
+   "inputBounds": [
+    695.46,
+    811.24,
+    725.86,
+    841.44
+   ],
+   "volumeCount": 1,
+   "category": "landmark_tv-tower",
+   "selectionRule": "every curated landmark building in the accepted dataset",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25319604",
+   "tileKey": "5_3",
+   "localX": 5556.59,
+   "localY": 3275.212,
+   "height": 71.6,
+   "archetype": "civic",
+   "roofShape": "flat",
+   "levels": null,
+   "name": "Нацыянальная бібліятэка Беларусі",
+   "landmark": "national-library",
+   "tags": {
+    "addr:housenumber": "116",
+    "addr:street": "праспект Незалежнасці",
+    "amenity": "library",
+    "building": "public"
+   },
+   "areaM2": 9926.89,
+   "inputBounds": [
+    5486.25,
+    3199.69,
+    5626.54,
+    3365.22
+   ],
+   "volumeCount": 35,
+   "category": "landmark_national-library",
+   "selectionRule": "every curated landmark building in the accepted dataset",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w938003665",
+   "tileKey": "-2_-4",
+   "localX": -1252.633,
+   "localY": -3678.776,
+   "height": 78.0,
+   "archetype": "modern",
+   "roofShape": "flat",
+   "levels": 25,
+   "name": "Нур-Cултан",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "8",
+    "addr:street": "Бялградская вуліца",
+    "building": "apartments",
+    "building:levels": "25",
+    "start_date": "2022"
+   },
+   "areaM2": 865.57,
+   "inputBounds": [
+    -1265.78,
+    -3700.93,
+    -1239.49,
+    -3656.63
+   ],
+   "volumeCount": 1,
+   "category": "modern_tower_district",
+   "selectionRule": "tallest modern building in the accepted dataset",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w25322704",
+   "tileKey": "2_0",
+   "localX": 2966.483,
+   "localY": 536.213,
+   "height": 7.92,
+   "archetype": "industrial",
+   "roofShape": "skillion",
+   "levels": null,
+   "name": "Царские конюшни",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "6/4",
+    "addr:street": "Батанічная вуліца",
+    "amenity": "car_wash",
+    "building": "industrial"
+   },
+   "areaM2": 355.79,
+   "inputBounds": [
+    2952.24,
+    522.66,
+    2980.72,
+    549.76
+   ],
+   "volumeCount": 1,
+   "category": "industrial_area",
+   "selectionRule": "tile with the most industrial buildings",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w62092893",
+   "tileKey": "3_9",
+   "localX": 3608.735,
+   "localY": 9944.0,
+   "height": 4.14,
+   "archetype": "small",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "addr:housenumber": "1",
+    "addr:street": "Арэхавая вуліца",
+    "building": "detached"
+   },
+   "areaM2": 209.38,
+   "inputBounds": [
+    3598.41,
+    9933.87,
+    3619.06,
+    9954.13
+   ],
+   "volumeCount": 1,
+   "category": "small_edge",
+   "selectionRule": "border tile with the most small/outbuilding features",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w50084424",
+   "tileKey": "-11_-9",
+   "localX": -10522.905,
+   "localY": -8958.743,
+   "height": 23.34,
+   "archetype": "office",
+   "roofShape": "flat",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "building": "yes"
+   },
+   "areaM2": 1810.99,
+   "inputBounds": [
+    -10548.56,
+    -8996.4,
+    -10497.25,
+    -8921.09
+   ],
+   "volumeCount": 1,
+   "category": "corner_sw",
+   "selectionRule": "tallest building in the area corner tile",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "building",
+   "id": "w810200744",
+   "tileKey": "11_-9",
+   "localX": 12259.46,
+   "localY": -8812.145,
+   "height": 12.24,
+   "archetype": "historic",
+   "roofShape": "gabled",
+   "levels": null,
+   "name": "",
+   "landmark": null,
+   "tags": {
+    "building": "yes"
+   },
+   "areaM2": 885.6,
+   "inputBounds": [
+    12227.56,
+    -8845.32,
+    12288.0,
+    -8780.39
+   ],
+   "volumeCount": 1,
+   "category": "corner_se",
+   "selectionRule": "tallest building in the area corner tile",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "view",
+   "id": null,
+   "tileKey": "-11_9",
+   "localX": -10752.0,
+   "localY": 9728.0,
+   "category": "corner_nw",
+   "selectionRule": "area corner tile with no building feature",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "view",
+   "id": null,
+   "tileKey": "11_9",
+   "localX": 11776.0,
+   "localY": 9728.0,
+   "category": "corner_ne",
+   "selectionRule": "area corner tile with no building feature",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "view",
+   "id": null,
+   "tileKey": "-10_-1",
+   "localX": -9728.0,
+   "localY": -512.0,
+   "category": "river_bridge",
+   "selectionRule": "first tile (by tile key) carrying both a bridge deck and a river surface",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  },
+  {
+   "kind": "view",
+   "id": null,
+   "tileKey": "9_0",
+   "localX": 9300.0,
+   "localY": 655.0,
+   "category": "lipki_museum",
+   "selectionRule": "fixed Lipki museum focus point (src/shared/museum.ts)",
+   "sourceManifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da"
+  }
+ ]
+}
