@@ -77,13 +77,20 @@ jobs:
             appendFileSync(process.env.GITHUB_OUTPUT, `total-bytes=${manifest.totalBytes}\n`);
             appendFileSync(process.env.GITHUB_OUTPUT, `commit-sha=${manifest.commitSha ?? "unknown"}\n`);
           '
-      - name: Upload verified artifact for deployment
-        uses: actions/upload-artifact@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
         with:
-          name: city-site-${{ github.sha }}
+          # Create the Pages site on the first run instead of requiring a manual
+          # "Source: GitHub Actions" click in the repository settings.
+          enablement: true
+      - name: Pack the verified artifact as the Pages deployment artifact
+        # The artifact is the 307 MB complete-city site. `upload-pages-artifact`
+        # stores it once for `deploy-pages` in the deploy job; an intermediate
+        # `upload-artifact`/`download-artifact` copy doubled the stored bytes and
+        # failed on the runner, so the official two-job Pages pattern is used.
+        uses: actions/upload-pages-artifact@v3
+        with:
           path: .pages
-          if-no-files-found: error
-          retention-days: 3
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -98,18 +105,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: city-site-${{ github.sha }}
-          path: .pages
-      - uses: actions/configure-pages@v5
-        with:
-          # Create the Pages site on the first run instead of requiring a manual
-          # "Source: GitHub Actions" click in the repository settings.
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .pages
       - id: deployment
         uses: actions/deploy-pages@v5
