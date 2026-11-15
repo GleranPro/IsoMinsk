@@ -144,6 +144,13 @@ export function App() {
     setUi((prev) => ({ ...prev, orthoHeight: MUSEUM.orthoHeight }));
   }, []);
 
+  const rotateCamera = useCallback((direction: -1 | 1) => {
+    const app = appRef.current;
+    if (!app) return;
+    const { azimuth } = app.getCameraSettings();
+    app.setCameraSettings({ azimuth: azimuth + (direction * Math.PI) / 4 });
+  }, []);
+
   const snapshotStats = useCallback(() => {
     const next = appRef.current?.getStats();
     if (next) setStats(next);
@@ -172,6 +179,7 @@ export function App() {
         onReset={resetCamera}
         onFocusMuseum={focusMuseum}
         onRefreshStats={snapshotStats}
+        onRotate={rotateCamera}
         stats={stats}
         disabled={!ready}
       />

@@ -150,6 +150,17 @@ the styled-city contract audit; `docs/building-quality/REVIEW.md` records the
 honest L0–L4 status. Screenshots live in the git-ignored
 `screenshots/building-quality/<sha>/`.
 
+**Verified 2026-11-15 (mobile/touch):** mobile/touch work landed on top of the
+complete-city release. Touch gestures (one-finger pan, pinch zoom, two-finger
+pan/twist with 45° snap, tap select, double-tap focus), a foldable settings panel
+that starts folded on phones and a phone-adapted HUD are implemented.
+Browser-emulated touch, not a real-phone performance claim; full seasons remain
+unfinished. Merged-release verification: **562 Vitest passed (5 skipped, 34
+files)**; the mobile suite passed **7/7** and **30 of 31** hardware-WebGL browser
+scenarios passed. The remaining `trees.spec.ts` scenario still expects the old
+16-tile pilot and cannot pass on the complete-city payload (pre-existing; GitHub
+CI does not run Playwright).
+
 **Verified 2026-11-06 (historical, before the building-variety work):** TypeScript/build
 passed, **440 Vitest passed (5 skipped)** and **14 hardware-WebGL Playwright tests
 passed**. Rail heads keep the same palette and physical width across ground/deck
@@ -172,7 +183,17 @@ buffer counter from **731.20 to 378.42 MiB**. Those numbers describe the old
 | Mouse wheel | Zoom (cursor-anchored) |
 | `Q` / `E` or right-drag | Rotate camera |
 | Left click | Select building (info panel with OSM metadata) |
+| One-finger drag | Pan (touch) |
+| Pinch | Zoom at the pinch midpoint (touch) |
+| Two-finger twist | Rotate; snaps to the 45° compass on release (touch) |
+| Tap / double-tap | Select / focus on the tapped point (touch) |
+| Rotate ⟲ / ⟳ 45° buttons | Step the camera azimuth by 45° |
 | Reset isometric view button | Restore the default isometric view |
+
+The **Settings** panel folds to a compact pill; on phones it starts folded so the
+map keeps the screen, and the choice is remembered per browser. Coarse-pointer
+styles enlarge every control to a touch target, the HUD respects phone safe
+areas, and building/museum cards become full-width bottom cards.
 
 UI also exposes: pixel-art toggle (debug comparison with the clean 3D render),
 facade-detail toggle (debugging), debug wireframe, time-of-day slider (night

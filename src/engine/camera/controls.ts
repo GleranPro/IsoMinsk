@@ -1,23 +1,33 @@
 /**
  * Custom camera input: no OrbitControls, no library.
  *
- *   left drag   pan (grabbed ground point follows the pointer)
- *   right drag  rotate the azimuth (snaps to 45° on release)
- *   wheel       cursor-anchored zoom (orthoHeight)
+ *   left drag / one finger      pan (grabbed ground point follows the pointer)
+ *   right drag (mouse)          rotate the azimuth (snaps to 45° on release)
+ *   two fingers                 pinch zoom + pan; twist rotates (snaps on release)
+ *   wheel                       cursor-anchored zoom (orthoHeight)
+ *   tap / left click            selection
+ *   double tap / double click   focus on the tapped ground point
  *   WASD/arrows pan, Q/E rotate, +/− zoom, R reset, Esc clear selection
+ *
+ * The gesture state machine lives in `pointerGestures.ts` (DOM-free, unit
+ * tested); this class only wires browser events to it and to the camera rig.
  *
  * Trackpad/shift modifiers: Shift speeds up panning and turns Q/E into 45°
  * compass steps.
  */
 
 import type { IsometricCameraRig } from './isometricCamera';
+import {
+  PointerGestureController,
+  type PointerSample,
+} from './pointerGestures';
 
 export interface CameraControlsOptions {
   canvas: HTMLElement;
   rig: IsometricCameraRig;
-  /** Left click without dragging. */
+  /** Left click / tap without dragging. */
   onClick?: (clientX: number, clientY: number) => void;
-  /** Double click: (clientX, clientY, localX, localY). */
+  /** Double click / double tap: (clientX, clientY, localX, localY). */
   onDoubleClick?: (clientX: number, clientY: number, localX: number, localY: number) => void;
   onReset?: () => void;
   onEscape?: () => void;
@@ -41,74 +51,66 @@ function isTextInput(target: EventTarget | null): boolean {
   );
 }
 
+function pointerSample(event: PointerEvent): PointerSample {
+  return {
+    id: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    pointerType: event.pointerType,
+    button: event.button,
+  };
+}
+
 export class CameraControls {
   private readonly canvas: HTMLElement;
   private readonly rig: IsometricCameraRig;
   private readonly options: CameraControlsOptions;
+  private readonly gestures: PointerGestureController;
 
   private readonly keys = new Set<string>();
-  private pointerId: number | null = null;
-  private dragButton = 0;
-  private lastX = 0;
-  private lastY = 0;
-  private moved = false;
-  private dragging = false;
 
   private readonly onPointerDown = (event: PointerEvent) => {
     if (!this.enabled()) return;
-    if (event.button !== 0 && event.button !== 2) return;
-    if (this.pointerId !== null) return;
-    this.pointerId = event.pointerId;
-    this.dragButton = event.button;
-    this.dragging = true;
-    this.moved = false;
-    this.lastX = event.clientX;
-    this.lastY = event.clientY;
+    if (event.pointerType === 'mouse') {
+      if (event.button !== 0 && event.button !== 2) return;
+    } else if (event.button !== 0) {
+      return;
+    }
+    // Capture every pointer so a drag that leaves the canvas keeps working;
+    // multi-touch pointers are captured individually.
     try {
-      (event.target as Element).setPointerCapture?.(event.pointerId);
+      this.canvas.setPointerCapture?.(event.pointerId);
     } catch {
       /* capture is best effort */
     }
+    this.gestures.pointerDown(pointerSample(event));
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
-    if (!this.dragging || event.pointerId !== this.pointerId) return;
-    const dx = event.clientX - this.lastX;
-    const dy = event.clientY - this.lastY;
-    this.lastX = event.clientX;
-    this.lastY = event.clientY;
-    if (Math.abs(dx) + Math.abs(dy) > 1) this.moved = true;
-    if (this.dragButton === 2) {
-      this.rig.rotateBy(-dx * 0.0085);
-    } else if (this.dragButton === 0) {
-      this.rig.panByScreen(dx, dy);
-    }
+    if (!this.enabled()) return;
+    this.gestures.pointerMove(pointerSample(event));
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
-    if (event.pointerId !== this.pointerId) return;
-    const wasLeft = this.dragButton === 0;
-    const wasMoved = this.moved;
-    this.dragging = false;
-    this.pointerId = null;
+    this.gestures.pointerUp(pointerSample(event));
     try {
-      (event.target as Element).releasePointerCapture?.(event.pointerId);
+      if (this.canvas.hasPointerCapture?.(event.pointerId)) {
+        this.canvas.releasePointerCapture?.(event.pointerId);
+      }
     } catch {
       /* ignore */
-    }
-    if (this.dragButton === 2 && wasMoved) {
-      // Rotation is continuous while dragging but locks to the 45° compass
-      // when the gesture ends.
-      this.rig.snapAzimuth();
-    } else if (wasLeft && !wasMoved) {
-      this.options.onClick?.(event.clientX, event.clientY);
     }
   };
 
   private readonly onPointerCancel = (event: PointerEvent) => {
-    if (event.pointerId !== this.pointerId) return;
-    this.dragging = false;
-    this.pointerId = null;
+    this.gestures.pointerCancel(pointerSample(event));
+    try {
+      if (this.canvas.hasPointerCapture?.(event.pointerId)) {
+        this.canvas.releasePointerCapture?.(event.pointerId);
+      }
+    } catch {
+      /* ignore */
+    }
   };
 
   private readonly onWheel = (event: WheelEvent) => {
@@ -125,15 +127,6 @@ export class CameraControls {
 
   private readonly onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
-  };
-
-  private readonly onDoubleClick = (event: MouseEvent) => {
-    if (!this.enabled()) return;
-    const rect = this.canvas.getBoundingClientRect();
-    const ndcX = ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
-    const ndcY = -((event.clientY - rect.top) / Math.max(rect.height, 1)) * 2 + 1;
-    const point = this.rig.groundPointAtNdc(ndcX, ndcY);
-    if (point) this.options.onDoubleClick?.(event.clientX, event.clientY, point.x, -point.z);
   };
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
@@ -195,17 +188,39 @@ export class CameraControls {
     this.canvas = options.canvas;
     this.rig = options.rig;
 
+    this.gestures = new PointerGestureController({
+      onPan: (dx, dy) => this.rig.panByScreen(dx, dy),
+      onZoomAt: (clientX, clientY, factor) => {
+        const rect = this.canvas.getBoundingClientRect();
+        const ndcX = ((clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
+        const ndcY = -((clientY - rect.top) / Math.max(rect.height, 1)) * 2 + 1;
+        this.rig.zoomAtNdc(ndcX, ndcY, factor);
+      },
+      onRotate: (deltaRadians) => this.rig.rotateBy(deltaRadians),
+      onRotateEnd: () => this.rig.snapAzimuth(),
+      onTap: (clientX, clientY) => this.options.onClick?.(clientX, clientY),
+      onDoubleTap: (clientX, clientY) => this.focusFromClient(clientX, clientY),
+    });
+
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
     this.canvas.addEventListener('pointermove', this.onPointerMove);
     this.canvas.addEventListener('pointerup', this.onPointerUp);
     this.canvas.addEventListener('pointercancel', this.onPointerCancel);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
     this.canvas.addEventListener('contextmenu', this.onContextMenu);
-    this.canvas.addEventListener('dblclick', this.onDoubleClick);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
+  }
+
+  /** Convert a client point to the ground point under it and report it. */
+  private focusFromClient(clientX: number, clientY: number): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const ndcX = ((clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
+    const ndcY = -((clientY - rect.top) / Math.max(rect.height, 1)) * 2 + 1;
+    const point = this.rig.groundPointAtNdc(ndcX, ndcY);
+    if (point) this.options.onDoubleClick?.(clientX, clientY, point.x, -point.z);
   }
 
   private enabled(): boolean {
@@ -247,7 +262,7 @@ export class CameraControls {
   }
 
   get isDragging(): boolean {
-    return this.dragging;
+    return this.gestures.isDragging;
   }
 
   dispose(): void {
@@ -257,11 +272,11 @@ export class CameraControls {
     this.canvas.removeEventListener('pointercancel', this.onPointerCancel);
     this.canvas.removeEventListener('wheel', this.onWheel);
     this.canvas.removeEventListener('contextmenu', this.onContextMenu);
-    this.canvas.removeEventListener('dblclick', this.onDoubleClick);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    this.gestures.reset();
     this.keys.clear();
   }
 }

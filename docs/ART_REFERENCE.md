@@ -44,8 +44,10 @@ are recorded from the original research; they are not a fresh external audit.
 - The source positions/dimensions remain ours. No Warsaw geometry or tree data
   was imported. Dense C trees use a rounded 20-triangle crown plus an 8-triangle
   trunk; other density tiers use 36/44/56 triangles per complete tree.
-- Canopy appearance is independently updateable, while full seasons and mobile
-  controls remain pending. See [verified results](TREE_INSTANCING_2026-11-06.md).
+- Canopy appearance is independently updateable. Full seasons remain pending;
+  mobile/touch controls and the foldable phone HUD are implemented (2026-11-15),
+  browser-emulated but not real-phone verified. See
+  [verified results](TREE_INSTANCING_2026-11-06.md).
 
 ## Initial recommendations (historical design directions)
 

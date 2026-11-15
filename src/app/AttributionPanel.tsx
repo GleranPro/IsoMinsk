@@ -26,8 +26,11 @@ export function AttributionPanel({ manifest }: AttributionPanelProps) {
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer noopener">
           OpenStreetMap
         </a>{' '}
-        contributors · ODbL 1.0 · generated{' '}
-        {manifest?.generatedAt ?? '2026-10'}
+        contributors · ODbL 1.0
+        <span className="attribution-generated">
+          {' '}
+          · generated {manifest?.generatedAt ?? '2026-10'}
+        </span>
       </div>
       <details className="hud attribution" data-testid="attribution-panel">
         <summary>Data sources &amp; limitations</summary>
