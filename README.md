@@ -144,7 +144,16 @@ palette and physical width across ground/deck LODs; see
 [`docs/RAIL_LOD_2026-11-06.md`](docs/RAIL_LOD_2026-11-06.md). The default trees use
 rounded, asymmetric instanced crowns (review C); all **316 704 city trees** retain
 their positions and nominal dimensions. Canopy palette/visibility can change
-without rebuilding tiles; mobile/touch and full seasons remain unfinished.
+without rebuilding tiles; mobile/touch and full seasons were still unfinished at
+that checkpoint.
+
+**Verified 2026-11-15:** **467 Vitest passed (5 skipped)** and **23 hardware-WebGL
+Playwright scenarios passed**, including 7 new mobile/touch cases at an emulated
+390×844 phone and 320×568 small phone with real CDP multi-touch input. Touch
+gestures (one-finger pan, pinch zoom, twist rotation, tap select, double-tap
+focus), a foldable settings panel and a phone-adapted HUD are implemented. This
+is browser-emulated touch, not a real-phone performance claim; full seasons
+remain unfinished.
 
 On the reference RTX 3080 Laptop (ANGLE/D3D11, 1600×900, internal 640×360),
 the same 144-tile comparison reduces tree buffers by **87.95%** and the resident
@@ -164,7 +173,17 @@ for per-view results and review commands. Screenshots are in `screenshots/`
 | Mouse wheel | Zoom (cursor-anchored) |
 | `Q` / `E` or right-drag | Rotate camera |
 | Left click | Select building (info panel with OSM metadata) |
+| One-finger drag | Pan (touch) |
+| Pinch | Zoom at the pinch midpoint (touch) |
+| Two-finger twist | Rotate; snaps to the 45° compass on release (touch) |
+| Tap / double-tap | Select / focus on the tapped point (touch) |
+| Rotate ⟲ / ⟳ 45° buttons | Step the camera azimuth by 45° |
 | Reset isometric view button | Restore the default isometric view |
+
+The **Settings** panel folds to a compact pill; on phones it starts folded so the
+map keeps the screen, and the choice is remembered per browser. Coarse-pointer
+styles enlarge every control to a touch target, the HUD respects phone safe
+areas, and building/museum cards become full-width bottom cards.
 
 UI also exposes: pixel-art toggle (debug comparison with the clean 3D render),
 facade-detail toggle (debugging), debug wireframe, time-of-day slider (night

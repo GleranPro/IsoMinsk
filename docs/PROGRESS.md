@@ -11,12 +11,20 @@ Remaining work and completed shared prerequisites: [`docs/BACKLOG.md`](BACKLOG.m
 
 ## Current state
 
+**Mobile & touch — 2026-11-15:** touch gestures (one-finger pan, pinch zoom,
+two-finger pan/twist, tap select, double-tap focus), a foldable Settings panel
+that starts folded on phones, 45° rotate buttons, safe areas and phone-sized
+HUD cards are implemented. Gesture logic is a DOM-free state machine with 24 unit
+tests; 7 Playwright scenarios drive real multi-touch through CDP at 390×844 and
+320×568. Full run: 467 Vitest passed (5 skipped), 23 hardware-WebGL e2e passed,
+typecheck passed. This is browser-emulated touch, not phone performance;
+real-phone budgets and full seasons remain the next stages.
+
 **Rail LOD fix — 2026-11-06:** ground and bridge heads share one painter,
 unchanged family colours, 0.15 m width and 1.44 m gauge across tiers. Same-camera
 OSM/synthetic captures, real Canvas coverage and ground/deck pixel checks are
 documented in [RAIL_LOD_2026-11-06.md](RAIL_LOD_2026-11-06.md). Build/typecheck
-passed; 440 Vitest passed (5 skipped), 14 hardware-WebGL e2e passed. Mobile and
-seasons remain the next separate stages.
+passed; 440 Vitest passed (5 skipped), 14 hardware-WebGL e2e passed.
 
 **Delivered: an interactive isometric pixel-art 3D map of Minsk, generated from
 real OpenStreetMap geometry.** Two datasets are supported:
@@ -117,6 +125,7 @@ in the 2026-11-06 checkpoint and [its report](TREE_INSTANCING_2026-11-06.md).
 | Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
 | B-1 — Trees in parks and cemeteries (payload 0.4.3) | ✅ | OSM `natural=tree_row` lines extracted (1 033 rows, ~82.8 km) and placed as mapped points every 7 m; mapped trees dropped only on hard surfaces (buildings, water, rail, carriageway, 0.5 m), so footpaths no longer remove them: mapped trees 2 427 → 12 193 (3 539 points + 8 654 row points), park points kept 79 % → 99.6 %. Heuristic fill rebuilt in `scripts/normalize/trees.py`: disjoint vegetation zones (smaller polygon wins), cemeteries planted on a grid aligned with the plot's long axis (7 × 6 m, 1 tree / 90 m²), `radius + 2 m` clearance around mapped trunks, zone RNG independent of polygon order. The old order-based 140 000 cap (≈ ⅔ of the green area got no trees) is gone: **full density** — 316 704 trees (304 511 heuristic), 3 894 456 tree triangles, max 12 191 trees / 146 292 triangles per tile, per-tile cap 16 000 in pipeline and `treeMeshes.ts`. Measured with `scripts/qa/tree-perf.mjs` (GPU-synced frames, RTX 3080 Laptop): whole-city overview 4.65 → 5.03 ms per frame, park close-ups unchanged (1.6–2.2 ms); costs are memory — GPU geometry 495 → 731 MB, JS heap ~800 → ~1 000 MB — and payload 72 → 89 MB. Chelyuskintsev Park 0 → 10 219 trees (171/ha), Loshitsa 73 → 9 333, Botanical Garden 2 → 11 686, Kalvaria cemetery 5 → 1 553; empty parks/cemeteries > 0.2 ha 91 → 1. `scripts/qa/tree_audit.py --dataset city`: 0 trees in buildings/water/carriageway/track; `docs/COVERAGE_REPORT_CITY.md` from `scripts/qa/tree_coverage.py`; screenshots `screenshots/b1-before/`, `b1-after/` (budgeted variant), `b1-full/`; 42 tree tests (114 Python), 404 Vitest. Northern cemetery lies outside the 12 km frame (B-2); mobile (B-6) needs instanced trees before this density fits a phone |
 | B-6/B-7 prerequisite — new trees + instancing (2026-11-06) | ✅ | C default; 316 704 city trees; tree buffers −87.95%; separate canopy appearance; 434 Vitest passed (5 skipped), 13 hardware-WebGL e2e passed. Full mobile and seasons remain pending; `TREE_INSTANCING_2026-11-06.md` |
+| B-6 — Mobile & touch, first slice (2026-11-15) | 🚧 | DOM-free multi-pointer gesture controller (`src/engine/camera/pointerGestures.ts`, 24 unit tests): one-finger pan, mid-point-anchored pinch, two-finger pan, twist rotation with a 0.1 rad dead zone and 45° snap on release, tap select, double-tap focus, multi-touch tap suppression, per-pointer capture and re-baseline after a finger lifts. `CameraControls` still owns wheel/keyboard; mouse behaviour unchanged. HUD: foldable Settings panel (collapsed by default on phones via `(max-width: 820px), (pointer: coarse) and (max-width: 1100px)`, persisted in `localStorage['minsk.hud.controlsCollapsed']`), 45° rotate buttons, safe-area insets, `100dvh`, full-width bottom building/museum cards, 44 px coarse-pointer targets, compact ODbL badge. 7 new Playwright scenarios with real CDP touch at 390×844 and 320×568 (pan/pinch/twist/tap, panel fold+persist, 320 px overflow, desktop regression). Verified 2026-11-15: 467 Vitest passed (5 skipped), 23 hardware-WebGL Playwright passed, typecheck passed; screenshots `screenshots/mobile-qa/` (git-ignored). Remaining: phone memory/quality budget and real-device checks; emulated touch is not a phone performance claim |
 | Park attractions (curated) | ✅ | both ferris wheels as real geometry: Gorky Park (54 m, Ø51 m, 36 cabins) and Chelyuskintsev Park (28 m, 18 cabins), with A-frame supports, rims/spokes, upright cabins, boarding deck, hub sign and the trees cleared around them; `TileData.attractions` + `src/city/environment/ferrisWheel.ts`, 19 tests |
 
 ## Historical measurements (before 2026-11-06 instancing)
@@ -198,7 +207,7 @@ for the 144-tile comparison, current tree counts and current test results.
 | 1 | Roof-shape mix is heuristic outside tagged buildings (~68 % pitched in the centre, similar in the city) | medium | `heightSource`/`roofShapeExplicit` provenance is recorded per volume; a statistical roof model per district is the next quality step |
 | 2 | Palace/landmark trim bands (plinth/cornice/attic, 0.35 m overhang) read as a dashed 1-px outline at far zoom | cosmetic | visible on the Palace of the Republic roof edge; reduce overhang or merge into the roof face if it bothers |
 | 3 | Payload is JSON (~92.7 MB of current city tiles) | low | Binary encoding/Brotli remain unimplemented; this is separate from resident rendering memory |
-| 4 | Most vegetation is still procedurally placed (304 511 of 316 704 trees city-wide; 12 193 come from OSM points and tree rows) | low | `TreeInstance.mapped` distinguishes surveyed from inferred; park/forest density is uniform per class, so lawns inside parks that OSM does not map as `landuse=grass` still get trees. Instancing is implemented (tree buffers −87.95%); mobile is still unverified. See `docs/COVERAGE_REPORT_CITY.md` and `docs/TREE_INSTANCING_2026-11-06.md` |
+| 4 | Most vegetation is still procedurally placed (304 511 of 316 704 trees city-wide; 12 193 come from OSM points and tree rows) | low | `TreeInstance.mapped` distinguishes surveyed from inferred; park/forest density is uniform per class, so lawns inside parks that OSM does not map as `landuse=grass` still get trees. Instancing is implemented (tree buffers −87.95%); touch HUD/gestures are implemented and browser-emulated (2026-11-15), but real-phone memory/frame budgets remain unverified. See `docs/COVERAGE_REPORT_CITY.md` and `docs/TREE_INSTANCING_2026-11-06.md` |
 | 5 | Underground objects (metro, passages) are not rendered | low | deliberate: they painted black strips on squares in an early build |
 | 6 | Flat terrain (no DEM) | low | terrain-height provider is the extension point; see `docs/DATA_SOURCES.md` |
 | 7 | Landmark geometry is curated for 5 of the iconic buildings only | medium | done: Minsk Gate, National Library, Victory obelisk, Red Church, TV tower. Next candidates (same pattern: data flag + dedicated module in `src/city/buildings/landmarks.ts`): Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral |
@@ -234,7 +243,9 @@ it also appears as delivered above.
 
 **Later / optional**
 8. Terrain (DEM) support — flat ground is the current documented limitation.
-9. Mobile/touch camera controls (currently mouse + keyboard).
+9. Mobile/touch camera controls and the phone-adapted, foldable HUD are
+   implemented (2026-11-15); the remaining mobile work is the memory/quality
+   budget (shadows, internal resolution, screen-size tree LOD) and real-phone QA.
 10. Additional datasets (e.g. a zoomed-in "hero" dataset around Independence
     Square) if tile load time becomes the limiting factor.
 

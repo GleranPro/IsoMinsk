@@ -240,7 +240,10 @@ Pilot manifest provenance (654 buildings; not city-wide percentages):
   lamps are not. No global illumination, AO baking, reflections or bloom.
 - Streaming, worker cancellation, LRU eviction, facade LOD and ground-texture
   LOD are implemented. Tree detail is chosen by tile density, not projected
-  screen size. Mobile budgets and touch controls remain unimplemented/unverified.
+  screen size. Touch gestures and the responsive HUD are implemented (2026-11-15)
+  and covered by phone-emulated Playwright tests, but phone memory/quality
+  budgets (shadows, internal resolution, screen-size tree LOD) remain
+  unimplemented and no real device has been measured.
 - **Rail LOD mismatch fixed 2026-11-06.** Ground and bridge decks now use one
   rail-head painter at every tier: the same family palette, 0.15 m head width
   and 1.44 m gauge, with subtexel coverage instead of one-texel widening.
@@ -273,6 +276,9 @@ Pilot manifest provenance (654 buildings; not city-wide percentages):
   `public/data/tiles/manifest.json` is absent; a green run therefore does not
   prove data exists unless the count of executed tests is checked.
 - `playwright.config.ts` uses `QA_PORT` (default 5173), a 1600×900 viewport and one worker.
+  `tests/e2e/mobile.spec.ts` overrides the viewport per file (390×844 touch phone;
+  the 320×568 case resizes inside its test) — the config default applies to the
+  other specs.
   While other agents edit `src/`, the dev server can HMR-reload mid-test and cause
   spurious failures (observed once: `Execution context was destroyed … navigation`).
   Mitigation: `openApp()` detects a never-executed document (no canvas/globals/
@@ -280,9 +286,16 @@ Pilot manifest provenance (654 buildings; not city-wide percentages):
   annotation; a genuine crash still fails. Mid-test reloads cannot be recovered.
 - Canvas screenshots allow 60 s (not Playwright's default 15 s action timeout)
   because a software-rendered 1600×900 screenshot can take that long at ~2 FPS.
-- The latest complete **13/13** suite passed on hardware WebGL. The complete
-  current suite has not been rerun on SwiftShader. Vitest passed **434 tests**,
-  with **5 skipped**; skips are not accepted as executed checks.
+- Mobile tests (`tests/e2e/mobile.spec.ts`) emulate a 390×844 phone and a
+  320×568 small phone in desktop Chromium (`isMobile`, `hasTouch`, DPR 2) and
+  inject real multi-touch through CDP (`Input.dispatchTouchEvent`). They prove
+  the gesture pipeline, the foldable HUD and the responsive layout in an emulated
+  browser; they say nothing about real phone GPU/memory behaviour, iOS Safari
+  quirks, or frame rates on low-end hardware.
+- The latest complete **23/23** suite passed on hardware WebGL (16 desktop +
+  7 mobile/touch scenarios). The complete current suite has not been rerun on
+  SwiftShader. Vitest passed **467 tests**, with **5 skipped**; skips are not
+  accepted as executed checks.
 - No CI pipeline exists yet; all commands are Windows/PowerShell-local.
 - Typecheck (`tsc --noEmit`) covers `src`, `tests`, `scripts`, both Vite configs,
   but **not** `playwright.config.ts` (tsconfig `include` list); Playwright loads it

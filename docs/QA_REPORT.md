@@ -1,6 +1,16 @@
 # QA Report — Isometric Minsk
 
-> **Latest checkpoint — 2026-11-06, rail LOD.** TypeScript/production build
+> **Latest checkpoint — 2026-11-15, mobile/touch.** `pnpm test`: **467 Vitest
+> passed, 5 skipped**; hardware-WebGL Playwright **23/23 passed** (16 desktop +
+> 7 mobile/touch). Typecheck passed. Touch covers the whole map: one-finger pan,
+> pinch zoom, two-finger twist with 45° snap, tap select, double-tap focus; the
+> Settings panel folds to a pill and starts folded on phones. Browser-emulated
+> touch, not a real-phone performance claim. Evidence: `tests/e2e/mobile.spec.ts`,
+> `tests/unit/camera/pointerGestures.test.ts`, `screenshots/mobile-qa/`
+> (git-ignored), [`docs/BACKLOG.md`](BACKLOG.md) §B-6 and
+> [`docs/TESTING.md`](TESTING.md) §4.
+
+> **Earlier checkpoint — 2026-11-06, rail LOD.** TypeScript/production build
 > passed; **440 Vitest passed, 5 skipped; 14/14 hardware-WebGL Playwright passed**.
 > Ground and bridge rail heads keep their family palette and 0.15 m physical
 > width across tiers. Same-camera OSM and synthetic captures plus pixel/coverage

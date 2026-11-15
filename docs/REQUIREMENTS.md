@@ -12,9 +12,10 @@ documented · ⏳ planned (explicitly non-MVP or later iteration) · ❌ not del
 
 Verification is only claimed from artifacts that exist in the repository:
 tests, audits, captures and dated reports. Latest application verification is
-2026-11-06: 434 Vitest passed (5 skipped), 13 hardware-WebGL browser scenarios
-passed, typecheck/build passed. Earlier data audits retain their own dates;
-see `TREE_INSTANCING_2026-11-06.md` and `QA_REPORT.md`.
+2026-11-15: 467 Vitest passed (5 skipped), 23 hardware-WebGL browser scenarios
+passed (16 desktop + 7 mobile/touch), typecheck passed. Earlier data audits
+retain their own dates and counts; see `TREE_INSTANCING_2026-11-06.md` and
+`QA_REPORT.md`.
 
 ## 1. Compliance summary by original section
 
@@ -35,14 +36,14 @@ see `TREE_INSTANCING_2026-11-06.md` and `QA_REPORT.md`.
 | §5 Milestone A — geospatial foundation: extraction, footprints, multipolygons/inner rings, building:parts, roads, parks, water, local metres, schema, reproducible tiles, tests for invalid geometry/duplicates/projection, coverage report with required metrics | ✅ | `scripts/ingest/extract.py`, `scripts/normalize/normalize.py` (MultiPolygon with roles, inner rings preserved), `docs/COVERAGE_REPORT.md` + `docs/COVERAGE_REPORT_CITY.md` list footprints, explicit-height/levels/roof shares, invalid/sliver/orphan counts, height provenance; validation script exits non-zero on hard errors |
 | §5 Milestone B — real 3D buildings: walls, roofs, elevation, correct normals, materials/colors, no holes/floating geometry; complex/concave footprints, holes, parts without double rendering; flat/gabled/hipped/skillion/pyramidal (+dome/complex fallback); explicit roof tags; robust fallback with warning | ✅ | `src/city/buildings/**`, `src/city/roofs/**`; non-overlapping volumes resolved in the pipeline; geometry audit on all 16 pilot tiles: 0 issues; roofs for every OSM shape, `complex` falls back to flat with a warning |
 | §5 Milestone C — procedural facades: window rows/columns, floor-aware, archetype spacing, distinct colors/materials, entrances/ground-floor differentiation, balconies, cornices, orientation shading; 6 required presets; metadata-first classification; batched/instanced windows (no one draw call per window); readable at close/medium zoom, details disabled far | ✅ | GLSL facade shader driven by vertex attributes (`aUV`, `aStyle`, `aFace`); 11 presets incl. the six required ones; one draw call per tile; LOD detail scale; facade tests (60) and screenshots |
-| §5 Milestone D — isometric rendering: orthographic classic isometric default, smooth pan/zoom/rotation, mouse+keyboard, ground+building shadows, ambient+directional light, pixel-art palette, readable silhouettes; pixel-art as real post-processing (low-res framebuffer, nearest upscale, depth/normal outlines, limited colours, controlled shadows/contrast, no excessive edge noise); debug toggle | ✅ | `src/engine/camera/**`, `src/engine/renderer/**`, `src/engine/postprocess/**`; ortho frustum, 45° azimuth + `atan(1/√2)` elevation; 640×360 internal target, outline + dither/levels, nearest upscale; pixel/clean-3D toggle in UI |
+| §5 Milestone D — isometric rendering: orthographic classic isometric default, smooth pan/zoom/rotation, mouse+keyboard, ground+building shadows, ambient+directional light, pixel-art palette, readable silhouettes; pixel-art as real post-processing (low-res framebuffer, nearest upscale, depth/normal outlines, limited colours, controlled shadows/contrast, no excessive edge noise); debug toggle | ✅ | `src/engine/camera/**`, `src/engine/renderer/**`, `src/engine/postprocess/**`; ortho frustum, 45° azimuth + `atan(1/√2)` elevation; 640×360 internal target, outline + dither/levels, nearest upscale; pixel/clean-3D toggle in UI. Input now also covers touch: one-finger pan, pinch zoom, two-finger twist with 45° snap, tap/double-tap (`pointerGestures.ts`, 24 unit tests; 7 mobile Playwright scenarios) |
 | §5 Milestone E — streets and environment: road widths from OSM attributes, pavements, intersections, parks/grass, rivers/water, trees, rail/tram, materials; deterministic vegetation from mapped + land-use; no false claims about surveyed trees; roads not intersecting walls/floating; flat terrain with a later provider supported | 🟡 deviation documented | Road/ground rendering, markings, parks, water, instanced vegetation C and independent attractions are implemented. The default payload 0.4.3 raster compositor joins road strokes; the old overlapping-polygon limitation is obsolete. Terrain remains flat with no provider interface; see `LIMITATIONS.md` and `ROAD_NETWORK.md`. |
-| §5 Milestone F — interaction: drag/WASD pan, wheel zoom, Q/E or right-drag rotate, reset button, building inspect, pixel toggle, facade-detail toggle, time-of-day slider, loading indicator, raycasting with stable IDs, attribution panel | ✅ | `src/app/**`, `src/engine/camera/controls.ts`, picking map uses stable `${type}${id}` ids; e2e tests 5–10; visible ODbL badge + data-sources panel |
+| §5 Milestone F — interaction: drag/WASD pan, wheel zoom, Q/E or right-drag rotate, reset button, building inspect, pixel toggle, facade-detail toggle, time-of-day slider, loading indicator, raycasting with stable IDs, attribution panel | ✅ | `src/app/**`, `src/engine/camera/controls.ts`, picking map uses stable `${type}${id}` ids; e2e tests 5–10; visible ODbL badge + data-sources panel. Touch: pan/pinch/twist/tap/double-tap, 45° rotate buttons, foldable Settings panel (collapsed by default on phones, persisted), phone-adaptive HUD and safe areas; mobile e2e `tests/e2e/mobile.spec.ts` |
 | §6 Scaling strategy: visible-tile calc, background loading, caching/eviction, cancellation, configurable LOD/view distance, batched meshes, shared materials, disposal, stable ids across tiles, no duplicates at borders, cracks avoided, separation of data/render, no thousands of Meshes, all districts without rewrite | ✅ | `src/engine/tiles/**`: worker loading, cancellation, LRU, facade/ground LOD, shared materials and disposal; trees use one trunk plus up to three crown batches (two total on dense tiles), attractions are separate. Current 144-tile overview: 593 draws; source IDs/ownership remain stable. |
-| §7 Future features (trams/trolleybuses/trains/parked vehicles; sun from real date/time; night windows + street lamps; seasons/snow; custom landmark models; historical info cards; bookmarks/deep links; mobile) | 🟡 subset | Implemented: stylised/real-date sun modes, night windows, five landmarks, two static wheels, instanced trees and an internal canopy palette/visibility hook. Full seasons/snow, mobile/touch, vehicles, lamps, history cards and bookmarks remain unimplemented or unverified. |
+| §7 Future features (trams/trolleybuses/trains/parked vehicles; sun from real date/time; night windows + street lamps; seasons/snow; custom landmark models; historical info cards; bookmarks/deep links; mobile) | 🟡 subset | Implemented: stylised/real-date sun modes, night windows, five landmarks, two static wheels, instanced trees, an internal canopy palette/visibility hook, and the mobile/touch first slice (gestures, foldable settings, phone-adaptive HUD; browser-emulated, real-phone verification pending). Full seasons/snow, vehicles, lamps, history cards and bookmarks remain unimplemented. |
 | §8 Multi-agent execution with real environment mechanisms; interfaces before parallel work; bounded tasks; explicit file ownership; worktrees/branches preferred; no shared-file overwrites; review+tests before integration; commits at checkpoints; progress doc + issue list; honest blockers | 🟡 deviation | used the real mechanisms: native `spawn_teammate`/`send_message`, shared task board, Playwright browser automation, parallel tool calls. Six teammates: geometry-dev, facade-artist, environment-dev, renderer-dev, qa-dev, landmark-dev; Lead owned pipeline/contracts/integration. **Deviation**: one checkout with disjoint file ownership instead of git worktrees (the brief allows alternative mechanisms); integration only after tests; git checkpoints per round; `docs/PROGRESS.md` + `docs/AGENT_TASKS.md` |
 | §9 Repository structure | 🟡 deviations | see §4 below (structure followed, with documented adaptations) |
-| §10 QA: geodata/dedup/projection tests; geometry tests (roofs, winding, normals, heights, complex polygons); browser tests (server, district loads, geometry visible, facades, camera, errors, selection, reload); visual QA captures (overview, residential close-up, large building close-up, night) inspected; performance targets 45–60 FPS at 1080p with measured FPS/draw calls/triangles/load time/memory | 🟡 exact-resolution gap | Latest: 434 Vitest passed, 5 skipped; 13 hardware-WebGL Playwright scenarios passed; typecheck/build passed. Current 144-tile overview at 1600×900 (internal 640×360): 6.46 ms mean / 8.10 ms p95, 593 draws, 7 875 933 visible triangles, 378.42 MiB resident-buffer estimate. Exact 1920×1080 and phone validation remain gaps; older data-audit evidence is in `QA_REPORT.md`. |
+| §10 QA: geodata/dedup/projection tests; geometry tests (roofs, winding, normals, heights, complex polygons); browser tests (server, district loads, geometry visible, facades, camera, errors, selection, reload); visual QA captures (overview, residential close-up, large building close-up, night) inspected; performance targets 45–60 FPS at 1080p with measured FPS/draw calls/triangles/load time/memory | 🟡 exact-resolution gap | Latest (2026-11-15): 467 Vitest passed, 5 skipped; 23 hardware-WebGL Playwright scenarios passed (16 desktop + 7 mobile/touch with real CDP touch at 390×844 and 320×568); typecheck passed. Current 144-tile overview at 1600×900 (internal 640×360): 6.46 ms mean / 8.10 ms p95, 593 draws, 7 875 933 visible triangles, 378.42 MiB resident-buffer estimate. Exact 1920×1080 and real-phone validation remain gaps; older data-audit evidence is in `QA_REPORT.md`. |
 | §11 Execution procedure phases 0–5 | ✅ | Phase 0 research/bootstrap (`ab0b248`), Phase 1 first real render (`d254aba`), Phase 2 architecture quality (`8652c60`/`6892719`), Phase 3 pixel-art identity (same rounds), Phase 4 streaming + expansion (`c4892e4`), Phase 5 atmosphere/advanced (landmarks, wheels, TV tower, fixes) |
 | §12 Completion requirements (working app, real geometry, true 3D + facades, windows, isometric pixel-art mode, camera, not static, documented sources/limitations, tests pass, screenshots, startup commands in README, PowerShell workflow, no undocumented GIS steps) | ✅ | all met; see §3 below and `README.md` quick start |
 
@@ -55,7 +56,7 @@ see `TREE_INSTANCING_2026-11-06.md` and `QA_REPORT.md`.
 | C — Procedural facades | 11 presets, GLSL windows/floors/balconies/cornices/night/LOD; single draw call per tile; close-up screenshots show windows and facade structure |
 | D — Isometric rendering | true isometric ortho camera, custom controls, shadows, day/night, pixel-art post pass (640×360 internal), clean-3D toggle |
 | E — Streets and environment | Raster ground/roads, markings, rails, parks/water/islands, 316 704 instanced city trees, separate wheels; full seasons and a terrain provider remain pending. |
-| F — Interaction | pan/zoom/rotate/reset, picking + OSM metadata panel, pixel/facade/wireframe toggles, time-of-day slider, loading indicator, attribution card |
+| F — Interaction | pan/zoom/rotate/reset, picking + OSM metadata panel, pixel/facade/wireframe toggles, time-of-day slider, loading indicator, attribution card; touch pan/pinch/twist/tap, 45° rotate buttons, foldable phone HUD |
 
 ## 3. Completion checklist (brief §12)
 
@@ -104,10 +105,12 @@ see `TREE_INSTANCING_2026-11-06.md` and `QA_REPORT.md`.
    The low internal render target makes the scene cost almost independent of the
    canvas size, but this exact resolution was not measured — stated honestly.
 5. **Future features (§7)** — transport vehicles, street lamps, seasons/snow,
-   historical info cards, bookmarks/deep links and mobile/touch controls are not
-   implemented. Sun position, night windows, curated landmark models and two
-   ferris wheels are implemented. Instancing and an internal canopy appearance
-   hook are complete prerequisites, not full mobile or seasonal features.
+   historical info cards and bookmarks/deep links are not implemented. Sun
+   position, night windows, curated landmark models, two ferris wheels and the
+   mobile/touch first slice (gestures, foldable settings, phone-adaptive HUD) are
+   implemented; the mobile slice is browser-emulated and has no real-phone
+   budget claim. Instanced trees and the canopy appearance hook remain the
+   prerequisite for full mobile quality tiers and seasons.
 6. **Landmark kit** — 5 of 9 planned landmarks are modelled; the remaining four
    (Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral) are
    listed in the roadmap.
@@ -134,9 +137,20 @@ These were requested later; each is delivered and verified.
 | CR-9 | Tiles refreshed after data regeneration (stale-cache bug) | ✅ `7703158` + `scripts/qa/cache-check.mjs` |
 | CR-10 | Requirements doc + roadmap | ✅ this document + `docs/REQUIREMENTS_ORIGINAL.md` + `docs/PROGRESS.md` roadmap |
 | CR-11 | Trees in parks/cemeteries at full density | ✅ B-1, payload 0.4.3, 316 704 city trees; `COVERAGE_REPORT_CITY.md` |
-| CR-12 | New crowns and instancing as the mobile/season foundation | ✅ C default, tree buffers −87.95%, 434 unit / 13 browser checks; `TREE_INSTANCING_2026-11-06.md`; full mobile/seasons still pending |
+| CR-12 | New crowns and instancing as the mobile/season foundation | ✅ C default, tree buffers −87.95%; `TREE_INSTANCING_2026-11-06.md`; full seasons still pending |
+| CR-13 | Mobile & touch: camera gestures, foldable settings panel, phone-adaptive HUD | 🟡 first slice ✅ — touch pan/pinch/twist/tap/double-tap, folded-by-default persisted Settings panel, 45° rotate buttons, safe areas, full-width bottom cards; 24 unit tests + 7 CDP-touch Playwright scenarios; no real-phone performance/memory verification yet |
 
-## 7. Verification snapshot (2026-11-06)
+## 7. Verification snapshot (2026-11-15)
+
+* `pnpm test`: 467 passed, 5 skipped, 28 files; hardware-WebGL Playwright:
+  23/23 passed (16 desktop + 7 mobile/touch); `pnpm run typecheck` passed.
+  The 2026-11-06 snapshot below is the previous checkpoint.
+* Mobile/touch evidence: `tests/unit/camera/pointerGestures.test.ts` (24 tests),
+  `tests/e2e/mobile.spec.ts` (CDP multi-touch at 390×844 and 320×568),
+  screenshots in `screenshots/mobile-qa/` (git-ignored). Real-phone performance
+  is not claimed.
+
+## 7a. Verification snapshot (2026-11-06)
 
 * `pnpm test`: 434 passed, 5 skipped, 26 files; hardware-WebGL Playwright:
   13/13 passed; TypeScript and production build passed. This documentation
@@ -170,3 +184,4 @@ These were requested later; each is delivered and verified.
 | Date | Change |
 | --- | --- |
 | 2026-10-29 | Replaced the reconstructed requirements with the verbatim original brief + this compliance matrix. |
+| 2026-11-15 | Recorded the mobile/touch first slice (CR-13): touch gestures + foldable settings + phone HUD; updated verification counts to 467 Vitest / 23 browser scenarios. |

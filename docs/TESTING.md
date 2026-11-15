@@ -1,9 +1,15 @@
 # Testing — Isometric Minsk (Windows / PowerShell)
 
-Latest application verification: 2026-11-06, Windows 11 / PowerShell (`pwsh`).
+Latest application verification: 2026-11-15, Windows 11 / PowerShell (`pwsh`).
 Earlier road/data audit results retain their checkpoint dates; they were not
 rerun as part of the vegetation change or this documentation update.
 Commands assume the repository root: `D:\Workk\VoxelMinsk`.
+
+Mobile/touch checkpoint 2026-11-15: typecheck passed; **467 Vitest passed
+(5 skipped), 23 hardware-WebGL Playwright tests passed** (16 desktop + 7
+mobile/touch). New coverage: the DOM-free gesture state machine (24 unit tests)
+and phone-emulated touch at 390×844 / 320×568 with real CDP multi-touch input.
+See `tests/e2e/mobile.spec.ts` and `docs/BACKLOG.md` B-6.
 
 Rail LOD checkpoint 2026-11-06: typecheck/build passed; **440 Vitest passed
 (5 skipped), 14 hardware-WebGL Playwright tests passed**. Browser coverage checks
@@ -18,14 +24,14 @@ and the inline fallback. Full-city memory/performance and visual captures:
 
 | Suite | Command | What it covers | Typical time |
 | --- | --- | --- | --- |
-| Unit + data | `pnpm test` | 440 passed, 5 skipped across 26 files; geometry, data, roads/rail LOD, landmarks, instancing, transfer and resource lifetime | ~6 s on the reference machine |
+| Unit + data | `pnpm test` | 467 passed, 5 skipped across 28 files; geometry, data, roads/rail LOD, landmarks, instancing, transfer/resource lifetime and the multi-pointer gesture state machine | ~5 s on the reference machine |
 | Data pipeline | `pnpm run data:all` | download → extract → normalize (writes tiles + manifest) → coverage report | several minutes |
 | Road normalization unit | `pnpm run test:data` | 30 Python unittest cases for the lane/width model, topology-graph junction faces, asymmetric direction lanes, link suppression, material partition, crossings, medians and merged corridors (`scripts/normalize/tests/test_road_network.py`) | ~1 s |
 | Road payload audit | `pnpm run qa:road-audit` | independent audit of the generated tiles: same-layer overlaps, tile-seam coverage gaps (all surface layers), street width spread (name+direction+lane signature, merged pieces excluded), road centrelines inside the drivable surface (rails/merged excluded by design), junction/crossing sanity; writes `data/processed/road-audit.json` | ~5 s |
 | Road paint audit | `pnpm run qa:road-paint-audit` | renderer-level audit: no lane/zebra paint inside or near junction faces/surfaces, lane-line counts match the tagged lanes, rails continuous and paint-free; writes `screenshots/road-paint-audit.json` | ~10 s |
 | Geometry audit | `pnpm exec tsx scripts/qa/geometryAudit.ts` | builds building/environment meshes from the real tiles without a browser; writes `screenshots/geometry-audit.json`; exits 1 on invalid geometry | ~5 s |
 | QA unit only | `pnpm exec vitest run tests/unit/data tests/unit/tile_math.test.ts tests/unit/config_sync.test.ts` | QA-owned tests | ~1 s |
-| E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 14 browser scenarios, including rail LOD coverage/decks and tree appearance with workers and inline fallback | **~1 min** |
+| E2E (real GPU) | `$env:QA_GPU='1'; pnpm exec playwright test` | 23 browser scenarios: 16 desktop (shell, camera, controls, pick, reload, museum, rail LOD, trees) + 7 mobile/touch (pan, pinch, twist, tap, foldable HUD at 390×844 and 320×568, desktop fold regression) | **~1.5 min** |
 | E2E (default software) | `pnpm exec playwright test` | same tests on SwiftShader (deterministic CI mode) | ~10 min |
 | Screenshots | `$env:QA_GPU='1'; pnpm run qa:capture` | 6 fixed screenshots + `screenshots/stats.json` + `screenshots/console.log` (waits for all 16 tiles) | ~45 s |
 | Road screenshots | `$env:QA_GPU='1'; pnpm run qa:road-shots` | 23 close-up shots: canonical junctions, the seven user-reported places, the Ulyanovskaya × Lenina face and the Lenina 1+2 approach into `screenshots/roads/` | ~2 min |
@@ -178,7 +184,7 @@ Behaviour:
   `test-results/`; the HTML report lands in `playwright-report/`.
 - `QA_GPU=1` swaps the SwiftShader launch flags for ANGLE/D3D11 hardware flags.
   Without it, the full-city scene runs at ~1.9 FPS in software (measured), which
-  can make the suite slow or hit action timeouts. The latest 13/13 run used
+  can make the suite slow or hit action timeouts. The latest 23/23 run used
   `QA_GPU=1`; the complete current suite has not been rerun in software mode.
 - Tests fail with explicit messages if `window.__CITY_APP__` is missing, if the
   city never becomes ready, or if a control does not affect the rendered image.
@@ -191,9 +197,38 @@ Behaviour:
 The 12 core scenarios: shell + console-error-free load, `window.__CITY_APP__` contract,
 geometry budget (`triangles > 1000`, `buildings > 100`), non-flat canvas,
 pan/zoom/rotate, time-of-day slider, pixel-effect toggle, building pick → info
-panel (OSM id), error-free 5 s interaction, reload. A thirteenth scenario covers
+panel (OSM id), error-free 5 s interaction, reload. One scenario covers
 instanced real-map trees, finite bounds, in-place canopy appearance changes,
-unchanged instance storage and both worker/inline execution.
+unchanged instance storage and both worker/inline execution. Two museum scenarios
+cover the Lipki exhibits and the city-dataset deep link; one covers rail LOD.
+
+### Mobile / touch suite
+
+`tests/e2e/mobile.spec.ts` uses a per-file Playwright context:
+
+```ts
+test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+```
+
+- Real multi-touch is injected through the Chrome DevTools Protocol
+  (`Input.dispatchTouchEvent` in `tests/e2e/support/touch.ts`), because
+  `page.touchscreen` only supports single taps. This exercises Chromium's
+  touch → pointer-event pipeline including `touch-action: none`.
+- Covered: folded-by-default Settings panel, expand/fold, `localStorage`
+  persistence, 45° rotate buttons, one-finger pan, pinch zoom, two-finger twist
+  with compass snap, tap-to-select against a building found in the real tile
+  data, no accidental selection after a gesture, a 320 px viewport without
+  horizontal overflow, and a desktop test proving the panel still starts
+  expanded there.
+- Run only the mobile suite:
+
+  ```powershell
+  $env:QA_GPU='1'; pnpm exec playwright test tests/e2e/mobile.spec.ts --reporter=list
+  ```
+
+- These are emulated-phone checks in desktop Chromium. They are **not** a
+  real-phone performance, iOS Safari or memory verifier; see
+  `docs/LIMITATIONS.md` §7.
 
 ### If the whole page fails to boot mid-run
 

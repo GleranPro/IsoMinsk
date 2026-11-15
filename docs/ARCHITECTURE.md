@@ -159,6 +159,38 @@ Key properties:
   are quantised/dithered, then the framebuffer is upscaled with nearest
   filtering. `setPixelEffectEnabled(false)` bypasses it for debugging.
 
+### Camera input and touch gestures (2026-11-15)
+
+Input is split into a DOM-free state machine and a thin browser adapter:
+
+* `src/engine/camera/pointerGestures.ts` — pure pointer-event state machine. It
+  tracks every active pointer by id, classifies tap vs drag by device-specific
+  slop (`TAP_SLOP_PX`), detects double taps/click from two completed taps within
+  `DOUBLE_TAP_INTERVAL_MS`/`DOUBLE_TAP_DISTANCE_PX`, and owns the two-pointer
+  gesture: incremental pinch factor anchored at the finger midpoint,
+  midpoint panning, and twist rotation after a `TWIST_DEAD_ZONE_RAD` (0.1 rad)
+  dead zone. A rotation gesture calls `onRotateEnd` on release, which snaps the
+  azimuth to the 45° compass, matching the existing mouse right-drag rule.
+* `src/engine/camera/controls.ts` — adapts DOM `PointerEvent`s into samples,
+  converts client points to NDC for anchored zoom/focus, captures each pointer,
+  and keeps the unchanged wheel and keyboard paths. It also owns the
+  double-tap → `focusOnLocal` hand-off used by the engine.
+
+Gesture invariants that matter for UX and tests: a two-pointer gesture never
+produces a tap (so pinching never selects a building); a drag breaks a pending
+double-tap chain; when one finger of a pair lifts, the remaining finger is
+re-baselined so the image does not jump; a `pointercancel` (OS interruption)
+ends the gesture and snaps rotation. Mouse behaviour is unchanged: left-drag
+pans, right-drag rotates, wheel zooms, double-click focuses.
+
+The React HUD is independent of the renderer. `ControlPanel` folds into a
+compact pill, persisted under `localStorage['minsk.hud.controlsCollapsed']`; the
+default is folded on `(max-width: 820px), (pointer: coarse) and (max-width: 1100px)`.
+`App` exposes 45° rotate buttons through `CityAppHandle.setCameraSettings`. The
+engine exposes no mobile-only camera or quality path: renderer resolution,
+shadows and tree LOD are unchanged, so emulated-phone tests prove interaction
+and layout, not phone performance.
+
 ### Instanced vegetation (2026-11-06)
 
 The default tree style is `asymmetric` (review candidate C), with rounded,
