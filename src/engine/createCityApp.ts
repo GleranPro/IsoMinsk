@@ -28,9 +28,16 @@ import type {
   CityAppHandle,
   CityAppOptions,
   EngineStats,
+  MobilityVehicleSelection,
   PixelArtSettings,
 } from '../shared/appApi';
 import type { FeatureId, TileManifest } from '../shared/types';
+import type {
+  MobilityDebugDump,
+  MobilitySettings,
+  MobilityStatus,
+  MobilityTripSnapshot,
+} from '../shared/mobility';
 import {
   ISO_CAMERA,
   resolveDataBaseUrl,
@@ -39,6 +46,7 @@ import {
 } from '../shared/config';
 import { MUSEUM, isMuseumFocus } from '../shared/museum';
 import { MuseumLayer } from './museum/museumLayer';
+import { MobilityController } from './mobility/controller';
 import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
@@ -70,6 +78,68 @@ const FOG_NEAR_FACTOR = 0.55;
 const FOG_FAR_FACTOR = 2.1;
 /** Reference camera distance the palette fog presets were authored for. */
 const FOG_REFERENCE_DISTANCE = 3000;
+
+/** Mobility switches before the layer has any data: layer off, nothing simulated. */
+const DEFAULT_MOBILITY_SETTINGS: MobilitySettings = {
+  vehiclesVisible: true,
+  signalsVisible: true,
+  debug: false,
+  paused: false,
+};
+
+/**
+ * Status before the mobility payload is attached. It is deliberately `idle`
+ * with an explanatory note: an empty map must never look like "transport is
+ * running but you cannot see it".
+ */
+const IDLE_MOBILITY_STATUS: MobilityStatus = {
+  state: 'idle',
+  scheduleStatus: 'absent',
+  serviceDate: '',
+  serviceSeconds: 0,
+  fixedDate: null,
+  release: '',
+  notes: ['mobility layer not loaded'],
+  activeVariants: 0,
+  scheduledTrips: 0,
+  activeTrips: 0,
+  drawnTrips: 0,
+  blockedTrips: 0,
+  loadedChunks: 0,
+  loadedBytes: 0,
+  signalNodes: 0,
+  signalNodesDrawn: 0,
+  simulationMs: 0,
+  templateBytes: 0,
+  instanceBytes: 0,
+};
+
+/**
+ * The mobility runtime attached to the engine (public transport, signals and
+ * their shared clock). Declared as a narrow interface here so the renderer core
+ * never depends on the simulation implementation; `MobilityController` in
+ * `src/engine/mobility/controller.ts` provides it.
+ */
+interface MobilityRuntime {
+  setSettings(settings: Partial<MobilitySettings>): void;
+  getSettings(): MobilitySettings;
+  getStatus(): MobilityStatus;
+  getDump(): MobilityDebugDump | null;
+  setServiceDate(date: string | null, secondsOfDay?: number): void;
+  /** Highlight the vehicle card's trip on the map (null clears it). */
+  setSelectedTrip(tripId: string | null): void;
+  /** Route/direction/next-stop data for the vehicle card. */
+  describeTrip(tripId: string): {
+    tripId: string;
+    ref: string;
+    mode: 'bus' | 'trolleybus' | 'tram';
+    headSign: string;
+    nextStopName: string;
+    delayS: number;
+    speed: number;
+    phase: string;
+  } | null;
+}
 
 interface DebugGlobals {
   ready: boolean;
@@ -202,6 +272,12 @@ function createUnavailableHandle(container: HTMLElement, message: string): CityA
     getStats: createZeroStats,
     clearSelection: noop,
     highlightBuilding: noop,
+    setMobilitySettings: noop,
+    getMobilitySettings: () => ({ ...DEFAULT_MOBILITY_SETTINGS }),
+    getMobilityStatus: () => ({ ...IDLE_MOBILITY_STATUS }),
+    getMobilityDump: () => null,
+    setMobilityServiceDate: noop,
+    clearMobilitySelection: noop,
   };
 }
 
@@ -288,6 +364,15 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   let disposed = false;
   let ready = false;
   let readyNotified = false;
+  /**
+   * Mobility runtime (transport + signals) and its UI switches. Kept in one
+   * mutable record: the integration assigns `runtime` once its payload has
+   * loaded, and the handle below degrades to "idle" while it is absent.
+   */
+  const mobilityState: { runtime: MobilityRuntime | null; settings: MobilitySettings } = {
+    runtime: null,
+    settings: { ...DEFAULT_MOBILITY_SETTINGS },
+  };
 
   const recordError = (message: string): void => {
     if (disposed) return;
@@ -434,6 +519,26 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   if (dataset === 'city') {
     void museum.load();
   }
+
+  // --- mobility: public transport + traffic signals ------------------------
+  // Independent of the tile pipeline: a missing/incompatible payload leaves the
+  // map fully usable (the status reports why nothing moves).
+  // Городской набор данных по умолчанию использует городской payload мобильности;
+  // `?mobility=corridors` возвращает проверенные два коридора, `?mobility=city`
+  // явно включает город.
+  const mobilityParam = params.get('mobility');
+  const useCityMobility =
+    mobilityParam === 'city' || (mobilityParam === null && dataset === 'city');
+  const mobility = new MobilityController({
+    baseUrl: useCityMobility ? '/data/mobility-city' : undefined,
+    mobile: typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false,
+    paused: false,
+  });
+  scene.add(mobility.root);
+  mobilityState.runtime = mobility;
+  void mobility.start();
 
   const streamer = new TileStreamer({
     scene,
@@ -604,6 +709,25 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       highlightId = id;
       applyHighlight(id);
     },
+    setMobilitySettings(settings: Partial<MobilitySettings>) {
+      mobilityState.settings = { ...mobilityState.settings, ...settings };
+      mobilityState.runtime?.setSettings(settings);
+    },
+    getMobilitySettings: () =>
+      mobilityState.runtime ? mobilityState.runtime.getSettings() : { ...mobilityState.settings },
+    getMobilityStatus: () => mobilityState.runtime?.getStatus() ?? { ...IDLE_MOBILITY_STATUS },
+    getMobilityDump: () => mobilityState.runtime?.getDump() ?? null,
+    setMobilityServiceDate(date: string | null, secondsOfDay?: number) {
+      mobilityState.runtime?.setServiceDate(date, secondsOfDay);
+    },
+    clearMobilitySelection() {
+      mobilityState.runtime?.setSelectedTrip(null);
+      try {
+        options.onMobilitySelect?.(null);
+      } catch {
+        /* ignore shell errors */
+      }
+    },
   };
 
   // --- debug globals -------------------------------------------------------
@@ -642,6 +766,23 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         matrixWorld: camera.matrixWorld.elements.slice(),
         cameraDistance: rig.getCameraDistanceValue(),
         settings: rig.getSettings(),
+      };
+    },
+    /**
+     * Project a local-metre position to CSS pixels (QA/click harness). Uses the
+     * camera's own matrices, so it can never disagree with the rendered frame.
+     */
+    projectLocal: (localX: number, localY: number, heightM = 0) => {
+      const rect = host!.canvas.getBoundingClientRect();
+      const projected = new THREE.Vector3(localX, heightM, -localY).project(rig.camera);
+      return {
+        x: rect.left + ((projected.x + 1) / 2) * rect.width,
+        y: rect.top + ((1 - projected.y) / 2) * rect.height,
+        ndcX: projected.x,
+        ndcY: projected.y,
+        depth: projected.z,
+        visible: projected.x >= -1 && projected.x <= 1 && projected.y >= -1 && projected.y <= 1,
+        rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
       };
     },
     gl: () => {
@@ -1383,6 +1524,29 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function handleClick(clientX: number, clientY: number): void {
     if (disposed || !picker) return;
     const rect = host!.canvas.getBoundingClientRect();
+    // Транспорт проверяется ПЕРВЫМ: машина на экране стоит перед зданиями, и
+    // клик по ней должен открывать карточку рейса, а не выбор дома за ней.
+    const vehicle = pickMobilityTrip(clientX, clientY, rect);
+    if (vehicle) {
+      selected = null;
+      highlightId = null;
+      highlighter.setHighlight(null);
+      try {
+        options.onSelection?.(null);
+      } catch {
+        /* ignore shell errors */
+      }
+      const info = mobilityState.runtime?.describeTrip(vehicle.tripId) ?? null;
+      mobilityState.runtime?.setSelectedTrip(info ? vehicle.tripId : null);
+      try {
+        options.onMobilitySelect?.(
+          info ? { ...info, screenX: clientX, screenY: clientY } : null,
+        );
+      } catch {
+        /* ignore shell errors */
+      }
+      if (info) return;
+    }
     const exhibit = pickMuseumExhibit(clientX, clientY, rect);
     if (exhibit) {
       selected = null;
@@ -1414,6 +1578,53 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     } catch {
       /* ignore shell errors */
     }
+    try {
+      // Клик по земле/зданию закрывает карточку транспорта.
+      mobilityState.runtime?.setSelectedTrip(null);
+      options.onMobilitySelect?.(null);
+    } catch {
+      /* ignore shell errors */
+    }
+  }
+
+  /**
+   * Экранный выбор транспорта: позиции машин уже известны симуляции, поэтому
+   * вместо raycast достаточно спроецировать ≤20 нарисованных кузовов и взять
+   * ближайший к курсору. Это дешевле и не зависит от instance-буферов.
+   */
+  const mobilityPickVector = new THREE.Vector3();
+  function pickMobilityTrip(
+    clientX: number,
+    clientY: number,
+    rect: DOMRect,
+  ): MobilityTripSnapshot | null {
+    const runtime = mobilityState.runtime;
+    if (!runtime) return null;
+    const dump = runtime.getDump();
+    if (!dump || dump.trips.length === 0) return null;
+    const width = Math.max(1, rect.width);
+    const height = Math.max(1, rect.height);
+    const targetX = ((clientX - rect.left) / width) * 2 - 1;
+    const targetY = 1 - ((clientY - rect.top) / height) * 2;
+    const pixelTolerance = 18;
+    let best: { trip: MobilityTripSnapshot; pixels: number } | null = null;
+    for (const trip of dump.trips) {
+      if (!trip.drawn) continue;
+      mobilityPickVector.set(trip.x, trip.h + 1.6, -trip.y).project(rig.camera);
+      if (
+        !Number.isFinite(mobilityPickVector.x) ||
+        mobilityPickVector.z < -1 ||
+        mobilityPickVector.z > 1
+      ) {
+        continue;
+      }
+      const pixels = Math.hypot(
+        ((mobilityPickVector.x - targetX) * width) / 2,
+        ((mobilityPickVector.y - targetY) * height) / 2,
+      );
+      if (pixels <= pixelTolerance && (!best || pixels < best.pixels)) best = { trip, pixels };
+    }
+    return best?.trip ?? null;
   }
 
   function applyResize(): void {
@@ -1448,6 +1659,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       stats.renderWidth = renderSize.width;
       stats.renderHeight = renderSize.height;
       stats.geometryMB = Math.round(streamer.geometryMB * 100) / 100;
+      stats.mobility = mobility.getStatus();
       frames.count = 0;
       frames.windowStart = now;
       try {
@@ -1501,6 +1713,19 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
     const sceneRenderHeight = post.getRenderSize().height;
     streamer.update(rig, sceneRenderHeight);
+
+    // Dynamic mobility layer: same frame, no second render loop. The visible
+    // ground rect is converted to local metres (x east, y north) for the loader.
+    const groundFootprint = rig.getVisibleGroundRect(40);
+    mobility.update(dt, {
+      rect: {
+        minX: groundFootprint.minX,
+        maxX: groundFootprint.maxX,
+        minY: -Math.max(groundFootprint.minZ, groundFootprint.maxZ),
+        maxY: -Math.min(groundFootprint.minZ, groundFootprint.maxZ),
+      },
+      worldPerPixel: rig.getPixelWorldSize(sceneRenderHeight),
+    });
 
     // Keep the shadow map fresh while tiles stream in (new casters) and for a
     // few frames after any camera/light/tile change.
@@ -1635,6 +1860,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     controls = null;
     try {
       museum.dispose();
+      mobilityState.runtime = null;
+      mobility.dispose();
       streamer.dispose();
     } catch (error) {
       recordDiagnostic(`streamer dispose failed: ${String(error)}`);

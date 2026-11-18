@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { EngineStats } from '../shared/appApi';
+import type { MobilityStatus } from '../shared/mobility';
 import type { UiState } from './App';
 
 interface ControlPanelProps {
@@ -10,6 +11,7 @@ interface ControlPanelProps {
   onRefreshStats: () => void;
   onRotate: (direction: -1 | 1) => void;
   stats: EngineStats | null;
+  mobilityStatus: MobilityStatus | null;
   disabled: boolean;
 }
 
@@ -37,7 +39,7 @@ function readInitialCollapsed(): boolean {
   return window.matchMedia(COMPACT_QUERY).matches;
 }
 
-export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshStats, onRotate, stats, disabled }: ControlPanelProps) {
+export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshStats, onRotate, stats, mobilityStatus, disabled }: ControlPanelProps) {
   const [collapsed, setCollapsed] = useState(readInitialCollapsed);
 
   const toggle = useCallback(() => {
@@ -155,6 +157,76 @@ export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshSt
           </section>
 
           <section>
+            <h2>Transport</h2>
+            <label>
+              <input
+                type="checkbox"
+                checked={ui.mobilityVehicles}
+                disabled={disabled}
+                onChange={(event) => onChange({ mobilityVehicles: event.target.checked })}
+                data-testid="toggle-mobility-vehicles"
+              />
+              Vehicles
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={ui.mobilitySignals}
+                disabled={disabled}
+                onChange={(event) => onChange({ mobilitySignals: event.target.checked })}
+                data-testid="toggle-mobility-signals"
+              />
+              Traffic signals
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={ui.mobilityPaused}
+                disabled={disabled}
+                onChange={(event) => onChange({ mobilityPaused: event.target.checked })}
+                data-testid="toggle-mobility-pause"
+              />
+              Pause simulation
+            </label>
+            <p className="mobility-note" data-testid="mobility-state">
+              {mobilityStatus
+                ? `${mobilityStateLabel(mobilityStatus.state)}${scheduleSuffix(mobilityStatus.scheduleStatus)} · ${formatServiceClock(mobilityStatus)}`
+                : '—'}
+            </p>
+            {mobilityStatus && mobilityStatus.notes.length > 0 && (
+              <p className="mobility-note" data-testid="mobility-notes" title={mobilityStatus.notes.join('\n')}>
+                {mobilityStatus.notes[0]}
+              </p>
+            )}
+            <div className="stat-grid" data-testid="mobility-stats">
+              <span>Trips active</span>
+              <strong data-testid="mobility-active-trips">{mobilityStatus?.activeTrips ?? '—'}</strong>
+              <span>Trips drawn</span>
+              <strong data-testid="mobility-drawn-trips">{mobilityStatus?.drawnTrips ?? '—'}</strong>
+              <span>Scheduled today</span>
+              <strong>{mobilityStatus?.scheduledTrips ?? '—'}</strong>
+              <span>Delayed / blocked</span>
+              <strong>{mobilityStatus ? `${mobilityStatus.blockedTrips}` : '—'}</strong>
+              <span>Chunks / bytes</span>
+              <strong>
+                {mobilityStatus
+                  ? `${mobilityStatus.loadedChunks} · ${formatBytes(mobilityStatus.loadedBytes)}`
+                  : '—'}
+              </strong>
+              <span>Signals</span>
+              <strong>
+                {mobilityStatus
+                  ? `${mobilityStatus.signalNodesDrawn}/${mobilityStatus.signalNodes}`
+                  : '—'}
+              </strong>
+              <span>Simulation</span>
+              <strong>
+                {mobilityStatus ? `${mobilityStatus.simulationMs.toFixed(2)} ms` : '—'}
+              </strong>
+            </div>
+          </section>
+
+          <section>
             <h2>Performance</h2>
             <button onClick={onRefreshStats} disabled={disabled} data-testid="refresh-stats">
               Refresh stats
@@ -200,4 +272,58 @@ function formatHours(value: number): string {
   const hours = Math.floor(value) % 24;
   const minutes = Math.round((value - Math.floor(value)) * 60) % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+/** Local (service time zone) date + seconds after service-day start. */
+function formatServiceClock(status: MobilityStatus): string {
+  if (!status.serviceDate) return 'no schedule';
+  const total = Math.max(0, Math.floor(status.serviceSeconds));
+  const hours = Math.floor(total / 3600) % 24;
+  const minutes = Math.floor(total / 60) % 60;
+  const clock = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  const suffix = status.fixedDate ? ' (QA)' : '';
+  return `${status.serviceDate} ${clock}${suffix}`;
+}
+
+function mobilityStateLabel(state: MobilityStatus['state']): string {
+  switch (state) {
+    case 'ready':
+      return 'Running';
+    case 'loading':
+      return 'Loading';
+    case 'partial':
+      return 'Partial data';
+    case 'error':
+      return 'Data error';
+    case 'unavailable':
+      return 'Schedule unavailable';
+    default:
+      return 'No data';
+  }
+}
+
+/**
+ * Timetable provenance next to the state: a synthetic timetable is never
+ * presented as the operator's public schedule.
+ */
+function scheduleSuffix(status: MobilityStatus['scheduleStatus']): string {
+  switch (status) {
+    case 'ready':
+      return ' · public schedule';
+    case 'partial':
+      return ' · partial schedule';
+    case 'synthetic':
+      return ' · demo timetable (not public)';
+    case 'unavailable':
+      return ' · no public schedule';
+    default:
+      return ' · no timetable';
+  }
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

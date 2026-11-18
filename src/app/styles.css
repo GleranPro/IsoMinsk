@@ -729,3 +729,22 @@ body,
   }
 }
 
+
+/* Public-transport card: route-number badge, reuse the info-panel layout. */
+.mobility-badge {
+  display: inline-block;
+  min-width: 30px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: #12161c;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.mobility-trip-id {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  word-break: break-all;
+}

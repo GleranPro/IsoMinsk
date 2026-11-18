@@ -27,7 +27,20 @@
     "data:city:normalize": ".venv\\Scripts\\python.exe scripts/normalize/normalize.py --area city",
     "data:city:validate": ".venv\\Scripts\\python.exe scripts/validation/coverage_report.py --area city",
     "data:city": "npm run data:download && npm run data:city:extract && npm run data:city:normalize && npm run data:city:validate",
-    "data:museum": ".venv\\Scripts\\python.exe scripts/qa/export_museum_web.py"
+    "data:museum": ".venv\\Scripts\\python.exe scripts/qa/export_museum_web.py",
+    "test:mobility": ".venv\\Scripts\\python.exe -m unittest discover -s scripts/mobility/tests -p \"test_*.py\" -v",
+    "data:mobility:extract": ".venv\\Scripts\\python.exe scripts/mobility/extract_network.py",
+    "data:mobility:build": ".venv\\Scripts\\python.exe scripts/mobility/build_network.py",
+    "data:mobility:export": ".venv\\Scripts\\python.exe scripts/mobility/export.py",
+    "data:mobility:schedule": ".venv\\Scripts\\python.exe scripts/mobility/import_schedule.py",
+    "qa:mobility-audit": ".venv\\Scripts\\python.exe scripts/qa/mobility-audit.py",
+    "data:mobility:city:corridors": ".venv\\Scripts\\python.exe scripts/mobility/extract_network.py --write-city-corridors scripts/mobility/corridors_city.json",
+    "data:mobility:city:extract": ".venv\\Scripts\\python.exe scripts/mobility/extract_network.py --corridors scripts/mobility/corridors_city.json --out data/processed/mobility/network_raw_city.json",
+    "data:mobility:city:build": ".venv\\Scripts\\python.exe scripts/mobility/build_network.py --raw data/processed/mobility/network_raw_city.json --out data/processed/mobility/network_city.json --report data/processed/mobility/report_city.json --allow-unverified",
+    "data:mobility:city:export": ".venv\\Scripts\\python.exe scripts/mobility/export.py --network data/processed/mobility/network_city.json --out public/data/mobility-city --timetable=procedural",
+    "data:mobility:city:audit": ".venv\\Scripts\\python.exe scripts/qa/mobility-audit.py --base public/data/mobility-city --out data/processed/mobility/audit-city.json",
+    "qa:mobility-capture": "node scripts/qa/mobility-capture.mjs",
+    "qa:mobility-perf": "node scripts/qa/mobility-perf.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

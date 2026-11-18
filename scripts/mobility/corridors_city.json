@@ -1,0 +1,4707 @@
+{
+ "area": "city",
+ "corridors": [
+  {
+   "mode": "bus",
+   "name": "bus 1: Аўтобус №1 - Вакзал - ДС Вяснянка",
+   "ref": "1",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9913.2,
+     "relationId": 8945939,
+     "stops": 18,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8814.1,
+     "relationId": 8945940,
+     "stops": 16,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 100: Аўтобус №100 «ДС Славінскага - Чыг.ст. Мінск-Паўднёвы»",
+   "ref": "100",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13715.5,
+     "relationId": 8007752,
+     "stops": 26,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13103.7,
+     "relationId": 8007753,
+     "stops": 24,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 102: Вакзал — ДС Чыжоўка",
+   "ref": "102",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Вакзал",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 15785.3,
+     "relationId": 9464072,
+     "stops": 31,
+     "to": "ДС Чыжоўка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Чыжоўка",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 10847.5,
+     "relationId": 9464073,
+     "stops": 23,
+     "to": "Вакзал"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 103: Аўтобус №103 - ДС Малінаўка-4 - ДС Паўднёвы-Захад",
+   "ref": "103",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Паўднёвы Захад",
+     "lengthM": 9865.6,
+     "relationId": 7937901,
+     "stops": 23,
+     "to": "ДС Паўднёвы Захад"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Паўднёвы Захад",
+     "headSign": "ДС Паўднёвы Захад",
+     "lengthM": 9716.2,
+     "relationId": 7937902,
+     "stops": 23,
+     "to": "ДС Малінаўка-4"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 104: Аўтобус №104 - Сеніца - ДС Малінаўка-4",
+   "ref": "104",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Сеніца",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 15310.5,
+     "relationId": 7962482,
+     "stops": 27,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 15216.1,
+     "relationId": 7962483,
+     "stops": 26,
+     "to": "Сеніца"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 105: Аўтобус №105 - ДС Карастаянавай - Зацань - (Мінская)",
+   "ref": "105",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11234.3,
+     "relationId": 9466835,
+     "stops": 13,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10623.0,
+     "relationId": 9466836,
+     "stops": 13,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 105д: Аўтобус №105д - ДС Карастаянавай - Зацань - (Мінская)",
+   "ref": "105д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13550.2,
+     "relationId": 18091204,
+     "stops": 14,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13284.9,
+     "relationId": 18091205,
+     "stops": 14,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 106: Аўтобус №106 - ст.м. Трактарны завод - ДС Ангарская-4",
+   "ref": "106",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8880.4,
+     "relationId": 9466752,
+     "stops": 12,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 7260.3,
+     "relationId": 9466753,
+     "stops": 12,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 107: Аўтобус №107 - Каржанеўскага - ДС Кунцаўшчына",
+   "ref": "107",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Каржанеўскага",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 14598.0,
+     "relationId": 8020335,
+     "stops": 29,
+     "to": "ДС Кунцаўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 14619.5,
+     "relationId": 8020336,
+     "stops": 28,
+     "to": "Каржанеўскага"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 11: Аўтобус №11 - ДС Вяснянка - Маршала Лосіка",
+   "ref": "11",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 15657.0,
+     "relationId": 9426578,
+     "stops": 29,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 16605.6,
+     "relationId": 9426579,
+     "stops": 30,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 114с: Аўтарынак — ДС Чыжоўка",
+   "ref": "114с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Аўтарынак",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 20192.3,
+     "relationId": 8028882,
+     "stops": 22,
+     "to": "ДС Чыжоўка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Чыжоўка",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 18976.8,
+     "relationId": 8028883,
+     "stops": 24,
+     "to": "Аўтарынак"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 116: Аўтобус №116 - Малінаўка-8 - ДС Каменная Горка-5",
+   "ref": "116",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Малінаўка-8",
+     "headSign": "ДС Каменная Горка-5",
+     "lengthM": 13227.5,
+     "relationId": 9422764,
+     "stops": 30,
+     "to": "ДС Каменная Горка-5"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Каменная Горка-5",
+     "headSign": "ДС Каменная Горка-5",
+     "lengthM": 12835.5,
+     "relationId": 9422766,
+     "stops": 31,
+     "to": "Малінаўка-8"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 117: Аўтобус №117 - ДС Уручча-4 - Школа №2",
+   "ref": "117",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Уручча-4",
+     "headSign": "Школа №2",
+     "lengthM": 3971.2,
+     "relationId": 18612741,
+     "stops": 9,
+     "to": "Школа №2"
+    },
+    {
+     "direction": 1,
+     "from": "Школа №2",
+     "headSign": "Школа №2",
+     "lengthM": 3882.8,
+     "relationId": 18612742,
+     "stops": 9,
+     "to": "Гарадзецкая"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 118: Аўтобус №118 - АС Аўтазаводская - ДС Серабранка",
+   "ref": "118",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6383.2,
+     "relationId": 16311497,
+     "stops": 13,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6286.5,
+     "relationId": 16311498,
+     "stops": 14,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 119с: Аўтобус №119с - Вакзал - Аквапарк",
+   "ref": "119с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11033.6,
+     "relationId": 11019321,
+     "stops": 12,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 12: Аўтобус №12: ДС Сухарава-5 => ДС Кунцаўшчына",
+   "ref": "12",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5114.2,
+     "relationId": 9417736,
+     "stops": 11,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5292.8,
+     "relationId": 9417737,
+     "stops": 11,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 120: Аўтобус №120 - ст.м. Малінаўка - Малінаўка-6",
+   "ref": "120",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ст.м. Малиновка",
+     "headSign": "Малінаўка-6",
+     "lengthM": 2708.1,
+     "relationId": 8061764,
+     "stops": 8,
+     "to": "Малінаўка-6"
+    },
+    {
+     "direction": 1,
+     "from": "Малінаўка-6",
+     "headSign": "Малінаўка-6",
+     "lengthM": 2710.2,
+     "relationId": 8061765,
+     "stops": 7,
+     "to": "ст.м. Малиновка"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 121: Аўтобус №121 - ДС Сухарава-5 - ГЦ Ждановічы",
+   "ref": "121",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9989.0,
+     "relationId": 9417801,
+     "stops": 21,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 122э: Аўтобус №122э - С. Кавалеўскай - ДС Кунцаўшчына",
+   "ref": "122э",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 12409.6,
+     "relationId": 9410179,
+     "stops": 13,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11684.2,
+     "relationId": 9410180,
+     "stops": 10,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 124: Аўтобус №124 - ДС Лошыца-2 - ст.м. Пушкінская",
+   "ref": "124",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Лошыца-2",
+     "headSign": "Станцыя метро «Пушкінская»",
+     "lengthM": 15158.6,
+     "relationId": 9417310,
+     "stops": 27,
+     "to": "Станцыя метро «Пушкінская»"
+    },
+    {
+     "direction": 1,
+     "from": "Берута",
+     "headSign": "Берута",
+     "lengthM": 15050.8,
+     "relationId": 9417311,
+     "stops": 30,
+     "to": "ДС Лошыца-2"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 126: Аўтобус №126 - ДС Адоеўскага - Масюкоўшчына",
+   "ref": "126",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5227.1,
+     "relationId": 9356294,
+     "stops": 12,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5198.9,
+     "relationId": 9356295,
+     "stops": 10,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 127: Аўтобус №127: ДС Серабранка - Плошча Незалежнасці",
+   "ref": "127",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Серабранка",
+     "headSign": "Плошча Незалежнасці",
+     "lengthM": 9086.2,
+     "relationId": 7438954,
+     "stops": 17,
+     "to": "Плошча Незалежнасці"
+    },
+    {
+     "direction": 1,
+     "from": "Плошча Незалежнасці",
+     "headSign": "Плошча Незалежнасці",
+     "lengthM": 9600.2,
+     "relationId": 7438955,
+     "stops": 17,
+     "to": "ДС Серабранка"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 128: Аўтобус №128 - Каменная Горка-4-ст.м.Каменная Горка",
+   "ref": "128",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 3490.9,
+     "relationId": 9417819,
+     "stops": 7,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 13: Аўтобус №13 - ДС Зялёны Луг-6 - Макаёнка",
+   "ref": "13",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Зялёны Луг-6",
+     "headSign": "Макаёнка",
+     "lengthM": 8252.1,
+     "relationId": 9426604,
+     "stops": 19,
+     "to": "Макаёнка"
+    },
+    {
+     "direction": 1,
+     "from": "Макаёнка",
+     "headSign": "Макаёнка",
+     "lengthM": 8191.0,
+     "relationId": 9426605,
+     "stops": 18,
+     "to": "Зялёны Луг-6"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 130: Аўтобус №130 - Прадуктовы рынак - ДС Адоеўскага",
+   "ref": "130",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8497.6,
+     "relationId": 9356161,
+     "stops": 15,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8664.4,
+     "relationId": 9356162,
+     "stops": 14,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 132: Аўтобус №132 - Шчомысліца - ДС Малінаўка-4",
+   "ref": "132",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Шчомысліца",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 7130.9,
+     "relationId": 8066211,
+     "stops": 11,
+     "to": "ДС Малінаўка-4"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 133: Аўтобус №133 - Лябяжы - ДС Карбышава",
+   "ref": "133",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Лябяжы",
+     "headSign": "ДС Карбышава",
+     "lengthM": 15246.8,
+     "relationId": 11019316,
+     "stops": 21,
+     "to": "ДС Карбышава"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 134с: ДС Малінаўка-4 — ДС Чыжоўка",
+   "ref": "134с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 19444.7,
+     "relationId": 8029719,
+     "stops": 21,
+     "to": "ДС Чыжоўка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Чыжоўка",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 18133.6,
+     "relationId": 8029720,
+     "stops": 22,
+     "to": "ДС Малінаўка-4"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 135: Аўтобус №135 - Школа №2 - ДС Уручча-4",
+   "ref": "135",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Школа №2",
+     "headSign": "Гарадзецкая",
+     "lengthM": 4946.6,
+     "relationId": 7580349,
+     "stops": 12,
+     "to": "Гарадзецкая"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Уручча-4",
+     "headSign": "ДС Уручча-4",
+     "lengthM": 5634.4,
+     "relationId": 7580350,
+     "stops": 14,
+     "to": "Школа №2"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 136: Аўтобус №136: «ДС Карастаянавай - Аздараўленчы цэнтр Ждановічы»",
+   "ref": "136",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 17079.0,
+     "relationId": 8719173,
+     "stops": 27,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 137: Аўтобус №137 - ДС Кунцаўшчына - Водаачышчальная станцыя",
+   "ref": "137",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "Водаачышчальная станцыя",
+     "lengthM": 6025.6,
+     "relationId": 10814356,
+     "stops": 11,
+     "to": "Водаачышчальная станцыя"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 138: Аўтобус №138 - ДС Кунцаўшчына - Прамвузел Заходні",
+   "ref": "138",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "Прамвузел Заходні",
+     "lengthM": 9327.5,
+     "relationId": 10078722,
+     "stops": 14,
+     "to": "Прамвузел Заходні"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 139: Аўтобус №139 - ДС Каліноўскага - Танкавая",
+   "ref": "139",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Каліноўскага",
+     "headSign": "Танкавы",
+     "lengthM": 7809.0,
+     "relationId": 7526275,
+     "stops": 14,
+     "to": "Танкавы"
+    },
+    {
+     "direction": 1,
+     "from": "Танкавы",
+     "headSign": "Танкавы",
+     "lengthM": 7649.9,
+     "relationId": 10794728,
+     "stops": 16,
+     "to": "Каліноўскага"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 140: Аўтобус №140 - ДС Сухарава-5 - ГЦ Ждановічы",
+   "ref": "140",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Сухарава-5",
+     "headSign": "ГЦ Ждановічы",
+     "lengthM": 9773.4,
+     "relationId": 10237452,
+     "stops": 19,
+     "to": "ГЦ Ждановічы"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 142: Аўтобус №142 - Прамвузел Заходні - ДС Малінаўка-4",
+   "ref": "142",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Прамвузел Заходні",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 3149.8,
+     "relationId": 9410280,
+     "stops": 4,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 3067.8,
+     "relationId": 9410281,
+     "stops": 4,
+     "to": "Прамвузел Заходні"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 144с: Аўтобус №144с - ДС Кунцаўшчына - ДС Курасоўшчына",
+   "ref": "144с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "ДС Курасоўшчына",
+     "lengthM": 15520.9,
+     "relationId": 8038590,
+     "stops": 14,
+     "to": "ДС Курасоўшчына"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 146с: Аўтобус №146с - Дроздава - ДС Карбышава",
+   "ref": "146с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6355.4,
+     "relationId": 8876853,
+     "stops": 6,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6360.1,
+     "relationId": 8876854,
+     "stops": 6,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 147: Аўтобус №147 - Брылевічы - ДС Малінаўка-4",
+   "ref": "147",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Брылевічы",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 6735.4,
+     "relationId": 8018448,
+     "stops": 16,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 6809.1,
+     "relationId": 8018449,
+     "stops": 16,
+     "to": "Брылевічы"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 148с: ДС Шабаны — Ландэра",
+   "ref": "148с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Шабаны",
+     "headSign": "Ландэра",
+     "lengthM": 23847.2,
+     "relationId": 8017378,
+     "stops": 33,
+     "to": "Ландэра"
+    },
+    {
+     "direction": 1,
+     "from": "Ландэра",
+     "headSign": "Ландэра",
+     "lengthM": 24546.5,
+     "relationId": 8017379,
+     "stops": 29,
+     "to": "ДС Шабаны"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 149: Аўтобус №149 - РК Люцынская - ДС Захад-3",
+   "ref": "149",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6227.9,
+     "relationId": 8877220,
+     "stops": 16,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6762.8,
+     "relationId": 8877221,
+     "stops": 15,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 15: Аўтобус №15 - Фогеля - ДС Славінскага",
+   "ref": "15",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11259.7,
+     "relationId": 9335992,
+     "stops": 17,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9511.7,
+     "relationId": 9335993,
+     "stops": 12,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 151с: Аўтобус №151c - ГЦ Ждановічы - ДС Серабранка",
+   "ref": "151с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Прадуктовы рынак",
+     "headSign": "Серабранка",
+     "lengthM": 17875.6,
+     "relationId": 9073301,
+     "stops": 18,
+     "to": "Серабранка"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 153: Аўтобус № 153 - Ст.м. Уручча - Танкавая",
+   "ref": "153",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 3186.7,
+     "relationId": 8865910,
+     "stops": 5,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 3123.6,
+     "relationId": 8865911,
+     "stops": 7,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 155: Аўтобус №155 - Гарбатава, 73 - ДС Уручча-4",
+   "ref": "155",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 7569.4,
+     "relationId": 8866760,
+     "stops": 14,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6630.3,
+     "relationId": 8866761,
+     "stops": 14,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 157: Аўтобус №157 - Маневіча - ДС Карбышава",
+   "ref": "157",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 4507.3,
+     "relationId": 8866712,
+     "stops": 6,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 4306.7,
+     "relationId": 8866713,
+     "stops": 7,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 158: Аўтобус №158 - Валярʼянава - ДС Карбышава",
+   "ref": "158",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 4416.1,
+     "relationId": 8866707,
+     "stops": 5,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 4024.8,
+     "relationId": 8866708,
+     "stops": 4,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 15д: Аўтобус №15д - Фогеля - ДС Уручча-2",
+   "ref": "15д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Фогеля",
+     "headSign": "ДС Уручча-2",
+     "lengthM": 7879.4,
+     "relationId": 9435683,
+     "stops": 11,
+     "to": "ДС Уручча-2"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Уручча-2",
+     "headSign": "ДС Уручча-2",
+     "lengthM": 6375.7,
+     "relationId": 9435684,
+     "stops": 8,
+     "to": "Фогеля"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 16: ДС Чыжоўка — ДС Ангарская-4",
+   "ref": "16",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Чыжоўка",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 14560.1,
+     "relationId": 9435741,
+     "stops": 27,
+     "to": "ДС Ангарская-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Ангарская-4",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 14366.3,
+     "relationId": 9435742,
+     "stops": 28,
+     "to": "ДС Чыжоўка"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 162: Аўтобус №162 - Цна - ДС Карбышава",
+   "ref": "162",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6761.7,
+     "relationId": 8865205,
+     "stops": 8,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6558.4,
+     "relationId": 8865206,
+     "stops": 8,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 163: Аўтобус №163 - Варанянскага - ДС Сухарава-5",
+   "ref": "163",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 18767.8,
+     "relationId": 8843060,
+     "stops": 35,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 18976.1,
+     "relationId": 8843061,
+     "stops": 35,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 166: Аўтобус №166 - Міхалова-2 - АС Паўднёва-Заходняя",
+   "ref": "166",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Міхалова-2",
+     "headSign": "АС Юго-Западная",
+     "lengthM": 2802.7,
+     "relationId": 8084755,
+     "stops": 7,
+     "to": "АС Юго-Западная"
+    },
+    {
+     "direction": 1,
+     "from": "АС Юго-Западная",
+     "headSign": "АС Юго-Западная",
+     "lengthM": 3131.0,
+     "relationId": 8084760,
+     "stops": 7,
+     "to": "Міхалова-2"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 17: Аўтобус №17: ДС Кунцаўшчына => ДС Сухарава-5",
+   "ref": "17",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5959.6,
+     "relationId": 74049,
+     "stops": 13,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6356.4,
+     "relationId": 7553131,
+     "stops": 14,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 172: Аўтобус №172 - ДС Сярова - Варанянскага",
+   "ref": "172",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6316.6,
+     "relationId": 18010285,
+     "stops": 13,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 177э: Аўтобус №177э - ДС Кунцаўшчына - Азярцо",
+   "ref": "177э",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 12436.8,
+     "relationId": 8861025,
+     "stops": 8,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 178э: Аўтобус №178э - Могілкі \"Лясныя\" - АС \"Аўтазаводская\"",
+   "ref": "178э",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Могiлкi \"Лясныя\"",
+     "headSign": "АС \"Аўтазаводская\"",
+     "lengthM": 6998.4,
+     "relationId": 18782720,
+     "stops": 4,
+     "to": "АС \"Аўтазаводская\""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 18: Аўтобус №18: ДС Усходняя - Навінкі",
+   "ref": "18",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Усходняя (пасадка пасажыраў)",
+     "headSign": "Бальніца (Навінкі)",
+     "lengthM": 10458.1,
+     "relationId": 9438300,
+     "stops": 19,
+     "to": "Бальніца (Навінкі)"
+    },
+    {
+     "direction": 1,
+     "from": "Бальніца (Навінкі)",
+     "headSign": "Бальніца (Навінкі)",
+     "lengthM": 11053.2,
+     "relationId": 9438301,
+     "stops": 16,
+     "to": "ДС Усходняя (высадка пасажыраў)"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 181с: Аўтобус №181с - ДС Масюкоўшчына - Каменная Горка-5 - (Малыш-3)",
+   "ref": "181с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9503.8,
+     "relationId": 11019311,
+     "stops": 12,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 182с: Аўтобус №182с - ДС Сухарава-5 - ДС Каменная Горка-5",
+   "ref": "182с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Сухарава-5",
+     "headSign": "ДС Каменная Горка-5",
+     "lengthM": 5148.3,
+     "relationId": 18114422,
+     "stops": 7,
+     "to": "ДС Каменная Горка-5"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Каменная Горка-5",
+     "headSign": "ДС Каменная Горка-5",
+     "lengthM": 5103.5,
+     "relationId": 18114423,
+     "stops": 8,
+     "to": "ДС Сухарава-5"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 185с: Аўтобус №185с - ДС Каменная Горка-5 - Масюкоўшчына",
+   "ref": "185с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 19541.3,
+     "relationId": 8860845,
+     "stops": 17,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 19441.2,
+     "relationId": 8860846,
+     "stops": 17,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 188с: Аўтобус №188с - Брылевічы - Школа №188",
+   "ref": "188с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 27475.7,
+     "relationId": 8850883,
+     "stops": 13,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 26398.6,
+     "relationId": 8850884,
+     "stops": 11,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 189э: Аўтобус №189э - ДС Захад-3 -РКМЦ",
+   "ref": "189э",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9849.3,
+     "relationId": 8843017,
+     "stops": 6,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10154.7,
+     "relationId": 8843018,
+     "stops": 6,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 19: Аўтобус №19 - Сляпянка - ДС Карастаянавай",
+   "ref": "19",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9757.2,
+     "relationId": 9325775,
+     "stops": 19,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 191: Аўтобус №191 - ДС Лошыца-2 - Варанянскага",
+   "ref": "191",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11755.7,
+     "relationId": 8850629,
+     "stops": 23,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 193: Аўтобус №193 - АС Паўднёва-Заходняя - 2-і Прылуцкі завулак",
+   "ref": "193",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "АС Паўднёва-Заходняя",
+     "headSign": "2-і Прылуцкі завулак",
+     "lengthM": 2370.2,
+     "relationId": 19786054,
+     "stops": 5,
+     "to": "2-і Прылуцкі завулак"
+    },
+    {
+     "direction": 1,
+     "from": "2-і Прылуцкі завулак",
+     "headSign": "2-і Прылуцкі завулак",
+     "lengthM": 2875.4,
+     "relationId": 19786055,
+     "stops": 5,
+     "to": "АС Паўднёва-Заходняя"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 196с: Аўтобус №196с - С. Кавалеўскай - ДС Малінаўка-4",
+   "ref": "196с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "С. Ковалевской",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 9772.9,
+     "relationId": 8081393,
+     "stops": 16,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 9926.2,
+     "relationId": 18088614,
+     "stops": 16,
+     "to": "С. Ковалевской"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 197: Аўтобус №197 - Электрадэпо «Магілёўскае» - ст.м. Магілёўская",
+   "ref": "197",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 3318.3,
+     "relationId": 9459610,
+     "stops": 3,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 2148.5,
+     "relationId": 9459611,
+     "stops": 3,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 20с: Аўтобус №20с - ДС Ангарская-4 - ст.м. Акадэмія навук",
+   "ref": "20с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11771.4,
+     "relationId": 9438118,
+     "stops": 16,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13097.5,
+     "relationId": 9438119,
+     "stops": 15,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 21: ДС Шабаны — ДС Чыжоўка",
+   "ref": "21",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Шабаны",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 14086.9,
+     "relationId": 9438312,
+     "stops": 24,
+     "to": "ДС Чыжоўка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Чыжоўка",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 11220.6,
+     "relationId": 9438313,
+     "stops": 18,
+     "to": "ДС Шабаны"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 23: Аўтобус №23 - Гарадскі Вал - ДС Малінаўка-4",
+   "ref": "23",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Гарадскі вал",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 13262.5,
+     "relationId": 8068271,
+     "stops": 30,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 13410.8,
+     "relationId": 8068272,
+     "stops": 27,
+     "to": "Гарадскі вал"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 24: Аўтобус №24 - ДС Зялёны Луг-6 - Варанянскага",
+   "ref": "24",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13567.6,
+     "relationId": 9370354,
+     "stops": 27,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13154.0,
+     "relationId": 9370355,
+     "stops": 25,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 263: Аўтобус №263: АВ Цэнтральны - Нававiленская",
+   "ref": "263",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8688.0,
+     "relationId": 21143107,
+     "stops": 14,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 26д: Аўтобус №26д: ДС Усходняя - Аляксандра Воінава",
+   "ref": "26д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Усходняя (пасадка пасажыраў)",
+     "headSign": "Аляксандра Воінава",
+     "lengthM": 11829.1,
+     "relationId": 18288660,
+     "stops": 21,
+     "to": "Аляксандра Воінава"
+    },
+    {
+     "direction": 1,
+     "from": "Аляксандра Воінава",
+     "headSign": "Аляксандра Воінава",
+     "lengthM": 12202.4,
+     "relationId": 18295104,
+     "stops": 19,
+     "to": "ДС Усходняя (высадка пасажыраў)"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 27: Аўтобус №27 - Сасновы Бор - ДС Ангарская-4",
+   "ref": "27",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 16805.1,
+     "relationId": 9446580,
+     "stops": 27,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 14284.2,
+     "relationId": 9446581,
+     "stops": 24,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 28: Аўтобус №28 - Масюкоўшчына - ДС Сярова",
+   "ref": "28",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Масюкоўшчына",
+     "headSign": "ДС Сярова",
+     "lengthM": 20905.1,
+     "relationId": 8023321,
+     "stops": 39,
+     "to": "ДС Сярова"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Сярова",
+     "headSign": "ДС Сярова",
+     "lengthM": 20520.3,
+     "relationId": 8023322,
+     "stops": 40,
+     "to": "Масюкоўшчына"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 29: Аўтобус №29: ДС Карастаянавай - ДС Кунцаўшчына",
+   "ref": "29",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Карастаянавай",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 17477.5,
+     "relationId": 9418934,
+     "stops": 31,
+     "to": "ДС Кунцаўшчына"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 2с: Аўтобус №2с - ст.м. Трактарны завод - ДС Лошыца",
+   "ref": "2с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10940.6,
+     "relationId": 8954494,
+     "stops": 17,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9628.2,
+     "relationId": 8954495,
+     "stops": 17,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 30а: Аўтобус №30а - Красны Бор - Мінскрыбпрам",
+   "ref": "30а",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Красны Бор",
+     "headSign": "Мінскрыбпрам",
+     "lengthM": 18603.5,
+     "relationId": 16290825,
+     "stops": 30,
+     "to": "Мінскрыбпрам"
+    },
+    {
+     "direction": 1,
+     "from": "Мінскрыбпрам",
+     "headSign": "Мінскрыбпрам",
+     "lengthM": 17807.5,
+     "relationId": 16290826,
+     "stops": 31,
+     "to": "Красны Бор"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 30с: Аўтобус №30с - Каржанеўскага - Красны Бор",
+   "ref": "30с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Каржанеўскага",
+     "headSign": "Красны Бор",
+     "lengthM": 15298.8,
+     "relationId": 954715,
+     "stops": 26,
+     "to": "Красны Бор"
+    },
+    {
+     "direction": 1,
+     "from": "Красны Бор",
+     "headSign": "Красны Бор",
+     "lengthM": 15998.2,
+     "relationId": 7563481,
+     "stops": 25,
+     "to": "Каржанеўскага"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 32с: Аўтобус №32с - ДС Дружная - ДС Малінаўка-4",
+   "ref": "32с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Дружная",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 13157.7,
+     "relationId": 8067956,
+     "stops": 23,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 13238.3,
+     "relationId": 8067957,
+     "stops": 22,
+     "to": "ДС Дружная"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 33: Аўтобус №33 - ст.м. Уручча - Копішча",
+   "ref": "33",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 3331.1,
+     "relationId": 9443332,
+     "stops": 8,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 3497.9,
+     "relationId": 9443333,
+     "stops": 7,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 34: Аўтобус №34 - ДС Славінскага - зав. Ліпкаўскі",
+   "ref": "34",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9740.6,
+     "relationId": 9336003,
+     "stops": 18,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 35: Аўтобус №35 - Макаёнка - ДС Зялёны Луг-6",
+   "ref": "35",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Макаёнка",
+     "headSign": "Зялёны Луг-6",
+     "lengthM": 7869.0,
+     "relationId": 9443091,
+     "stops": 18,
+     "to": "Зялёны Луг-6"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Зялёны Луг-6",
+     "headSign": "ДС Зялёны Луг-6",
+     "lengthM": 8151.9,
+     "relationId": 9443092,
+     "stops": 18,
+     "to": "Макаёнка"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 37: Аўтобус №37 - ДС Усходняя - ДС Карбышава",
+   "ref": "37",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Усходняя (пасадка пасажыраў)",
+     "headSign": "ДС Карбышава",
+     "lengthM": 14094.9,
+     "relationId": 9443657,
+     "stops": 29,
+     "to": "ДС Карбышава"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 38: Аўтобус №38 - Акадэміка Карскага, 44 - Аўтастанцыя «Паўднёва-Заходняя»",
+   "ref": "38",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Акадэміка Карскага, 44",
+     "headSign": "Аўтастанцыя «Паўднёва-Заходняя»",
+     "lengthM": 7329.2,
+     "relationId": 9417705,
+     "stops": 17,
+     "to": "Аўтастанцыя «Паўднёва-Заходняя»"
+    },
+    {
+     "direction": 1,
+     "from": "Аўтастанцыя «Паўднёва-Заходняя»",
+     "headSign": "Аўтастанцыя «Паўднёва-Заходняя»",
+     "lengthM": 7735.9,
+     "relationId": 9417706,
+     "stops": 16,
+     "to": "Акадэміка Карскага, 44"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 39: Аўтобус №39: ДС Усходняя - Шчадрына",
+   "ref": "39",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Усходняя (пасадка пасажыраў)",
+     "headSign": "Шчадрына",
+     "lengthM": 7531.5,
+     "relationId": 9444831,
+     "stops": 15,
+     "to": "Шчадрына"
+    },
+    {
+     "direction": 1,
+     "from": "Шчадрына",
+     "headSign": "Шчадрына",
+     "lengthM": 8113.7,
+     "relationId": 9444832,
+     "stops": 14,
+     "to": "ДС Усходняя (высадка пасажыраў)"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 4: Аўтобус №4 - чыгуначная ст. Мінск-Паўднёвы - ДС Дружная",
+   "ref": "4",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6870.8,
+     "relationId": 8954899,
+     "stops": 11,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5617.3,
+     "relationId": 8954900,
+     "stops": 6,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 40: Аўтобус №40 - Ландара - ДС Кунцаўшчына",
+   "ref": "40",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Ландара",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 18620.9,
+     "relationId": 8029641,
+     "stops": 34,
+     "to": "ДС Кунцаўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 18193.6,
+     "relationId": 8029642,
+     "stops": 35,
+     "to": "Ландара"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 41: Аўтобус №41 - Каменная Горка-5 - ДС Масюкоўшчына",
+   "ref": "41",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9089.8,
+     "relationId": 9356457,
+     "stops": 19,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 12243.5,
+     "relationId": 9356459,
+     "stops": 23,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 42: Аўтобус №42 - Люцынская - ДС Сухарава-5",
+   "ref": "42",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 7976.9,
+     "relationId": 9417767,
+     "stops": 17,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8033.5,
+     "relationId": 9417768,
+     "stops": 18,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 43: Аўтобус №43 - Сцяпянка - ДС Дружная",
+   "ref": "43",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13509.3,
+     "relationId": 8503693,
+     "stops": 25,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 43а: Аўтобус №43а - Сцяпянка - ст.м. Трактарны завод",
+   "ref": "43а",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6396.7,
+     "relationId": 16299794,
+     "stops": 11,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 43д: Аўтобус №43д - Сцяпянка - ст.м. Трактарны завод",
+   "ref": "43д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 7027.9,
+     "relationId": 9444898,
+     "stops": 12,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 44: Аўтобус №44: ДС Карастаянавай - ст. Ждановічы",
+   "ref": "44",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Карастаянавай",
+     "headSign": "ст. Ждановічы",
+     "lengthM": 15552.0,
+     "relationId": 8718961,
+     "stops": 26,
+     "to": "ст. Ждановічы"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 45: Аўтобус №45 - Мінскрыбпрам - ДС Курасоўшчына",
+   "ref": "45",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Мінскрыбпрам",
+     "headSign": "ДС Курасоўшчына",
+     "lengthM": 3338.9,
+     "relationId": 8013195,
+     "stops": 7,
+     "to": "ДС Курасоўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Курасоўшчына",
+     "headSign": "ДС Курасоўшчына",
+     "lengthM": 3144.8,
+     "relationId": 8013196,
+     "stops": 7,
+     "to": "Мінскрыбпрам"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 46: Аўтобус №46: Плошча Бангалор - ДС Лермантава",
+   "ref": "46",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9555.4,
+     "relationId": 9444970,
+     "stops": 19,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 47с: Аўтобус №47с - Філіял БДУ - Вакзал",
+   "ref": "47с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Філіял БДУ",
+     "headSign": "Вакзал",
+     "lengthM": 11183.1,
+     "relationId": 8020681,
+     "stops": 10,
+     "to": "Вакзал"
+    },
+    {
+     "direction": 1,
+     "from": "Вакзал",
+     "headSign": "Вакзал",
+     "lengthM": 10870.5,
+     "relationId": 8020682,
+     "stops": 8,
+     "to": "Філіял БДУ"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 48: Ландэра — ДС Чыжоўка",
+   "ref": "48",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Ландэра",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 16938.0,
+     "relationId": 8028819,
+     "stops": 28,
+     "to": "ДС Чыжоўка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Чыжоўка",
+     "headSign": "ДС Чыжоўка",
+     "lengthM": 11915.5,
+     "relationId": 8028820,
+     "stops": 23,
+     "to": "Ландэра"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 49: Аўтобус №49 - С. Кавалеўскай - ДС Масюкоўшчына",
+   "ref": "49",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Завулак Софʼі Кавалеўскай",
+     "headSign": "ДС Масюкоўшчына",
+     "lengthM": 10064.2,
+     "relationId": 9445011,
+     "stops": 23,
+     "to": "ДС Масюкоўшчына"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 50с: Аўтобус №50с - ДС Сухарава-5 - Вакзал",
+   "ref": "50с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Сухарава-5",
+     "headSign": "Вакзал",
+     "lengthM": 12367.0,
+     "relationId": 8063127,
+     "stops": 15,
+     "to": "Вакзал"
+    },
+    {
+     "direction": 1,
+     "from": "Вакзал",
+     "headSign": "Вакзал",
+     "lengthM": 12421.3,
+     "relationId": 8063128,
+     "stops": 14,
+     "to": "ДС Сухарава-5"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 51: ДС Чыжоўка-1 — о.п. Лошица",
+   "ref": "51",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Чыжоўка-1",
+     "headSign": "о.п. Лошица",
+     "lengthM": 7924.5,
+     "relationId": 954726,
+     "stops": 19,
+     "to": "о.п. Лошица"
+    },
+    {
+     "direction": 1,
+     "from": "о.п. Лошица",
+     "headSign": "о.п. Лошица",
+     "lengthM": 8015.0,
+     "relationId": 8420075,
+     "stops": 18,
+     "to": "ДС Чыжоўка-1"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 53: Аўтобус №53 - Ландара - ДС Дружная",
+   "ref": "53",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Ландара",
+     "headSign": "ДС Дружная",
+     "lengthM": 10507.7,
+     "relationId": 8015134,
+     "stops": 22,
+     "to": "ДС Дружная"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Дружная",
+     "headSign": "ДС Дружная",
+     "lengthM": 10819.6,
+     "relationId": 8015135,
+     "stops": 25,
+     "to": "Ландара"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 54: Аўтобус №54 - ст.м. Спартыўная - ДС Захад-3",
+   "ref": "54",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 7389.1,
+     "relationId": 9445156,
+     "stops": 15,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 7217.4,
+     "relationId": 9445157,
+     "stops": 14,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 55: Аўтобус №55 - чыгуначная ст. Мінск-Паўднёвы - АВ Усходні",
+   "ref": "55",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5296.9,
+     "relationId": 9445609,
+     "stops": 10,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 4035.5,
+     "relationId": 9445610,
+     "stops": 10,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 57: Аўтобус №57 - Сямашкі - ДС Усходняя",
+   "ref": "57",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Сямашкі",
+     "headSign": "ДС Восточная",
+     "lengthM": 13088.0,
+     "relationId": 8066044,
+     "stops": 23,
+     "to": "ДС Восточная"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Восточная",
+     "headSign": "ДС Восточная",
+     "lengthM": 12132.2,
+     "relationId": 8066045,
+     "stops": 24,
+     "to": "Сямашкі"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 58: Аўтобус №58 - ГЦ Ома - АС Аўтазаводская",
+   "ref": "58",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5547.1,
+     "relationId": 9445705,
+     "stops": 7,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6308.6,
+     "relationId": 9445706,
+     "stops": 11,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 6: Брылевічы — ДС Дружная",
+   "ref": "6",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Брылевічы",
+     "headSign": "ДС Дружная",
+     "lengthM": 9339.2,
+     "relationId": 8063014,
+     "stops": 16,
+     "to": "ДС Дружная"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Дружная",
+     "headSign": "ДС Дружная",
+     "lengthM": 9466.5,
+     "relationId": 8063015,
+     "stops": 16,
+     "to": "Брылевічы"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 61д: Аўтобус №61д - ДС Шабаны - ДС Ангарская-4",
+   "ref": "61д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10793.0,
+     "relationId": 16545762,
+     "stops": 19,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 7820.9,
+     "relationId": 16545763,
+     "stops": 12,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 62э: Аўтобус №62э - Навінкі - ДС Захад-3",
+   "ref": "62э",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 14480.8,
+     "relationId": 9450805,
+     "stops": 11,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 14096.4,
+     "relationId": 9450806,
+     "stops": 10,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 63д: Аўтобус №63д - Фогеля (Малыш) - ДС Уручча-2",
+   "ref": "63д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Фогеля",
+     "headSign": "ДС Уручча-2",
+     "lengthM": 8907.5,
+     "relationId": 9404927,
+     "stops": 17,
+     "to": "ДС Уручча-2"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Уручча-2",
+     "headSign": "ДС Уручча-2",
+     "lengthM": 7244.8,
+     "relationId": 9404928,
+     "stops": 14,
+     "to": "Фогеля"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 65: Аўтобус №65 - Гарадскі Вал - ДС Лошыца-2",
+   "ref": "65",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 14459.6,
+     "relationId": 9453856,
+     "stops": 30,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 68: Аўтобус №68 - ДС Карастаянавай - Паўночныя могілкі",
+   "ref": "68",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9908.0,
+     "relationId": 9453870,
+     "stops": 10,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10222.3,
+     "relationId": 9453871,
+     "stops": 9,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 69: Аўтобус №69 - Масюкоўшчына - Вакзал",
+   "ref": "69",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10616.1,
+     "relationId": 9456734,
+     "stops": 16,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10295.1,
+     "relationId": 9456735,
+     "stops": 18,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 70: Аўтобус №70 - Дражня - АС Аўтазавадская",
+   "ref": "70",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11710.9,
+     "relationId": 9456940,
+     "stops": 23,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11732.4,
+     "relationId": 9456941,
+     "stops": 24,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 72: Аўтобус №72 - ст.м. Магілёўская - ДС Шабаны",
+   "ref": "72",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 4693.0,
+     "relationId": 9459612,
+     "stops": 8,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5268.1,
+     "relationId": 9459613,
+     "stops": 8,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 74с: Аўтобус №74с - Гарадскі Вал - ДС Малінаўка-4",
+   "ref": "74с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Городской Вал",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 12850.6,
+     "relationId": 8081240,
+     "stops": 23,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 12635.9,
+     "relationId": 8081241,
+     "stops": 22,
+     "to": "Городской Вал"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 75: Аўтобус №75 - ст.м. Пятроўшчына - ДС Малінаўка-4",
+   "ref": "75",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ст.м. Петровщина",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 8041.9,
+     "relationId": 8067993,
+     "stops": 15,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 5796.2,
+     "relationId": 8067994,
+     "stops": 14,
+     "to": "ст.м. Петровщина"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 76э: Аўтобус №76э - ДС Ангарская-4 - ГЦ Ждановічы",
+   "ref": "76э",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Ангарская-4",
+     "headSign": "ГЦ Ждановічы",
+     "lengthM": 21601.1,
+     "relationId": 9404648,
+     "stops": 18,
+     "to": "ГЦ Ждановічы"
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 22153.5,
+     "relationId": 9404649,
+     "stops": 19,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 77: Аўтобус №77 - Магістр - ДС Уручча-2",
+   "ref": "77",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6552.6,
+     "relationId": 9459786,
+     "stops": 13,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6808.2,
+     "relationId": 9459787,
+     "stops": 13,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 78: Аўтобус №78 - Бабруйская - Каменная горка-5",
+   "ref": "78",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Бабруйская",
+     "headSign": "Каменная горка-5",
+     "lengthM": 12182.0,
+     "relationId": 9418651,
+     "stops": 27,
+     "to": "Каменная горка-5"
+    },
+    {
+     "direction": 1,
+     "from": "Каменная горка-5",
+     "headSign": "Каменная горка-5",
+     "lengthM": 12168.8,
+     "relationId": 9418654,
+     "stops": 27,
+     "to": "Бабруйская"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 80: Аўтобус №80 - Вялікі Лес - ДС Карбышава",
+   "ref": "80",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 12020.4,
+     "relationId": 9459898,
+     "stops": 20,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 11946.3,
+     "relationId": 9459899,
+     "stops": 21,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 80д: Аўтобус №80д - ДС Карбышава - Вялікі Лес",
+   "ref": "80д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13047.4,
+     "relationId": 18089729,
+     "stops": 24,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 81э: Аўтобус №81э - Вакзал - ДС Лошыца-2",
+   "ref": "81э",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8547.0,
+     "relationId": 9368034,
+     "stops": 9,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8308.6,
+     "relationId": 9368035,
+     "stops": 9,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 84: Аўтобус №84 - Сляпянка - ДС Малінаўка-4",
+   "ref": "84",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Сляпянка",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 22330.9,
+     "relationId": 8066408,
+     "stops": 39,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 22182.3,
+     "relationId": 8066418,
+     "stops": 38,
+     "to": "Сляпянка"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 86: Аўтобус №86 - Копішча - Азярышча",
+   "ref": "86",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8217.5,
+     "relationId": 9463148,
+     "stops": 17,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8142.9,
+     "relationId": 9463149,
+     "stops": 17,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 87с: ДС Зялёны Луг-6 — АС Автозаводская",
+   "ref": "87с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Зялёны Луг-6",
+     "headSign": "АС Автозаводская",
+     "lengthM": 16765.2,
+     "relationId": 9368276,
+     "stops": 29,
+     "to": "АС Автозаводская"
+    },
+    {
+     "direction": 1,
+     "from": "АС Автозаводская",
+     "headSign": "АС Автозаводская",
+     "lengthM": 16246.1,
+     "relationId": 9368277,
+     "stops": 27,
+     "to": "ДС Зялёны Луг-6"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 88с: Ландэра — ДС Ангарская-4",
+   "ref": "88с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Ландэра",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 21718.9,
+     "relationId": 8029542,
+     "stops": 30,
+     "to": "ДС Ангарская-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Ангарская-4",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 21531.5,
+     "relationId": 8029543,
+     "stops": 31,
+     "to": "Ландэра"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 89: Аўтобус №89- ДС Уручча-4 - Стадыён школы №2",
+   "ref": "89",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Уручча-4",
+     "headSign": "Стадыён школы №2",
+     "lengthM": 5018.0,
+     "relationId": 18612743,
+     "stops": 12,
+     "to": "Стадыён школы №2"
+    },
+    {
+     "direction": 1,
+     "from": "Стадыён школы №2",
+     "headSign": "Стадыён школы №2",
+     "lengthM": 5239.1,
+     "relationId": 18612744,
+     "stops": 11,
+     "to": "Гарадзецкая"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 91: Аўтобус №91 - Веснінка -ДС Каліноўскага",
+   "ref": "91",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 19071.9,
+     "relationId": 9370322,
+     "stops": 36,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 92с: Аўтобус №92c - Шчадрына - Паўліны Мядзёлкі",
+   "ref": "92с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 5142.6,
+     "relationId": 18089688,
+     "stops": 5,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 93: Старый аэропорт — ДС Шабаны",
+   "ref": "93",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Старый аэропорт",
+     "headSign": "ДС Шабаны",
+     "lengthM": 17034.6,
+     "relationId": 8961455,
+     "stops": 27,
+     "to": "ДС Шабаны"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Шабаны",
+     "headSign": "ДС Шабаны",
+     "lengthM": 15879.8,
+     "relationId": 8961456,
+     "stops": 27,
+     "to": "Старый аэропорт"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 94с: Чыжоўскія могілкі — АС Автозаводская",
+   "ref": "94с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Чыжоўскія могілкі",
+     "headSign": "АС Автозаводская",
+     "lengthM": 6916.9,
+     "relationId": 9463225,
+     "stops": 5,
+     "to": "АС Автозаводская"
+    },
+    {
+     "direction": 1,
+     "from": "АС Автозаводская",
+     "headSign": "АС Автозаводская",
+     "lengthM": 12072.3,
+     "relationId": 9463226,
+     "stops": 6,
+     "to": "Чыжоўскія могілкі"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 95: Аўтобус № 95 «ДС Каліноўскага - Сцяпянка»",
+   "ref": "95",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Каліноўскага",
+     "headSign": "Сцяпянка",
+     "lengthM": 10049.9,
+     "relationId": 3779572,
+     "stops": 21,
+     "to": "Сцяпянка"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 96: Аўтобус №96 - Філіял БДУ - ДС Малінаўка-4",
+   "ref": "96",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Філіял БДУ",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 7178.5,
+     "relationId": 8061077,
+     "stops": 16,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 6838.1,
+     "relationId": 8061078,
+     "stops": 13,
+     "to": "Філіял БДУ"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 97: Аўтобус №97 - Малінаўка-8 - ДС Сярова",
+   "ref": "97",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Малінаўка-8",
+     "headSign": "ДС Сярова",
+     "lengthM": 9719.2,
+     "relationId": 8020261,
+     "stops": 17,
+     "to": "ДС Сярова"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Сярова",
+     "headSign": "ДС Сярова",
+     "lengthM": 8964.8,
+     "relationId": 8020262,
+     "stops": 18,
+     "to": "Малінаўка-8"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 98с: ДС Лошыца-2 — ст.м. Могилевская",
+   "ref": "98с",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Лошыца-2",
+     "headSign": "ст.м. Могилевская",
+     "lengthM": 10721.7,
+     "relationId": 5855863,
+     "stops": 20,
+     "to": "ст.м. Могилевская"
+    },
+    {
+     "direction": 1,
+     "from": "ст.м. Могилевская",
+     "headSign": "ст.м. Могилевская",
+     "lengthM": 10943.2,
+     "relationId": 5855891,
+     "stops": 20,
+     "to": "ДС Лошыца-2"
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 99: Аўтобус №99 - Ваенная акадэмія - ДС Уручча-4",
+   "ref": "99",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10266.1,
+     "relationId": 9464041,
+     "stops": 19,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 9750.1,
+     "relationId": 9464042,
+     "stops": 17,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "bus",
+   "name": "bus 9д: Серабранка-9 — ДС Шабаны",
+   "ref": "9д",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Серабранка-9",
+     "headSign": "ДС Шабаны",
+     "lengthM": 11564.0,
+     "relationId": 9336099,
+     "stops": 19,
+     "to": "ДС Шабаны"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Шабаны",
+     "headSign": "ДС Шабаны",
+     "lengthM": 11775.2,
+     "relationId": 9336100,
+     "stops": 21,
+     "to": "Серабранка-9"
+    }
+   ]
+  },
+  {
+   "mode": "tram",
+   "name": "tram 1: Трамвай №1 - пл. Мяснікова - ДС Зялёны Луг",
+   "ref": "1",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10210.9,
+     "relationId": 7568954,
+     "stops": 23,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "ДС Зелёный Луг",
+     "headSign": "ДС Зелёный Луг",
+     "lengthM": 10545.2,
+     "relationId": 7568955,
+     "stops": 24,
+     "to": "пл.Мясникова"
+    }
+   ]
+  },
+  {
+   "mode": "tram",
+   "name": "tram 11: Трамвай №11 - ДС Зялёны Луг - пр-т Незалежнасці",
+   "ref": "11",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6779.3,
+     "relationId": 75961,
+     "stops": 17,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 6338.4,
+     "relationId": 8476301,
+     "stops": 15,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "tram",
+   "name": "tram 5: Трамвай №5 - Палац дзяцей і моладзі - ДС Зялёны Луг",
+   "ref": "5",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8023.7,
+     "relationId": 7979898,
+     "stops": 16,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8532.0,
+     "relationId": 7979900,
+     "stops": 18,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "tram",
+   "name": "tram 9: Трамвай №9 - ДС Серабранка - Трактарны завод",
+   "ref": "9",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "РК Трактарны завод",
+     "lengthM": 5835.1,
+     "relationId": 6797851,
+     "stops": 12,
+     "to": "РК Трактарны завод"
+    },
+    {
+     "direction": 1,
+     "from": "Трактарны завод",
+     "headSign": "Трактарны завод",
+     "lengthM": 5851.3,
+     "relationId": 6802765,
+     "stops": 11,
+     "to": "ДС Серабранка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 1: Тралейбус №1 - Станцыя метро Маскоўская - ДС Зялёны Луг-6",
+   "ref": "1",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Станцыя метро Маскоўская",
+     "headSign": "Зялёны Луг-6",
+     "lengthM": 6640.9,
+     "relationId": 16332959,
+     "stops": 15,
+     "to": "Зялёны Луг-6"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Зялёны Луг-6",
+     "headSign": "ДС Зялёны Луг-6",
+     "lengthM": 8197.4,
+     "relationId": 16332960,
+     "stops": 15,
+     "to": "Станцыя метро Маскоўская"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 10: Тралейбус №10 - ДС Вяснянка - ДС Малінаўка-4",
+   "ref": "10",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Вяснянка",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 16947.8,
+     "relationId": 8081174,
+     "stops": 35,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 18365.8,
+     "relationId": 8081175,
+     "stops": 37,
+     "to": "ДС Вяснянка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 13: Тралейбус №13 - Гарадскі вал - ДС Сухарава-5",
+   "ref": "13",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Гарадскі вал",
+     "headSign": "ДС Сухарава-5",
+     "lengthM": 11042.0,
+     "relationId": 9323628,
+     "stops": 25,
+     "to": "ДС Сухарава-5"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Сухарава-5",
+     "headSign": "ДС Сухарава-5",
+     "lengthM": 10615.9,
+     "relationId": 9323629,
+     "stops": 22,
+     "to": "Гарадскі вал"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 14: Тралейбус №14 - Гарадскі вал - ДС Масюкоўшчына",
+   "ref": "14",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Гарадскі вал",
+     "headSign": "ДС Масюкоўшчына",
+     "lengthM": 7748.4,
+     "relationId": 9324776,
+     "stops": 16,
+     "to": "ДС Масюкоўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Масюкоўшчына",
+     "headSign": "ДС Масюкоўшчына",
+     "lengthM": 6588.4,
+     "relationId": 9324777,
+     "stops": 12,
+     "to": "Гарадскі вал"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 15: Тралейбус №15 - ДС Дражня - ДС Лошыца",
+   "ref": "15",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Пераходная",
+     "headSign": "ДС Лошыца-2",
+     "lengthM": 12473.3,
+     "relationId": 9324859,
+     "stops": 24,
+     "to": "ДС Лошыца-2"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Лошыца-2",
+     "headSign": "ДС Лошыца-2",
+     "lengthM": 11538.7,
+     "relationId": 9324860,
+     "stops": 23,
+     "to": "Пераходная"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 16: ДС Чыжоўка-1 — Вакзал",
+   "ref": "16",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Чыжоўка-1",
+     "headSign": "Вакзал",
+     "lengthM": 11822.2,
+     "relationId": 9324905,
+     "stops": 21,
+     "to": "Вакзал"
+    },
+    {
+     "direction": 1,
+     "from": "Вакзал",
+     "headSign": "Вакзал",
+     "lengthM": 12396.6,
+     "relationId": 9324906,
+     "stops": 21,
+     "to": "ДС Чыжоўка-1"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 17: Чыжоўка-6 — ДС Дражня",
+   "ref": "17",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Чыжоўка-6",
+     "headSign": "ДС Дражня",
+     "lengthM": 10867.3,
+     "relationId": 9325347,
+     "stops": 19,
+     "to": "ДС Дражня"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Дражня",
+     "headSign": "ДС Дражня",
+     "lengthM": 11110.0,
+     "relationId": 9325348,
+     "stops": 20,
+     "to": "Чыжоўка-6"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 18: Тралейбус №18 - Люцынская - ДС Сухарава-5",
+   "ref": "18",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Люцынская",
+     "headSign": "Аўтастаянка",
+     "lengthM": 7434.7,
+     "relationId": 16302365,
+     "stops": 18,
+     "to": "Аўтастаянка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Сухарава-5",
+     "headSign": "ДС Сухарава-5",
+     "lengthM": 7924.9,
+     "relationId": 16302366,
+     "stops": 18,
+     "to": "Люцынская"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 19: Тралейбус №19 - ДС Курасоўшчына - ДС Серабранка",
+   "ref": "19",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Завод «Транзістар»",
+     "headSign": "Серабранка",
+     "lengthM": 14406.3,
+     "relationId": 8023527,
+     "stops": 32,
+     "to": "Серабранка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС «Серабранка»",
+     "headSign": "ДС «Серабранка»",
+     "lengthM": 14963.4,
+     "relationId": 8023528,
+     "stops": 32,
+     "to": "Завод Электроніка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 2: Тралейбус №2 - ДС Уручча-2 - ДС Зялёны луг-6",
+   "ref": "2",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Уручча-2",
+     "headSign": "Зялёны Луг-6",
+     "lengthM": 9400.4,
+     "relationId": 7398505,
+     "stops": 23,
+     "to": "Зялёны Луг-6"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Зялёны Луг-6",
+     "headSign": "ДС Зялёны Луг-6",
+     "lengthM": 9241.5,
+     "relationId": 7398506,
+     "stops": 20,
+     "to": "ДС Уручча-2"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 20: Тралейбус №20 - Вакзал - ДС Серабранка",
+   "ref": "20",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Вакзал",
+     "headSign": "Серабранка",
+     "lengthM": 9061.7,
+     "relationId": 9326331,
+     "stops": 20,
+     "to": "Серабранка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС «Серабранка»",
+     "headSign": "ДС «Серабранка»",
+     "lengthM": 9272.4,
+     "relationId": 9326332,
+     "stops": 20,
+     "to": "Вакзал"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 21: Тралейбус №21 - ДС Сухарава-5 - Люцынская",
+   "ref": "21",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Сухарава-5",
+     "headSign": "Люцынская",
+     "lengthM": 7735.0,
+     "relationId": 16302493,
+     "stops": 18,
+     "to": "Люцынская"
+    },
+    {
+     "direction": 1,
+     "from": "Люцынская",
+     "headSign": "Люцынская",
+     "lengthM": 9428.8,
+     "relationId": 16302494,
+     "stops": 21,
+     "to": "ДС Сухарава-5"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 23: Тралейбус №23 - Чэрвеньскі рынак - ДС Лермантава",
+   "ref": "23",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Чэрвеньскі рынак",
+     "headSign": "ДС «Лермантава»",
+     "lengthM": 8886.9,
+     "relationId": 9348134,
+     "stops": 19,
+     "to": "ДС «Лермантава»"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 24: Тралейбус №24 - ДС Серабранка - ДС Лошыца-2",
+   "ref": "24",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС «Серабранка»",
+     "headSign": "ДС Лошыца-2",
+     "lengthM": 11715.1,
+     "relationId": 9330034,
+     "stops": 24,
+     "to": "ДС Лошыца-2"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Лошыца-2",
+     "headSign": "ДС Лошыца-2",
+     "lengthM": 10387.0,
+     "relationId": 9330035,
+     "stops": 23,
+     "to": "Серабранка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 25: Тралейбус №25 - ДС Малінаўка-4 - ДС Кунцаўшчына",
+   "ref": "25",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 14791.9,
+     "relationId": 8066011,
+     "stops": 32,
+     "to": "ДС Кунцаўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 13807.7,
+     "relationId": 8066012,
+     "stops": 31,
+     "to": "ДС Малінаўка-4"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 26: ст.м. Автозаводская — ДС Чыжоўка-1",
+   "ref": "26",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ст.м. Автозаводская",
+     "headSign": "ДС Чыжоўка-1",
+     "lengthM": 4347.5,
+     "relationId": 9330876,
+     "stops": 9,
+     "to": "ДС Чыжоўка-1"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Чыжоўка-1",
+     "headSign": "ДС Чыжоўка-1",
+     "lengthM": 4210.0,
+     "relationId": 9330877,
+     "stops": 8,
+     "to": "ст.м. Автозаводская"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 27: Тралейбус №27 - ДС Дружная - ДС Курасоўшчына",
+   "ref": "27",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Дружная",
+     "headSign": "ДС Курасоўшчына",
+     "lengthM": 7629.3,
+     "relationId": 8014214,
+     "stops": 14,
+     "to": "ДС Курасоўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Курасоўшчына",
+     "headSign": "ДС Курасоўшчына",
+     "lengthM": 7354.8,
+     "relationId": 8014215,
+     "stops": 15,
+     "to": "ДС Дружная"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 29: Тралейбус №29 - Музычны тэатр - ДС Каліноўскага",
+   "ref": "29",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Музычны тэатр",
+     "headSign": "ДС Каліноўскага",
+     "lengthM": 10780.7,
+     "relationId": 9331898,
+     "stops": 23,
+     "to": "ДС Каліноўскага"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Каліноўскага",
+     "headSign": "ДС Каліноўскага",
+     "lengthM": 11042.4,
+     "relationId": 9331899,
+     "stops": 22,
+     "to": "Музычны тэатр"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 3: Вакзал — ДС Ангарская-4",
+   "ref": "3",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Вакзал",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 13693.0,
+     "relationId": 7392217,
+     "stops": 24,
+     "to": "ДС Ангарская-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Ангарская-4",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 12879.6,
+     "relationId": 7392218,
+     "stops": 25,
+     "to": "Вакзал"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 30: Тралейбус №30 - Вакзал - ДС Малініна",
+   "ref": "30",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Вакзал",
+     "headSign": "ДС Малініна",
+     "lengthM": 14738.1,
+     "relationId": 9331987,
+     "stops": 30,
+     "to": "ДС Малініна"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малініна",
+     "headSign": "ДС Малініна",
+     "lengthM": 7730.1,
+     "relationId": 9331988,
+     "stops": 18,
+     "to": "Вакзал"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 31: Тралейбус №31 - ДС Сямашкі - ДС Кунцэўшчына",
+   "ref": "31",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Семашко",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 11284.3,
+     "relationId": 8065916,
+     "stops": 24,
+     "to": "ДС Кунцаўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 11212.2,
+     "relationId": 8065917,
+     "stops": 23,
+     "to": "ДС Семашко"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 32: Тралейбус №32 - ст.м. Пятроўшчына - ДС Малінаўка-4",
+   "ref": "32",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ст.м. Петровщина",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 6536.6,
+     "relationId": 8086565,
+     "stops": 15,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 4718.5,
+     "relationId": 8086566,
+     "stops": 13,
+     "to": "ст.м. Петровщина"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 33: Тралейбус №33 - ДС Адоеўскага - ДС Дражня",
+   "ref": "33",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Адоеўскага",
+     "headSign": "Пераходная",
+     "lengthM": 16117.1,
+     "relationId": 9333035,
+     "stops": 27,
+     "to": "Пераходная"
+    },
+    {
+     "direction": 1,
+     "from": "Пераходная",
+     "headSign": "Пераходная",
+     "lengthM": 16390.4,
+     "relationId": 9333036,
+     "stops": 28,
+     "to": "ДС Адоеўскага"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 34: ДС Ангарская-4 — Зялёны Луг-3",
+   "ref": "34",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Ангарская-4",
+     "headSign": "Зялёны Луг-3",
+     "lengthM": 21123.3,
+     "relationId": 7545329,
+     "stops": 38,
+     "to": "Зялёны Луг-3"
+    },
+    {
+     "direction": 1,
+     "from": "Зялёны Луг-3",
+     "headSign": "Зялёны Луг-3",
+     "lengthM": 21242.3,
+     "relationId": 7545330,
+     "stops": 38,
+     "to": "ДС Ангарская-4"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 35: Тралейбус №35 - ДС Серабранка - ДС Славінскага",
+   "ref": "35",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС «Серабранка»",
+     "headSign": "ДС Славінскага",
+     "lengthM": 16485.3,
+     "relationId": 9333074,
+     "stops": 28,
+     "to": "ДС Славінскага"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Славінскага",
+     "headSign": "ДС Славінскага",
+     "lengthM": 16835.0,
+     "relationId": 9333075,
+     "stops": 30,
+     "to": "ДС «Серабранка»"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 36: Тралейбус №36 - ДС Серабранка - ДС Паўднёвы Захад",
+   "ref": "36",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Серабранка",
+     "headSign": "ДС Паўднёвы Захад",
+     "lengthM": 16649.2,
+     "relationId": 8088221,
+     "stops": 34,
+     "to": "ДС Паўднёвы Захад"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Паўднёвы Захад",
+     "headSign": "ДС Паўднёвы Захад",
+     "lengthM": 16990.3,
+     "relationId": 8088222,
+     "stops": 34,
+     "to": "ДС Серабранка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 37: Тралейбус №37 - Музычны тэатр - ДС Уручча-4",
+   "ref": "37",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Музычны тэатр",
+     "headSign": "ДС Уручча-4",
+     "lengthM": 15484.3,
+     "relationId": 9334078,
+     "stops": 27,
+     "to": "ДС Уручча-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Уручча-4",
+     "headSign": "ДС Уручча-4",
+     "lengthM": 17233.8,
+     "relationId": 9334079,
+     "stops": 27,
+     "to": "Музычны тэатр"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 38: Тралейбус №38 - ДС Сухарава-5 - ДС Славінскага",
+   "ref": "38",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Сухарава-5",
+     "headSign": "ДС Славінскага",
+     "lengthM": 20725.7,
+     "relationId": 9334144,
+     "stops": 38,
+     "to": "ДС Славінскага"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Славінскага",
+     "headSign": "ДС Славінскага",
+     "lengthM": 20673.8,
+     "relationId": 9334145,
+     "stops": 39,
+     "to": "Аўтастаянка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 39: Тралейбус №39 - Сапёраў - ДС Паўднёвы-Захад",
+   "ref": "39",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Сапёраў",
+     "headSign": "ДС Паўднёвы Захад",
+     "lengthM": 12332.8,
+     "relationId": 9337052,
+     "stops": 23,
+     "to": "ДС Паўднёвы Захад"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Паўднёвы Захад",
+     "headSign": "ДС Паўднёвы Захад",
+     "lengthM": 10767.6,
+     "relationId": 9337053,
+     "stops": 23,
+     "to": "Сапёраў"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 4: Тралейбус №4 - Бабруйская - ДС Адоеўскага",
+   "ref": "4",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Аўтавакзал Цэнтральны",
+     "headSign": "ДС Адоеўскага",
+     "lengthM": 6996.9,
+     "relationId": 7398568,
+     "stops": 16,
+     "to": "ДС Адоеўскага"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Адоеўскага",
+     "headSign": "ДС Адоеўскага",
+     "lengthM": 6852.6,
+     "relationId": 7398569,
+     "stops": 15,
+     "to": "Аўтавакзал Цэнтральны"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 41: Тралейбус №41 - ДС Малініна - ДС Уручча-2",
+   "ref": "41",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Малініна",
+     "headSign": "ДС Уручча-2",
+     "lengthM": 16121.5,
+     "relationId": 9320347,
+     "stops": 29,
+     "to": "ДС Уручча-2"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Уручча-2",
+     "headSign": "ДС Уручча-2",
+     "lengthM": 18975.4,
+     "relationId": 9320348,
+     "stops": 35,
+     "to": "ДС Малініна"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 42: Тралейбус №42 - ДС Дражня - ДС Уручча-4",
+   "ref": "42",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Дражня",
+     "headSign": "ДС Уручча-4",
+     "lengthM": 10242.3,
+     "relationId": 8058774,
+     "stops": 19,
+     "to": "ДС Уручча-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Уручча-4",
+     "headSign": "ДС Уручча-4",
+     "lengthM": 10422.2,
+     "relationId": 8058775,
+     "stops": 18,
+     "to": "ДС Дражня"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 44: Тралейбус №44 - Бабруйская - ДС Захад-3",
+   "ref": "44",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10090.3,
+     "relationId": 9341590,
+     "stops": 22,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10006.4,
+     "relationId": 9341591,
+     "stops": 21,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 45: Тралейбус №45 - ДС Сухарава-5 - ст.м. Пятроўшчына",
+   "ref": "45",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Сухарава-5",
+     "headSign": "Станцыя метро «Пятроўшчына»",
+     "lengthM": 7543.9,
+     "relationId": 15586754,
+     "stops": 17,
+     "to": "Станцыя метро «Пятроўшчына»"
+    },
+    {
+     "direction": 1,
+     "from": "Станцыя метро «Пятроўшчына»",
+     "headSign": "Станцыя метро «Пятроўшчына»",
+     "lengthM": 7647.7,
+     "relationId": 15589601,
+     "stops": 17,
+     "to": "Аўтастаянка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 46: Тралейбус №46 - Музычны тэатр - ДС Зялёны Луг",
+   "ref": "46",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Музычны тэатр",
+     "headSign": "Зялёны Луг-6",
+     "lengthM": 9343.7,
+     "relationId": 9343749,
+     "stops": 20,
+     "to": "Зялёны Луг-6"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Зялёны Луг-6",
+     "headSign": "ДС Зялёны Луг-6",
+     "lengthM": 10829.1,
+     "relationId": 9343750,
+     "stops": 18,
+     "to": "Музычны тэатр"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 47: Тралейбус №47 - ДС Масюкоўшчына - ДС Малінаўка-4",
+   "ref": "47",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Масюкоўшчына",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 15544.0,
+     "relationId": 8088423,
+     "stops": 37,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 15794.0,
+     "relationId": 8088424,
+     "stops": 37,
+     "to": "ДС Масюкоўшчына"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 49: ДС Чыжоўка-1 — Алега Кашавога",
+   "ref": "49",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Чыжоўка-1",
+     "headSign": "Алега Кашавога",
+     "lengthM": 9614.1,
+     "relationId": 7555711,
+     "stops": 20,
+     "to": "Алега Кашавога"
+    },
+    {
+     "direction": 1,
+     "from": "Алега Кашавога",
+     "headSign": "Алега Кашавога",
+     "lengthM": 9681.6,
+     "relationId": 7555712,
+     "stops": 20,
+     "to": "ДС Чыжоўка-1"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 5: Тралейбус №5 - Вакзал - Чэрвеньскі рынак",
+   "ref": "5",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Вакзал",
+     "headSign": "Чэрвеньскі рынак",
+     "lengthM": 5186.0,
+     "relationId": 7441991,
+     "stops": 11,
+     "to": "Чэрвеньскі рынак"
+    },
+    {
+     "direction": 1,
+     "from": "Чэрвеньскі рынак",
+     "headSign": "Чэрвеньскі рынак",
+     "lengthM": 5135.8,
+     "relationId": 7441992,
+     "stops": 11,
+     "to": "Вакзал"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 50: ДС Лошыца-2 — ст.м. Автозаводская",
+   "ref": "50",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Лошыца-2",
+     "headSign": "ст.м. Автозаводская",
+     "lengthM": 6339.6,
+     "relationId": 18611384,
+     "stops": 14,
+     "to": "ст.м. Автозаводская"
+    },
+    {
+     "direction": 1,
+     "from": "ст.м. Автозаводская",
+     "headSign": "ст.м. Автозаводская",
+     "lengthM": 6586.9,
+     "relationId": 18611385,
+     "stops": 14,
+     "to": "ДС Лошыца-2"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 52: Тралейбус №52 - ДС Малінаўка-4 - Люцынская",
+   "ref": "52",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Малінаўка-4",
+     "headSign": "Люцынская",
+     "lengthM": 12580.1,
+     "relationId": 9343873,
+     "stops": 27,
+     "to": "Люцынская"
+    },
+    {
+     "direction": 1,
+     "from": "Люцынская",
+     "headSign": "Люцынская",
+     "lengthM": 12660.0,
+     "relationId": 9343874,
+     "stops": 27,
+     "to": "ДС Малінаўка-4"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 53: Тралейбус №53 - ДС Зялёный луг-6 - ДС Малінаўка-4",
+   "ref": "53",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Зялёны Луг-6",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 20198.3,
+     "relationId": 9343927,
+     "stops": 39,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 19549.8,
+     "relationId": 9343928,
+     "stops": 42,
+     "to": "Зялёны Луг-6"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 55: Тралейбус №55 - Акадэмічная - ДС Кунцаўшчына",
+   "ref": "55",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 14554.3,
+     "relationId": 9345668,
+     "stops": 26,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 14914.3,
+     "relationId": 9345669,
+     "stops": 25,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 56: Тралейбус №56 - Дражня - ДС Серабранка",
+   "ref": "56",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Дражня",
+     "headSign": "Серабранка",
+     "lengthM": 8831.1,
+     "relationId": 12387358,
+     "stops": 16,
+     "to": "Серабранка"
+    },
+    {
+     "direction": 1,
+     "from": "ДС «Серабранка»",
+     "headSign": "ДС «Серабранка»",
+     "lengthM": 8890.7,
+     "relationId": 12387359,
+     "stops": 16,
+     "to": "Дражня"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 58: Тралейбус №58 - «ДС Масюкоўшчына - Бабруйская»",
+   "ref": "58",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8017.3,
+     "relationId": 7576940,
+     "stops": 16,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "Бабруйская",
+     "headSign": "Бабруйская",
+     "lengthM": 8775.3,
+     "relationId": 7576941,
+     "stops": 19,
+     "to": "ДС Масюкоўшчына"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 59: Тралейбус №59 - Даўгабродская - ДС Сярова",
+   "ref": "59",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Даўгабродская",
+     "headSign": "ДС Сярова",
+     "lengthM": 12087.6,
+     "relationId": 8061314,
+     "stops": 26,
+     "to": "ДС Сярова"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Сярова",
+     "headSign": "ДС Сярова",
+     "lengthM": 11831.5,
+     "relationId": 8061315,
+     "stops": 24,
+     "to": "Даўгабродская"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 6: Тралейбус №6 - ДС Лошыца-2 - Вакзал",
+   "ref": "6",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Лошыца-2",
+     "headSign": "Вакзал",
+     "lengthM": 8345.8,
+     "relationId": 7398566,
+     "stops": 17,
+     "to": "Вакзал"
+    },
+    {
+     "direction": 1,
+     "from": "Вакзал",
+     "headSign": "Вакзал",
+     "lengthM": 8680.6,
+     "relationId": 7398567,
+     "stops": 17,
+     "to": "ДС Лошыца-2"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 60: Тралейбус №60 - ст.м. Магілёўская - ДС Ангарская-4",
+   "ref": "60",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Станцыя метро «Магілёўская»",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 4284.9,
+     "relationId": 9345756,
+     "stops": 9,
+     "to": "ДС Ангарская-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Ангарская-4",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 3840.6,
+     "relationId": 9345757,
+     "stops": 9,
+     "to": "Станцыя метро «Магілёўская»"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 61: Тралейбус №61 - Акадэмічная - ДС Уручча-2",
+   "ref": "61",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10780.9,
+     "relationId": 9346736,
+     "stops": 20,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10697.0,
+     "relationId": 9346737,
+     "stops": 20,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 64: Тралейбус №64 - ДС Дружная - ДС ''Малінаўка-4''",
+   "ref": "64",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Дружная",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 10613.4,
+     "relationId": 8041018,
+     "stops": 24,
+     "to": "ДС Малінаўка-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Малінаўка-4",
+     "headSign": "ДС Малінаўка-4",
+     "lengthM": 10388.8,
+     "relationId": 8041019,
+     "stops": 23,
+     "to": "ДС Дружная"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 65: Тралейбус №65 - ДС Дражня - ДС Кунцаўшчына",
+   "ref": "65",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Пераходная",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 19613.7,
+     "relationId": 18612256,
+     "stops": 35,
+     "to": "ДС Кунцаўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 19507.6,
+     "relationId": 18612257,
+     "stops": 33,
+     "to": "Пераходная"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 66: Тралейбус №66 - Станцыя метро «Міхалова» - ДС ''Сухарава-5''",
+   "ref": "66",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 10489.6,
+     "relationId": 9346931,
+     "stops": 21,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 8773.1,
+     "relationId": 9346932,
+     "stops": 19,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 67: АВ Восточный — ДС Ангарская-4",
+   "ref": "67",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "АВ Восточный",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 9490.4,
+     "relationId": 9347925,
+     "stops": 18,
+     "to": "ДС Ангарская-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Ангарская-4",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 8921.4,
+     "relationId": 9347926,
+     "stops": 17,
+     "to": "АВ Восточный"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 7: Тралейбус №7: ДС Сухарава-5 - Бабруйская",
+   "ref": "7",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Сухарава-5",
+     "headSign": "Аўтавакзал Цэнтральны",
+     "lengthM": 13426.8,
+     "relationId": 7398563,
+     "stops": 28,
+     "to": "Аўтавакзал Цэнтральны"
+    },
+    {
+     "direction": 1,
+     "from": "Аўтавакзал Цэнтральны",
+     "headSign": "Аўтавакзал Цэнтральны",
+     "lengthM": 13111.0,
+     "relationId": 7398565,
+     "stops": 28,
+     "to": "Аўтастаянка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 77: Тралейбус №77 - Сапёраў - ДС Сухарава-5",
+   "ref": "77",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 12663.5,
+     "relationId": 9348748,
+     "stops": 24,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "",
+     "headSign": "",
+     "lengthM": 12010.9,
+     "relationId": 9348749,
+     "stops": 23,
+     "to": ""
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 79: Тралейбус №79 - Станцыя метро «Магілёўская» - ДС Ангарская-4",
+   "ref": "79",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Станцыя метро «Магілёўская»",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 5363.3,
+     "relationId": 18611156,
+     "stops": 12,
+     "to": "ДС Ангарская-4"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Ангарская-4",
+     "headSign": "ДС Ангарская-4",
+     "lengthM": 5203.1,
+     "relationId": 18611157,
+     "stops": 11,
+     "to": "Станцыя метро «Магілёўская»"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 8: Тралейбус №8 - ДС Сухарава-5 - ДС Дружная",
+   "ref": "8",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "",
+     "headSign": "",
+     "lengthM": 13291.4,
+     "relationId": 7576938,
+     "stops": 27,
+     "to": ""
+    },
+    {
+     "direction": 1,
+     "from": "ДС Дружная",
+     "headSign": "ДС Дружная",
+     "lengthM": 13026.4,
+     "relationId": 7576939,
+     "stops": 27,
+     "to": "Аўтастаянка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 82: Тралейбус №82 - Каржанеўскага - ДС Серабранка",
+   "ref": "82",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Каржанеўскага",
+     "headSign": "ДС Серабранка",
+     "lengthM": 13344.1,
+     "relationId": 8029769,
+     "stops": 28,
+     "to": "ДС Серабранка"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 9: Тралейбус №9 - Гарадскі Вал - ДС Кунцаўшчына",
+   "ref": "9",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "Гарадскі вал",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 12102.3,
+     "relationId": 9320995,
+     "stops": 25,
+     "to": "ДС Кунцаўшчына"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Кунцаўшчына",
+     "headSign": "ДС Кунцаўшчына",
+     "lengthM": 11669.6,
+     "relationId": 9320996,
+     "stops": 22,
+     "to": "Гарадскі вал"
+    }
+   ]
+  },
+  {
+   "mode": "trolleybus",
+   "name": "trolleybus 92: ДС Чижовка-6 — ДС Карастаянавай",
+   "ref": "92",
+   "variants": [
+    {
+     "direction": 0,
+     "from": "ДС Чижовка-6",
+     "headSign": "ДС Карастаянавай",
+     "lengthM": 15854.9,
+     "relationId": 9344053,
+     "stops": 28,
+     "to": "ДС Карастаянавай"
+    },
+    {
+     "direction": 1,
+     "from": "ДС Карастаянавай",
+     "headSign": "ДС Карастаянавай",
+     "lengthM": 15736.3,
+     "relationId": 9344057,
+     "stops": 26,
+     "to": "ДС Чижовка-6"
+    }
+   ]
+  }
+ ],
+ "generatedAt": "2026-11-16T21:16:48Z",
+ "note": "Все проверенные маршрутные отношения города (непрерывная геометрия, >=3 остановки на цепочке, все узлы внутри B-2). Направления — модельные метки 0/1 внутри пары ref, а не измеренная схема.",
+ "selection": {
+  "corridors": 200,
+  "method": "scripts/mobility/extract_network.py --write-city-corridors",
+  "pbfSha256": "da3ccdb434f90d6a55723950167e9d93dbbb27ff063a8d8da3588a74b61663f8",
+  "relations": 366
+ }
+}

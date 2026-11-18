@@ -1,0 +1,132 @@
+{
+  "generatedAt": "2026-11-16",
+  "area": "city",
+  "note": "Выбранные коридоры. Вход extract_network.py/build_network.py. ID отношений и направлений — из OSM; см. docs/mobility/ROUTES.md.",
+  "selection": {
+    "method": "python scripts/mobility/extract_network.py --survey (таблица кандидатов, docs/mobility/ROUTES.md)",
+    "criteria": [
+      "оба направления (пара route-отношений одного ref с противоположными конечными)",
+      ">=3 последовательные остановки, спроецированные на собранную цепочку",
+      "непрерывная геометрия (0 разрывов при склейке по общим узлам)",
+      "все узлы цепочки внутри CITY_BOUNDS_M (B-2)"
+    ],
+    "directionConvention": "direction 0 — вариант с меньшим OSM relation id пары; направление задаётся headSign, а не геометрией.",
+    "pbfSha256": "da3ccdb434f90d6a55723950167e9d93dbbb27ff063a8d8da3588a74b61663f8"
+  },
+  "corridors": [
+    {
+      "mode": "bus",
+      "ref": "39",
+      "name": "Аўтобус №39: ДС Усходняя — Шчадрына",
+      "variants": [
+        {
+          "relationId": 9444831,
+          "direction": 0,
+          "headSign": "Шчадрына",
+          "from": "ДС Усходняя (пасадка пасажыраў)",
+          "to": "Шчадрына",
+          "evidence": {
+            "wayMembers": 66,
+            "lengthM": 7531.5,
+            "gaps": 0,
+            "stops": 15,
+            "stopsOnChain": 15,
+            "monotonicStops": true,
+            "insideB2": true,
+            "signalsWithin25m": 29,
+            "bounds": [
+              -990.0,
+              -1105.8,
+              1888.9,
+              3603.9
+            ],
+            "lengthSource": "extracted geometry (network_raw.json, chain order)",
+            "signalsSource": "survey: highway=traffic_signals within 25 m of the extracted chain"
+          }
+        },
+        {
+          "relationId": 9444832,
+          "direction": 1,
+          "headSign": "ДС Усходняя",
+          "from": "Шчадрына",
+          "to": "ДС Усходняя (высадка пасажыраў)",
+          "evidence": {
+            "wayMembers": 75,
+            "lengthM": 8113.7,
+            "gaps": 0,
+            "stops": 14,
+            "stopsOnChain": 14,
+            "monotonicStops": true,
+            "insideB2": true,
+            "signalsWithin25m": 34,
+            "bounds": [
+              -990.0,
+              -1227.9,
+              1888.9,
+              3603.9
+            ],
+            "lengthSource": "extracted geometry (network_raw.json, chain order)",
+            "signalsSource": "survey: highway=traffic_signals within 25 m of the extracted chain"
+          }
+        }
+      ]
+    },
+    {
+      "mode": "tram",
+      "ref": "9",
+      "name": "Трамвай №9 — ДС Серабранка — Трактарны завод",
+      "variants": [
+        {
+          "relationId": 6797851,
+          "direction": 0,
+          "headSign": "РК Трактарны завод",
+          "from": "ДС Серабранка",
+          "to": "РК Трактарны завод",
+          "evidence": {
+            "wayMembers": 7,
+            "lengthM": 5835.1,
+            "gaps": 0,
+            "stops": 12,
+            "stopsOnChain": 12,
+            "monotonicStops": true,
+            "insideB2": true,
+            "signalsWithin25m": 33,
+            "bounds": [
+              2098.4,
+              -5803.3,
+              4369.1,
+              -1534.8
+            ],
+            "lengthSource": "extracted geometry (network_raw.json, chain order)",
+            "signalsSource": "survey: highway=traffic_signals within 25 m of the extracted chain"
+          }
+        },
+        {
+          "relationId": 6802765,
+          "direction": 1,
+          "headSign": "ДС Серабранка",
+          "from": "Трактарны завод",
+          "to": "ДС Серабранка",
+          "evidence": {
+            "wayMembers": 8,
+            "lengthM": 5851.3,
+            "gaps": 0,
+            "stops": 11,
+            "stopsOnChain": 11,
+            "monotonicStops": true,
+            "insideB2": true,
+            "signalsWithin25m": 35,
+            "bounds": [
+              2056.4,
+              -5724.9,
+              4365.3,
+              -1534.8
+            ],
+            "lengthSource": "extracted geometry (network_raw.json, chain order)",
+            "signalsSource": "survey: highway=traffic_signals within 25 m of the extracted chain"
+          }
+        }
+      ]
+    }
+  ]
+}

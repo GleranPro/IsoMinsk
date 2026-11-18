@@ -7,11 +7,19 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createCityApp } from '../engine/createCityApp';
-import type { BuildingSelection, CityAppHandle, EngineStats, MuseumExhibitSelection } from '../shared/appApi';
+import type {
+  BuildingSelection,
+  CityAppHandle,
+  EngineStats,
+  MobilityVehicleSelection,
+  MuseumExhibitSelection,
+} from '../shared/appApi';
+import type { MobilityStatus } from '../shared/mobility';
 import type { TileManifest } from '../shared/types';
 import { resolveDatasetName, resolveManifestUrl } from '../shared/config';
 import { MUSEUM } from '../shared/museum';
 import { InfoPanel } from './InfoPanel';
+import { MobilityPanel } from './MobilityPanel';
 import { MuseumPanel } from './MuseumPanel';
 import { ControlPanel } from './ControlPanel';
 import { AttributionPanel } from './AttributionPanel';
@@ -25,6 +33,12 @@ export interface UiState {
   orthoHeight: number;
   azimuth: number;
   azimuthMode: 'iso' | 'north' | 'free';
+  /** Mobility: show vehicles (rules keep running while hidden). */
+  mobilityVehicles: boolean;
+  /** Mobility: show signal heads (rules keep running while hidden). */
+  mobilitySignals: boolean;
+  /** Mobility: pause the simulation clock. */
+  mobilityPaused: boolean;
 }
 
 const DEFAULT_UI: UiState = {
@@ -35,6 +49,9 @@ const DEFAULT_UI: UiState = {
   orthoHeight: 420,
   azimuth: Math.PI / 4,
   azimuthMode: 'iso',
+  mobilityVehicles: true,
+  mobilitySignals: true,
+  mobilityPaused: false,
 };
 
 export function App() {
@@ -47,8 +64,10 @@ export function App() {
   const [stats, setStats] = useState<EngineStats | null>(null);
   const [selection, setSelection] = useState<BuildingSelection | null>(null);
   const [exhibit, setExhibit] = useState<MuseumExhibitSelection | null>(null);
+  const [vehicle, setVehicle] = useState<MobilityVehicleSelection | null>(null);
   const [ui, setUi] = useState<UiState>(DEFAULT_UI);
   const [manifest, setManifest] = useState<TileManifest | null>(null);
+  const [mobilityStatus, setMobilityStatus] = useState<MobilityStatus | null>(null);
 
   // engine lifecycle
   useEffect(() => {
@@ -79,8 +98,12 @@ export function App() {
       },
       onSelection: (next) => {
         setSelection(next);
-        if (next) setExhibit(null);
+        if (next) {
+          setExhibit(null);
+          setVehicle(null);
+        }
       },
+      onMobilitySelect: (next) => setVehicle(next),
       onExhibitSelect: (next) => setExhibit(next),
       onLoadingChange: (isLoading, value) => {
         setLoading(isLoading);
@@ -121,6 +144,44 @@ export function App() {
     app.setDebugWireframe(ui.wireframe);
     app.setTimeOfDay(ui.timeOfDay);
   }, [ready, ui.pixelEffect, ui.facadeDetail, ui.wireframe, ui.timeOfDay]);
+
+  // mobility switches go through the public handle; the engine keeps the rules
+  // running even when vehicles/signals are hidden.
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app || !ready) return;
+    app.setMobilitySettings({
+      vehiclesVisible: ui.mobilityVehicles,
+      signalsVisible: ui.mobilitySignals,
+      paused: ui.mobilityPaused,
+    });
+  }, [ready, ui.mobilityVehicles, ui.mobilitySignals, ui.mobilityPaused]);
+
+  // Clock/data status is polled at 1 Hz: it carries the service date and the
+  // simulation counters, which are not part of the renderer stats.
+  useEffect(() => {
+    if (!ready) return;
+    const update = () => {
+      const app = appRef.current;
+      if (!app) return;
+      const next = app.getMobilityStatus();
+      setMobilityStatus((prev) =>
+        prev &&
+        prev.state === next.state &&
+        prev.serviceDate === next.serviceDate &&
+        Math.floor(prev.serviceSeconds) === Math.floor(next.serviceSeconds) &&
+        prev.activeTrips === next.activeTrips &&
+        prev.drawnTrips === next.drawnTrips &&
+        prev.loadedChunks === next.loadedChunks &&
+        prev.notes.length === next.notes.length
+          ? prev
+          : next,
+      );
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [ready]);
 
   const resetCamera = useCallback(() => {
     appRef.current?.resetCamera();
@@ -188,10 +249,21 @@ export function App() {
         onRefreshStats={snapshotStats}
         onRotate={rotateCamera}
         stats={stats}
+        mobilityStatus={mobilityStatus}
         disabled={!ready}
       />
 
       <InfoPanel selection={selection} onClose={() => appRef.current?.clearSelection()} />
+
+      {vehicle && (
+        <MobilityPanel
+          selection={vehicle}
+          onClose={() => {
+            appRef.current?.clearMobilitySelection();
+            setVehicle(null);
+          }}
+        />
+      )}
 
       {exhibit && (
         <MuseumPanel

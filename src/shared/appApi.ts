@@ -7,6 +7,7 @@
  */
 
 import type { BuildingFeature, FeatureId } from './types';
+import type { MobilityDebugDump, MobilitySettings, MobilityStatus } from './mobility';
 
 export interface BuildingSelection {
   id: FeatureId;
@@ -41,6 +42,27 @@ export interface MuseumExhibitPreview {
   spanM: number;
 }
 
+/** A public-transport vehicle picked on the map. */
+export interface MobilityVehicleSelection {
+  tripId: string;
+  /** Public route number as shown to passengers ("39", "9"). */
+  ref: string;
+  mode: 'bus' | 'trolleybus' | 'tram';
+  /** Destination / headsign text of this direction. */
+  headSign: string;
+  /** Name of the next stop on the trip (empty when unavailable). */
+  nextStopName: string;
+  /** Schedule delay in seconds (positive = late). */
+  delayS: number;
+  /** Current speed, m/s. */
+  speed: number;
+  /** Trip phase shown to the user ("moving" | "dwelling" | …). */
+  phase: string;
+  /** Screen-space anchor for the card. */
+  screenX: number;
+  screenY: number;
+}
+
 export interface EngineStats {
   fps: number;
   frameMs: number;
@@ -53,6 +75,12 @@ export interface EngineStats {
   renderHeight: number;
   /** Approximate GPU geometry memory in megabytes. */
   geometryMB: number;
+  /**
+   * Mobility layer counters (active/drawn trips, chunks, simulation cost).
+   * Absent when the mobility layer is disabled or failed to load: the existing
+   * city counters alone do not cover the dynamic layer.
+   */
+  mobility?: MobilityStatus;
 }
 
 export interface CityAppOptions {
@@ -65,6 +93,8 @@ export interface CityAppOptions {
   onSelection?: (selection: BuildingSelection | null) => void;
   /** Called when a museum exhibit is clicked (or the selection is cleared). */
   onExhibitSelect?: (selection: MuseumExhibitSelection | null) => void;
+  /** Called when a vehicle is clicked (or the selection is cleared). */
+  onMobilitySelect?: (selection: MobilityVehicleSelection | null) => void;
   /** Called when a tile finishes loading (for the loading indicator). */
   onLoadingChange?: (loading: boolean, progress: number) => void;
   /** Called on fatal initialisation errors (e.g. WebGL2 unavailable). */
@@ -128,4 +158,32 @@ export interface CityAppHandle {
   getExhibitPreview(index: number): MuseumExhibitPreview | null;
   /** Clear the museum exhibit selection (card closes). */
   clearExhibit(): void;
+
+  /* --- Mobility layer (public transport + traffic signals) --------------- */
+
+  /**
+   * Layer switches. Hiding vehicles or signal heads never stops the rules:
+   * the simulation clock and the signal controller keep running.
+   */
+  setMobilitySettings(settings: Partial<MobilitySettings>): void;
+  getMobilitySettings(): MobilitySettings;
+  /**
+   * Clock/data status for the control panel. Always available (an unavailable
+   * payload reports `state: 'unavailable'` instead of throwing).
+   */
+  getMobilityStatus(): MobilityStatus;
+  /**
+   * QA snapshot of the deterministic simulation (clock, trips, signal state).
+   * Returns null until the mobility payload has loaded.
+   */
+  getMobilityDump(): MobilityDebugDump | null;
+  /**
+   * QA hook: pin the service date the schedule is resolved for (`null` returns
+   * to the live clock). Changing it re-initialises trips explicitly.
+   * `secondsOfDay` pins the local time of day (default 08:00); it exists so QA
+   * can frame a specific vehicle deterministically instead of waiting for it.
+   */
+  setMobilityServiceDate(date: string | null, secondsOfDay?: number): void;
+  /** Clear the vehicle selection highlight (the card closes in the shell). */
+  clearMobilitySelection(): void;
 }
