@@ -1,0 +1,142 @@
+{
+ "tilesDir": "public/data/city-tiles",
+ "sampled": 16,
+ "totalTiles": 437,
+ "textMB": 292,
+ "meanParseMs": 3.8,
+ "meanBuildMs": 16.5,
+ "projectedTransferMB": 292,
+ "projectedParseS": 1.6,
+ "projectedBuildS1Worker": 7.2,
+ "projectedBuildS4Workers": 1.8,
+ "rows": [
+  {
+   "file": "-11_-9.json",
+   "textMB": 0.09,
+   "parseMs": 1.2,
+   "buildMs": 25.6,
+   "buildings": 0,
+   "triangles": 11164
+  },
+  {
+   "file": "-10_-1.json",
+   "textMB": 0.27,
+   "parseMs": 1.6,
+   "buildMs": 15.6,
+   "buildings": 0,
+   "triangles": 9665
+  },
+  {
+   "file": "-9_7.json",
+   "textMB": 1.32,
+   "parseMs": 7,
+   "buildMs": 34.1,
+   "buildings": 0,
+   "triangles": 395187
+  },
+  {
+   "file": "-7_-4.json",
+   "textMB": 0.5,
+   "parseMs": 2.9,
+   "buildMs": 16,
+   "buildings": 0,
+   "triangles": 59602
+  },
+  {
+   "file": "-6_4.json",
+   "textMB": 0.39,
+   "parseMs": 2.6,
+   "buildMs": 23.2,
+   "buildings": 0,
+   "triangles": 19530
+  },
+  {
+   "file": "-4_-7.json",
+   "textMB": 0.65,
+   "parseMs": 3.9,
+   "buildMs": 12.6,
+   "buildings": 0,
+   "triangles": 54272
+  },
+  {
+   "file": "-3_1.json",
+   "textMB": 0.59,
+   "parseMs": 3.8,
+   "buildMs": 20.7,
+   "buildings": 0,
+   "triangles": 28956
+  },
+  {
+   "file": "-2_9.json",
+   "textMB": 0.52,
+   "parseMs": 2.8,
+   "buildMs": 10.4,
+   "buildings": 0,
+   "triangles": 103489
+  },
+  {
+   "file": "0_-2.json",
+   "textMB": 0.89,
+   "parseMs": 5.6,
+   "buildMs": 18.3,
+   "buildings": 0,
+   "triangles": 31079
+  },
+  {
+   "file": "1_6.json",
+   "textMB": 0.65,
+   "parseMs": 3.5,
+   "buildMs": 14.5,
+   "buildings": 0,
+   "triangles": 163321
+  },
+  {
+   "file": "3_-5.json",
+   "textMB": 0.52,
+   "parseMs": 3.5,
+   "buildMs": 15.6,
+   "buildings": 0,
+   "triangles": 41288
+  },
+  {
+   "file": "4_3.json",
+   "textMB": 0.62,
+   "parseMs": 3.4,
+   "buildMs": 10.5,
+   "buildings": 0,
+   "triangles": 79891
+  },
+  {
+   "file": "6_-8.json",
+   "textMB": 0.22,
+   "parseMs": 1.2,
+   "buildMs": 2.6,
+   "buildings": 0,
+   "triangles": 57419
+  },
+  {
+   "file": "7_0.json",
+   "textMB": 0.62,
+   "parseMs": 3.8,
+   "buildMs": 16.7,
+   "buildings": 0,
+   "triangles": 137158
+  },
+  {
+   "file": "8_8.json",
+   "textMB": 1.4,
+   "parseMs": 7,
+   "buildMs": 12.2,
+   "buildings": 0,
+   "triangles": 448004
+  },
+  {
+   "file": "10_-3.json",
+   "textMB": 1.44,
+   "parseMs": 6.3,
+   "buildMs": 15.9,
+   "buildings": 0,
+   "triangles": 448111
+  }
+ ]
+}

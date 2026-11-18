@@ -27,7 +27,7 @@ from shapely.geometry import Point, Polygon, box  # noqa: E402
 
 import trees  # noqa: E402
 
-HALF = 1000.0
+BOUNDS = (-1000.0, -1000.0, 1000.0, 1000.0)
 IDENTITY = lambda lon, lat: (float(lon), float(lat))  # noqa: E731
 TREE_FIELDS = {"x", "y", "height", "radius", "variation", "mapped"}
 
@@ -54,7 +54,7 @@ def build(**overrides):
         "hard_masks": [],
         "soft_masks": [],
         "to_local": IDENTITY,
-        "half": HALF,
+        "bounds": BOUNDS,
         "max_total_trees": 1000,
     }
     params.update(overrides)
@@ -175,7 +175,7 @@ class TreeRowTests(unittest.TestCase):
         self.assertEqual([t["x"] for t in placed], [0.0, 14.0, 21.0])
 
     def test_row_is_clipped_to_the_area(self):
-        placed, _ = build(row_raw=[row(10, [(-100, 0), (100, 0)])], half=10.0)
+        placed, _ = build(row_raw=[row(10, [(-100, 0), (100, 0)])], bounds=(-10.0, -10.0, 10.0, 10.0))
         self.assertTrue(placed)
         for instance in placed:
             self.assertLessEqual(abs(instance["x"]), 10.0)

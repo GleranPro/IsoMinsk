@@ -84,11 +84,23 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--area", choices=["pilot", "city"], default="pilot",
                         help="validate the central dataset or the city-scale one")
+    parser.add_argument("--tiles-dir", default=None,
+                        help="tile dataset directory to validate (default: public/data/...)")
+    parser.add_argument("--coverage", default=None,
+                        help="coverage JSON from normalize.py (default: data/processed/...)")
+    parser.add_argument("--report", default=None,
+                        help="output markdown path (default: docs/COVERAGE_REPORT*.md)")
     args = parser.parse_args()
     if args.area == "city":
         TILES_DIR = ROOT / "public/data/city-tiles"
         COVERAGE_JSON = ROOT / "data/processed/coverage_city.json"
         REPORT_MD = ROOT / "docs/COVERAGE_REPORT_CITY.md"
+    if args.tiles_dir:
+        TILES_DIR = Path(args.tiles_dir)
+    if args.coverage:
+        COVERAGE_JSON = Path(args.coverage)
+    if args.report:
+        REPORT_MD = Path(args.report)
 
     manifest_path = TILES_DIR / "manifest.json"
     if not manifest_path.exists():
@@ -392,7 +404,12 @@ def main() -> int:
         lines.append(f"- Extraction date: {meta.get('extracted_at', 'unknown')}")
         lines.append(f"- Attribution: {meta.get('attribution', '© OpenStreetMap contributors, ODbL 1.0')}")
         area = coverage.get("area", {})
-        lines.append(f"- Pilot area: {area.get('pilotSizeM')} m × {area.get('pilotSizeM')} m, "
+        if "boundsLocal" in area:
+            bminx, bminy, bmaxx, bmaxy = area["boundsLocal"]
+            area_text = f"Area: {bmaxx - bminx:,.0f} m × {bmaxy - bminy:,.0f} m"
+        else:
+            area_text = f"Pilot area: {area.get('pilotSizeM')} m × {area.get('pilotSizeM')} m"
+        lines.append(f"- {area_text}, "
                      f"tile size {area.get('tileSizeM')} m, projection EPSG:{manifest.get('epsg')}")
         lines.append(f"- Local origin (UTM 35N): {area.get('originUtm')}")
     lines.append("")

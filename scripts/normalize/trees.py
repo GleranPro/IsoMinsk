@@ -239,10 +239,18 @@ def _number(value) -> float | None:
         return None
 
 
-def mapped_tree_instance(raw: dict, to_local: Callable, half: float) -> dict | None:
+def _inside_bounds(x: float, y: float, bounds: tuple[float, float, float, float]) -> bool:
+    """True when (x, y) lies inside the local-metre area rectangle."""
+    minx, miny, maxx, maxy = bounds
+    return minx <= x <= maxx and miny <= y <= maxy
+
+
+def mapped_tree_instance(
+    raw: dict, to_local: Callable, bounds: tuple[float, float, float, float]
+) -> dict | None:
     """OSM `natural=tree` node -> TreeInstance (height/crown fallbacks as 0.4.2)."""
     x, y = to_local(raw["lon"], raw["lat"])
-    if not (-half <= x <= half and -half <= y <= half):
+    if not _inside_bounds(x, y, bounds):
         return None
     seed = int(raw.get("osm_id") or 0) % 1000 / 1000.0
     height = _number(raw.get("height"))
@@ -314,17 +322,17 @@ def sample_row_line(line: LineString, step: float = TREE_ROW_STEP_M) -> list[tup
 def row_point_instances(
     rows: Sequence[dict],
     to_local: Callable,
-    half: float,
+    bounds: tuple[float, float, float, float],
 ) -> list[tuple[dict, int, dict]]:
     """Tree-row records -> `(raw row, point index, TreeInstance)` candidates.
 
-    Rows are clipped to the area square ([-half, half]^2) before sampling. The
-    instances carry the same fields as mapped nodes; `TreeInstance` has no
-    `leaf_type` field, so conifers are only counted in the statistics (the
-    payload format change is deliberately avoided in W3).
+    Rows are clipped to the area rectangle before sampling. The instances carry
+    the same fields as mapped nodes; `TreeInstance` has no `leaf_type` field, so
+    conifers are only counted in the statistics (the payload format change is
+    deliberately avoided in W3).
     """
     candidates: list[tuple[dict, int, dict]] = []
-    area = box(-half, -half, half, half)
+    area = box(*bounds)
     for raw in rows:
         if not isinstance(raw, dict):
             continue
@@ -338,7 +346,7 @@ def row_point_instances(
         index = 0
         for segment in iter_lines(clipped):
             for x, y in sample_row_line(segment):
-                if not (-half <= x <= half and -half <= y <= half):
+                if not _inside_bounds(x, y, bounds):
                     continue
                 seed = _stable_row_seed(raw.get("osm_id"), index)
                 index += 1
@@ -752,7 +760,7 @@ def build_trees(
     hard_masks: Sequence[Polygon] = (),
     soft_masks: Sequence[Polygon] = (),
     to_local: Callable,
-    half: float,
+    bounds: tuple[float, float, float, float],
     max_total_trees: int,
     tile_size: float = 1024.0,
     max_trees_per_tile: int = MAX_TREES_PER_TILE,
@@ -779,7 +787,7 @@ def build_trees(
         if not isinstance(raw, dict) or "lon" not in raw or "lat" not in raw:
             continue
         try:
-            instance = mapped_tree_instance(raw, to_local, half)
+            instance = mapped_tree_instance(raw, to_local, bounds)
         except Exception:
             continue
         if instance is not None:
@@ -801,7 +809,7 @@ def build_trees(
 
     # 3. W3: tree rows become evenly spaced mapped points, then get the same
     # hard-surface rule and a 3 m duplicate check against mapped nodes.
-    row_candidates = row_point_instances(row_raw, to_local, half)
+    row_candidates = row_point_instances(row_raw, to_local, bounds)
     stats["trees_rows_raw"] = len(row_raw)
     stats["trees_mapped_rows_points_raw"] = len(row_candidates)
     point_tree = (

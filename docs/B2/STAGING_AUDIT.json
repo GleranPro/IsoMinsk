@@ -1,0 +1,143 @@
+{
+ "schema": 1,
+ "tilesDir": "public\\data\\city-tiles-b2",
+ "coverage": "data\\processed\\coverage_city_b2.json",
+ "checks": [
+  {
+   "name": "manifest present",
+   "ok": true,
+   "detail": "public\\data\\city-tiles-b2\\manifest.json"
+  },
+  {
+   "name": "tile size",
+   "ok": true,
+   "detail": "manifest 1024.0 vs expected 1024.0"
+  },
+  {
+   "name": "area bounds",
+   "ok": true,
+   "detail": "manifest [-11264.0, -9216.0, 12288.0, 10240.0] vs expected [-11264.0, -9216.0, 12288.0, 10240.0]"
+  },
+  {
+   "name": "tile range",
+   "ok": true,
+   "detail": "manifest {'minX': -11, 'minY': -9, 'maxX': 11, 'maxY': 9} vs expected {'minX': -11, 'minY': -9, 'maxX': 11, 'maxY': 9}"
+  },
+  {
+   "name": "address book",
+   "ok": true,
+   "detail": "437 addresses, expected 437; missing=[] extra=[]"
+  },
+  {
+   "name": "tile count",
+   "ok": true,
+   "detail": "437 tiles vs expected 437"
+  },
+  {
+   "name": "all tile files present",
+   "ok": true,
+   "detail": "0 missing: []"
+  },
+  {
+   "name": "tile payloads consistent",
+   "ok": true,
+   "detail": "0 problems: []"
+  },
+  {
+   "name": "building ids unique",
+   "ok": true,
+   "detail": "0 duplicates: []"
+  },
+  {
+   "name": "crossingBuildingIds resolve",
+   "ok": true,
+   "detail": "0 unknown ids: []"
+  },
+  {
+   "name": "manifest count: buildings",
+   "ok": true,
+   "detail": "manifest 76004 vs payload 76004"
+  },
+  {
+   "name": "manifest count: trees",
+   "ok": true,
+   "detail": "manifest 1910624 vs payload 1910624"
+  },
+  {
+   "name": "manifest count: attractions",
+   "ok": true,
+   "detail": "manifest 2 vs payload 2"
+  },
+  {
+   "name": "manifest count: crossings",
+   "ok": true,
+   "detail": "manifest 8939 vs payload 8939"
+  },
+  {
+   "name": "manifest count: junctions",
+   "ok": true,
+   "detail": "manifest 17244 vs payload 17244"
+  },
+  {
+   "name": "manifest count: surfaces",
+   "ok": true,
+   "detail": "manifest 43806 vs payload 43806"
+  },
+  {
+   "name": "coverage report present",
+   "ok": true,
+   "detail": "data\\processed\\coverage_city_b2.json"
+  },
+  {
+   "name": "coverage area bounds",
+   "ok": true,
+   "detail": "[-11264.0, -9216.0, 12288.0, 10240.0] vs [-11264.0, -9216.0, 12288.0, 10240.0]"
+  },
+  {
+   "name": "trees budget scale is 1",
+   "ok": true,
+   "detail": "treesBudgetScale=1.0 (global thinning is not accepted)"
+  },
+  {
+   "name": "per-tile tree cap respected",
+   "ok": true,
+   "detail": "max 16000 vs cap 16000"
+  },
+  {
+   "name": "tree component counts add up",
+   "ok": true,
+   "detail": "parts {'mapped points': 6124, 'mapped rows': 14745, 'heuristic': 1889755} vs payload 1910624"
+  },
+  {
+   "name": "baseline present",
+   "ok": true,
+   "detail": "D:\\Workk\\VoxelMinsk\\docs\\B2\\BASELINE.json"
+  },
+  {
+   "name": "working dataset unchanged",
+   "ok": true,
+   "detail": "public/data/city-tiles manifest differs from BASELINE.json"
+  },
+  {
+   "name": "derived untouched: data/processed/coverage_city.json",
+   "ok": true,
+   "detail": "data/processed/coverage_city.json changed during staging"
+  },
+  {
+   "name": "derived untouched: data/processed/city_area_normalized.json",
+   "ok": true,
+   "detail": "data/processed/city_area_normalized.json changed during staging"
+  },
+  {
+   "name": "derived untouched: data/processed/city_normalized.json",
+   "ok": true,
+   "detail": "data/processed/city_normalized.json changed during staging"
+  },
+  {
+   "name": "derived untouched: docs/COVERAGE_REPORT_CITY.md",
+   "ok": true,
+   "detail": "docs/COVERAGE_REPORT_CITY.md changed during staging"
+  }
+ ],
+ "failed": 0
+}
