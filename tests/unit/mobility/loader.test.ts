@@ -192,6 +192,29 @@ describe('MobilityLoader', () => {
     loader.dispose();
   });
 
+  it('evicts an old chunk when the byte budget is full and the camera moves', async () => {
+    const server = createServer(manifestFixture());
+    const loader = new MobilityLoader({
+      baseUrl: BASE,
+      fetchImpl: server.fetchImpl,
+      chunkMarginM: 0,
+      // Ровно один chunk: после переезда камеры старый должен уступить место,
+      // иначе новые чанки области не загрузятся, а маршруты останутся на хордах.
+      maxChunkBytes: 120,
+    });
+    await loader.start();
+    loader.update(SMALL_RECT);
+    await loader.whenIdle();
+    expect(loader.debugState().loaded).toEqual(['0_0']);
+
+    const moved = { minX: 266, minY: 266, maxX: 276, maxY: 276 };
+    loader.update(moved);
+    await loader.whenIdle();
+    expect(loader.debugState().loaded).toEqual(['1_1']);
+    expect(server.requests).toContain(chunkUrl('1_1'));
+    loader.dispose();
+  });
+
   it('reports an incompatible version as error and keeps the map usable', async () => {
     const server = createServer(manifestFixture({ version: MOBILITY_VERSION + 1 }));
     const loader = new MobilityLoader({ baseUrl: BASE, fetchImpl: server.fetchImpl });

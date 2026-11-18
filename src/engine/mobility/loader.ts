@@ -290,6 +290,21 @@ export class MobilityLoader {
     return this.chunks.size;
   }
 
+  /** QA: last rect and the chunk window the loader actually holds. */
+  debugState(): {
+    lastRect: MobilityLoadRect | null;
+    desired: string[];
+    loaded: string[];
+    inflight: string[];
+  } {
+    return {
+      lastRect: this.lastRect ? { ...this.lastRect } : null,
+      desired: [...this.desiredKeys],
+      loaded: [...this.chunks.keys()],
+      inflight: [...this.inflightChunks.keys()],
+    };
+  }
+
   getStats(): MobilityLoaderStats {
     return {
       state: this.currentState,
@@ -484,10 +499,45 @@ export class MobilityLoader {
         this.chunks.size > 0 &&
         this.estimatedBytes() + estimated > this.maxChunkBytes
       ) {
-        break;
+        // Бюджет занят чанками прошлых видов камеры. Раньше здесь был просто
+        // break: лимит не превышен, поэтому trimChunks ничего не выгружал, а
+        // новые чанки области никогда не запрашивались — маршруты навсегда
+        // оставались на хордах. Освобождаем LRU-чанки вне текущего окна.
+        let evicted = false;
+        while (this.estimatedBytes() + estimated > this.maxChunkBytes) {
+          if (!this.evictOldestUndesired()) break;
+          evicted = true;
+        }
+        if (evicted) this.options.onChunksChanged?.();
+        if (this.estimatedBytes() + estimated > this.maxChunkBytes) break;
       }
       this.startChunkLoad(next);
     }
+  }
+
+  /**
+   * Выгружает один самый старый chunk вне текущего окна; false — нечего.
+   * Уведомление `onChunksChanged` делает вызывающий код (пачкой на несколько
+   * выгрузок), чтобы переезд камеры не пересобирал индекс на каждый chunk.
+   */
+  private evictOldestUndesired(): boolean {
+    let victimKey: string | null = null;
+    let victimUsed = Number.POSITIVE_INFINITY;
+    for (const [key, loaded] of this.chunks) {
+      if (this.desiredKeys.has(key)) continue;
+      if (loaded.lastUsed < victimUsed) {
+        victimUsed = loaded.lastUsed;
+        victimKey = key;
+      }
+    }
+    if (victimKey === null) return false;
+    const loaded = this.chunks.get(victimKey);
+    if (!loaded) return false;
+    this.chunks.delete(victimKey);
+    this.loadedBytesCount = Math.max(0, this.loadedBytesCount - loaded.bytes);
+    this.signalNodesCache = null;
+    this.chunkRevision += 1;
+    return true;
   }
 
   private estimatedBytes(): number {
