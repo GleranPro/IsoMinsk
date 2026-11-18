@@ -47,10 +47,6 @@ tmp_*.py
 # DSH harness local plugin state
 .dsh-plugins/
 
-# Whole-city mobility demo payload (personal, generated locally: ~50 MB).
-# Default corridor payload stays in public/data/mobility/.
-public/data/mobility-city/
-
 # GitHub Pages artifact assembled by scripts/qa/build-pages.mjs (never committed).
 # Only its compact publication-report.json is committable.
 .pages/

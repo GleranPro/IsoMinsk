@@ -35,6 +35,7 @@ export const REQUIRED_ARTIFACT_PATHS: readonly string[] = [
   'data/museum/manifest.json',
   'data/museum/exhibits.bin',
   'data/mobility/manifest.json',
+  'data/mobility-city/manifest.json',
 ];
 
 /** Directory names that must never appear inside a published artifact. */
@@ -185,6 +186,7 @@ export interface ArtifactManifest {
     cityTiles: number;
     museumFiles: number;
     mobilityFiles: number;
+    mobilityCityFiles: number;
   };
 }
 
@@ -405,7 +407,7 @@ function collectDirectories(entries: ArtifactEntry[]): string[] {
   return [...directories].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
-const PUBLIC_DATA_WHITELIST = ['data/city-tiles/', 'data/museum/', 'data/mobility/'];
+const PUBLIC_DATA_WHITELIST = ['data/city-tiles/', 'data/museum/', 'data/mobility/', 'data/mobility-city/'];
 
 function checkDataPath(sitePath: string): Problem | null {
   if (sitePath === 'data' || sitePath.startsWith('data/')) {
@@ -416,7 +418,7 @@ function checkDataPath(sitePath: string): Problem | null {
       return {
         code: 'forbidden-artifact-path',
         path: sitePath,
-        message: 'only data/city-tiles, data/museum, data/mobility, data/ATTRIBUTION.md and data/LICENSE-ODbL.txt may be published',
+        message: 'only data/city-tiles, data/museum, data/mobility, data/mobility-city, data/ATTRIBUTION.md and data/LICENSE-ODbL.txt may be published',
       };
     }
   }
@@ -608,11 +610,19 @@ export function planWhitelistAdditions(options: PlanOptions): ArtifactEntry[] {
   requireFile(join(publicDir, 'data', 'museum', 'manifest.json'), 'required publication file public/data/museum/manifest.json');
   requireFile(join(publicDir, 'data', 'museum', 'exhibits.bin'), 'required publication file public/data/museum/exhibits.bin');
   requireFile(join(publicDir, 'data', 'mobility', 'manifest.json'), 'required publication file public/data/mobility/manifest.json');
+  requireFile(join(publicDir, 'data', 'mobility-city', 'manifest.json'), 'required publication file public/data/mobility-city/manifest.json');
 
   const cityEntries = withSitePrefix(walkFiles(cityDir), 'data/city-tiles');
   const museumEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'museum')), 'data/museum');
   const mobilityEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'mobility')), 'data/mobility');
-  const combined = sortBySitePath([...entries, ...cityEntries, ...museumEntries, ...mobilityEntries]);
+  const mobilityCityEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'mobility-city')), 'data/mobility-city');
+  const combined = sortBySitePath([
+    ...entries,
+    ...cityEntries,
+    ...museumEntries,
+    ...mobilityEntries,
+    ...mobilityCityEntries,
+  ]);
   const seen = new Set<string>();
   for (const entry of combined) {
     if (seen.has(entry.sitePath)) throw new PublicationError(`duplicate artifact path: ${entry.sitePath}`);
@@ -681,7 +691,10 @@ export function createArtifactManifest(entries: ArtifactEntry[], options: Manife
   const classification = classifyArtifactSize(totalBytes);
   const cityTileFiles = files.filter((file) => file.path.startsWith('data/city-tiles/')).length;
   const museumFiles = files.filter((file) => file.path.startsWith('data/museum/')).length;
-  const mobilityFiles = files.filter((file) => file.path.startsWith('data/mobility/')).length;
+  const mobilityFiles = files.filter(
+    (file) => file.path.startsWith('data/mobility/'),
+  ).length;
+  const mobilityCityFiles = files.filter((file) => file.path.startsWith('data/mobility-city/')).length;
   return {
     schemaVersion: 1,
     generator: options.generator ?? 'scripts/qa/build-pages.mjs',
@@ -699,6 +712,7 @@ export function createArtifactManifest(entries: ArtifactEntry[], options: Manife
       cityTiles: Math.max(0, cityTileFiles - 1),
       museumFiles,
       mobilityFiles,
+      mobilityCityFiles,
     },
   };
 }

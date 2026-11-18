@@ -513,12 +513,12 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // --- mobility: public transport + traffic signals ------------------------
   // Independent of the tile pipeline: a missing/incompatible payload leaves the
   // map fully usable (the status reports why nothing moves).
-  // По умолчанию — проверенные два коридора из `public/data/mobility/`: эти
-  // данные входят в публикацию Pages. Городской payload (~50 МБ) собирается
-  // только локально и в публикацию не входит, поэтому включается явным
-  // `?mobility=city`; `?mobility=corridors` оставлен для совместимости.
+  // По умолчанию — полный городской payload `public/data/mobility-city`
+  // (195 маршрутов); он входит в публикацию Pages. `?mobility=corridors`
+  // оставляет лёгкий набор из двух проверенных коридоров
+  // (`public/data/mobility/`), `?mobility=city` сохранён для совместимости.
   const mobilityParam = params.get('mobility');
-  const useCityMobility = mobilityParam === 'city';
+  const useCityMobility = mobilityParam !== 'corridors';
   const mobility = new MobilityController({
     baseUrl: useCityMobility ? publicAssetUrl('data/mobility-city') : undefined,
     mobile: typeof window !== 'undefined' && window.matchMedia

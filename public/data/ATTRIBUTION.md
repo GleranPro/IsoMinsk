@@ -2,8 +2,9 @@
 
 This artifact publishes **one** dataset: the complete-city tile database in
 `data/city-tiles/`, together with the curated Lipki aviation-museum payload in
-`data/museum/`, the public-transport demo payload in `data/mobility/` and the
-static application.
+`data/museum/`, the public-transport payloads in `data/mobility-city/`
+(complete city) and `data/mobility/` (two demo corridors), and the static
+application.
 
 The GitHub Pages URL is provisioned by the repository owner. No repository
 owner/name, domain or source-code licence is assumed or invented in this file.
@@ -92,16 +93,19 @@ this inventory as legal advice. The committed
 may lag behind newly added exhibits; regenerate it with
 `scripts/qa/museum_licenses.py` before a release.
 
-## 3. Public transport demo payload — ODbL geometry, demo timetable
+## 3. Public transport payloads — ODbL geometry, demo timetable
 
-`data/mobility/` is a **demonstration** payload: route geometry, stops, signal
-nodes and street-network edges for two corridors (bus 39, tram 9) are derived
-from the same OpenStreetMap extract as the tile database, under **ODbL 1.0**.
-The timetable is synthetic (`scheduleStatus` in `data/mobility/manifest.json`
-names the demo source). It is **not** the Minsktrans public schedule and must
-not be presented as one; no Minsktrans data is redistributed here.
+`data/mobility-city/` is the **complete-city** transport payload: route
+geometry, stops, signal nodes and street-network edges for 195 route numbers
+(344 directed variants) are derived from the same OpenStreetMap extract as the
+tile database, under **ODbL 1.0**. `data/mobility/` is the lightweight
+demonstration subset with two verified corridors (bus 39, tram 9). Timetables
+are synthetic (`scheduleStatus` in each `manifest.json` names the source).
+They are **not** the Minsktrans public schedule and must not be presented as
+one; no Minsktrans data is redistributed here.
 
-* Database: `data/mobility/` (`manifest.json`, `chunks/*.json`, `routes/*.json`).
+* Databases: `data/mobility-city/` and `data/mobility/` (`manifest.json`,
+  `chunks/*.json`, `routes/*.json`).
 * Source: OpenStreetMap contributors, via the extract described in section 1.
 * Modifications: directed street/rail network, lane offsets, stop projection,
   bridge heights, and a procedural timetable with demo calendars.

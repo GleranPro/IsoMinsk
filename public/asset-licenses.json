@@ -30,11 +30,13 @@
       "thirdParty": true,
       "artifactPaths": [
         "data/city-tiles/**",
-        "data/mobility/**"
+        "data/mobility/**",
+        "data/mobility-city/**"
       ],
       "sourcePaths": [
         "public/data/city-tiles/**",
         "public/data/mobility/**",
+        "public/data/mobility-city/**",
         "scripts/ingest/**",
         "scripts/normalize/**",
         "scripts/mobility/**"

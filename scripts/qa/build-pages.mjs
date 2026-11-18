@@ -194,7 +194,7 @@ function main() {
   console.log(`site:      ${repoRelative(repoRoot, site)}`);
   console.log(`dist:      ${repoRelative(repoRoot, distDir)}`);
   console.log(`city:      ${repoRelative(repoRoot, cityDir)} (version ${cityVersion}, ${manifest.counts.cityTiles} tiles, ${manifest.city.tileBytes} bytes)`);
-  console.log(`files:     ${manifest.counts.files} (city tile files ${manifest.counts.cityTileFiles}, museum files ${manifest.counts.museumFiles}, mobility files ${manifest.counts.mobilityFiles})`);
+  console.log(`files:     ${manifest.counts.files} (city tile files ${manifest.counts.cityTileFiles}, museum files ${manifest.counts.museumFiles}, corridor mobility files ${manifest.counts.mobilityFiles}, city mobility files ${manifest.counts.mobilityCityFiles})`);
   console.log(`total:     ${manifest.totalBytes} bytes (warning ${manifest.warning}, fatal ${manifest.fatalError})`);
   console.log(`commit:    ${manifest.commitSha ?? 'unknown'}`);
   console.log(`city hash: ${manifest.city.manifestSha256}`);

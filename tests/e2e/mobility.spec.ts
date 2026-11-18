@@ -82,7 +82,9 @@ async function waitForMobility(page: Page): Promise<Snapshot> {
 }
 
 async function openCity(page: Page): Promise<Snapshot> {
-  await page.goto('/?dataset=city', { waitUntil: 'domcontentloaded', timeout: 90_000 });
+  // The suite pins the two verified corridors: the full city payload is a
+  // separate, much heavier dataset (?mobility=city, the site default).
+  await page.goto('/?dataset=city&mobility=corridors', { waitUntil: 'domcontentloaded', timeout: 90_000 });
   await waitForRenderer(page);
   await page.evaluate((date) => {
     const app = window.__CITY_APP__?.app;

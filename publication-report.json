@@ -1,13 +1,13 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-11-18T01:02:14.160Z",
- "commitSha": "30433e06aa1ad6640a9cd9ace2bb90baeae8b5d2",
+ "generatedAt": "2026-11-18T13:03:59.397Z",
+ "commitSha": "d38421d4a4631eb63099a94b3e6eb107fd7b816b",
  "mode": "static",
  "site": ".pages",
  "artifactBase": "/VoxelMinsk/",
  "artifact": {
-  "files": 488,
-  "totalBytes": 323571204,
+  "files": 1720,
+  "totalBytes": 382161028,
   "warningThresholdBytes": 524288000,
   "warning": false,
   "fatalError": false
@@ -32,7 +32,7 @@
   {
    "id": "artifact-contents",
    "status": "pass",
-   "detail": "488 files, 323571204 bytes, 437 city tiles"
+   "detail": "1720 files, 382161028 bytes, 437 city tiles"
   },
   {
    "id": "stored-manifest",

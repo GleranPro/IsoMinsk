@@ -122,6 +122,16 @@ function buildFixtureSite(): FixtureSite {
     'data/mobility/chunks/0_0.json',
     JSON.stringify({ version: 1, key: '0_0', bounds: [0, 0, 1, 1], edges: [], signals: [], stops: [] }),
   );
+  writeFile(
+    root,
+    'data/mobility-city/manifest.json',
+    JSON.stringify({ version: 1, release: { bindings: 'b', network: 'n', schedule: 's' }, generatedAt: 'fixture', counts: { chunks: 1, routes: 1 } }),
+  );
+  writeFile(
+    root,
+    'data/mobility-city/chunks/0_0.json',
+    JSON.stringify({ version: 1, key: '0_0', bounds: [0, 0, 1, 1], edges: [], signals: [], stops: [] }),
+  );
 
   const entries = walkFiles(root);
   const manifest = createArtifactManifest(entries, { cityManifestPath, commitSha: 'fixture-commit' });
@@ -205,6 +215,7 @@ describeCompleteCity(COMPLETE_CITY_LABEL, () => {
     expect(manifest.counts.cityTileFiles).toBe(expectedTiles + 1);
     expect(manifest.counts.museumFiles).toBe(2);
     expect(manifest.counts.mobilityFiles).toBeGreaterThan(0);
+    expect(manifest.counts.mobilityCityFiles).toBeGreaterThan(0);
 
     const accepted = new Map<string, number>();
     for (const tile of city.tiles) {
@@ -227,7 +238,7 @@ describeCompleteCity(COMPLETE_CITY_LABEL, () => {
 
   it('ships the OSM/ODbL notices and attribution', () => {
     const paths = new Set(manifest.files.map((file) => file.path));
-    for (const required of ['.nojekyll', 'asset-licenses.json', 'data/ATTRIBUTION.md', 'data/LICENSE-ODbL.txt', 'data/city-tiles/manifest.json', 'data/museum/manifest.json', 'data/museum/exhibits.bin', 'data/mobility/manifest.json']) {
+    for (const required of ['.nojekyll', 'asset-licenses.json', 'data/ATTRIBUTION.md', 'data/LICENSE-ODbL.txt', 'data/city-tiles/manifest.json', 'data/museum/manifest.json', 'data/museum/exhibits.bin', 'data/mobility/manifest.json', 'data/mobility-city/manifest.json']) {
       expect(paths.has(required), `artifact is missing ${required}`).toBe(true);
     }
     const attribution = readFileSync(ATTRIBUTION_PATH, 'utf8');
@@ -336,6 +347,8 @@ describe('artifact path policy', () => {
       'data/museum/exhibits.bin',
       'data/mobility/manifest.json',
       'data/mobility/chunks/0_0.json',
+      'data/mobility-city/manifest.json',
+      'data/mobility-city/chunks/0_0.json',
     ];
     expect(validateArtifactPaths(allowed.map((sitePath) => ({ sitePath, sourcePath: path.join(tmpdir(), sitePath), bytes: 1 })))).toEqual([]);
   });
@@ -377,6 +390,8 @@ describe('whitelist assembler', () => {
       'public/data/museum/exhibits.bin',
       'public/data/mobility/manifest.json',
       'public/data/mobility/chunks/0_0.json',
+      'public/data/mobility-city/manifest.json',
+      'public/data/mobility-city/chunks/0_0.json',
       'public/data/city-tiles/manifest.json',
       'public/data/city-tiles/0_0.json',
     ]) {
@@ -398,6 +413,8 @@ describe('whitelist assembler', () => {
     expect(paths).toContain('data/museum/manifest.json');
     expect(paths).toContain('data/mobility/manifest.json');
     expect(paths).toContain('data/mobility/chunks/0_0.json');
+    expect(paths).toContain('data/mobility-city/manifest.json');
+    expect(paths).toContain('data/mobility-city/chunks/0_0.json');
     expect(paths).toContain('data/ATTRIBUTION.md');
     expect(paths).toContain('data/LICENSE-ODbL.txt');
     expect(paths.some((sitePath) => sitePath.startsWith('data/tiles/'))).toBe(false);

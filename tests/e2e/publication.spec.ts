@@ -90,6 +90,15 @@ publicationDescribe(`nested-path release check ${ARTIFACT_PRESENT ? '' : `(skipp
     const chunk = await (await get(`data/mobility/${firstChunk.file.replace(/^\/+/, '')}`)).json();
     expect(chunk.version).toBe(mobility.version);
 
+    const cityMobility = await (await get('data/mobility-city/manifest.json')).json();
+    expect(cityMobility.counts.variants).toBeGreaterThan(100);
+    expect(Array.isArray(cityMobility.chunks)).toBe(true);
+
+    const cityChunk = await (
+      await get(`data/mobility-city/${cityMobility.chunks[0].file.replace(/^\/+/, '')}`)
+    ).json();
+    expect(cityChunk.version).toBe(cityMobility.version);
+
     expect(await (await get('data/ATTRIBUTION.md')).text()).toContain('OpenStreetMap');
     expect(await (await get('data/LICENSE-ODbL.txt')).text()).toContain('Open Database License');
     const licences = await (await get('asset-licenses.json')).json();
@@ -98,7 +107,7 @@ publicationDescribe(`nested-path release check ${ARTIFACT_PRESENT ? '' : `(skipp
   });
 
   test('never exposes legacy or alternate datasets', async ({ request }) => {
-    for (const route of ['data/tiles/manifest.json', 'data/city-tiles-current/manifest.json', 'data/city-tiles-b2/manifest.json', 'data/mobility-city/manifest.json']) {
+    for (const route of ['data/tiles/manifest.json', 'data/city-tiles-current/manifest.json', 'data/city-tiles-b2/manifest.json']) {
       const response = await request.get(`${server.baseUrl}${route}`);
       expect([403, 404], `${route} must not be published`).toContain(response.status());
     }
