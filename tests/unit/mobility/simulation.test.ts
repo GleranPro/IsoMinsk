@@ -356,6 +356,39 @@ function snapshotOf(fleet: Fleet, tripId: string): MobilityTripSnapshot | null {
 /* ------------------------------------------------------------------------- */
 
 describe('TripSimulation — плановая фаза и остановки', () => {
+  it('рейс с одним временем на остановке стоит до отправления', () => {
+    const base = 1000;
+    const variant: MobilityRouteVariant = {
+      ...fourStopVariant(),
+      mode: 'tram',
+      stops: fourStopVariant().stops.map((stop) => ({ ...stop, dwellS: 12 })),
+    };
+    // Реальная выгрузка: arrival === departure (есть только отправление).
+    const realtime = trip('t:realtime', 'r:test:0:1', [
+      stopTime(0, base, base),
+      stopTime(1, base + 100, base + 100),
+      stopTime(2, base + 200, base + 200),
+      stopTime(3, base + 300, base + 300),
+    ]);
+    const fleet = createFleet({
+      variant,
+      trips: [realtime],
+      fixedTimeSeconds: base + 94, // за 6 с до отправления со второй остановки
+    });
+    const atStop = snapshotOf(fleet, 't:realtime');
+    expect(atStop?.phase).toBe('dwelling');
+    expect(atStop?.speed).toBe(0);
+    expect(atStop?.nextStop).toBe(1);
+    expect(atStop?.delayS).toBe(0);
+
+    advance(fleet, 70); // 7 с: отправление в base+100 прошло
+    const departed = snapshotOf(fleet, 't:realtime');
+    expect(departed?.phase).toBe('moving');
+    expect(departed?.nextStop).toBe(2);
+    // Посадка смоделирована ДО отправления, поэтому расписание не сдвинулось.
+    expect(departed?.delayS ?? 0).toBeLessThan(0.5);
+  });
+
   it('при открытии карты ставит рейс в плановую фазу, а не на конечную', () => {
     const fleet = createFleet({ variant: fourStopVariant(), trips: [standardTrip('t:a')] });
     fleet.clock.setFixedDateTime('2026-11-16', 1050);

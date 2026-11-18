@@ -112,5 +112,8 @@ data/raw/Minsk.osm.pbf ──extract_network.py──► data/processed/mobility
 - Каждый `MobilityStopCall` лежит на одном из `edges` варианта; `s` в пределах длины полосы.
 - Мост/туннель/уровень не соединяются по близости XY (`layer`, `bridge`, `tunnel` сохраняются).
 - `MobilityTrip.stopTimes` не убывают по `arrivalS`/`departureS`, `seq` совпадает с порядком остановок.
+- Если на промежуточной остановке `arrivalS === departureS` (в выгрузке есть только отправление),
+  симулятор добавляет модельную стоянку `stopCalls[i].dwellS` **до** отправления. Время отправления
+  не сдвигается, задержка не накапливается; начальная и конечная остановки не меняются.
 - `release` (network/schedule/bindings) один и тот же у manifest, chunks и routes; иначе loader отказывается.
 - Календари и времена не зависят от часового пояса браузера.

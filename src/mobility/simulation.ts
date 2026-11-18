@@ -46,6 +46,7 @@ import type {
   MobilityServiceCalendar,
   MobilityStopLine,
   MobilityStopTime,
+  MobilityStopCall,
   MobilitySyntheticTimetable,
   MobilityTrip,
   MobilityTripSnapshot,
@@ -100,6 +101,42 @@ const FINISHED_LINGER_S = 2;
 const MAX_SIGNAL_LATERAL_M = 60;
 
 const EMPTY_SNAPSHOTS: readonly MobilityTripSnapshot[] = Object.freeze([]);
+
+/**
+ * Добавляет видимую стоянку на остановках, где в расписании есть только
+ * отправление (`arrivalS === departureS`).
+ *
+ * Реальная выгрузка Минсктранса не содержит отдельного времени прибытия.
+ * Раньше такой рейс «проходил» остановку за один шаг симуляции: трамвай
+ * тормозил до нуля в момент отправления и сразу ехал дальше. Здесь посадка
+ * моделируется ДО отправления: приезд на `dwellS` раньше, стоянка до
+ * назначенного времени. Времена отправления не меняются, поэтому задержка
+ * не накапливается; остановки с явной стоянкой остаются как есть.
+ *
+ * Начальная и конечная остановки не трогаются: первая — это момент старта
+ * рейса (иначе машина «приезжает» туда раньше предыдущего рейса), конечная —
+ * высадка и завершение, а не посадка.
+ */
+function withServiceDwell(
+  trip: MobilityTrip,
+  stopCalls: readonly MobilityStopCall[],
+): MobilityTrip {
+  let previousDeparture = 0;
+  let changed = false;
+  const stopTimes = trip.stopTimes.map((time, index) => {
+    const scheduledDwell = time.departureS - time.arrivalS;
+    const dwellS = Math.max(0, stopCalls[index]?.dwellS ?? 0);
+    const intermediate = index > 0 && index < stopCalls.length - 1;
+    let arrivalS = time.arrivalS;
+    if (intermediate && scheduledDwell <= 0 && dwellS > 0) {
+      arrivalS = Math.max(previousDeparture, Math.max(0, time.departureS - dwellS));
+      if (arrivalS !== time.arrivalS) changed = true;
+    }
+    previousDeparture = time.departureS;
+    return arrivalS === time.arrivalS ? time : { ...time, arrivalS };
+  });
+  return changed ? { ...trip, stopTimes } : trip;
+}
 
 /** Стабильный 32-битный хеш строки (FNV-1a) — фаза рейсов внутри интервала. */
 function stableHash(value: string): number {
@@ -862,7 +899,7 @@ export class TripSimulation {
           );
           continue;
         }
-        allTrips.push(trip);
+        allTrips.push(withServiceDwell(trip, record.path.stopCalls));
       }
     }
 
