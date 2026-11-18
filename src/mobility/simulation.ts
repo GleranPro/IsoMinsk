@@ -172,6 +172,8 @@ interface RouteRecord {
   exact: boolean;
   /** Рёбра, которых не хватило для точного пути (для повторной попытки). */
   missingEdgeIds: readonly string[];
+  /** Набор уже загруженных «недостающих» рёбер на момент последней пересборки. */
+  refreshKey?: string;
 }
 
 /** Стоп-линия, спроецированная на путь рейса. */
@@ -786,22 +788,23 @@ export class TripSimulation {
   /**
    * Повторная попытка собрать точный путь, когда геометрия рёбер догрузилась.
    *
-   * Проверка дешёвая (Map-поиск по отсутствующим рёбрам, ранний выход); при
-   * успехе путь варианта заменяется полосами, а уже смоделированные рейсы этого
-   * варианта переводятся в аналитические (дистанции старого и нового пути — в
-   * разных системах координат, поэтому скачок не маскируется).
+   * Пересобираем путь при появлении ЛЮБОГО ранее отсутствовавшего ребра, а не
+   * только когда загрузились все: длинный маршрут выходит за окно загрузки, и
+   * раньше вариант навсегда оставался на хордах остановок — видимый автобус
+   * ехал по прямой через дворы. Частичный путь оставляет точные участки
+   * полосами, а отсутствующие далёкие рёбра перекрывает короткими мостами.
+   *
+   * Уже смоделированные рейсы варианта переводятся в аналитические: дистанции
+   * старого (хордового) и нового пути — в разных системах координат, поэтому
+   * скачок не маскируется, а кузов встаёт на реальную полосу.
    */
   private refreshGeometry(): void {
     for (const [variantId, record] of [...this.routes]) {
       if (record.missingEdgeIds.length === 0) continue;
-      let ready = true;
-      for (const edgeId of record.missingEdgeIds) {
-        if (!this.edgeGeometry(edgeId)) {
-          ready = false;
-          break;
-        }
-      }
-      if (!ready) continue;
+      const loaded = record.missingEdgeIds.filter((edgeId) => this.edgeGeometry(edgeId));
+      if (loaded.length === 0) continue;
+      const refreshKey = loaded.join('|');
+      if (record.refreshKey === refreshKey) continue;
       const result = buildRoutePathFromFile(record.file, (edgeId) => this.edgeGeometry(edgeId));
       if (!result) continue;
       this.routes.set(variantId, {
@@ -809,15 +812,20 @@ export class TripSimulation {
         path: result.path,
         exact: result.exact,
         missingEdgeIds: result.missingEdgeIds,
+        refreshKey,
       });
       this.notePathMode(variantId, result.exact, result.missingEdgeIds, result.reason);
+      for (const [tripId, state] of [...this.states]) {
+        if (state.variantId !== variantId) continue;
+        this.detachState(state);
+        this.states.delete(tripId);
+      }
       if (result.exact) {
-        for (const [tripId, state] of [...this.states]) {
-          if (state.variantId !== variantId) continue;
-          this.detachState(state);
-          this.states.delete(tripId);
-        }
         this.pushNote(`вариант ${variantId}: геометрия полос загружена — путь точный`);
+      } else {
+        this.pushNote(
+          `вариант ${variantId}: догружено ${loaded.length} рёбер — путь уточнён (осталось ${result.missingEdgeIds.length})`,
+        );
       }
     }
   }

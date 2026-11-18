@@ -753,6 +753,45 @@ describe('TripSimulation — календарь, полночь и невиди�
 });
 
 describe('TripSimulation — загрузка геометрии и явные состояния данных', () => {
+  it('частично догруженная геометрия уточняет видимый участок пути', () => {
+    const laneEdge = (id: string, fromX: number, toX: number): MobilityEdge => ({
+      ...edge(id, fromX, toX),
+      lanes: [
+        {
+          index: 0,
+          offset: -2,
+          widthM: 3,
+          centerline: { p: [fromX, -2, 0, toX, -2, 0], s: [0, toX - fromX] },
+        },
+      ],
+    });
+    const edges = [laneEdge('e0', 0, 400), laneEdge('e1', 400, 800), laneEdge('e2', 800, 1200)];
+    const fleet = createFleet({
+      variant: fourStopVariant(),
+      trips: [standardTrip('t:partial')],
+      edges,
+      geometryLoaded: false,
+    });
+    advance(fleet, 100); // 10 с: рейс на хорде от остановки 0
+    const chord = snapshotOf(fleet, 't:partial');
+    expect(chord?.y).toBeCloseTo(0, 6);
+
+    // Загрузилась только часть маршрута: видимый участок должен встать на
+    // правую полосу, а не ждать, пока загрузятся все 100+ рёбер.
+    fleet.world.edges.set(edges[0]!.id, edges[0]!);
+    fleet.world.edges.set(edges[1]!.id, edges[1]!);
+    advance(fleet, 1);
+    expect(fleet.sim.getNotes().some((note) => note.includes('догружено'))).toBe(true);
+    expect(fleet.sim.getStats().approximatedVariants).toBe(1);
+    const partial = snapshotOf(fleet, 't:partial');
+    expect(partial?.y).toBeCloseTo(-1.4, 1);
+
+    fleet.world.edges.set(edges[2]!.id, edges[2]!);
+    advance(fleet, 1);
+    expect(fleet.sim.getStats().approximatedVariants).toBe(0);
+    expect(fleet.sim.getNotes().some((note) => note.includes('точный'))).toBe(true);
+  });
+
   it('догруженные полосы рёбер заменяют fallback на точный путь', () => {
     const fleet = createFleet({
       variant: fourStopVariant(),
