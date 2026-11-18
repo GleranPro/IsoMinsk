@@ -47,7 +47,7 @@ publicationDescribe(`nested-path release check ${ARTIFACT_PRESENT ? '' : `(skipp
     await server.close();
   });
 
-  test('serves index, city payload, museum payload and licence notices below the prefix', async ({ request }) => {
+  test('serves index, city payload, mobility payload, museum payload and licence notices below the prefix', async ({ request }) => {
     const get = async (route: string) => {
       const response = await request.get(`${server.baseUrl}${route}`);
       expect(response.status(), `${route} below ${DEFAULT_NESTED_BASE}`).toBe(200);
@@ -82,6 +82,14 @@ publicationDescribe(`nested-path release check ${ARTIFACT_PRESENT ? '' : `(skipp
     const exhibits = await get('data/museum/exhibits.bin');
     expect((await exhibits.body()).byteLength).toBe(museum.byteLength);
 
+    const mobility = await (await get('data/mobility/manifest.json')).json();
+    expect(mobility.counts.stops).toBeGreaterThan(0);
+    expect(Array.isArray(mobility.chunks)).toBe(true);
+    const firstChunk = mobility.chunks?.[0];
+    expect(firstChunk?.file, 'mobility manifest must index its chunks').toBeTruthy();
+    const chunk = await (await get(`data/mobility/${firstChunk.file.replace(/^\/+/, '')}`)).json();
+    expect(chunk.version).toBe(mobility.version);
+
     expect(await (await get('data/ATTRIBUTION.md')).text()).toContain('OpenStreetMap');
     expect(await (await get('data/LICENSE-ODbL.txt')).text()).toContain('Open Database License');
     const licences = await (await get('asset-licenses.json')).json();
@@ -90,7 +98,7 @@ publicationDescribe(`nested-path release check ${ARTIFACT_PRESENT ? '' : `(skipp
   });
 
   test('never exposes legacy or alternate datasets', async ({ request }) => {
-    for (const route of ['data/tiles/manifest.json', 'data/city-tiles-current/manifest.json', 'data/city-tiles-b2/manifest.json']) {
+    for (const route of ['data/tiles/manifest.json', 'data/city-tiles-current/manifest.json', 'data/city-tiles-b2/manifest.json', 'data/mobility-city/manifest.json']) {
       const response = await request.get(`${server.baseUrl}${route}`);
       expect([403, 404], `${route} must not be published`).toContain(response.status());
     }

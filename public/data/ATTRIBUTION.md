@@ -2,7 +2,8 @@
 
 This artifact publishes **one** dataset: the complete-city tile database in
 `data/city-tiles/`, together with the curated Lipki aviation-museum payload in
-`data/museum/` and the static application.
+`data/museum/`, the public-transport demo payload in `data/mobility/` and the
+static application.
 
 The GitHub Pages URL is provisioned by the repository owner. No repository
 owner/name, domain or source-code licence is assumed or invented in this file.
@@ -91,21 +92,36 @@ this inventory as legal advice. The committed
 may lag behind newly added exhibits; regenerate it with
 `scripts/qa/museum_licenses.py` before a release.
 
-## 3. Bundled JavaScript dependencies — MIT
+## 3. Public transport demo payload — ODbL geometry, demo timetable
+
+`data/mobility/` is a **demonstration** payload: route geometry, stops, signal
+nodes and street-network edges for two corridors (bus 39, tram 9) are derived
+from the same OpenStreetMap extract as the tile database, under **ODbL 1.0**.
+The timetable is synthetic (`scheduleStatus` in `data/mobility/manifest.json`
+names the demo source). It is **not** the Minsktrans public schedule and must
+not be presented as one; no Minsktrans data is redistributed here.
+
+* Database: `data/mobility/` (`manifest.json`, `chunks/*.json`, `routes/*.json`).
+* Source: OpenStreetMap contributors, via the extract described in section 1.
+* Modifications: directed street/rail network, lane offsets, stop projection,
+  bridge heights, and a procedural timetable with demo calendars.
+* Licence: **ODbL 1.0**; full text in `data/LICENSE-ODbL.txt`.
+
+## 4. Bundled JavaScript dependencies — MIT
 
 The built bundle includes **React**, **React DOM** (including its bundled
 `scheduler`) and **three.js**, all MIT-licensed. Their copyright lines and full
 MIT licence texts are recorded in the `bundled-js-dependencies` entry of
 `asset-licenses.json`.
 
-## 4. Source code licence — owner decision required
+## 5. Source code licence — owner decision required
 
 The repository contains **no** `LICENSE`/`COPYING` file. The code is
 **source-available, not open source**: hosting it on GitHub is not a licence
 grant. The owner must select a source-code licence before the project may be
 described as open source. No licence is invented in this artifact.
 
-## 5. Fonts and remote-linked sources
+## 6. Fonts and remote-linked sources
 
 * **Fonts:** no webfont files are bundled; the UI uses the system font stack.
 * **Remote links only:** the interface links to OpenStreetMap copyright, the

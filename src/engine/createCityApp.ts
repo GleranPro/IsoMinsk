@@ -44,6 +44,7 @@ import {
   resolveDatasetName,
   resolveManifestUrl,
 } from '../shared/config';
+import { publicAssetUrl } from '../shared/assets';
 import { MUSEUM, isMuseumFocus } from '../shared/museum';
 import { MuseumLayer } from './museum/museumLayer';
 import { MobilityController } from './mobility/controller';
@@ -512,14 +513,14 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // --- mobility: public transport + traffic signals ------------------------
   // Independent of the tile pipeline: a missing/incompatible payload leaves the
   // map fully usable (the status reports why nothing moves).
-  // Городской набор данных по умолчанию использует городской payload мобильности;
-  // `?mobility=corridors` возвращает проверенные два коридора, `?mobility=city`
-  // явно включает город.
+  // По умолчанию — проверенные два коридора из `public/data/mobility/`: эти
+  // данные входят в публикацию Pages. Городской payload (~50 МБ) собирается
+  // только локально и в публикацию не входит, поэтому включается явным
+  // `?mobility=city`; `?mobility=corridors` оставлен для совместимости.
   const mobilityParam = params.get('mobility');
-  const useCityMobility =
-    mobilityParam === 'city' || (mobilityParam === null && dataset === 'city');
+  const useCityMobility = mobilityParam === 'city';
   const mobility = new MobilityController({
-    baseUrl: useCityMobility ? '/data/mobility-city' : undefined,
+    baseUrl: useCityMobility ? publicAssetUrl('data/mobility-city') : undefined,
     mobile: typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(pointer: coarse)').matches
       : false,

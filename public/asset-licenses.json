@@ -25,16 +25,19 @@
   "entries": [
     {
       "id": "openstreetmap-derived-tile-database",
-      "name": "Complete-city tile database derived from OpenStreetMap",
+      "name": "Complete-city tile and public-transport demo databases derived from OpenStreetMap",
       "kind": "database",
       "thirdParty": true,
       "artifactPaths": [
-        "data/city-tiles/**"
+        "data/city-tiles/**",
+        "data/mobility/**"
       ],
       "sourcePaths": [
         "public/data/city-tiles/**",
+        "public/data/mobility/**",
         "scripts/ingest/**",
-        "scripts/normalize/**"
+        "scripts/normalize/**",
+        "scripts/mobility/**"
       ],
       "license": "ODbL 1.0",
       "licenseId": "ODbL-1.0",
@@ -43,7 +46,7 @@
       "author": null,
       "redistribution": true,
       "modified": true,
-      "modificationNote": "Projected to UTM zone 35N, tiled at 1024 m, building volumes de-overlapped, heights and roof shapes inferred or curated, facades and road surfaces derived procedurally, trees inferred/placed. The adapted database is published under ODbL 1.0 with its notice in data/LICENSE-ODbL.txt.",
+      "modificationNote": "Projected to UTM zone 35N, tiled at 1024 m, building volumes de-overlapped, heights and roof shapes inferred or curated, facades and road surfaces derived procedurally, trees inferred/placed. The mobility payload adds a directed street/rail network, stop projections and a procedural demo timetable. Both adapted databases are published under ODbL 1.0 with their notice in data/LICENSE-ODbL.txt.",
       "attribution": "© OpenStreetMap contributors — ODbL 1.0; see data/ATTRIBUTION.md and data/LICENSE-ODbL.txt",
       "status": "verified"
     },

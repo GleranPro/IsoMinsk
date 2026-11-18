@@ -31,6 +31,7 @@ import type {
   MobilitySignalNode,
 } from '../../shared/mobility';
 import { MOBILITY_VERSION } from '../../shared/mobility';
+import { publicAssetUrl } from '../../shared/assets';
 import {
   isValidLoadRect,
   mobilityFilePath,
@@ -57,8 +58,14 @@ export type MobilityFetchImpl = (
   init?: { signal?: AbortSignal; cache?: RequestCache },
 ) => Promise<MobilityFetchResponse>;
 
-/** Базовый URL публичных данных мобильности. */
-export const MOBILITY_DATA_BASE_URL = '/data/mobility';
+/**
+ * Базовый URL публичных данных мобильности.
+ *
+ * Разрешается относительно базы развёртывания, как и тайлы: Pages отдаёт
+ * приложение из подкаталога проекта, поэтому абсолютный `/data/mobility`
+ * указывал бы в корень домена и давал 404.
+ */
+export const MOBILITY_DATA_BASE_URL = publicAssetUrl('data/mobility');
 
 export interface MobilityLoaderOptions {
   /** Каталог данных; по умолчанию `/data/mobility`. */
