@@ -304,6 +304,65 @@ const JUNCTION_EPSILON_M = 0.05;
 const STOP_LATERAL_TOLERANCE_M = 2.5;
 
 /**
+ * Боковой запас от внешней кромки проезжей части, м.
+ *
+ * Полоса из payload рассчитана по `lanes`/`width` OSM, а покрытие в тайлах
+ * рисуется по своим штрихам и настилам мостов: у кромки они расходятся на
+ * 0,5–1 м. Крайняя правая полоса поэтому упирается в бордюр, и кузов (2,5 м)
+ * свешивается с асфальта — визуально «едет не по дороге». Сдвигаем центр
+ * полосы внутрь на этот запас; привязка остановок и их `s` не меняются,
+ * меняется только поперечная позиция кузова.
+ */
+export const LANE_INWARD_BIAS_M = 0.6;
+
+/**
+ * Смещает путь влево (к осевой дороги) на `biasM * weight[i]`.
+ *
+ * Сдвиг полосы каждого ребра по отдельности ломает сшивку в узлах: концы
+ * соседних полос расходятся, и путь получает лишние «мостики» длиной до
+ * метра. Поэтому сдвигаем уже собранную непрерывную линию — дистанции
+ * (`arc`) остаются прежними, меняется только поперечная позиция кузова.
+ * Вес 0 у полос без смещения (узкая односторонняя улица): там кузов и так
+ * стоит по центру, и сдвиг только вынес бы его на встречную кромку.
+ */
+function shiftPathLeft(
+  points: number[],
+  weights: readonly number[],
+  biasM: number = LANE_INWARD_BIAS_M,
+): number[] {
+  const count = Math.floor(points.length / 3);
+  if (!(biasM > 0) || count < 2) return points;
+  const normals: { x: number; y: number }[] = [];
+  for (let index = 1; index < count; index += 1) {
+    const dx = points[index * 3] - points[index * 3 - 3];
+    const dy = points[index * 3 + 1] - points[index * 3 - 2];
+    const length = Math.hypot(dx, dy);
+    normals.push(length > 1e-9 ? { x: -dy / length, y: dx / length } : { x: 0, y: 0 });
+  }
+  const result = points.slice();
+  for (let index = 0; index < count; index += 1) {
+    const shift = biasM * (weights[index] ?? 0);
+    if (Math.abs(shift) < 1e-9) continue;
+    const before = normals[Math.max(0, index - 1)] ?? normals[0];
+    const after = normals[Math.min(normals.length - 1, index)] ?? before;
+    let nx = before.x + after.x;
+    let ny = before.y + after.y;
+    const length = Math.hypot(nx, ny);
+    if (length <= 1e-9) {
+      nx = before.x;
+      ny = before.y;
+      if (Math.hypot(nx, ny) <= 1e-9) continue;
+    } else {
+      nx /= length;
+      ny /= length;
+    }
+    result[index * 3] += nx * shift;
+    result[index * 3 + 1] += ny * shift;
+  }
+  return result;
+}
+
+/**
  * Проекция точки на полилинию пути в пределах диапазона `[minS, maxS]`.
  * Возвращает расстояние вдоль пути и боковое отклонение; `null` — проекция
  * не нашлась. Небольшой запас за границами нужен потому, что сшивка полосы
@@ -447,7 +506,7 @@ function buildExactPath(
   // Частичный путь лучше полного fallback по хордам: видимая часть маршрута
   // остаётся на реальной полосе, а отсутствующий участок перекрывается коротким
   // мостом (обычно он вне кадра).
-  const linesByEdge: ({ edgeId: string; line: number[]; arc: number[] | null } | null)[] = [];
+  const linesByEdge: ({ edgeId: string; line: number[]; arc: number[] | null; shiftWeight: number } | null)[] = [];
   for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex += 1) {
     const edgeId = edges[edgeIndex];
     if (!edgeId) {
@@ -476,8 +535,15 @@ function buildExactPath(
     const lane = lanes.find((candidate) => candidate && candidate.index === laneIndex) ?? lanes[0];
     let line: number[] | null = null;
     let arc: number[] | null = null;
+    // Правая полоса (offset < 0) сдвигается внутрь; осевая односторонней
+    // улицы (offset = 0) остаётся на месте, иначе кузов ушёл бы на её левую
+    // кромку. Трамвай идёт по колее и не сдвигается.
+    let shiftWeight = 0;
     if (lane && lane.centerline && Array.isArray(lane.centerline.p) && lane.centerline.p.length >= 6) {
       line = lane.centerline.p;
+      if (variant.mode !== 'tram' && Number.isFinite(lane.offset) && lane.offset < -0.05) {
+        shiftWeight = 1;
+      }
       const candidateArc = lane.centerline.s;
       if (Array.isArray(candidateArc) && candidateArc.length === line.length / 3) arc = candidateArc;
     } else if (edge.centerline && Array.isArray(edge.centerline.p) && edge.centerline.p.length >= 6) {
@@ -493,7 +559,7 @@ function buildExactPath(
     if (!line.every((value) => Number.isFinite(value))) {
       return { path: null, missingEdgeIds: [], reason: `ребро ${edgeId}: нечисловая геометрия` };
     }
-    linesByEdge.push({ edgeId, line, arc });
+    linesByEdge.push({ edgeId, line, arc, shiftWeight });
   }
   if (linesByEdge.every((entry) => entry === null)) {
     return {
@@ -515,6 +581,7 @@ function buildExactPath(
 
   const points: number[] = [];
   const arc: number[] = [];
+  const shiftWeights: number[] = [];
   const edgeStarts = new Array<number>(edges.length).fill(0);
   const edgeLengths = new Array<number>(edges.length).fill(0);
   for (let edgeIndex = 0; edgeIndex < linesByEdge.length; edgeIndex += 1) {
@@ -549,6 +616,7 @@ function buildExactPath(
         // Мост через отсутствующие рёбра: одна прямая до начала загруженного.
         arc.push(currentEnd + gap);
         points.push(entry.line[0], entry.line[1], entry.line[2]);
+        shiftWeights.push(entry.shiftWeight);
         edgeStart = currentEnd + gap;
         startVertex = 1;
       }
@@ -566,11 +634,20 @@ function buildExactPath(
       const local = (lineArc[vertex] ?? baseS) - baseS;
       arc.push(edgeStart + local);
       points.push(x, y, h);
+      shiftWeights.push(entry.shiftWeight);
     }
     edgeLengths[edgeIndex] = (arc[arc.length - 1] ?? edgeStart) - edgeStart;
   }
   if (points.length < 3) {
     return { path: null, missingEdgeIds: [], reason: 'пустая геометрия полос' };
+  }
+  // Кузов автобуса/троллейбуса стоит на правой полосе, а её внешняя кромка в
+  // тайлах обычно уже полосы OSM: колесо и часть кузова оказываются на
+  // бордюре или за настилом моста. Сдвигаем непрерывный путь внутрь только на
+  // участках правой полосы — трамвай и осевые улицы остаются как есть.
+  const shifted = shiftPathLeft(points, shiftWeights);
+  for (let index = 0; index < points.length; index += 1) {
+    points[index] = shifted[index] ?? points[index];
   }
 
   const stopDistancesM = new Array<number>(stops.length);

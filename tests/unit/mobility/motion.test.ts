@@ -217,19 +217,27 @@ describe('VehicleMotion — путь варианта', () => {
     expect(atStop.x).toBeCloseTo(800, 6);
   });
 
-  it('выбирает полосу остановки на ребре, а пустую полосу заменяет центром', () => {
+  it('берёт крайнюю правую полосу и сдвигает её внутрь от кромки', () => {
     const edges = EDGES.map((item) => ({ ...item }));
     const withLane = edges[1];
     if (withLane) {
       withLane.lanes = [
-        { index: 0, offset: -2, widthM: 3, centerline: { p: [400, -2, 0, 800, -2, 0], s: [0, 400] } },
-        { index: 1, offset: 2, widthM: 3, centerline: { p: [400, 2, 0, 800, 2, 0], s: [0, 400] } },
+        { index: 0, offset: 2, widthM: 3, centerline: { p: [400, 2, 0, 800, 2, 0], s: [0, 400] } },
+        {
+          index: 1,
+          offset: -2,
+          widthM: 3,
+          centerline: {
+            p: [400, -2, 0, 600, -2, 0, 800, -2, 0],
+            s: [0, 200, 400],
+          },
+        },
       ];
     }
     const route = variant({
       stops: [
         stopCall(0, 'e0', 0, 0),
-        stopCall(1, 'e1', 0, 400, 1),
+        stopCall(1, 'e1', 0, 400, 0),
         stopCall(2, 'e2', 0, 800),
         stopCall(3, 'e3', 0, 1200),
       ],
@@ -238,7 +246,9 @@ describe('VehicleMotion — путь варианта', () => {
     expect(build?.exact).toBe(true);
     const path = build!.path;
     const sample = sampleRoutePath(path, 600);
-    expect(sample.y).toBeCloseTo(2, 6);
+    // Правая полоса (offset −2 в +X направлении) подтянута к осевой на 0,6 м,
+    // чтобы кузов не свисал с нарисованной кромки.
+    expect(sample.y).toBeCloseTo(-1.4, 2);
   });
 
   it('без геометрии рёбер даёт явный fallback по остановкам и список рёбер', () => {
