@@ -133,11 +133,9 @@ describe('stadium bowl', () => {
       archetype: 'office',
     });
     const { triangles } = build([slab]);
-    const slabRoof = triangles.filter(
-      (t) =>
-        t.faceKind === FACE_KIND.roof &&
-        t.vertices.every((v) => Math.abs(v.position[1] - 16.8) < 1e-3),
-    );
+    // The flat cap sits at the declared height minus the in-envelope parapet
+    // slice, so match by face kind rather than one exact y.
+    const slabRoof = triangles.filter((t) => t.faceKind === FACE_KIND.roof);
     expect(sumAreaXY(slabRoof)).toBeGreaterThan(20000);
   });
 });

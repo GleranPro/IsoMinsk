@@ -12,10 +12,11 @@ documented · ⏳ planned (explicitly non-MVP or later iteration) · ❌ not del
 
 Verification is only claimed from artifacts that exist in the repository:
 tests, audits, captures and dated reports. Latest application verification is
-2026-11-15: 467 Vitest passed (5 skipped), 23 hardware-WebGL browser scenarios
-passed (16 desktop + 7 mobile/touch), typecheck passed. Earlier data audits
-retain their own dates and counts; see `TREE_INSTANCING_2026-11-06.md` and
-`QA_REPORT.md`.
+2026-11-15: 562 Vitest passed (5 skipped, 34 files); 31 hardware-WebGL browser
+scenarios (24 desktop + 7 mobile/touch), 30 pass — the pre-existing
+`trees.spec.ts` expects the old 16-tile pilot; typecheck/build passed. Earlier
+data audits retain their own dates and counts; see `TREE_INSTANCING_2026-11-06.md`
+and `QA_REPORT.md`.
 
 ## 1. Compliance summary by original section
 
@@ -43,7 +44,7 @@ retain their own dates and counts; see `TREE_INSTANCING_2026-11-06.md` and
 | §7 Future features (trams/trolleybuses/trains/parked vehicles; sun from real date/time; night windows + street lamps; seasons/snow; custom landmark models; historical info cards; bookmarks/deep links; mobile) | 🟡 subset | Implemented: stylised/real-date sun modes, night windows, five landmarks, two static wheels, instanced trees, an internal canopy palette/visibility hook, and the mobile/touch first slice (gestures, foldable settings, phone-adaptive HUD; browser-emulated, real-phone verification pending). Full seasons/snow, vehicles, lamps, history cards and bookmarks remain unimplemented. |
 | §8 Multi-agent execution with real environment mechanisms; interfaces before parallel work; bounded tasks; explicit file ownership; worktrees/branches preferred; no shared-file overwrites; review+tests before integration; commits at checkpoints; progress doc + issue list; honest blockers | 🟡 deviation | used the real mechanisms: native `spawn_teammate`/`send_message`, shared task board, Playwright browser automation, parallel tool calls. Six teammates: geometry-dev, facade-artist, environment-dev, renderer-dev, qa-dev, landmark-dev; Lead owned pipeline/contracts/integration. **Deviation**: one checkout with disjoint file ownership instead of git worktrees (the brief allows alternative mechanisms); integration only after tests; git checkpoints per round; `docs/PROGRESS.md` + `docs/AGENT_TASKS.md` |
 | §9 Repository structure | 🟡 deviations | see §4 below (structure followed, with documented adaptations) |
-| §10 QA: geodata/dedup/projection tests; geometry tests (roofs, winding, normals, heights, complex polygons); browser tests (server, district loads, geometry visible, facades, camera, errors, selection, reload); visual QA captures (overview, residential close-up, large building close-up, night) inspected; performance targets 45–60 FPS at 1080p with measured FPS/draw calls/triangles/load time/memory | 🟡 exact-resolution gap | Latest (2026-11-15): 467 Vitest passed, 5 skipped; 23 hardware-WebGL Playwright scenarios passed (16 desktop + 7 mobile/touch with real CDP touch at 390×844 and 320×568); typecheck passed. Current 144-tile overview at 1600×900 (internal 640×360): 6.46 ms mean / 8.10 ms p95, 593 draws, 7 875 933 visible triangles, 378.42 MiB resident-buffer estimate. Exact 1920×1080 and real-phone validation remain gaps; older data-audit evidence is in `QA_REPORT.md`. |
+| §10 QA: geodata/dedup/projection tests; geometry tests (roofs, winding, normals, heights, complex polygons); browser tests (server, district loads, geometry visible, facades, camera, errors, selection, reload); visual QA captures (overview, residential close-up, large building close-up, night) inspected; performance targets 45–60 FPS at 1080p with measured FPS/draw calls/triangles/load time/memory | 🟡 exact-resolution gap | Latest (2026-11-15): 562 Vitest passed, 5 skipped (34 files); 31 hardware-WebGL Playwright scenarios (24 desktop + 7 mobile/touch with real CDP touch at 390×844 and 320×568), 30 pass — the pre-existing `trees.spec.ts` expects the old 16-tile pilot; typecheck/build passed. Current 144-tile overview at 1600×900 (internal 640×360): 6.46 ms mean / 8.10 ms p95, 593 draws, 7 875 933 visible triangles, 378.42 MiB resident-buffer estimate. Exact 1920×1080 and real-phone validation remain gaps; older data-audit evidence is in `QA_REPORT.md`. |
 | §11 Execution procedure phases 0–5 | ✅ | Phase 0 research/bootstrap (`ab0b248`), Phase 1 first real render (`d254aba`), Phase 2 architecture quality (`8652c60`/`6892719`), Phase 3 pixel-art identity (same rounds), Phase 4 streaming + expansion (`c4892e4`), Phase 5 atmosphere/advanced (landmarks, wheels, TV tower, fixes) |
 | §12 Completion requirements (working app, real geometry, true 3D + facades, windows, isometric pixel-art mode, camera, not static, documented sources/limitations, tests pass, screenshots, startup commands in README, PowerShell workflow, no undocumented GIS steps) | ✅ | all met; see §3 below and `README.md` quick start |
 
@@ -142,8 +143,9 @@ These were requested later; each is delivered and verified.
 
 ## 7. Verification snapshot (2026-11-15)
 
-* `pnpm test`: 467 passed, 5 skipped, 28 files; hardware-WebGL Playwright:
-  23/23 passed (16 desktop + 7 mobile/touch); `pnpm run typecheck` passed.
+* `pnpm test`: 562 passed, 5 skipped, 34 files; hardware-WebGL Playwright:
+  30/31 passed (24 desktop + 7 mobile/touch; the pre-existing `trees.spec.ts`
+  expects 16 tiles); `pnpm run typecheck` and `pnpm run build` passed.
   The 2026-11-06 snapshot below is the previous checkpoint.
 * Mobile/touch evidence: `tests/unit/camera/pointerGestures.test.ts` (24 tests),
   `tests/e2e/mobile.spec.ts` (CDP multi-touch at 390×844 and 320×568),
@@ -184,4 +186,4 @@ These were requested later; each is delivered and verified.
 | Date | Change |
 | --- | --- |
 | 2026-10-29 | Replaced the reconstructed requirements with the verbatim original brief + this compliance matrix. |
-| 2026-11-15 | Recorded the mobile/touch first slice (CR-13): touch gestures + foldable settings + phone HUD; updated verification counts to 467 Vitest / 23 browser scenarios. |
+| 2026-11-15 | Recorded the mobile/touch first slice (CR-13): touch gestures + foldable settings + phone HUD; merged onto the complete-city release and verified with 562 Vitest / 31 browser scenarios (30 pass on the complete-city payload). |

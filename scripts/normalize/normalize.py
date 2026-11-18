@@ -87,8 +87,20 @@ from ground_strokes import (  # noqa: E402
     tram_platforms,
 )
 from aeroway import build_aeroway  # noqa: E402
+from style_recipes import (  # noqa: E402
+    FACADE_PRESET_COUNT,
+    STYLE_SCHEMA_VERSION,
+    StyleInput,
+    legacy_style_id,
+    select_style,
+)
 
 GROUND_STROKE_MARGIN_M = 64.0
+
+# Tile payload version. 0.5.0 adds the optional per-building `styleVariant`
+# record (schema 1) and the style manifest block; the rest of the payload is
+# unchanged, so a 0.4.x consumer can still render a 0.5.0 tile and vice versa.
+PAYLOAD_VERSION = "0.5.0"
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data/interim/minsk_raw.geojson"
@@ -303,6 +315,24 @@ def parse_roof_direction(tags: dict[str, str]) -> float | None:
     if value is not None:
         return math.radians(value + 90.0)
     return None
+
+
+# Keys that stay in the tile payload for the info panel. The `building` prefix
+# intentionally covers `building:material` and every other `building:*` tag: the
+# style selector reads the material from the emitted record.
+PAYLOAD_TAG_PREFIXES = ("building", "roof", "addr", "name", "height", "levels", "start_date")
+PAYLOAD_TAG_KEYS = frozenset(
+    {"amenity", "shop", "office", "tourism", "historic", "religion", "man_made"}
+)
+
+
+def building_tags_out(tags: dict[str, str]) -> dict[str, str]:
+    """Filter OSM tags down to the payload set (storage only, no re-write)."""
+    return {
+        key: value
+        for key, value in tags.items()
+        if key.startswith(PAYLOAD_TAG_PREFIXES) or key in PAYLOAD_TAG_KEYS
+    }
 
 
 # --- archetype classification ----------------------------------------------
@@ -866,6 +896,48 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+# --- style provenance in the manifest ---------------------------------------
+
+def source_dataset_id(area: str, meta: dict) -> str:
+    """Stable id of the source dataset snapshot a styled run was derived from."""
+    digest = str((meta or {}).get("pbf_sha256") or "").strip().lower()
+    return f"{area}-{digest[:16]}" if digest else f"{area}-unknown"
+
+
+def source_input_sha256(area: str, meta: dict, tile_size: float, bounds) -> str:
+    """SHA-256 of the area/source manifest fields that determine the payload.
+
+    Only fields already present in the extraction metadata are hashed, so the
+    hash is reproducible without re-reading the PBF and excludes wall-clock
+    values (generatedAt) that must not enter a stable input fingerprint.
+    """
+    source = meta or {}
+    document = {
+        "area": area,
+        "epsg": EPSG_UTM35N,
+        "center": list(source.get("center") or []),
+        "window": list(source.get("window") or []),
+        "pbf": source.get("pbf"),
+        "pbfSize": source.get("pbf_size"),
+        "pbfSha256": source.get("pbf_sha256"),
+        "tileSize": float(tile_size),
+        "bounds": [float(value) for value in bounds],
+    }
+    encoded = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def style_recipe_counts(buildings: list[dict]) -> dict[int, int]:
+    """recipeId -> building count, including every legacy preset id (27..37)."""
+    counts: Counter = Counter()
+    for building in buildings:
+        variant = building.get("styleVariant") or {}
+        recipe_id = variant.get("recipeId")
+        if isinstance(recipe_id, int) and 0 <= recipe_id < FACADE_PRESET_COUNT:
+            counts[recipe_id] += 1
+    return {recipe_id: counts.get(recipe_id, 0) for recipe_id in range(FACADE_PRESET_COUNT)}
 
 
 def _validate_input_meta(
@@ -1503,6 +1575,25 @@ def main() -> int:
         # roof on a building with min_height would otherwise invert the volume.
         wall_top = max(2.0, height - roof_height, min_height + 0.5)
 
+        # Offline style selection (payload schema 1). It runs after the curated
+        # landmark override so curated/stadium routes serialise their legacy
+        # preset, and before the volume/profile assembly so it can never be
+        # influenced by rendered geometry. Selection is source-local: it reads
+        # only this feature's tags/footprint/height/parts.
+        protected_route = bool(landmark_override) or archetype in {'palace', 'stadium'}
+        selection = select_style(
+            StyleInput(
+                building_id, archetype, tags, polygon, height, levels,
+                bool(part_groups.get(index)),
+            )
+        )
+        style_payload = {
+            'schema': 1,
+            'recipeId': legacy_style_id(archetype) if protected_route else selection.recipe_id,
+            'source': 'legacy_default' if protected_route else selection.source,
+            'eligibility': ['protected_geometry_route'] if protected_route else list(selection.eligibility),
+        }
+
         volumes: list[dict] = []
         parts = part_groups.get(index, [])
         if parts:
@@ -1601,19 +1692,14 @@ def main() -> int:
         archetype_counts[archetype] += 1
         height_source_counts[height_source] += 1
 
-        tags_out = {
-            key: value
-            for key, value in tags.items()
-            if key.startswith(("building", "roof", "addr", "name", "height", "levels", "start_date"))
-            or key in {"amenity", "shop", "office", "tourism", "historic", "religion", "man_made"}
-        }
+        tags_out = building_tags_out(tags)
         address = ""
         street = tags.get("addr:street")
         house = tags.get("addr:housenumber")
         if street or house:
             address = f"{street or ''} {house or ''}".strip()
 
-        buildings.append({
+        feature = {
             "id": building_id,
             "osmType": osm_type,
             "osmId": osm_id,
@@ -1631,7 +1717,9 @@ def main() -> int:
             # de-overlap cuts the base into pieces around building:parts, which
             # landmark geometry cannot use to rebuild the real massing.
             **({"outline": poly_to_rings(polygon)} if landmark_override else {}),
-        })
+        }
+        feature['styleVariant'] = style_payload
+        buildings.append(feature)
 
     # --- merge polygons that belong to the same OSM feature -----------------
     # make_valid / multipolygon assembly can split one OSM building into several
@@ -2481,8 +2569,13 @@ def main() -> int:
     roof_explicit_count = sum(1 for b in buildings if b.get("roofShapeExplicit"))
     pitched = sum(1 for b in buildings if b["roofShape"] != "flat")
 
+    # Deterministic identity of one styled run: the reviewed area/source inputs
+    # and geometry rule version. No wall clock, so re-runs of the same accepted
+    # inputs produce the same run id and byte-identical tiles.
+    style_run_id = source_input_sha256(args.area, raw_meta, tile_size, bounds)
+
     manifest = {
-        "version": "0.4.3",
+        "version": PAYLOAD_VERSION,
         "generatedAt": time.strftime("%Y-%m-%d", time.gmtime()),
         "epsg": EPSG_UTM35N,
         "originUtm": [round(ORIGIN_X, 3), round(ORIGIN_Y, 3)],
@@ -2500,6 +2593,13 @@ def main() -> int:
         ],
         "areaBounds": list(bounds),
         "pilotBounds": list(bounds),
+        # Style provenance (payload schema 1). The counts include every runtime
+        # id 0..37 so unused families and legacy 27..37 presets are auditable.
+        "styleSchema": STYLE_SCHEMA_VERSION,
+        "sourceDatasetId": source_dataset_id(args.area, raw_meta),
+        "sourceInputSha256": style_run_id,
+        "styleRunId": style_run_id,
+        "styleRecipeCounts": style_recipe_counts(buildings),
         "tiles": manifest_tiles,
         "counts": {
             "buildings": len(buildings),

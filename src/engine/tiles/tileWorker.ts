@@ -5,6 +5,11 @@
  * The worker owns the network request so that JSON parsing of multi-megabyte
  * tiles never blocks the render loop. Cancellation aborts the request; the main
  * thread ignores stale results via request ids.
+ *
+ * `request.url` arrives as an absolute URL resolved by the main thread against
+ * the document base (`TileWorkerPool`): a project-relative payload URL would
+ * otherwise resolve against this worker script instead of the application and
+ * break deployments below a prefix such as `/VoxelMinsk/`.
  */
 
 import type { TileData } from '../../shared/types';

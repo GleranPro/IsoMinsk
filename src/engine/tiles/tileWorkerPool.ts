@@ -48,6 +48,32 @@ interface Job {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+/**
+ * Absolute fetch URL for a worker job.
+ *
+ * A worker script does not share the document's URL: a project-relative URL
+ * such as `./data/city-tiles/-11_-9.json` would resolve against the worker
+ * chunk (e.g. `/VoxelMinsk/assets/`), not against the application document.
+ * The main thread therefore resolves every job URL with the document base
+ * (`/VoxelMinsk/` on GitHub Pages, `/` in development) before posting it to the
+ * worker; already-absolute URLs are left untouched.
+ */
+function absoluteWorkerUrl(url: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
+  const base =
+    typeof document !== 'undefined' && document.baseURI
+      ? document.baseURI
+      : typeof location !== 'undefined'
+        ? location.href
+        : null;
+  if (!base) return url;
+  try {
+    return new URL(url, base).href;
+  } catch {
+    return url;
+  }
+}
+
 export class TileWorkerPool {
   private readonly workers: Worker[] = [];
   private readonly idle: Worker[] = [];
@@ -245,7 +271,7 @@ export class TileWorkerPool {
         type: 'load',
         id: job.id,
         key: job.input.key,
-        url: job.input.url,
+        url: absoluteWorkerUrl(job.input.url),
         facadeDetail: job.input.facadeDetail,
         trees: job.input.trees,
         treeStyle: job.input.treeStyle,

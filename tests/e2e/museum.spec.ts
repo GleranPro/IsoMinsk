@@ -1,13 +1,16 @@
 import { test, expect } from '@playwright/test';
 import type * as THREE from 'three';
 import type { CityAppHandle, EngineStats } from '../../src/shared/appApi';
+import { MUSEUM } from '../../src/shared/museum';
 
 /**
  * Lipki aviation museum (product integration).
  *
- * The exhibits live at x ≈ 9.3 km east of the pilot centre, i.e. only inside the
- * `?dataset=city` extent. `?focus=lipki` frames them on start-up; the control
- * panel button uses the same engine API.
+ * The exhibits live at x ≈ 9.3 km east of the pilot centre. The public
+ * application serves the complete city, which always contains them, so there
+ * is no dataset switch any more: `?focus=lipki` frames them on start-up and
+ * the control-panel button does the same in the current document. Legacy
+ * `?dataset=central` links still resolve to the complete city.
  */
 
 interface MuseumMeshLike {
@@ -36,7 +39,7 @@ declare global {
   }
 }
 
-test('Lipki museum exhibits render in the city dataset', async ({ page }) => {
+test('Lipki museum exhibits render in the complete city', async ({ page }) => {
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(String(error)));
@@ -44,7 +47,8 @@ test('Lipki museum exhibits render in the city dataset', async ({ page }) => {
     if (message.type() === 'error' && !/favicon|404/.test(message.text())) errors.push(message.text());
   });
 
-  await page.goto('/?dataset=city&focus=lipki');
+  // Query-only static-site deep link; no dataset selector is involved.
+  await page.goto('/?focus=lipki');
   await page.waitForFunction(() => window.__CITY_APP__?.ready === true, null, { timeout: 90000 });
   await page.waitForFunction(
     () => {
@@ -54,6 +58,11 @@ test('Lipki museum exhibits render in the city dataset', async ({ page }) => {
     null,
     { timeout: 90000 },
   );
+
+  // The legacy deep link must have framed Lipki on start-up.
+  const focusCamera = await page.evaluate(() => window.__CITY_APP__!.app!.getCameraSettings());
+  expect(focusCamera.orthoHeight).toBeCloseTo(MUSEUM.orthoHeight, 5);
+  expect(new URL(page.url()).searchParams.get('dataset')).toBeNull();
 
   const museum = await page.evaluate(() => {
     const info = window.__CITY_DEBUG__!.museum();
@@ -129,15 +138,32 @@ test('Lipki museum exhibits render in the city dataset', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('museum control switches the central dataset to the city deep link', async ({ page }) => {
-  await page.goto('/');
+test('museum control focuses Lipki in the same complete-city document', async ({ page }) => {
+  test.setTimeout(180_000);
+  // A legacy link: the application must still serve the complete city.
+  await page.goto('/?dataset=central');
   await page.waitForFunction(() => window.__CITY_APP__?.ready === true, null, { timeout: 90000 });
   await expect(page.locator('[data-testid="focus-museum"]')).toBeEnabled();
-  await Promise.all([
-    page.waitForURL(/dataset=city/, { timeout: 90000 }),
-    page.click('[data-testid="focus-museum"]'),
-  ]);
-  const url = new URL(page.url());
-  expect(url.searchParams.get('dataset')).toBe('city');
-  expect(url.searchParams.get('focus')).toBe('lipki');
+
+  const urlBefore = page.url();
+  await page.click('[data-testid="focus-museum"]');
+  await page.waitForTimeout(1200);
+
+  // Same-document interaction: no reload and no ?dataset= rewrite — the
+  // complete city already contains the exhibits.
+  expect(page.url()).toBe(urlBefore);
+
+  const camera = await page.evaluate(() => window.__CITY_APP__!.app!.getCameraSettings());
+  expect(camera.orthoHeight).toBeCloseTo(MUSEUM.orthoHeight, 5);
+
+  await page.waitForFunction(() => window.__CITY_DEBUG__?.museum().state === 'ready', null, {
+    timeout: 90000,
+  });
+  const info = await page.evaluate(() => window.__CITY_DEBUG__!.museum());
+  expect(info.state).toBe('ready');
+  expect(info.triangles).toBeGreaterThan(50000);
+
+  // The legacy query survived as a harmless query parameter, not a reload or a
+  // dataset switch.
+  expect(new URL(page.url()).searchParams.get('dataset')).toBe('central');
 });

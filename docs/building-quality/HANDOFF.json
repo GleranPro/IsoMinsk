@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-14T21:15:00+01:00",
+  "branch": "procedural-building-variety",
+  "gitSha": "see git rev-parse HEAD (this file is committed with the release candidate)",
+  "gates": {
+    "L0": {
+      "status": "conditional",
+      "evidence": [
+        "docs/building-quality/BASELINE.json (437 tiles, 76,004 buildings, 1,910,624 trees, 295.27 MB; suites typecheck pass, vitest 443 passed / 5 skipped, python 157 passed)",
+        "docs/B2/STAGING_AUDIT.json (35 checks, 0 failed; address book derived from scripts/geo_config.py)",
+        "docs/building-quality/review-cases.json (31 frozen cases)"
+      ],
+      "gap": "the full before-image matrix is produced by the same script as L2 and has not finished for all 31 cases"
+    },
+    "L1": {
+      "status": "automated-pass-owner-signoff-pending",
+      "evidence": [
+        "docs/building-quality/gallery-results.json (27/27 panels pass; >=2 wall and >=1 roof triangle per panel; day/night frames covered)",
+        "screenshots/building-quality/e514fa6/gallery/ (83 PNG: 27 panels x day/opposite/night + 2 contact sheets)"
+      ],
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero))) - correctness only, no FPS claim",
+      "gap": "owner visual sign-off over all 27 families at day, night and the opposite azimuth"
+    },
+    "L2": {
+      "status": "blocked",
+      "evidence": [
+        "data/staging/city-buildings: 437 tiles, 309.37 MB, 76,004 buildings, 1,910,624 trees, payload 0.5.0, manifest sha256 c6f74953ead0b86c6a54fb75643fe615bf17407c388335b5a5c42af5e1f6423a",
+        "docs/building-quality/style-audit.json: 16 checks, 0 building failures over 76,004 buildings; every source volume preserved (0.05 m top, 0.005 m plan); 27 family recipes used; >=3 recipes for all 9 generic archetypes",
+        "docs/building-quality/neighborhood-results.json: locked-camera close/night captures for a representative 12-case subset (incremental report)"
+      ],
+      "gap": "complete 31-case before/after matrix (155 frames) and the owner's visual sign-off"
+    },
+    "L3": {
+      "status": "blocked",
+      "evidence": [
+        "the accepted B-2 streamer still renders one representation per tile"
+      ],
+      "gap": "atomic full/far state machine (cityLodStreamer.ts), far export, transition probe and five journeys are specified in plan Task 7 but not implemented in this session"
+    },
+    "L4": {
+      "status": "blocked",
+      "evidence": [
+        "publication-report.json: artifact 450 files / 307,436,371 bytes, data/city-tiles only, museum payload, .nojekyll, ODbL text and attribution; legacy/alternate dataset paths 404 below /VoxelMinsk/",
+        ".github/workflows/pages.yml (verify + deploy jobs, pinned action majors, 10-minute timeouts, group: pages)",
+        "tests/e2e/publication.spec.ts (3 tests, nested-path release checks)"
+      ],
+      "gap": "owner must choose repository owner/name and the source-code licence, confirm museum asset redistribution rights, provide CI access to the 295 MB accepted dataset, and run the workflow on main"
+    }
+  },
+  "measurements": {
+    "acceptedBaseline": {
+      "directory": "public/data/city-tiles",
+      "payloadVersion": "0.4.3",
+      "manifestSha256": "19a97f50949d100fc9f79218ea3e7b8ed38205e08fe2081957721042046495da",
+      "tiles": 437,
+      "buildings": 76004,
+      "trees": 1910624,
+      "tileBytes": 295267617
+    },
+    "styledCandidate": {
+      "directory": "data/staging/city-buildings",
+      "payloadVersion": "0.5.0",
+      "manifestSha256": "c6f74953ead0b86c6a54fb75643fe615bf17407c388335b5a5c42af5e1f6423a",
+      "tiles": 437,
+      "buildings": 76004,
+      "trees": 1910624,
+      "tileBytes": 309367255,
+      "styleRecipeIdsUsed": 27,
+      "legacyRecipeIdsUsed": [27, 35, 36, 37]
+    },
+    "artifact": {
+      "files": 450,
+      "totalBytes": 307436371,
+      "warningThresholdBytes": 524288000,
+      "fatalThresholdBytes": 900000000,
+      "cityPayloadBytes": 295267617
+    },
+    "suites": {
+      "typecheck": "pass",
+      "vitest": "533 passed / 5 skipped (final run recorded in the session log)",
+      "python": "190 passed",
+      "e2e": "run required after the final edit; see docs/TESTING.md and the session log",
+      "gallery": "27/27 panels pass"
+    }
+  },
+  "licenses": {
+    "sourceCode": "not selected - repository is source-available, not open source; owner decision required",
+    "osmDatabase": "ODbL 1.0 (public/data/LICENSE-ODbL.txt, public/data/ATTRIBUTION.md)",
+    "museumAssets": "1 CC0 + 24 CC-BY with recorded author/source/uid in assets/aviation-museum/MODELS.json and per-model ATTRIBUTION.txt; upstream licence pages are not archived, owner re-verification recommended",
+    "thirdPartyRedistribution": "public/asset-licenses.json fails closed for unverified rights"
+  },
+  "ownerDecisionsRequired": [
+    "repository owner/name and GitHub Pages source configuration",
+    "source-code licence (or explicit source-available wording)",
+    "how CI obtains the git-ignored 295 MB accepted dataset",
+    "verified museum asset redistribution rights",
+    "visual sign-off for L1 and L2 and the live L4 URL"
+  ]
+}

@@ -1,0 +1,3171 @@
+{
+ "version": "0.5.0",
+ "generatedAt": "2026-11-14",
+ "epsg": 32635,
+ "originUtm": [
+  536859.254,
+  5972786.284
+ ],
+ "centerLatLon": [
+  53.9022,
+  27.561
+ ],
+ "tileSize": 1024.0,
+ "tileRange": {
+  "minX": -11,
+  "minY": -9,
+  "maxX": 11,
+  "maxY": 9
+ },
+ "bounds": [
+  -11264.0,
+  -9216.0,
+  12288.0,
+  10240.0
+ ],
+ "areaBounds": [
+  -11264.0,
+  -9216.0,
+  12288.0,
+  10240.0
+ ],
+ "pilotBounds": [
+  -11264.0,
+  -9216.0,
+  12288.0,
+  10240.0
+ ],
+ "styleSchema": 1,
+ "sourceDatasetId": "city-da3ccdb434f90d6a",
+ "sourceInputSha256": "fa79001dc471aa48b291fb6789bfa90d297adbf8cffa50634e9adfbd407c05f2",
+ "styleRunId": "fa79001dc471aa48b291fb6789bfa90d297adbf8cffa50634e9adfbd407c05f2",
+ "styleRecipeCounts": {
+  "0": 191,
+  "1": 44,
+  "2": 107,
+  "3": 662,
+  "4": 1018,
+  "5": 345,
+  "6": 2527,
+  "7": 727,
+  "8": 1208,
+  "9": 2,
+  "10": 16,
+  "11": 119,
+  "12": 1816,
+  "13": 468,
+  "14": 525,
+  "15": 5127,
+  "16": 1017,
+  "17": 1114,
+  "18": 412,
+  "19": 683,
+  "20": 265,
+  "21": 28188,
+  "22": 6277,
+  "23": 21909,
+  "24": 861,
+  "25": 86,
+  "26": 264,
+  "27": 1,
+  "28": 0,
+  "29": 0,
+  "30": 0,
+  "31": 0,
+  "32": 0,
+  "33": 0,
+  "34": 0,
+  "35": 4,
+  "36": 2,
+  "37": 19
+ },
+ "tiles": [
+  {
+   "x": -11,
+   "y": -9,
+   "file": "tiles/-11_-9.json",
+   "buildings": 117,
+   "bytes": 109250
+  },
+  {
+   "x": -11,
+   "y": -8,
+   "file": "tiles/-11_-8.json",
+   "buildings": 83,
+   "bytes": 125159
+  },
+  {
+   "x": -11,
+   "y": -7,
+   "file": "tiles/-11_-7.json",
+   "buildings": 584,
+   "bytes": 595297
+  },
+  {
+   "x": -11,
+   "y": -6,
+   "file": "tiles/-11_-6.json",
+   "buildings": 113,
+   "bytes": 189353
+  },
+  {
+   "x": -11,
+   "y": -5,
+   "file": "tiles/-11_-5.json",
+   "buildings": 69,
+   "bytes": 536425
+  },
+  {
+   "x": -11,
+   "y": -4,
+   "file": "tiles/-11_-4.json",
+   "buildings": 90,
+   "bytes": 289827
+  },
+  {
+   "x": -11,
+   "y": -3,
+   "file": "tiles/-11_-3.json",
+   "buildings": 29,
+   "bytes": 195651
+  },
+  {
+   "x": -11,
+   "y": -2,
+   "file": "tiles/-11_-2.json",
+   "buildings": 69,
+   "bytes": 136767
+  },
+  {
+   "x": -11,
+   "y": -1,
+   "file": "tiles/-11_-1.json",
+   "buildings": 24,
+   "bytes": 82209
+  },
+  {
+   "x": -11,
+   "y": 0,
+   "file": "tiles/-11_0.json",
+   "buildings": 10,
+   "bytes": 848559
+  },
+  {
+   "x": -11,
+   "y": 1,
+   "file": "tiles/-11_1.json",
+   "buildings": 447,
+   "bytes": 437259
+  },
+  {
+   "x": -11,
+   "y": 2,
+   "file": "tiles/-11_2.json",
+   "buildings": 272,
+   "bytes": 310354
+  },
+  {
+   "x": -11,
+   "y": 3,
+   "file": "tiles/-11_3.json",
+   "buildings": 103,
+   "bytes": 124424
+  },
+  {
+   "x": -11,
+   "y": 4,
+   "file": "tiles/-11_4.json",
+   "buildings": 433,
+   "bytes": 605772
+  },
+  {
+   "x": -11,
+   "y": 5,
+   "file": "tiles/-11_5.json",
+   "buildings": 25,
+   "bytes": 461049
+  },
+  {
+   "x": -11,
+   "y": 6,
+   "file": "tiles/-11_6.json",
+   "buildings": 45,
+   "bytes": 448353
+  },
+  {
+   "x": -11,
+   "y": 7,
+   "file": "tiles/-11_7.json",
+   "buildings": 0,
+   "bytes": 1393
+  },
+  {
+   "x": -11,
+   "y": 8,
+   "file": "tiles/-11_8.json",
+   "buildings": 0,
+   "bytes": 48119
+  },
+  {
+   "x": -11,
+   "y": 9,
+   "file": "tiles/-11_9.json",
+   "buildings": 0,
+   "bytes": 445
+  },
+  {
+   "x": -10,
+   "y": -9,
+   "file": "tiles/-10_-9.json",
+   "buildings": 0,
+   "bytes": 923838
+  },
+  {
+   "x": -10,
+   "y": -8,
+   "file": "tiles/-10_-8.json",
+   "buildings": 0,
+   "bytes": 704657
+  },
+  {
+   "x": -10,
+   "y": -7,
+   "file": "tiles/-10_-7.json",
+   "buildings": 158,
+   "bytes": 817396
+  },
+  {
+   "x": -10,
+   "y": -6,
+   "file": "tiles/-10_-6.json",
+   "buildings": 65,
+   "bytes": 967597
+  },
+  {
+   "x": -10,
+   "y": -5,
+   "file": "tiles/-10_-5.json",
+   "buildings": 30,
+   "bytes": 964142
+  },
+  {
+   "x": -10,
+   "y": -4,
+   "file": "tiles/-10_-4.json",
+   "buildings": 95,
+   "bytes": 256801
+  },
+  {
+   "x": -10,
+   "y": -3,
+   "file": "tiles/-10_-3.json",
+   "buildings": 50,
+   "bytes": 277333
+  },
+  {
+   "x": -10,
+   "y": -2,
+   "file": "tiles/-10_-2.json",
+   "buildings": 49,
+   "bytes": 239788
+  },
+  {
+   "x": -10,
+   "y": -1,
+   "file": "tiles/-10_-1.json",
+   "buildings": 74,
+   "bytes": 283468
+  },
+  {
+   "x": -10,
+   "y": 0,
+   "file": "tiles/-10_0.json",
+   "buildings": 165,
+   "bytes": 577746
+  },
+  {
+   "x": -10,
+   "y": 1,
+   "file": "tiles/-10_1.json",
+   "buildings": 162,
+   "bytes": 434756
+  },
+  {
+   "x": -10,
+   "y": 2,
+   "file": "tiles/-10_2.json",
+   "buildings": 370,
+   "bytes": 408492
+  },
+  {
+   "x": -10,
+   "y": 3,
+   "file": "tiles/-10_3.json",
+   "buildings": 428,
+   "bytes": 469613
+  },
+  {
+   "x": -10,
+   "y": 4,
+   "file": "tiles/-10_4.json",
+   "buildings": 584,
+   "bytes": 585159
+  },
+  {
+   "x": -10,
+   "y": 5,
+   "file": "tiles/-10_5.json",
+   "buildings": 292,
+   "bytes": 524186
+  },
+  {
+   "x": -10,
+   "y": 6,
+   "file": "tiles/-10_6.json",
+   "buildings": 44,
+   "bytes": 1057197
+  },
+  {
+   "x": -10,
+   "y": 7,
+   "file": "tiles/-10_7.json",
+   "buildings": 3,
+   "bytes": 760620
+  },
+  {
+   "x": -10,
+   "y": 8,
+   "file": "tiles/-10_8.json",
+   "buildings": 0,
+   "bytes": 135989
+  },
+  {
+   "x": -10,
+   "y": 9,
+   "file": "tiles/-10_9.json",
+   "buildings": 0,
+   "bytes": 20864
+  },
+  {
+   "x": -9,
+   "y": -9,
+   "file": "tiles/-9_-9.json",
+   "buildings": 9,
+   "bytes": 485521
+  },
+  {
+   "x": -9,
+   "y": -8,
+   "file": "tiles/-9_-8.json",
+   "buildings": 0,
+   "bytes": 67097
+  },
+  {
+   "x": -9,
+   "y": -7,
+   "file": "tiles/-9_-7.json",
+   "buildings": 37,
+   "bytes": 466228
+  },
+  {
+   "x": -9,
+   "y": -6,
+   "file": "tiles/-9_-6.json",
+   "buildings": 105,
+   "bytes": 388772
+  },
+  {
+   "x": -9,
+   "y": -5,
+   "file": "tiles/-9_-5.json",
+   "buildings": 62,
+   "bytes": 331786
+  },
+  {
+   "x": -9,
+   "y": -4,
+   "file": "tiles/-9_-4.json",
+   "buildings": 32,
+   "bytes": 240492
+  },
+  {
+   "x": -9,
+   "y": -3,
+   "file": "tiles/-9_-3.json",
+   "buildings": 124,
+   "bytes": 372564
+  },
+  {
+   "x": -9,
+   "y": -2,
+   "file": "tiles/-9_-2.json",
+   "buildings": 107,
+   "bytes": 599633
+  },
+  {
+   "x": -9,
+   "y": -1,
+   "file": "tiles/-9_-1.json",
+   "buildings": 144,
+   "bytes": 548169
+  },
+  {
+   "x": -9,
+   "y": 0,
+   "file": "tiles/-9_0.json",
+   "buildings": 154,
+   "bytes": 600435
+  },
+  {
+   "x": -9,
+   "y": 1,
+   "file": "tiles/-9_1.json",
+   "buildings": 75,
+   "bytes": 644372
+  },
+  {
+   "x": -9,
+   "y": 2,
+   "file": "tiles/-9_2.json",
+   "buildings": 102,
+   "bytes": 491551
+  },
+  {
+   "x": -9,
+   "y": 3,
+   "file": "tiles/-9_3.json",
+   "buildings": 251,
+   "bytes": 484707
+  },
+  {
+   "x": -9,
+   "y": 4,
+   "file": "tiles/-9_4.json",
+   "buildings": 647,
+   "bytes": 757690
+  },
+  {
+   "x": -9,
+   "y": 5,
+   "file": "tiles/-9_5.json",
+   "buildings": 203,
+   "bytes": 1264166
+  },
+  {
+   "x": -9,
+   "y": 6,
+   "file": "tiles/-9_6.json",
+   "buildings": 46,
+   "bytes": 837913
+  },
+  {
+   "x": -9,
+   "y": 7,
+   "file": "tiles/-9_7.json",
+   "buildings": 73,
+   "bytes": 1338640
+  },
+  {
+   "x": -9,
+   "y": 8,
+   "file": "tiles/-9_8.json",
+   "buildings": 4,
+   "bytes": 1427470
+  },
+  {
+   "x": -9,
+   "y": 9,
+   "file": "tiles/-9_9.json",
+   "buildings": 0,
+   "bytes": 370649
+  },
+  {
+   "x": -8,
+   "y": -9,
+   "file": "tiles/-8_-9.json",
+   "buildings": 284,
+   "bytes": 371147
+  },
+  {
+   "x": -8,
+   "y": -8,
+   "file": "tiles/-8_-8.json",
+   "buildings": 3,
+   "bytes": 43548
+  },
+  {
+   "x": -8,
+   "y": -7,
+   "file": "tiles/-8_-7.json",
+   "buildings": 91,
+   "bytes": 181065
+  },
+  {
+   "x": -8,
+   "y": -6,
+   "file": "tiles/-8_-6.json",
+   "buildings": 111,
+   "bytes": 505666
+  },
+  {
+   "x": -8,
+   "y": -5,
+   "file": "tiles/-8_-5.json",
+   "buildings": 115,
+   "bytes": 607116
+  },
+  {
+   "x": -8,
+   "y": -4,
+   "file": "tiles/-8_-4.json",
+   "buildings": 79,
+   "bytes": 334087
+  },
+  {
+   "x": -8,
+   "y": -3,
+   "file": "tiles/-8_-3.json",
+   "buildings": 196,
+   "bytes": 568950
+  },
+  {
+   "x": -8,
+   "y": -2,
+   "file": "tiles/-8_-2.json",
+   "buildings": 111,
+   "bytes": 842005
+  },
+  {
+   "x": -8,
+   "y": -1,
+   "file": "tiles/-8_-1.json",
+   "buildings": 112,
+   "bytes": 518384
+  },
+  {
+   "x": -8,
+   "y": 0,
+   "file": "tiles/-8_0.json",
+   "buildings": 125,
+   "bytes": 460072
+  },
+  {
+   "x": -8,
+   "y": 1,
+   "file": "tiles/-8_1.json",
+   "buildings": 113,
+   "bytes": 686497
+  },
+  {
+   "x": -8,
+   "y": 2,
+   "file": "tiles/-8_2.json",
+   "buildings": 159,
+   "bytes": 529255
+  },
+  {
+   "x": -8,
+   "y": 3,
+   "file": "tiles/-8_3.json",
+   "buildings": 392,
+   "bytes": 673039
+  },
+  {
+   "x": -8,
+   "y": 4,
+   "file": "tiles/-8_4.json",
+   "buildings": 60,
+   "bytes": 978445
+  },
+  {
+   "x": -8,
+   "y": 5,
+   "file": "tiles/-8_5.json",
+   "buildings": 75,
+   "bytes": 970227
+  },
+  {
+   "x": -8,
+   "y": 6,
+   "file": "tiles/-8_6.json",
+   "buildings": 38,
+   "bytes": 749990
+  },
+  {
+   "x": -8,
+   "y": 7,
+   "file": "tiles/-8_7.json",
+   "buildings": 169,
+   "bytes": 1285494
+  },
+  {
+   "x": -8,
+   "y": 8,
+   "file": "tiles/-8_8.json",
+   "buildings": 40,
+   "bytes": 1079130
+  },
+  {
+   "x": -8,
+   "y": 9,
+   "file": "tiles/-8_9.json",
+   "buildings": 3,
+   "bytes": 236515
+  },
+  {
+   "x": -7,
+   "y": -9,
+   "file": "tiles/-7_-9.json",
+   "buildings": 458,
+   "bytes": 688724
+  },
+  {
+   "x": -7,
+   "y": -8,
+   "file": "tiles/-7_-8.json",
+   "buildings": 85,
+   "bytes": 270416
+  },
+  {
+   "x": -7,
+   "y": -7,
+   "file": "tiles/-7_-7.json",
+   "buildings": 252,
+   "bytes": 510502
+  },
+  {
+   "x": -7,
+   "y": -6,
+   "file": "tiles/-7_-6.json",
+   "buildings": 270,
+   "bytes": 708909
+  },
+  {
+   "x": -7,
+   "y": -5,
+   "file": "tiles/-7_-5.json",
+   "buildings": 111,
+   "bytes": 392660
+  },
+  {
+   "x": -7,
+   "y": -4,
+   "file": "tiles/-7_-4.json",
+   "buildings": 91,
+   "bytes": 523142
+  },
+  {
+   "x": -7,
+   "y": -3,
+   "file": "tiles/-7_-3.json",
+   "buildings": 76,
+   "bytes": 263416
+  },
+  {
+   "x": -7,
+   "y": -2,
+   "file": "tiles/-7_-2.json",
+   "buildings": 67,
+   "bytes": 612282
+  },
+  {
+   "x": -7,
+   "y": -1,
+   "file": "tiles/-7_-1.json",
+   "buildings": 164,
+   "bytes": 493828
+  },
+  {
+   "x": -7,
+   "y": 0,
+   "file": "tiles/-7_0.json",
+   "buildings": 140,
+   "bytes": 604816
+  },
+  {
+   "x": -7,
+   "y": 1,
+   "file": "tiles/-7_1.json",
+   "buildings": 122,
+   "bytes": 513692
+  },
+  {
+   "x": -7,
+   "y": 2,
+   "file": "tiles/-7_2.json",
+   "buildings": 108,
+   "bytes": 365392
+  },
+  {
+   "x": -7,
+   "y": 3,
+   "file": "tiles/-7_3.json",
+   "buildings": 312,
+   "bytes": 633274
+  },
+  {
+   "x": -7,
+   "y": 4,
+   "file": "tiles/-7_4.json",
+   "buildings": 132,
+   "bytes": 464044
+  },
+  {
+   "x": -7,
+   "y": 5,
+   "file": "tiles/-7_5.json",
+   "buildings": 35,
+   "bytes": 502489
+  },
+  {
+   "x": -7,
+   "y": 6,
+   "file": "tiles/-7_6.json",
+   "buildings": 12,
+   "bytes": 1403524
+  },
+  {
+   "x": -7,
+   "y": 7,
+   "file": "tiles/-7_7.json",
+   "buildings": 74,
+   "bytes": 1475008
+  },
+  {
+   "x": -7,
+   "y": 8,
+   "file": "tiles/-7_8.json",
+   "buildings": 3,
+   "bytes": 1170931
+  },
+  {
+   "x": -7,
+   "y": 9,
+   "file": "tiles/-7_9.json",
+   "buildings": 15,
+   "bytes": 861709
+  },
+  {
+   "x": -6,
+   "y": -9,
+   "file": "tiles/-6_-9.json",
+   "buildings": 75,
+   "bytes": 320184
+  },
+  {
+   "x": -6,
+   "y": -8,
+   "file": "tiles/-6_-8.json",
+   "buildings": 50,
+   "bytes": 763012
+  },
+  {
+   "x": -6,
+   "y": -7,
+   "file": "tiles/-6_-7.json",
+   "buildings": 93,
+   "bytes": 674245
+  },
+  {
+   "x": -6,
+   "y": -6,
+   "file": "tiles/-6_-6.json",
+   "buildings": 98,
+   "bytes": 877362
+  },
+  {
+   "x": -6,
+   "y": -5,
+   "file": "tiles/-6_-5.json",
+   "buildings": 90,
+   "bytes": 607882
+  },
+  {
+   "x": -6,
+   "y": -4,
+   "file": "tiles/-6_-4.json",
+   "buildings": 138,
+   "bytes": 469790
+  },
+  {
+   "x": -6,
+   "y": -3,
+   "file": "tiles/-6_-3.json",
+   "buildings": 115,
+   "bytes": 419603
+  },
+  {
+   "x": -6,
+   "y": -2,
+   "file": "tiles/-6_-2.json",
+   "buildings": 157,
+   "bytes": 903024
+  },
+  {
+   "x": -6,
+   "y": -1,
+   "file": "tiles/-6_-1.json",
+   "buildings": 213,
+   "bytes": 681727
+  },
+  {
+   "x": -6,
+   "y": 0,
+   "file": "tiles/-6_0.json",
+   "buildings": 134,
+   "bytes": 639813
+  },
+  {
+   "x": -6,
+   "y": 1,
+   "file": "tiles/-6_1.json",
+   "buildings": 161,
+   "bytes": 610650
+  },
+  {
+   "x": -6,
+   "y": 2,
+   "file": "tiles/-6_2.json",
+   "buildings": 306,
+   "bytes": 785938
+  },
+  {
+   "x": -6,
+   "y": 3,
+   "file": "tiles/-6_3.json",
+   "buildings": 112,
+   "bytes": 767619
+  },
+  {
+   "x": -6,
+   "y": 4,
+   "file": "tiles/-6_4.json",
+   "buildings": 277,
+   "bytes": 443416
+  },
+  {
+   "x": -6,
+   "y": 5,
+   "file": "tiles/-6_5.json",
+   "buildings": 0,
+   "bytes": 311578
+  },
+  {
+   "x": -6,
+   "y": 6,
+   "file": "tiles/-6_6.json",
+   "buildings": 1,
+   "bytes": 1448542
+  },
+  {
+   "x": -6,
+   "y": 7,
+   "file": "tiles/-6_7.json",
+   "buildings": 0,
+   "bytes": 1430925
+  },
+  {
+   "x": -6,
+   "y": 8,
+   "file": "tiles/-6_8.json",
+   "buildings": 0,
+   "bytes": 1419058
+  },
+  {
+   "x": -6,
+   "y": 9,
+   "file": "tiles/-6_9.json",
+   "buildings": 63,
+   "bytes": 936756
+  },
+  {
+   "x": -5,
+   "y": -9,
+   "file": "tiles/-5_-9.json",
+   "buildings": 77,
+   "bytes": 282300
+  },
+  {
+   "x": -5,
+   "y": -8,
+   "file": "tiles/-5_-8.json",
+   "buildings": 0,
+   "bytes": 92702
+  },
+  {
+   "x": -5,
+   "y": -7,
+   "file": "tiles/-5_-7.json",
+   "buildings": 101,
+   "bytes": 544010
+  },
+  {
+   "x": -5,
+   "y": -6,
+   "file": "tiles/-5_-6.json",
+   "buildings": 59,
+   "bytes": 615809
+  },
+  {
+   "x": -5,
+   "y": -5,
+   "file": "tiles/-5_-5.json",
+   "buildings": 137,
+   "bytes": 651028
+  },
+  {
+   "x": -5,
+   "y": -4,
+   "file": "tiles/-5_-4.json",
+   "buildings": 92,
+   "bytes": 765500
+  },
+  {
+   "x": -5,
+   "y": -3,
+   "file": "tiles/-5_-3.json",
+   "buildings": 243,
+   "bytes": 713282
+  },
+  {
+   "x": -5,
+   "y": -2,
+   "file": "tiles/-5_-2.json",
+   "buildings": 218,
+   "bytes": 391100
+  },
+  {
+   "x": -5,
+   "y": -1,
+   "file": "tiles/-5_-1.json",
+   "buildings": 174,
+   "bytes": 457626
+  },
+  {
+   "x": -5,
+   "y": 0,
+   "file": "tiles/-5_0.json",
+   "buildings": 143,
+   "bytes": 533305
+  },
+  {
+   "x": -5,
+   "y": 1,
+   "file": "tiles/-5_1.json",
+   "buildings": 135,
+   "bytes": 680158
+  },
+  {
+   "x": -5,
+   "y": 2,
+   "file": "tiles/-5_2.json",
+   "buildings": 532,
+   "bytes": 944422
+  },
+  {
+   "x": -5,
+   "y": 3,
+   "file": "tiles/-5_3.json",
+   "buildings": 102,
+   "bytes": 670389
+  },
+  {
+   "x": -5,
+   "y": 4,
+   "file": "tiles/-5_4.json",
+   "buildings": 236,
+   "bytes": 1154925
+  },
+  {
+   "x": -5,
+   "y": 5,
+   "file": "tiles/-5_5.json",
+   "buildings": 5,
+   "bytes": 766823
+  },
+  {
+   "x": -5,
+   "y": 6,
+   "file": "tiles/-5_6.json",
+   "buildings": 0,
+   "bytes": 315224
+  },
+  {
+   "x": -5,
+   "y": 7,
+   "file": "tiles/-5_7.json",
+   "buildings": 40,
+   "bytes": 1356432
+  },
+  {
+   "x": -5,
+   "y": 8,
+   "file": "tiles/-5_8.json",
+   "buildings": 365,
+   "bytes": 1357139
+  },
+  {
+   "x": -5,
+   "y": 9,
+   "file": "tiles/-5_9.json",
+   "buildings": 240,
+   "bytes": 398677
+  },
+  {
+   "x": -4,
+   "y": -9,
+   "file": "tiles/-4_-9.json",
+   "buildings": 275,
+   "bytes": 499968
+  },
+  {
+   "x": -4,
+   "y": -8,
+   "file": "tiles/-4_-8.json",
+   "buildings": 113,
+   "bytes": 252324
+  },
+  {
+   "x": -4,
+   "y": -7,
+   "file": "tiles/-4_-7.json",
+   "buildings": 189,
+   "bytes": 691560
+  },
+  {
+   "x": -4,
+   "y": -6,
+   "file": "tiles/-4_-6.json",
+   "buildings": 110,
+   "bytes": 687284
+  },
+  {
+   "x": -4,
+   "y": -5,
+   "file": "tiles/-4_-5.json",
+   "buildings": 127,
+   "bytes": 577731
+  },
+  {
+   "x": -4,
+   "y": -4,
+   "file": "tiles/-4_-4.json",
+   "buildings": 338,
+   "bytes": 550730
+  },
+  {
+   "x": -4,
+   "y": -3,
+   "file": "tiles/-4_-3.json",
+   "buildings": 382,
+   "bytes": 884533
+  },
+  {
+   "x": -4,
+   "y": -2,
+   "file": "tiles/-4_-2.json",
+   "buildings": 213,
+   "bytes": 1003481
+  },
+  {
+   "x": -4,
+   "y": -1,
+   "file": "tiles/-4_-1.json",
+   "buildings": 258,
+   "bytes": 720003
+  },
+  {
+   "x": -4,
+   "y": 0,
+   "file": "tiles/-4_0.json",
+   "buildings": 342,
+   "bytes": 768081
+  },
+  {
+   "x": -4,
+   "y": 1,
+   "file": "tiles/-4_1.json",
+   "buildings": 251,
+   "bytes": 565450
+  },
+  {
+   "x": -4,
+   "y": 2,
+   "file": "tiles/-4_2.json",
+   "buildings": 264,
+   "bytes": 888545
+  },
+  {
+   "x": -4,
+   "y": 3,
+   "file": "tiles/-4_3.json",
+   "buildings": 59,
+   "bytes": 565822
+  },
+  {
+   "x": -4,
+   "y": 4,
+   "file": "tiles/-4_4.json",
+   "buildings": 75,
+   "bytes": 845421
+  },
+  {
+   "x": -4,
+   "y": 5,
+   "file": "tiles/-4_5.json",
+   "buildings": 325,
+   "bytes": 694878
+  },
+  {
+   "x": -4,
+   "y": 6,
+   "file": "tiles/-4_6.json",
+   "buildings": 369,
+   "bytes": 589829
+  },
+  {
+   "x": -4,
+   "y": 7,
+   "file": "tiles/-4_7.json",
+   "buildings": 352,
+   "bytes": 451069
+  },
+  {
+   "x": -4,
+   "y": 8,
+   "file": "tiles/-4_8.json",
+   "buildings": 378,
+   "bytes": 1306595
+  },
+  {
+   "x": -4,
+   "y": 9,
+   "file": "tiles/-4_9.json",
+   "buildings": 130,
+   "bytes": 759130
+  },
+  {
+   "x": -3,
+   "y": -9,
+   "file": "tiles/-3_-9.json",
+   "buildings": 412,
+   "bytes": 535562
+  },
+  {
+   "x": -3,
+   "y": -8,
+   "file": "tiles/-3_-8.json",
+   "buildings": 192,
+   "bytes": 289851
+  },
+  {
+   "x": -3,
+   "y": -7,
+   "file": "tiles/-3_-7.json",
+   "buildings": 150,
+   "bytes": 736378
+  },
+  {
+   "x": -3,
+   "y": -6,
+   "file": "tiles/-3_-6.json",
+   "buildings": 311,
+   "bytes": 711443
+  },
+  {
+   "x": -3,
+   "y": -5,
+   "file": "tiles/-3_-5.json",
+   "buildings": 520,
+   "bytes": 687543
+  },
+  {
+   "x": -3,
+   "y": -4,
+   "file": "tiles/-3_-4.json",
+   "buildings": 415,
+   "bytes": 711995
+  },
+  {
+   "x": -3,
+   "y": -3,
+   "file": "tiles/-3_-3.json",
+   "buildings": 326,
+   "bytes": 814310
+  },
+  {
+   "x": -3,
+   "y": -2,
+   "file": "tiles/-3_-2.json",
+   "buildings": 252,
+   "bytes": 892792
+  },
+  {
+   "x": -3,
+   "y": -1,
+   "file": "tiles/-3_-1.json",
+   "buildings": 270,
+   "bytes": 842775
+  },
+  {
+   "x": -3,
+   "y": 0,
+   "file": "tiles/-3_0.json",
+   "buildings": 247,
+   "bytes": 945820
+  },
+  {
+   "x": -3,
+   "y": 1,
+   "file": "tiles/-3_1.json",
+   "buildings": 220,
+   "bytes": 632945
+  },
+  {
+   "x": -3,
+   "y": 2,
+   "file": "tiles/-3_2.json",
+   "buildings": 45,
+   "bytes": 686592
+  },
+  {
+   "x": -3,
+   "y": 3,
+   "file": "tiles/-3_3.json",
+   "buildings": 39,
+   "bytes": 454320
+  },
+  {
+   "x": -3,
+   "y": 4,
+   "file": "tiles/-3_4.json",
+   "buildings": 54,
+   "bytes": 200745
+  },
+  {
+   "x": -3,
+   "y": 5,
+   "file": "tiles/-3_5.json",
+   "buildings": 7,
+   "bytes": 17661
+  },
+  {
+   "x": -3,
+   "y": 6,
+   "file": "tiles/-3_6.json",
+   "buildings": 47,
+   "bytes": 716144
+  },
+  {
+   "x": -3,
+   "y": 7,
+   "file": "tiles/-3_7.json",
+   "buildings": 127,
+   "bytes": 318544
+  },
+  {
+   "x": -3,
+   "y": 8,
+   "file": "tiles/-3_8.json",
+   "buildings": 427,
+   "bytes": 937402
+  },
+  {
+   "x": -3,
+   "y": 9,
+   "file": "tiles/-3_9.json",
+   "buildings": 115,
+   "bytes": 248212
+  },
+  {
+   "x": -2,
+   "y": -9,
+   "file": "tiles/-2_-9.json",
+   "buildings": 387,
+   "bytes": 502338
+  },
+  {
+   "x": -2,
+   "y": -8,
+   "file": "tiles/-2_-8.json",
+   "buildings": 294,
+   "bytes": 625862
+  },
+  {
+   "x": -2,
+   "y": -7,
+   "file": "tiles/-2_-7.json",
+   "buildings": 147,
+   "bytes": 459640
+  },
+  {
+   "x": -2,
+   "y": -6,
+   "file": "tiles/-2_-6.json",
+   "buildings": 111,
+   "bytes": 819176
+  },
+  {
+   "x": -2,
+   "y": -5,
+   "file": "tiles/-2_-5.json",
+   "buildings": 300,
+   "bytes": 771242
+  },
+  {
+   "x": -2,
+   "y": -4,
+   "file": "tiles/-2_-4.json",
+   "buildings": 192,
+   "bytes": 782741
+  },
+  {
+   "x": -2,
+   "y": -3,
+   "file": "tiles/-2_-3.json",
+   "buildings": 256,
+   "bytes": 713986
+  },
+  {
+   "x": -2,
+   "y": -2,
+   "file": "tiles/-2_-2.json",
+   "buildings": 239,
+   "bytes": 974708
+  },
+  {
+   "x": -2,
+   "y": -1,
+   "file": "tiles/-2_-1.json",
+   "buildings": 223,
+   "bytes": 940746
+  },
+  {
+   "x": -2,
+   "y": 0,
+   "file": "tiles/-2_0.json",
+   "buildings": 231,
+   "bytes": 730958
+  },
+  {
+   "x": -2,
+   "y": 1,
+   "file": "tiles/-2_1.json",
+   "buildings": 66,
+   "bytes": 857286
+  },
+  {
+   "x": -2,
+   "y": 2,
+   "file": "tiles/-2_2.json",
+   "buildings": 47,
+   "bytes": 941420
+  },
+  {
+   "x": -2,
+   "y": 3,
+   "file": "tiles/-2_3.json",
+   "buildings": 587,
+   "bytes": 828412
+  },
+  {
+   "x": -2,
+   "y": 4,
+   "file": "tiles/-2_4.json",
+   "buildings": 53,
+   "bytes": 256472
+  },
+  {
+   "x": -2,
+   "y": 5,
+   "file": "tiles/-2_5.json",
+   "buildings": 225,
+   "bytes": 370851
+  },
+  {
+   "x": -2,
+   "y": 6,
+   "file": "tiles/-2_6.json",
+   "buildings": 367,
+   "bytes": 556432
+  },
+  {
+   "x": -2,
+   "y": 7,
+   "file": "tiles/-2_7.json",
+   "buildings": 402,
+   "bytes": 644282
+  },
+  {
+   "x": -2,
+   "y": 8,
+   "file": "tiles/-2_8.json",
+   "buildings": 195,
+   "bytes": 540893
+  },
+  {
+   "x": -2,
+   "y": 9,
+   "file": "tiles/-2_9.json",
+   "buildings": 56,
+   "bytes": 529699
+  },
+  {
+   "x": -1,
+   "y": -9,
+   "file": "tiles/-1_-9.json",
+   "buildings": 4,
+   "bytes": 26740
+  },
+  {
+   "x": -1,
+   "y": -8,
+   "file": "tiles/-1_-8.json",
+   "buildings": 263,
+   "bytes": 422212
+  },
+  {
+   "x": -1,
+   "y": -7,
+   "file": "tiles/-1_-7.json",
+   "buildings": 204,
+   "bytes": 415624
+  },
+  {
+   "x": -1,
+   "y": -6,
+   "file": "tiles/-1_-6.json",
+   "buildings": 158,
+   "bytes": 516954
+  },
+  {
+   "x": -1,
+   "y": -5,
+   "file": "tiles/-1_-5.json",
+   "buildings": 100,
+   "bytes": 521143
+  },
+  {
+   "x": -1,
+   "y": -4,
+   "file": "tiles/-1_-4.json",
+   "buildings": 249,
+   "bytes": 906268
+  },
+  {
+   "x": -1,
+   "y": -3,
+   "file": "tiles/-1_-3.json",
+   "buildings": 212,
+   "bytes": 590430
+  },
+  {
+   "x": -1,
+   "y": -2,
+   "file": "tiles/-1_-2.json",
+   "buildings": 222,
+   "bytes": 829761
+  },
+  {
+   "x": -1,
+   "y": -1,
+   "file": "tiles/-1_-1.json",
+   "buildings": 320,
+   "bytes": 914746
+  },
+  {
+   "x": -1,
+   "y": 0,
+   "file": "tiles/-1_0.json",
+   "buildings": 316,
+   "bytes": 1041146
+  },
+  {
+   "x": -1,
+   "y": 1,
+   "file": "tiles/-1_1.json",
+   "buildings": 156,
+   "bytes": 759243
+  },
+  {
+   "x": -1,
+   "y": 2,
+   "file": "tiles/-1_2.json",
+   "buildings": 261,
+   "bytes": 627146
+  },
+  {
+   "x": -1,
+   "y": 3,
+   "file": "tiles/-1_3.json",
+   "buildings": 1223,
+   "bytes": 1222973
+  },
+  {
+   "x": -1,
+   "y": 4,
+   "file": "tiles/-1_4.json",
+   "buildings": 181,
+   "bytes": 493475
+  },
+  {
+   "x": -1,
+   "y": 5,
+   "file": "tiles/-1_5.json",
+   "buildings": 43,
+   "bytes": 320345
+  },
+  {
+   "x": -1,
+   "y": 6,
+   "file": "tiles/-1_6.json",
+   "buildings": 114,
+   "bytes": 315965
+  },
+  {
+   "x": -1,
+   "y": 7,
+   "file": "tiles/-1_7.json",
+   "buildings": 253,
+   "bytes": 445274
+  },
+  {
+   "x": -1,
+   "y": 8,
+   "file": "tiles/-1_8.json",
+   "buildings": 12,
+   "bytes": 524298
+  },
+  {
+   "x": -1,
+   "y": 9,
+   "file": "tiles/-1_9.json",
+   "buildings": 20,
+   "bytes": 412833
+  },
+  {
+   "x": 0,
+   "y": -9,
+   "file": "tiles/0_-9.json",
+   "buildings": 179,
+   "bytes": 295312
+  },
+  {
+   "x": 0,
+   "y": -8,
+   "file": "tiles/0_-8.json",
+   "buildings": 56,
+   "bytes": 489691
+  },
+  {
+   "x": 0,
+   "y": -7,
+   "file": "tiles/0_-7.json",
+   "buildings": 108,
+   "bytes": 630502
+  },
+  {
+   "x": 0,
+   "y": -6,
+   "file": "tiles/0_-6.json",
+   "buildings": 127,
+   "bytes": 678222
+  },
+  {
+   "x": 0,
+   "y": -5,
+   "file": "tiles/0_-5.json",
+   "buildings": 206,
+   "bytes": 569927
+  },
+  {
+   "x": 0,
+   "y": -4,
+   "file": "tiles/0_-4.json",
+   "buildings": 228,
+   "bytes": 720613
+  },
+  {
+   "x": 0,
+   "y": -3,
+   "file": "tiles/0_-3.json",
+   "buildings": 267,
+   "bytes": 555766
+  },
+  {
+   "x": 0,
+   "y": -2,
+   "file": "tiles/0_-2.json",
+   "buildings": 193,
+   "bytes": 934417
+  },
+  {
+   "x": 0,
+   "y": -1,
+   "file": "tiles/0_-1.json",
+   "buildings": 209,
+   "bytes": 1099559
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "file": "tiles/0_0.json",
+   "buildings": 133,
+   "bytes": 1154190
+  },
+  {
+   "x": 0,
+   "y": 1,
+   "file": "tiles/0_1.json",
+   "buildings": 277,
+   "bytes": 680059
+  },
+  {
+   "x": 0,
+   "y": 2,
+   "file": "tiles/0_2.json",
+   "buildings": 215,
+   "bytes": 620932
+  },
+  {
+   "x": 0,
+   "y": 3,
+   "file": "tiles/0_3.json",
+   "buildings": 173,
+   "bytes": 852419
+  },
+  {
+   "x": 0,
+   "y": 4,
+   "file": "tiles/0_4.json",
+   "buildings": 580,
+   "bytes": 631506
+  },
+  {
+   "x": 0,
+   "y": 5,
+   "file": "tiles/0_5.json",
+   "buildings": 31,
+   "bytes": 567342
+  },
+  {
+   "x": 0,
+   "y": 6,
+   "file": "tiles/0_6.json",
+   "buildings": 45,
+   "bytes": 356272
+  },
+  {
+   "x": 0,
+   "y": 7,
+   "file": "tiles/0_7.json",
+   "buildings": 184,
+   "bytes": 336064
+  },
+  {
+   "x": 0,
+   "y": 8,
+   "file": "tiles/0_8.json",
+   "buildings": 0,
+   "bytes": 420388
+  },
+  {
+   "x": 0,
+   "y": 9,
+   "file": "tiles/0_9.json",
+   "buildings": 38,
+   "bytes": 872287
+  },
+  {
+   "x": 1,
+   "y": -9,
+   "file": "tiles/1_-9.json",
+   "buildings": 80,
+   "bytes": 200507
+  },
+  {
+   "x": 1,
+   "y": -8,
+   "file": "tiles/1_-8.json",
+   "buildings": 85,
+   "bytes": 325197
+  },
+  {
+   "x": 1,
+   "y": -7,
+   "file": "tiles/1_-7.json",
+   "buildings": 146,
+   "bytes": 464727
+  },
+  {
+   "x": 1,
+   "y": -6,
+   "file": "tiles/1_-6.json",
+   "buildings": 24,
+   "bytes": 983294
+  },
+  {
+   "x": 1,
+   "y": -5,
+   "file": "tiles/1_-5.json",
+   "buildings": 59,
+   "bytes": 894692
+  },
+  {
+   "x": 1,
+   "y": -4,
+   "file": "tiles/1_-4.json",
+   "buildings": 279,
+   "bytes": 781166
+  },
+  {
+   "x": 1,
+   "y": -3,
+   "file": "tiles/1_-3.json",
+   "buildings": 229,
+   "bytes": 509993
+  },
+  {
+   "x": 1,
+   "y": -2,
+   "file": "tiles/1_-2.json",
+   "buildings": 258,
+   "bytes": 941136
+  },
+  {
+   "x": 1,
+   "y": -1,
+   "file": "tiles/1_-1.json",
+   "buildings": 202,
+   "bytes": 586648
+  },
+  {
+   "x": 1,
+   "y": 0,
+   "file": "tiles/1_0.json",
+   "buildings": 292,
+   "bytes": 888894
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "file": "tiles/1_1.json",
+   "buildings": 222,
+   "bytes": 680993
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "file": "tiles/1_2.json",
+   "buildings": 213,
+   "bytes": 606174
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "file": "tiles/1_3.json",
+   "buildings": 381,
+   "bytes": 661721
+  },
+  {
+   "x": 1,
+   "y": 4,
+   "file": "tiles/1_4.json",
+   "buildings": 1310,
+   "bytes": 1108492
+  },
+  {
+   "x": 1,
+   "y": 5,
+   "file": "tiles/1_5.json",
+   "buildings": 415,
+   "bytes": 628708
+  },
+  {
+   "x": 1,
+   "y": 6,
+   "file": "tiles/1_6.json",
+   "buildings": 104,
+   "bytes": 670014
+  },
+  {
+   "x": 1,
+   "y": 7,
+   "file": "tiles/1_7.json",
+   "buildings": 331,
+   "bytes": 354904
+  },
+  {
+   "x": 1,
+   "y": 8,
+   "file": "tiles/1_8.json",
+   "buildings": 0,
+   "bytes": 29099
+  },
+  {
+   "x": 1,
+   "y": 9,
+   "file": "tiles/1_9.json",
+   "buildings": 75,
+   "bytes": 232614
+  },
+  {
+   "x": 2,
+   "y": -9,
+   "file": "tiles/2_-9.json",
+   "buildings": 2,
+   "bytes": 16440
+  },
+  {
+   "x": 2,
+   "y": -8,
+   "file": "tiles/2_-8.json",
+   "buildings": 37,
+   "bytes": 344980
+  },
+  {
+   "x": 2,
+   "y": -7,
+   "file": "tiles/2_-7.json",
+   "buildings": 67,
+   "bytes": 401883
+  },
+  {
+   "x": 2,
+   "y": -6,
+   "file": "tiles/2_-6.json",
+   "buildings": 151,
+   "bytes": 615029
+  },
+  {
+   "x": 2,
+   "y": -5,
+   "file": "tiles/2_-5.json",
+   "buildings": 167,
+   "bytes": 612475
+  },
+  {
+   "x": 2,
+   "y": -4,
+   "file": "tiles/2_-4.json",
+   "buildings": 114,
+   "bytes": 586733
+  },
+  {
+   "x": 2,
+   "y": -3,
+   "file": "tiles/2_-3.json",
+   "buildings": 152,
+   "bytes": 723160
+  },
+  {
+   "x": 2,
+   "y": -2,
+   "file": "tiles/2_-2.json",
+   "buildings": 234,
+   "bytes": 671172
+  },
+  {
+   "x": 2,
+   "y": -1,
+   "file": "tiles/2_-1.json",
+   "buildings": 239,
+   "bytes": 784067
+  },
+  {
+   "x": 2,
+   "y": 0,
+   "file": "tiles/2_0.json",
+   "buildings": 286,
+   "bytes": 654357
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "file": "tiles/2_1.json",
+   "buildings": 217,
+   "bytes": 580330
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "file": "tiles/2_2.json",
+   "buildings": 300,
+   "bytes": 741075
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "file": "tiles/2_3.json",
+   "buildings": 212,
+   "bytes": 574593
+  },
+  {
+   "x": 2,
+   "y": 4,
+   "file": "tiles/2_4.json",
+   "buildings": 569,
+   "bytes": 755063
+  },
+  {
+   "x": 2,
+   "y": 5,
+   "file": "tiles/2_5.json",
+   "buildings": 426,
+   "bytes": 623097
+  },
+  {
+   "x": 2,
+   "y": 6,
+   "file": "tiles/2_6.json",
+   "buildings": 184,
+   "bytes": 976590
+  },
+  {
+   "x": 2,
+   "y": 7,
+   "file": "tiles/2_7.json",
+   "buildings": 147,
+   "bytes": 722748
+  },
+  {
+   "x": 2,
+   "y": 8,
+   "file": "tiles/2_8.json",
+   "buildings": 4,
+   "bytes": 932887
+  },
+  {
+   "x": 2,
+   "y": 9,
+   "file": "tiles/2_9.json",
+   "buildings": 30,
+   "bytes": 167876
+  },
+  {
+   "x": 3,
+   "y": -9,
+   "file": "tiles/3_-9.json",
+   "buildings": 0,
+   "bytes": 7081
+  },
+  {
+   "x": 3,
+   "y": -8,
+   "file": "tiles/3_-8.json",
+   "buildings": 58,
+   "bytes": 262568
+  },
+  {
+   "x": 3,
+   "y": -7,
+   "file": "tiles/3_-7.json",
+   "buildings": 41,
+   "bytes": 184216
+  },
+  {
+   "x": 3,
+   "y": -6,
+   "file": "tiles/3_-6.json",
+   "buildings": 58,
+   "bytes": 601048
+  },
+  {
+   "x": 3,
+   "y": -5,
+   "file": "tiles/3_-5.json",
+   "buildings": 194,
+   "bytes": 562102
+  },
+  {
+   "x": 3,
+   "y": -4,
+   "file": "tiles/3_-4.json",
+   "buildings": 220,
+   "bytes": 768644
+  },
+  {
+   "x": 3,
+   "y": -3,
+   "file": "tiles/3_-3.json",
+   "buildings": 140,
+   "bytes": 787697
+  },
+  {
+   "x": 3,
+   "y": -2,
+   "file": "tiles/3_-2.json",
+   "buildings": 207,
+   "bytes": 811796
+  },
+  {
+   "x": 3,
+   "y": -1,
+   "file": "tiles/3_-1.json",
+   "buildings": 166,
+   "bytes": 402411
+  },
+  {
+   "x": 3,
+   "y": 0,
+   "file": "tiles/3_0.json",
+   "buildings": 331,
+   "bytes": 874092
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "file": "tiles/3_1.json",
+   "buildings": 52,
+   "bytes": 1205713
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "file": "tiles/3_2.json",
+   "buildings": 147,
+   "bytes": 1079541
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "file": "tiles/3_3.json",
+   "buildings": 548,
+   "bytes": 700325
+  },
+  {
+   "x": 3,
+   "y": 4,
+   "file": "tiles/3_4.json",
+   "buildings": 309,
+   "bytes": 767241
+  },
+  {
+   "x": 3,
+   "y": 5,
+   "file": "tiles/3_5.json",
+   "buildings": 211,
+   "bytes": 643117
+  },
+  {
+   "x": 3,
+   "y": 6,
+   "file": "tiles/3_6.json",
+   "buildings": 84,
+   "bytes": 492856
+  },
+  {
+   "x": 3,
+   "y": 7,
+   "file": "tiles/3_7.json",
+   "buildings": 57,
+   "bytes": 895980
+  },
+  {
+   "x": 3,
+   "y": 8,
+   "file": "tiles/3_8.json",
+   "buildings": 216,
+   "bytes": 1386482
+  },
+  {
+   "x": 3,
+   "y": 9,
+   "file": "tiles/3_9.json",
+   "buildings": 577,
+   "bytes": 545190
+  },
+  {
+   "x": 4,
+   "y": -9,
+   "file": "tiles/4_-9.json",
+   "buildings": 2,
+   "bytes": 16349
+  },
+  {
+   "x": 4,
+   "y": -8,
+   "file": "tiles/4_-8.json",
+   "buildings": 76,
+   "bytes": 224059
+  },
+  {
+   "x": 4,
+   "y": -7,
+   "file": "tiles/4_-7.json",
+   "buildings": 172,
+   "bytes": 453475
+  },
+  {
+   "x": 4,
+   "y": -6,
+   "file": "tiles/4_-6.json",
+   "buildings": 48,
+   "bytes": 667511
+  },
+  {
+   "x": 4,
+   "y": -5,
+   "file": "tiles/4_-5.json",
+   "buildings": 585,
+   "bytes": 952149
+  },
+  {
+   "x": 4,
+   "y": -4,
+   "file": "tiles/4_-4.json",
+   "buildings": 415,
+   "bytes": 737505
+  },
+  {
+   "x": 4,
+   "y": -3,
+   "file": "tiles/4_-3.json",
+   "buildings": 67,
+   "bytes": 1107494
+  },
+  {
+   "x": 4,
+   "y": -2,
+   "file": "tiles/4_-2.json",
+   "buildings": 98,
+   "bytes": 549206
+  },
+  {
+   "x": 4,
+   "y": -1,
+   "file": "tiles/4_-1.json",
+   "buildings": 168,
+   "bytes": 307245
+  },
+  {
+   "x": 4,
+   "y": 0,
+   "file": "tiles/4_0.json",
+   "buildings": 758,
+   "bytes": 871447
+  },
+  {
+   "x": 4,
+   "y": 1,
+   "file": "tiles/4_1.json",
+   "buildings": 144,
+   "bytes": 807959
+  },
+  {
+   "x": 4,
+   "y": 2,
+   "file": "tiles/4_2.json",
+   "buildings": 161,
+   "bytes": 515188
+  },
+  {
+   "x": 4,
+   "y": 3,
+   "file": "tiles/4_3.json",
+   "buildings": 184,
+   "bytes": 662072
+  },
+  {
+   "x": 4,
+   "y": 4,
+   "file": "tiles/4_4.json",
+   "buildings": 171,
+   "bytes": 526778
+  },
+  {
+   "x": 4,
+   "y": 5,
+   "file": "tiles/4_5.json",
+   "buildings": 118,
+   "bytes": 776540
+  },
+  {
+   "x": 4,
+   "y": 6,
+   "file": "tiles/4_6.json",
+   "buildings": 98,
+   "bytes": 941763
+  },
+  {
+   "x": 4,
+   "y": 7,
+   "file": "tiles/4_7.json",
+   "buildings": 134,
+   "bytes": 701854
+  },
+  {
+   "x": 4,
+   "y": 8,
+   "file": "tiles/4_8.json",
+   "buildings": 1,
+   "bytes": 1402213
+  },
+  {
+   "x": 4,
+   "y": 9,
+   "file": "tiles/4_9.json",
+   "buildings": 421,
+   "bytes": 944907
+  },
+  {
+   "x": 5,
+   "y": -9,
+   "file": "tiles/5_-9.json",
+   "buildings": 84,
+   "bytes": 474127
+  },
+  {
+   "x": 5,
+   "y": -8,
+   "file": "tiles/5_-8.json",
+   "buildings": 98,
+   "bytes": 969615
+  },
+  {
+   "x": 5,
+   "y": -7,
+   "file": "tiles/5_-7.json",
+   "buildings": 315,
+   "bytes": 607863
+  },
+  {
+   "x": 5,
+   "y": -6,
+   "file": "tiles/5_-6.json",
+   "buildings": 139,
+   "bytes": 639788
+  },
+  {
+   "x": 5,
+   "y": -5,
+   "file": "tiles/5_-5.json",
+   "buildings": 121,
+   "bytes": 329984
+  },
+  {
+   "x": 5,
+   "y": -4,
+   "file": "tiles/5_-4.json",
+   "buildings": 355,
+   "bytes": 681780
+  },
+  {
+   "x": 5,
+   "y": -3,
+   "file": "tiles/5_-3.json",
+   "buildings": 243,
+   "bytes": 539234
+  },
+  {
+   "x": 5,
+   "y": -2,
+   "file": "tiles/5_-2.json",
+   "buildings": 286,
+   "bytes": 589696
+  },
+  {
+   "x": 5,
+   "y": -1,
+   "file": "tiles/5_-1.json",
+   "buildings": 250,
+   "bytes": 527087
+  },
+  {
+   "x": 5,
+   "y": 0,
+   "file": "tiles/5_0.json",
+   "buildings": 169,
+   "bytes": 662848
+  },
+  {
+   "x": 5,
+   "y": 1,
+   "file": "tiles/5_1.json",
+   "buildings": 138,
+   "bytes": 1341116
+  },
+  {
+   "x": 5,
+   "y": 2,
+   "file": "tiles/5_2.json",
+   "buildings": 355,
+   "bytes": 933238
+  },
+  {
+   "x": 5,
+   "y": 3,
+   "file": "tiles/5_3.json",
+   "buildings": 119,
+   "bytes": 610032
+  },
+  {
+   "x": 5,
+   "y": 4,
+   "file": "tiles/5_4.json",
+   "buildings": 80,
+   "bytes": 660594
+  },
+  {
+   "x": 5,
+   "y": 5,
+   "file": "tiles/5_5.json",
+   "buildings": 18,
+   "bytes": 1411232
+  },
+  {
+   "x": 5,
+   "y": 6,
+   "file": "tiles/5_6.json",
+   "buildings": 79,
+   "bytes": 925532
+  },
+  {
+   "x": 5,
+   "y": 7,
+   "file": "tiles/5_7.json",
+   "buildings": 579,
+   "bytes": 807239
+  },
+  {
+   "x": 5,
+   "y": 8,
+   "file": "tiles/5_8.json",
+   "buildings": 0,
+   "bytes": 876209
+  },
+  {
+   "x": 5,
+   "y": 9,
+   "file": "tiles/5_9.json",
+   "buildings": 88,
+   "bytes": 1494224
+  },
+  {
+   "x": 6,
+   "y": -9,
+   "file": "tiles/6_-9.json",
+   "buildings": 53,
+   "bytes": 612491
+  },
+  {
+   "x": 6,
+   "y": -8,
+   "file": "tiles/6_-8.json",
+   "buildings": 6,
+   "bytes": 219569
+  },
+  {
+   "x": 6,
+   "y": -7,
+   "file": "tiles/6_-7.json",
+   "buildings": 60,
+   "bytes": 557910
+  },
+  {
+   "x": 6,
+   "y": -6,
+   "file": "tiles/6_-6.json",
+   "buildings": 133,
+   "bytes": 343844
+  },
+  {
+   "x": 6,
+   "y": -5,
+   "file": "tiles/6_-5.json",
+   "buildings": 124,
+   "bytes": 360083
+  },
+  {
+   "x": 6,
+   "y": -4,
+   "file": "tiles/6_-4.json",
+   "buildings": 634,
+   "bytes": 859368
+  },
+  {
+   "x": 6,
+   "y": -3,
+   "file": "tiles/6_-3.json",
+   "buildings": 458,
+   "bytes": 633001
+  },
+  {
+   "x": 6,
+   "y": -2,
+   "file": "tiles/6_-2.json",
+   "buildings": 929,
+   "bytes": 982080
+  },
+  {
+   "x": 6,
+   "y": -1,
+   "file": "tiles/6_-1.json",
+   "buildings": 169,
+   "bytes": 1160088
+  },
+  {
+   "x": 6,
+   "y": 0,
+   "file": "tiles/6_0.json",
+   "buildings": 57,
+   "bytes": 1178609
+  },
+  {
+   "x": 6,
+   "y": 1,
+   "file": "tiles/6_1.json",
+   "buildings": 194,
+   "bytes": 829860
+  },
+  {
+   "x": 6,
+   "y": 2,
+   "file": "tiles/6_2.json",
+   "buildings": 168,
+   "bytes": 1109480
+  },
+  {
+   "x": 6,
+   "y": 3,
+   "file": "tiles/6_3.json",
+   "buildings": 80,
+   "bytes": 1054994
+  },
+  {
+   "x": 6,
+   "y": 4,
+   "file": "tiles/6_4.json",
+   "buildings": 73,
+   "bytes": 924811
+  },
+  {
+   "x": 6,
+   "y": 5,
+   "file": "tiles/6_5.json",
+   "buildings": 106,
+   "bytes": 908317
+  },
+  {
+   "x": 6,
+   "y": 6,
+   "file": "tiles/6_6.json",
+   "buildings": 205,
+   "bytes": 653734
+  },
+  {
+   "x": 6,
+   "y": 7,
+   "file": "tiles/6_7.json",
+   "buildings": 746,
+   "bytes": 939139
+  },
+  {
+   "x": 6,
+   "y": 8,
+   "file": "tiles/6_8.json",
+   "buildings": 548,
+   "bytes": 1175433
+  },
+  {
+   "x": 6,
+   "y": 9,
+   "file": "tiles/6_9.json",
+   "buildings": 359,
+   "bytes": 998871
+  },
+  {
+   "x": 7,
+   "y": -9,
+   "file": "tiles/7_-9.json",
+   "buildings": 13,
+   "bytes": 332274
+  },
+  {
+   "x": 7,
+   "y": -8,
+   "file": "tiles/7_-8.json",
+   "buildings": 35,
+   "bytes": 342044
+  },
+  {
+   "x": 7,
+   "y": -7,
+   "file": "tiles/7_-7.json",
+   "buildings": 212,
+   "bytes": 465152
+  },
+  {
+   "x": 7,
+   "y": -6,
+   "file": "tiles/7_-6.json",
+   "buildings": 232,
+   "bytes": 445699
+  },
+  {
+   "x": 7,
+   "y": -5,
+   "file": "tiles/7_-5.json",
+   "buildings": 92,
+   "bytes": 577099
+  },
+  {
+   "x": 7,
+   "y": -4,
+   "file": "tiles/7_-4.json",
+   "buildings": 954,
+   "bytes": 927462
+  },
+  {
+   "x": 7,
+   "y": -3,
+   "file": "tiles/7_-3.json",
+   "buildings": 1183,
+   "bytes": 1180430
+  },
+  {
+   "x": 7,
+   "y": -2,
+   "file": "tiles/7_-2.json",
+   "buildings": 476,
+   "bytes": 605946
+  },
+  {
+   "x": 7,
+   "y": -1,
+   "file": "tiles/7_-1.json",
+   "buildings": 92,
+   "bytes": 1306603
+  },
+  {
+   "x": 7,
+   "y": 0,
+   "file": "tiles/7_0.json",
+   "buildings": 183,
+   "bytes": 658742
+  },
+  {
+   "x": 7,
+   "y": 1,
+   "file": "tiles/7_1.json",
+   "buildings": 745,
+   "bytes": 789014
+  },
+  {
+   "x": 7,
+   "y": 2,
+   "file": "tiles/7_2.json",
+   "buildings": 226,
+   "bytes": 962174
+  },
+  {
+   "x": 7,
+   "y": 3,
+   "file": "tiles/7_3.json",
+   "buildings": 60,
+   "bytes": 798361
+  },
+  {
+   "x": 7,
+   "y": 4,
+   "file": "tiles/7_4.json",
+   "buildings": 78,
+   "bytes": 804684
+  },
+  {
+   "x": 7,
+   "y": 5,
+   "file": "tiles/7_5.json",
+   "buildings": 136,
+   "bytes": 804053
+  },
+  {
+   "x": 7,
+   "y": 6,
+   "file": "tiles/7_6.json",
+   "buildings": 101,
+   "bytes": 1248108
+  },
+  {
+   "x": 7,
+   "y": 7,
+   "file": "tiles/7_7.json",
+   "buildings": 109,
+   "bytes": 1501913
+  },
+  {
+   "x": 7,
+   "y": 8,
+   "file": "tiles/7_8.json",
+   "buildings": 49,
+   "bytes": 1489405
+  },
+  {
+   "x": 7,
+   "y": 9,
+   "file": "tiles/7_9.json",
+   "buildings": 336,
+   "bytes": 602069
+  },
+  {
+   "x": 8,
+   "y": -9,
+   "file": "tiles/8_-9.json",
+   "buildings": 95,
+   "bytes": 161920
+  },
+  {
+   "x": 8,
+   "y": -8,
+   "file": "tiles/8_-8.json",
+   "buildings": 170,
+   "bytes": 372662
+  },
+  {
+   "x": 8,
+   "y": -7,
+   "file": "tiles/8_-7.json",
+   "buildings": 174,
+   "bytes": 374306
+  },
+  {
+   "x": 8,
+   "y": -6,
+   "file": "tiles/8_-6.json",
+   "buildings": 127,
+   "bytes": 339074
+  },
+  {
+   "x": 8,
+   "y": -5,
+   "file": "tiles/8_-5.json",
+   "buildings": 139,
+   "bytes": 234165
+  },
+  {
+   "x": 8,
+   "y": -4,
+   "file": "tiles/8_-4.json",
+   "buildings": 537,
+   "bytes": 711402
+  },
+  {
+   "x": 8,
+   "y": -3,
+   "file": "tiles/8_-3.json",
+   "buildings": 46,
+   "bytes": 1244448
+  },
+  {
+   "x": 8,
+   "y": -2,
+   "file": "tiles/8_-2.json",
+   "buildings": 63,
+   "bytes": 991130
+  },
+  {
+   "x": 8,
+   "y": -1,
+   "file": "tiles/8_-1.json",
+   "buildings": 38,
+   "bytes": 1382650
+  },
+  {
+   "x": 8,
+   "y": 0,
+   "file": "tiles/8_0.json",
+   "buildings": 38,
+   "bytes": 1494997
+  },
+  {
+   "x": 8,
+   "y": 1,
+   "file": "tiles/8_1.json",
+   "buildings": 101,
+   "bytes": 1510797
+  },
+  {
+   "x": 8,
+   "y": 2,
+   "file": "tiles/8_2.json",
+   "buildings": 96,
+   "bytes": 771782
+  },
+  {
+   "x": 8,
+   "y": 3,
+   "file": "tiles/8_3.json",
+   "buildings": 73,
+   "bytes": 853967
+  },
+  {
+   "x": 8,
+   "y": 4,
+   "file": "tiles/8_4.json",
+   "buildings": 134,
+   "bytes": 750954
+  },
+  {
+   "x": 8,
+   "y": 5,
+   "file": "tiles/8_5.json",
+   "buildings": 205,
+   "bytes": 661266
+  },
+  {
+   "x": 8,
+   "y": 6,
+   "file": "tiles/8_6.json",
+   "buildings": 54,
+   "bytes": 1344293
+  },
+  {
+   "x": 8,
+   "y": 7,
+   "file": "tiles/8_7.json",
+   "buildings": 0,
+   "bytes": 1410024
+  },
+  {
+   "x": 8,
+   "y": 8,
+   "file": "tiles/8_8.json",
+   "buildings": 0,
+   "bytes": 1403000
+  },
+  {
+   "x": 8,
+   "y": 9,
+   "file": "tiles/8_9.json",
+   "buildings": 251,
+   "bytes": 1250194
+  },
+  {
+   "x": 9,
+   "y": -9,
+   "file": "tiles/9_-9.json",
+   "buildings": 119,
+   "bytes": 515130
+  },
+  {
+   "x": 9,
+   "y": -8,
+   "file": "tiles/9_-8.json",
+   "buildings": 301,
+   "bytes": 551247
+  },
+  {
+   "x": 9,
+   "y": -7,
+   "file": "tiles/9_-7.json",
+   "buildings": 339,
+   "bytes": 556737
+  },
+  {
+   "x": 9,
+   "y": -6,
+   "file": "tiles/9_-6.json",
+   "buildings": 545,
+   "bytes": 756587
+  },
+  {
+   "x": 9,
+   "y": -5,
+   "file": "tiles/9_-5.json",
+   "buildings": 435,
+   "bytes": 349976
+  },
+  {
+   "x": 9,
+   "y": -4,
+   "file": "tiles/9_-4.json",
+   "buildings": 577,
+   "bytes": 586239
+  },
+  {
+   "x": 9,
+   "y": -3,
+   "file": "tiles/9_-3.json",
+   "buildings": 109,
+   "bytes": 1495751
+  },
+  {
+   "x": 9,
+   "y": -2,
+   "file": "tiles/9_-2.json",
+   "buildings": 2,
+   "bytes": 1427180
+  },
+  {
+   "x": 9,
+   "y": -1,
+   "file": "tiles/9_-1.json",
+   "buildings": 6,
+   "bytes": 1421018
+  },
+  {
+   "x": 9,
+   "y": 0,
+   "file": "tiles/9_0.json",
+   "buildings": 19,
+   "bytes": 1189499
+  },
+  {
+   "x": 9,
+   "y": 1,
+   "file": "tiles/9_1.json",
+   "buildings": 38,
+   "bytes": 882295
+  },
+  {
+   "x": 9,
+   "y": 2,
+   "file": "tiles/9_2.json",
+   "buildings": 21,
+   "bytes": 1231019
+  },
+  {
+   "x": 9,
+   "y": 3,
+   "file": "tiles/9_3.json",
+   "buildings": 127,
+   "bytes": 1037950
+  },
+  {
+   "x": 9,
+   "y": 4,
+   "file": "tiles/9_4.json",
+   "buildings": 183,
+   "bytes": 689939
+  },
+  {
+   "x": 9,
+   "y": 5,
+   "file": "tiles/9_5.json",
+   "buildings": 93,
+   "bytes": 568631
+  },
+  {
+   "x": 9,
+   "y": 6,
+   "file": "tiles/9_6.json",
+   "buildings": 58,
+   "bytes": 742121
+  },
+  {
+   "x": 9,
+   "y": 7,
+   "file": "tiles/9_7.json",
+   "buildings": 0,
+   "bytes": 1310062
+  },
+  {
+   "x": 9,
+   "y": 8,
+   "file": "tiles/9_8.json",
+   "buildings": 0,
+   "bytes": 1405453
+  },
+  {
+   "x": 9,
+   "y": 9,
+   "file": "tiles/9_9.json",
+   "buildings": 195,
+   "bytes": 1234522
+  },
+  {
+   "x": 10,
+   "y": -9,
+   "file": "tiles/10_-9.json",
+   "buildings": 273,
+   "bytes": 268573
+  },
+  {
+   "x": 10,
+   "y": -8,
+   "file": "tiles/10_-8.json",
+   "buildings": 8,
+   "bytes": 39417
+  },
+  {
+   "x": 10,
+   "y": -7,
+   "file": "tiles/10_-7.json",
+   "buildings": 31,
+   "bytes": 148762
+  },
+  {
+   "x": 10,
+   "y": -6,
+   "file": "tiles/10_-6.json",
+   "buildings": 76,
+   "bytes": 64344
+  },
+  {
+   "x": 10,
+   "y": -5,
+   "file": "tiles/10_-5.json",
+   "buildings": 251,
+   "bytes": 292346
+  },
+  {
+   "x": 10,
+   "y": -4,
+   "file": "tiles/10_-4.json",
+   "buildings": 2,
+   "bytes": 452065
+  },
+  {
+   "x": 10,
+   "y": -3,
+   "file": "tiles/10_-3.json",
+   "buildings": 5,
+   "bytes": 1439886
+  },
+  {
+   "x": 10,
+   "y": -2,
+   "file": "tiles/10_-2.json",
+   "buildings": 9,
+   "bytes": 1354577
+  },
+  {
+   "x": 10,
+   "y": -1,
+   "file": "tiles/10_-1.json",
+   "buildings": 0,
+   "bytes": 1305557
+  },
+  {
+   "x": 10,
+   "y": 0,
+   "file": "tiles/10_0.json",
+   "buildings": 0,
+   "bytes": 1405570
+  },
+  {
+   "x": 10,
+   "y": 1,
+   "file": "tiles/10_1.json",
+   "buildings": 0,
+   "bytes": 1418768
+  },
+  {
+   "x": 10,
+   "y": 2,
+   "file": "tiles/10_2.json",
+   "buildings": 1,
+   "bytes": 1424712
+  },
+  {
+   "x": 10,
+   "y": 3,
+   "file": "tiles/10_3.json",
+   "buildings": 887,
+   "bytes": 1250224
+  },
+  {
+   "x": 10,
+   "y": 4,
+   "file": "tiles/10_4.json",
+   "buildings": 308,
+   "bytes": 596246
+  },
+  {
+   "x": 10,
+   "y": 5,
+   "file": "tiles/10_5.json",
+   "buildings": 90,
+   "bytes": 514991
+  },
+  {
+   "x": 10,
+   "y": 6,
+   "file": "tiles/10_6.json",
+   "buildings": 24,
+   "bytes": 1189875
+  },
+  {
+   "x": 10,
+   "y": 7,
+   "file": "tiles/10_7.json",
+   "buildings": 12,
+   "bytes": 1335395
+  },
+  {
+   "x": 10,
+   "y": 8,
+   "file": "tiles/10_8.json",
+   "buildings": 0,
+   "bytes": 1422013
+  },
+  {
+   "x": 10,
+   "y": 9,
+   "file": "tiles/10_9.json",
+   "buildings": 165,
+   "bytes": 1421034
+  },
+  {
+   "x": 11,
+   "y": -9,
+   "file": "tiles/11_-9.json",
+   "buildings": 3,
+   "bytes": 181339
+  },
+  {
+   "x": 11,
+   "y": -8,
+   "file": "tiles/11_-8.json",
+   "buildings": 17,
+   "bytes": 878625
+  },
+  {
+   "x": 11,
+   "y": -7,
+   "file": "tiles/11_-7.json",
+   "buildings": 11,
+   "bytes": 1127833
+  },
+  {
+   "x": 11,
+   "y": -6,
+   "file": "tiles/11_-6.json",
+   "buildings": 3,
+   "bytes": 727609
+  },
+  {
+   "x": 11,
+   "y": -5,
+   "file": "tiles/11_-5.json",
+   "buildings": 1,
+   "bytes": 589173
+  },
+  {
+   "x": 11,
+   "y": -4,
+   "file": "tiles/11_-4.json",
+   "buildings": 0,
+   "bytes": 1160156
+  },
+  {
+   "x": 11,
+   "y": -3,
+   "file": "tiles/11_-3.json",
+   "buildings": 6,
+   "bytes": 1438870
+  },
+  {
+   "x": 11,
+   "y": -2,
+   "file": "tiles/11_-2.json",
+   "buildings": 128,
+   "bytes": 1097573
+  },
+  {
+   "x": 11,
+   "y": -1,
+   "file": "tiles/11_-1.json",
+   "buildings": 62,
+   "bytes": 1223116
+  },
+  {
+   "x": 11,
+   "y": 0,
+   "file": "tiles/11_0.json",
+   "buildings": 5,
+   "bytes": 1302334
+  },
+  {
+   "x": 11,
+   "y": 1,
+   "file": "tiles/11_1.json",
+   "buildings": 35,
+   "bytes": 1462582
+  },
+  {
+   "x": 11,
+   "y": 2,
+   "file": "tiles/11_2.json",
+   "buildings": 63,
+   "bytes": 1332619
+  },
+  {
+   "x": 11,
+   "y": 3,
+   "file": "tiles/11_3.json",
+   "buildings": 41,
+   "bytes": 1485444
+  },
+  {
+   "x": 11,
+   "y": 4,
+   "file": "tiles/11_4.json",
+   "buildings": 294,
+   "bytes": 886218
+  },
+  {
+   "x": 11,
+   "y": 5,
+   "file": "tiles/11_5.json",
+   "buildings": 261,
+   "bytes": 841132
+  },
+  {
+   "x": 11,
+   "y": 6,
+   "file": "tiles/11_6.json",
+   "buildings": 87,
+   "bytes": 1022366
+  },
+  {
+   "x": 11,
+   "y": 7,
+   "file": "tiles/11_7.json",
+   "buildings": 18,
+   "bytes": 1345489
+  },
+  {
+   "x": 11,
+   "y": 8,
+   "file": "tiles/11_8.json",
+   "buildings": 3,
+   "bytes": 1425287
+  },
+  {
+   "x": 11,
+   "y": 9,
+   "file": "tiles/11_9.json",
+   "buildings": 0,
+   "bytes": 1421871
+  }
+ ],
+ "counts": {
+  "buildings": 76004,
+  "buildingsWithExplicitHeight": 1361,
+  "buildingsWithLevels": 27463,
+  "buildingsWithRoofShape": 9825,
+  "surfaces": 43806,
+  "roads": 0,
+  "roadSurfaces": 0,
+  "roadNetwork": 0,
+  "junctions": 17244,
+  "crossings": 8939,
+  "trees": 1910624,
+  "attractions": 2
+ },
+ "attribution": [
+  {
+   "name": "OpenStreetMap",
+   "url": "https://www.openstreetmap.org/copyright",
+   "licence": "ODbL 1.0",
+   "note": "Buildings, roads, landuse, trees. В© OpenStreetMap contributors"
+  },
+  {
+   "name": "Geofabrik",
+   "url": "https://download.geofabrik.de/europe/belarus.html",
+   "licence": "ODbL 1.0",
+   "note": "OSM extract Minsk.osm.pbf"
+  }
+ ]
+}

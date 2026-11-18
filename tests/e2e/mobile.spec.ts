@@ -140,42 +140,55 @@ function angleDelta(from: number, to: number): number {
   return delta;
 }
 
+/** Subset of the engine's QA debug surface used to aim the tap test. */
+interface CityDebugApi {
+  datasetInfo(): {
+    defaultView: { orthoHeight: number; targetLocalX: number; targetLocalY: number };
+  };
+  archetypeSamples(
+    archetype: string,
+    limit?: number,
+  ): Array<{ id: string; localX: number; localY: number; height: number }>;
+}
+
+type DebugWindow = Window & { __CITY_DEBUG__?: CityDebugApi };
+
 /**
- * Nearest building to the pilot-area centre, read from the generated tile data
- * on purpose: tapping blind is flaky, aiming at a known footprint is not.
+ * Nearest loaded building to the default view centre, taken from the engine's
+ * real streamed features: tapping blind is flaky, aiming at a known footprint
+ * is not. The engine already has the complete-city tiles resident, so this
+ * needs no test-side download of the 437-tile payload.
  */
-async function findNearestBuilding(page: Page): Promise<{ x: number; y: number }> {
-  const result = await page.evaluate(async () => {
-    const response = await fetch('/data/tiles/manifest.json');
-    if (!response.ok) throw new Error(`manifest request failed: HTTP ${response.status}`);
-    const manifest = await response.json();
-    const [minX, minY, maxX, maxY] = manifest.bounds as [number, number, number, number];
-    const centreX = (minX + maxX) / 2;
-    const centreY = (minY + maxY) / 2;
-    let best: { x: number; y: number; distance: number } | null = null;
-    for (const entry of (manifest.tiles ?? []) as Array<{ file: string }>) {
-      const tileResponse = await fetch(`/data/${entry.file}`);
-      if (!tileResponse.ok) continue;
-      const tile = await tileResponse.json();
-      for (const building of tile.buildings ?? []) {
-        const ring = building.volumes?.[0]?.footprint?.[0];
-        if (!Array.isArray(ring) || ring.length < 3) continue;
-        let x = 0;
-        let y = 0;
-        for (const point of ring) {
-          x += point[0];
-          y += point[1];
+async function findClickableBuilding(page: Page): Promise<{ x: number; y: number }> {
+  const deadline = Date.now() + 60_000;
+  let lastError = 'the engine did not expose any loaded building';
+  while (Date.now() < deadline) {
+    const target = await page.evaluate(() => {
+      const debug = (window as DebugWindow).__CITY_DEBUG__;
+      if (!debug) return { error: 'window.__CITY_DEBUG__ is not exposed by the engine' };
+      const info = debug.datasetInfo();
+      const centreX = info.defaultView.targetLocalX;
+      const centreY = info.defaultView.targetLocalY;
+      const priority = ['khrushchev', 'panel', 'stalin', 'historic', 'office', 'modern', 'small'];
+      for (const archetype of priority) {
+        const samples = debug.archetypeSamples(archetype, 240);
+        let best: { x: number; y: number; distance: number } | null = null;
+        for (const sample of samples) {
+          if (!(sample.height >= 8 && sample.height <= 60)) continue;
+          const distance = Math.hypot(sample.localX - centreX, sample.localY - centreY);
+          if (!best || distance < best.distance) {
+            best = { x: sample.localX, y: sample.localY, distance };
+          }
         }
-        x /= ring.length;
-        y /= ring.length;
-        const distance = Math.hypot(x - centreX, y - centreY);
-        if (!best || distance < best.distance) best = { x, y, distance };
+        if (best) return best;
       }
-    }
-    return best;
-  });
-  if (!result) throw new Error('no buildings with valid footprints in the central tile data');
-  return { x: result.x, y: result.y };
+      return { error: 'no loaded mid-rise building in the engine archetype samples yet' };
+    });
+    if (!('error' in target)) return { x: target.x, y: target.y };
+    lastError = String(target.error);
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`Cannot locate a building in the loaded complete-city data: ${lastError}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -330,7 +343,7 @@ test('4. mobile: two-finger twist rotates and snaps to the 45° compass', async 
 
 test('5. mobile: tap selects a building and opens the info panel', async ({ page }) => {
   const diagnostics = await openApp(page);
-  const target = await findNearestBuilding(page);
+  const target = await findClickableBuilding(page);
   await page.evaluate(
     ({ x, y }) => {
       const app = window.__CITY_APP__?.app;

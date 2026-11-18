@@ -1,0 +1,1033 @@
+{
+ "schema": 1,
+ "generatedAt": "2026-11-14T19:58:17.679Z",
+ "mode": "candidate",
+ "gitSha": "e514fa6",
+ "baseUrl": "http://127.0.0.1:5180",
+ "renderer": {
+  "vendor": "Google Inc. (Google)",
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+ },
+ "gpuRequested": false,
+ "viewport": {
+  "width": 1280,
+  "height": 720
+ },
+ "dataset": {
+  "version": "0.5.0",
+  "tiles": 437,
+  "buildings": 76004,
+  "trees": 1910624,
+  "styleSchema": 1,
+  "styleRunId": "fa79001dc471aa48b291fb6789bfa90d297adbf8cffa50634e9adfbd407c05f2",
+  "styleRecipeCounts": {
+   "0": 191,
+   "1": 44,
+   "2": 107,
+   "3": 662,
+   "4": 1018,
+   "5": 345,
+   "6": 2527,
+   "7": 727,
+   "8": 1208,
+   "9": 2,
+   "10": 16,
+   "11": 119,
+   "12": 1816,
+   "13": 468,
+   "14": 525,
+   "15": 5127,
+   "16": 1017,
+   "17": 1114,
+   "18": 412,
+   "19": 683,
+   "20": 265,
+   "21": 28188,
+   "22": 6277,
+   "23": 21909,
+   "24": 861,
+   "25": 86,
+   "26": 264,
+   "27": 1,
+   "28": 0,
+   "29": 0,
+   "30": 0,
+   "31": 0,
+   "32": 0,
+   "33": 0,
+   "34": 0,
+   "35": 4,
+   "36": 2,
+   "37": 19
+  },
+  "bounds": [
+   -11264,
+   -9216,
+   12288,
+   10240
+  ]
+ },
+ "camera": {
+  "orthoHeights": [
+   420,
+   90
+  ],
+  "azimuth": 0.7853981633974483,
+  "oppositeAzimuth": 3.9269908169872414,
+  "elevation": 0.6154797086703873,
+  "times": {
+   "day": 13,
+   "night": 22
+  },
+  "pixelArt": {
+   "enabled": [
+    false,
+    true
+   ],
+   "resolution": 360
+  }
+ },
+ "requestedCategories": [
+  "archetype_stalin",
+  "archetype_panel",
+  "archetype_historic",
+  "archetype_industrial",
+  "archetype_modern",
+  "archetype_civic",
+  "archetype_small",
+  "landmark_national-library",
+  "panel_neighborhood_1",
+  "prewar_lowrise_1",
+  "river_bridge",
+  "lipki_museum"
+ ],
+ "requestedViews": [
+  "close-90",
+  "night-22"
+ ],
+ "plannedCases": 12,
+ "cases": [
+  {
+   "category": "archetype_stalin",
+   "id": "w25432792",
+   "tileKey": "0_-4",
+   "localX": 216.81,
+   "localY": -3198.68,
+   "archetype": "stalin",
+   "height": 18,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_stalin-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 55,
+      "visibleTiles": 55,
+      "buildings": 7253,
+      "triangles": 4987444,
+      "drawCalls": 269,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_stalin-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 85,
+      "visibleTiles": 85,
+      "buildings": 11362,
+      "triangles": 912422,
+      "drawCalls": 65,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "archetype_panel",
+   "id": "w25438021",
+   "tileKey": "-6_-5",
+   "localX": -5703.138,
+   "localY": -4641.58,
+   "archetype": "panel",
+   "height": 25.2,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_panel-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 118,
+      "visibleTiles": 118,
+      "buildings": 15908,
+      "triangles": 542670,
+      "drawCalls": 43,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_panel-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 136,
+      "visibleTiles": 136,
+      "buildings": 17985,
+      "triangles": 761670,
+      "drawCalls": 57,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "archetype_modern",
+   "id": "w25437973",
+   "tileKey": "-6_-4",
+   "localX": -5276.357,
+   "localY": -3246.181,
+   "archetype": "modern",
+   "height": 31,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_modern-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 155,
+      "visibleTiles": 155,
+      "buildings": 21603,
+      "triangles": 660154,
+      "drawCalls": 49,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_modern-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 187,
+      "visibleTiles": 187,
+      "buildings": 29284,
+      "triangles": 726942,
+      "drawCalls": 46,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "archetype_historic",
+   "id": "w25320041",
+   "tileKey": "5_-4",
+   "localX": 5623.275,
+   "localY": -3260.095,
+   "archetype": "historic",
+   "height": 10.35,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_historic-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 200,
+      "visibleTiles": 200,
+      "buildings": 31979,
+      "triangles": 4,
+      "drawCalls": 2,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_historic-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 225,
+      "visibleTiles": 225,
+      "buildings": 38906,
+      "triangles": 1089561,
+      "drawCalls": 53,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "archetype_industrial",
+   "id": "w25321394",
+   "tileKey": "4_1",
+   "localX": 4387.906,
+   "localY": 1410.291,
+   "archetype": "industrial",
+   "height": 7.99,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\0df3506\\l2\\candidate\\archetype_industrial-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 60,
+      "visibleTiles": 60,
+      "buildings": 7635,
+      "triangles": 5594345,
+      "drawCalls": 296,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\0df3506\\l2\\candidate\\archetype_industrial-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 90,
+      "visibleTiles": 90,
+      "buildings": 12558,
+      "triangles": 1447500,
+      "drawCalls": 39,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "archetype_small",
+   "id": "w1286222891",
+   "tileKey": "5_9",
+   "localX": 5273.388,
+   "localY": 10049.239,
+   "archetype": "small",
+   "height": 3.82,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_small-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 313,
+      "visibleTiles": 313,
+      "buildings": 55983,
+      "triangles": 890001,
+      "drawCalls": 14,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_small-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 333,
+      "visibleTiles": 333,
+      "buildings": 60206,
+      "triangles": 2743089,
+      "drawCalls": 33,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "archetype_civic",
+   "id": "w25322904",
+   "tileKey": "3_-3",
+   "localX": 3139.476,
+   "localY": -2166.261,
+   "archetype": "civic",
+   "height": 16.8,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_civic-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 371,
+      "visibleTiles": 371,
+      "buildings": 68743,
+      "triangles": 1687722,
+      "drawCalls": 60,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\archetype_civic-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 386,
+      "visibleTiles": 386,
+      "buildings": 71973,
+      "triangles": 715821,
+      "drawCalls": 26,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "panel_neighborhood_1",
+   "id": "w25438891",
+   "tileKey": "-7_-6",
+   "localX": -7167.019,
+   "localY": -6074.06,
+   "archetype": "panel",
+   "height": 25.2,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\panel_neighborhood_1-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 418,
+      "visibleTiles": 418,
+      "buildings": 74966,
+      "triangles": 566191,
+      "drawCalls": 60,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\panel_neighborhood_1-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 434,
+      "visibleTiles": 434,
+      "buildings": 75983,
+      "triangles": 770888,
+      "drawCalls": 62,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "prewar_lowrise_1",
+   "id": "w63096110",
+   "tileKey": "-1_3",
+   "localX": -16.109,
+   "localY": 3502.608,
+   "archetype": "historic",
+   "height": 9.73,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\prewar_lowrise_1-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 434600,
+      "drawCalls": 16,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\prewar_lowrise_1-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 1355610,
+      "drawCalls": 50,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "landmark_national-library",
+   "id": "w25319604",
+   "tileKey": "5_3",
+   "localX": 5556.59,
+   "localY": 3275.212,
+   "archetype": "civic",
+   "height": 71.6,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\landmark_national-library-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 2513221,
+      "drawCalls": 49,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\landmark_national-library-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 2456164,
+      "drawCalls": 55,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "river_bridge",
+   "id": null,
+   "tileKey": "-10_-1",
+   "localX": -9728,
+   "localY": -512,
+   "archetype": null,
+   "height": null,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\river_bridge-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 560632,
+      "drawCalls": 19,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\river_bridge-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 710795,
+      "drawCalls": 64,
+      "renderWidth": 640,
+      "renderHeight": 360
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  },
+  {
+   "category": "lipki_museum",
+   "id": null,
+   "tileKey": "9_0",
+   "localX": 9300,
+   "localY": 655,
+   "archetype": null,
+   "height": null,
+   "views": [
+    {
+     "view": "close-90",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\lipki_museum-close-90.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 13,
+     "pixelArt": {
+      "enabled": false,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 6056678,
+      "drawCalls": 47,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    },
+    {
+     "view": "night-22",
+     "file": "screenshots\\building-quality\\e514fa6\\l2\\candidate\\lipki_museum-night-22.png",
+     "ready": true,
+     "camera": {
+      "orthoHeight": 90,
+      "azimuth": 0.7853981633974483,
+      "elevation": 0.6154797086703873
+     },
+     "timeOfDay": 22,
+     "pixelArt": {
+      "enabled": true,
+      "resolution": 360,
+      "outline": 0.55,
+      "colorLevels": 20,
+      "dither": 0.35
+     },
+     "stats": {
+      "loadedTiles": 437,
+      "visibleTiles": 437,
+      "buildings": 76004,
+      "triangles": 1797126,
+      "drawCalls": 17,
+      "renderWidth": 1280,
+      "renderHeight": 720
+     },
+     "diagnostics": [
+      "manifest: 437 tiles, 76004 buildings; default view 8867 m"
+     ],
+     "errors": [],
+     "status": "pass"
+    }
+   ],
+   "status": "pass"
+  }
+ ],
+ "passedCases": 12,
+ "failedCases": [],
+ "consoleErrors": [],
+ "complete": true,
+ "refreshedCases": [
+  {
+   "category": "archetype_industrial",
+   "reason": "sawtooth variant roof disabled after the L1 defect; industrial frames recaptured with the shipped renderer"
+  }
+ ]
+}

@@ -66,8 +66,12 @@
   авиамузея, цели нажатия 44 px, компактный бейдж ODbL.
 * проверки: 7 Playwright-сценариев на эмуляции Chromium 390×844 и 320×568 с
   настоящими multi-touch событиями через CDP; скриншоты в
-  `screenshots/mobile-qa/` (git-ignored). Полный прогон: 467 Vitest passed
-  (5 skipped), 23 hardware-WebGL Playwright passed, typecheck passed.
+  `screenshots/mobile-qa/` (git-ignored). Слияние с релизной веткой complete
+  city проверено: 562 Vitest passed (5 skipped, 34 files), 7/7 мобильных
+  сценариев и десктопный regression прошли; из 31 браузерного сценария 30
+  проходят — старый `trees.spec.ts` ждёт пилотные 16 тайлов и не может пройти
+  на complete-city payload (это было и до мобильной работы; CI Playwright не
+  запускает).
 
 Общая основа B-6/B-7 остаётся прежней: деревья на инстансинге, внешний вид C,
 буферы сокращены на 87,95% ([TREE_INSTANCING_2026-11-06.md](TREE_INSTANCING_2026-11-06.md)).

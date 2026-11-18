@@ -15,15 +15,20 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# Local staging copies of generated city data (large, never committed).
+# Complete-city release payload (payload 0.5.0, 437 tiles): tracked on purpose —
+# the GitHub Pages workflow builds the artifact from a clean checkout and cannot
+# regenerate or download the accepted dataset. Regenerate it locally with
+# `pnpm run data:city` only when intentionally replacing the release.
+# Working datasets that must never be published or committed: the old B-2
+# candidate and the previous city duplicate. Only public/data/city-tiles is the
+# release payload.
 public/data/city-tiles-b2/
 public/data/city-tiles-current/
+
+# Local agent scratch (harness state, editor launch config).
 .dsh-tmp/
 .claude/
 
-# City-scale generated dataset (large, regenerated locally with `pnpm run data:city`).
-# The committed default dataset lives in public/data/tiles/.
-public/data/city-tiles/
 data/interim/city_*.geojson
 data/interim/city_*.json
 data/processed/coverage_city.json
@@ -45,3 +50,10 @@ tmp_*.py
 # Whole-city mobility demo payload (personal, generated locally: ~50 MB).
 # Default corridor payload stays in public/data/mobility/.
 public/data/mobility-city/
+
+# GitHub Pages artifact assembled by scripts/qa/build-pages.mjs (never committed).
+# Only its compact publication-report.json is committable.
+.pages/
+
+# Local staging output for regenerated data (never committed).
+data/staging/

@@ -75,6 +75,15 @@ Constants live in `src/shared/config.ts` and `scripts/geo_config.py`; a unit tes
   arrive as proper `Polygon`/`MultiPolygon` geometry (member roles honoured at
   extraction); water polygons keep island holes, so surfaces are triangulated
   with holes respected (`src/city/environment/surfaceMeshes.ts`).
+* **Procedural style recipe** (payload 0.5.0) — every building carries an
+  optional `styleVariant: { schema: 1, recipeId, source, eligibility[] }`.
+  `recipeId` `0..26` is a family in the canonical catalog
+  (`src/shared/building-style-recipes.json`, mirrored by
+  `scripts/normalize/style_recipes.py`); `27..37` are the frozen legacy
+  archetype presets used by protected routes (curated landmarks, palace,
+  stadium) and by old data. A building whose `volumes` differ from the mapped
+  source massing also records `sourceVolumes` for QA. See
+  `docs/building-quality/style-selection-rules.md` for the offline rules.
 * **Curated landmarks** — five buildings carry a `landmark` id
   (`minsk-gate`, `national-library`, `victory-obelisk`, `red-church`, `tv-tower`) plus the
   untrimmed original OSM footprint in `outline` (see `docs/DATA_SOURCES.md` §7).
@@ -159,6 +168,56 @@ Key properties:
   are quantised/dithered, then the framebuffer is upscaled with nearest
   filtering. `setPixelEffectEnabled(false)` bypasses it for debugging.
 
+### Building style pipeline (payload 0.5.0)
+
+```
+offline selector (Python)                    runtime (TypeScript)
+evidence ─► eligibility ─► weighted hash  ─► styleVariant.recipeId
+                                             │
+                          ┌──────────────────┴───────────────────┐
+                          ▼                                      ▼
+            preset row 0..37 (uPresetA/B)              geometry modules
+            motif id (uRecipeMotif)                    (profiles, frames,
+            flags | recipeId << 8  → aFace.y            balconies, entrances,
+                                                        variant roofs)
+```
+
+* **Bit packing.** `aFace.y = flags | (recipeId << 8)` (16 bits, exact in
+  float32). The fragment shader masks the low byte for `facadeFlag` tests and
+  reads the high byte as the preset row index, clamped to `0..37`; the broad
+  archetype id stays in `aStyle.x` for palace/stadium semantics.
+* **Preset rows.** `uPresetA/B` have 38 rows: `0..26` are family recipes
+  (`src/city/facades/presets.ts` derives them from the archetype preset plus a
+  per-family rhythm override and a motif flag adjustment), `27..37` are the
+  frozen legacy archetype presets. A feature without `styleVariant` resolves
+  `legacyRecipeFor(archetype)` and reproduces the exact previous values.
+* **Motif dispatch.** One `uRecipeMotif[38]` float array selects a small motif
+  integer (`monument`, `historic`, `grid`, `loggia`, `balcony_stack`,
+  `staircore`, `ribbon`, `clerestory`, `blank_service`, `assembly_hall`, or `-1`
+  for legacy rows) instead of 27 shader branches. Each motif reuses the same
+  real-metre UVs as the punched-window lattice, so painted openings and the
+  geometry frames stay aligned.
+* **Massing profiles** (`src/city/buildings/buildingProfiles.ts`) split a convex
+  single-ring footprint by a half-plane along its minimum-area rectangle and
+  lower one side (`end_pavilion`, `stepped`). Explicit `building:part`
+  topology, courtyards, concave rings, small volumes and the far level keep the
+  source volumes unchanged. The preserved maximum never exceeds the source
+  height (+0.05 m).
+* **Detail modules** (`src/city/buildings/facadeDetails.ts`) emit closed solids
+  (piers, plinth/cornice bands, balcony slabs/rails, entrance canopy, roof
+  service boxes) through `MeshSink`, with explicit outward normals, metric UVs,
+  the host recipe's palette and every projection inside the source AABB + 0.45 m.
+  Each module is called in its own try/catch: a failure drops only that module
+  and keeps the mandatory walls/roof.
+* **Variant roofs** (`src/city/roofs/variantRoofs.ts`) provide analytic mansard
+  and oriented sawtooth envelopes plus a shallow clerestory cap. They are only
+  tried when the *mapped* roof is flat and the volume is eligible; the roof rise
+  is reserved inside the declared height by lowering the wall eave, so the
+  silhouette maximum is preserved.
+* **Envelope discipline.** Decorative trim (flat-roof parapet, variant roof,
+  detail boxes) never adds mass above the mapped maximum; `BuildingMeshResult`
+  reports `stats.sourceTriangles` vs `stats.detailTriangles` so QA can compare
+  mandatory geometry with optional detail separately.
 ### Camera input and touch gestures (2026-11-15)
 
 Input is split into a DOM-free state machine and a thin browser adapter:
@@ -214,8 +273,7 @@ selected style uses 56 / 44 / 36 / 28 triangles per tree, including the trunk.
 Lambert materials use flat shading and instance colours. Instance meshes adopt
 the transferred matrix/colour arrays and calculate bounds across all instances.
 An eviction disposes `InstancedMesh` resources, leaving shared geometry alive;
-streamer disposal releases the templates after evicting all tiles. Shared bytes
-are counted once. `geometryMB` remains an approximate resident-buffer counter
+`geometryMB` remains an approximate resident-buffer counter
 that also includes raster textures, not a measurement of total GPU allocation.
 
 The internal `setCanopyAppearance({palette?, visible?})` updates existing colour

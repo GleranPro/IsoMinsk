@@ -11,14 +11,28 @@ Remaining work and completed shared prerequisites: [`docs/BACKLOG.md`](BACKLOG.m
 
 ## Current state
 
+**Procedural building variety — 2026-11-14:** 27 coherent architectural
+families were added as a versioned recipe layer (payload 0.5.0). The offline
+selector assigns a recipe per building from mapped evidence plus a stable hash;
+the renderer resolves it through 38 facade preset rows (27 families + 11 frozen
+legacy presets), a motif-dispatch shader, bounded massing profiles, modular
+facade geometry and analytic mansard/sawtooth roof envelopes. The complete city
+was regenerated and audited: 437 tiles, 76,004 buildings, 1,910,624 trees, 309 MB,
+**27 family recipes used**, ≥3 recipes for every generic archetype, and **0**
+source-geometry contract failures (`docs/building-quality/style-audit.json`).
+The L1 gallery renders 27/27 panels on software WebGL. Not finished in this
+session: the full L2 before/after capture matrix and owner visual sign-off, the
+full/far LOD state machine (L3), the hardware-GPU performance gate, and the
+GitHub Pages release (owner inputs outstanding). Honest per-gate status:
+`docs/building-quality/REVIEW.md`.
+
 **Mobile & touch — 2026-11-15:** touch gestures (one-finger pan, pinch zoom,
 two-finger pan/twist, tap select, double-tap focus), a foldable Settings panel
 that starts folded on phones, 45° rotate buttons, safe areas and phone-sized
 HUD cards are implemented. Gesture logic is a DOM-free state machine with 24 unit
 tests; 7 Playwright scenarios drive real multi-touch through CDP at 390×844 and
-320×568. Full run: 467 Vitest passed (5 skipped), 23 hardware-WebGL e2e passed,
-typecheck passed. This is browser-emulated touch, not phone performance;
-real-phone budgets and full seasons remain the next stages.
+320×568. This is browser-emulated touch, not phone performance; real-phone
+budgets and full seasons remain the next stages.
 
 **Rail LOD fix — 2026-11-06:** ground and bridge heads share one painter,
 unchanged family colours, 0.15 m width and 1.44 m gauge across tiers. Same-camera
@@ -125,7 +139,7 @@ in the 2026-11-06 checkpoint and [its report](TREE_INSTANCING_2026-11-06.md).
 | Landmark kit (curated) | 🟡 5 of 9 planned landmarks modelled | Minsk Gate (clock/emblem towers, parapet, turrets), National Library (rhombicuboctahedron + terraced podium), Victory Square obelisk (pedestal + shaft + gold star), Red Church (brick nave, twin spires, gold crosses), TV tower (176 m red/white lattice mast with platform bands and the 160 m octagonal platform). Remaining: Bolshoi Theatre, railway station, Minsk-Arena, Holy Spirit Cathedral — they still use archetype presets |
 | B-1 — Trees in parks and cemeteries (payload 0.4.3) | ✅ | OSM `natural=tree_row` lines extracted (1 033 rows, ~82.8 km) and placed as mapped points every 7 m; mapped trees dropped only on hard surfaces (buildings, water, rail, carriageway, 0.5 m), so footpaths no longer remove them: mapped trees 2 427 → 12 193 (3 539 points + 8 654 row points), park points kept 79 % → 99.6 %. Heuristic fill rebuilt in `scripts/normalize/trees.py`: disjoint vegetation zones (smaller polygon wins), cemeteries planted on a grid aligned with the plot's long axis (7 × 6 m, 1 tree / 90 m²), `radius + 2 m` clearance around mapped trunks, zone RNG independent of polygon order. The old order-based 140 000 cap (≈ ⅔ of the green area got no trees) is gone: **full density** — 316 704 trees (304 511 heuristic), 3 894 456 tree triangles, max 12 191 trees / 146 292 triangles per tile, per-tile cap 16 000 in pipeline and `treeMeshes.ts`. Measured with `scripts/qa/tree-perf.mjs` (GPU-synced frames, RTX 3080 Laptop): whole-city overview 4.65 → 5.03 ms per frame, park close-ups unchanged (1.6–2.2 ms); costs are memory — GPU geometry 495 → 731 MB, JS heap ~800 → ~1 000 MB — and payload 72 → 89 MB. Chelyuskintsev Park 0 → 10 219 trees (171/ha), Loshitsa 73 → 9 333, Botanical Garden 2 → 11 686, Kalvaria cemetery 5 → 1 553; empty parks/cemeteries > 0.2 ha 91 → 1. `scripts/qa/tree_audit.py --dataset city`: 0 trees in buildings/water/carriageway/track; `docs/COVERAGE_REPORT_CITY.md` from `scripts/qa/tree_coverage.py`; screenshots `screenshots/b1-before/`, `b1-after/` (budgeted variant), `b1-full/`; 42 tree tests (114 Python), 404 Vitest. Northern cemetery lies outside the 12 km frame (B-2); mobile (B-6) needs instanced trees before this density fits a phone |
 | B-6/B-7 prerequisite — new trees + instancing (2026-11-06) | ✅ | C default; 316 704 city trees; tree buffers −87.95%; separate canopy appearance; 434 Vitest passed (5 skipped), 13 hardware-WebGL e2e passed. Full mobile and seasons remain pending; `TREE_INSTANCING_2026-11-06.md` |
-| B-6 — Mobile & touch, first slice (2026-11-15) | 🚧 | DOM-free multi-pointer gesture controller (`src/engine/camera/pointerGestures.ts`, 24 unit tests): one-finger pan, mid-point-anchored pinch, two-finger pan, twist rotation with a 0.1 rad dead zone and 45° snap on release, tap select, double-tap focus, multi-touch tap suppression, per-pointer capture and re-baseline after a finger lifts. `CameraControls` still owns wheel/keyboard; mouse behaviour unchanged. HUD: foldable Settings panel (collapsed by default on phones via `(max-width: 820px), (pointer: coarse) and (max-width: 1100px)`, persisted in `localStorage['minsk.hud.controlsCollapsed']`), 45° rotate buttons, safe-area insets, `100dvh`, full-width bottom building/museum cards, 44 px coarse-pointer targets, compact ODbL badge. 7 new Playwright scenarios with real CDP touch at 390×844 and 320×568 (pan/pinch/twist/tap, panel fold+persist, 320 px overflow, desktop regression). Verified 2026-11-15: 467 Vitest passed (5 skipped), 23 hardware-WebGL Playwright passed, typecheck passed; screenshots `screenshots/mobile-qa/` (git-ignored). Remaining: phone memory/quality budget and real-device checks; emulated touch is not a phone performance claim |
+| B-6 — Mobile & touch, first slice (2026-11-15) | 🚧 | DOM-free multi-pointer gesture controller (`src/engine/camera/pointerGestures.ts`, 24 unit tests): one-finger pan, mid-point-anchored pinch, two-finger pan, twist rotation with a 0.1 rad dead zone and 45° snap on release, tap select, double-tap focus, multi-touch tap suppression, per-pointer capture and re-baseline after a finger lifts. `CameraControls` still owns wheel/keyboard; mouse behaviour unchanged. HUD: foldable Settings panel (collapsed by default on phones via `(max-width: 820px), (pointer: coarse) and (max-width: 1100px)`, persisted in `localStorage['minsk.hud.controlsCollapsed']`), 45° rotate buttons, safe-area insets, `100dvh`, full-width bottom building/museum cards, 44 px coarse-pointer targets, compact ODbL badge. 7 new Playwright scenarios with real CDP touch at 390×844 and 320×568 (pan/pinch/twist/tap, panel fold+persist, 320 px overflow, desktop regression). Merged-release verification 2026-11-15: 562 Vitest passed (5 skipped, 34 files); 7/7 mobile scenarios and the desktop UI regression passed (30/31 browser scenarios overall — the pre-existing `trees.spec.ts` expects the old 16-tile pilot and cannot pass on the complete-city payload; CI does not run Playwright); typecheck/build passed; screenshots `screenshots/mobile-qa/` (git-ignored). Remaining: phone memory/quality budget and real-device checks; emulated touch is not a phone performance claim |
 | Park attractions (curated) | ✅ | both ferris wheels as real geometry: Gorky Park (54 m, Ø51 m, 36 cabins) and Chelyuskintsev Park (28 m, 18 cabins), with A-frame supports, rims/spokes, upright cabins, boarding deck, hub sign and the trees cleared around them; `TileData.attractions` + `src/city/environment/ferrisWheel.ts`, 19 tests |
 
 ## Historical measurements (before 2026-11-06 instancing)

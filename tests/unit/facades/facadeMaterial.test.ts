@@ -25,14 +25,17 @@ import {
   FACADE_ARCHETYPE_COUNT,
   FACADE_FLOAT_UNIFORMS,
   FACADE_FRAGMENT_GLSL,
+  FACADE_MOTIF_IDS,
   FACADE_PALETTE_SIZE,
+  FACADE_PRESET_ROWS,
   FACADE_VERTEX_ATTRIBUTES,
   FACADE_VERTEX_GLSL,
   patchFacadeFragmentShader,
   patchFacadeVertexShader,
 } from '../../../src/engine/shaders/facadeShader';
 import { ARCHETYPE_BY_ID, ARCHETYPE_ID } from '../../../src/shared/geometry';
-import { FACADE_PRESETS } from '../../../src/city/facades/presets';
+import { FACADE_PRESETS, motifRowsForUniforms, presetForRecipe } from '../../../src/city/facades/presets';
+import { FACADE_PRESET_COUNT, LEGACY_RECIPE_OFFSET, STYLE_RECIPES, legacyRecipeFor } from '../../../src/shared/buildingStyles';
 import { PIXEL_PALETTE, PIXEL_PALETTE_SIZE, hexToRgbUnit } from '../../../src/engine/postprocess/palette';
 
 function uniformsOf(material: THREE.Material): FacadeUniformSet {
@@ -105,14 +108,35 @@ describe('facade GLSL source', () => {
     expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_PALETTE_SIZE');
   });
 
-  it('keeps the archetype uniform arrays in sync with the shared contract', () => {
-    // Adding an archetype to src/shared/geometry.ts must only require a preset +
-    // palette entry, never a shader constant edit.
+  it('keeps the recipe preset uniform arrays in sync with the shared contract', () => {
+    // 27 family recipes + 11 legacy archetype presets = 38 preset rows, indexed
+    // by the packed recipe id. The broad archetype count stays 11.
+    expect(FACADE_PRESET_ROWS).toBe(FACADE_PRESET_COUNT);
+    expect(FACADE_PRESET_COUNT).toBe(STYLE_RECIPES.length + ARCHETYPE_BY_ID.length);
+    expect(FACADE_PRESET_ROWS).toBe(38);
     expect(FACADE_ARCHETYPE_COUNT).toBe(ARCHETYPE_BY_ID.length);
-    expect(FACADE_FRAGMENT_GLSL).toContain(`#define FACADE_ARCHETYPE_COUNT ${ARCHETYPE_BY_ID.length}`);
-    expect(FACADE_FRAGMENT_GLSL).toContain('uniform vec4 uPresetA[FACADE_ARCHETYPE_COUNT];');
+    expect(FACADE_FRAGMENT_GLSL).toContain(`#define FACADE_PRESET_ROWS ${FACADE_PRESET_COUNT}`);
+    expect(FACADE_FRAGMENT_GLSL).toContain('uniform vec4 uPresetA[FACADE_PRESET_ROWS];');
+    expect(FACADE_FRAGMENT_GLSL).toContain('uniform vec4 uPresetB[FACADE_PRESET_ROWS];');
+    expect(FACADE_FRAGMENT_GLSL).toContain('uniform float uRecipeMotif[FACADE_PRESET_ROWS];');
     expect(ARCHETYPE_ID.palace).toBe(9);
     expect(ARCHETYPE_ID.stadium).toBe(10);
+  });
+
+  it('unpacks the flag byte and the recipe byte from aFace.y in the shader', () => {
+    // The shader must mask the low byte for flags and read the high byte for the
+    // preset row; a plain `int(aFace.y)` would select the wrong preset.
+    expect(FACADE_FRAGMENT_GLSL).toContain('mod(floor(packedStyle), 256.0)');
+    expect(FACADE_FRAGMENT_GLSL).toContain('floor(packedStyle / 256.0)');
+    expect(FACADE_FRAGMENT_GLSL).toContain('uPresetA[recipe]');
+    expect(FACADE_FRAGMENT_GLSL).toContain('uRecipeMotif[recipe]');
+    expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_MOTIF_LOGGIA');
+    expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_MOTIF_STAIRCORE');
+    expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_MOTIF_CLERESTORY');
+    expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_MOTIF_BLANK_SERVICE');
+    expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_MOTIF_ASSEMBLY_HALL');
+    // Legacy rows keep the pre-recipe branches (motif -1 never enters them).
+    expect(FACADE_FRAGMENT_GLSL).toContain('if (motif >= 0 && !blank)');
   });
 
   it('implements the palace colonnade/loggia look and the stadium fallback', () => {
@@ -249,13 +273,15 @@ describe('createFacadeMaterial', () => {
     disposeFacadeMaterial(clamped);
   });
 
-  it('uploads the shared architectural presets as vec4 arrays', () => {
+  it('uploads the 38 recipe preset rows as vec4 arrays', () => {
     const material = createFacadeMaterial({ detail: true, night: 0 });
     const uniforms = uniformsOf(material);
-    expect(uniforms.uPresetA.value.length).toBe(ARCHETYPE_BY_ID.length * 4);
-    expect(uniforms.uPresetB.value.length).toBe(ARCHETYPE_BY_ID.length * 4);
-    ARCHETYPE_BY_ID.forEach((archetype, index) => {
-      const preset = FACADE_PRESETS[archetype];
+    expect(uniforms.uPresetA.value.length).toBe(FACADE_PRESET_COUNT * 4);
+    expect(uniforms.uPresetB.value.length).toBe(FACADE_PRESET_COUNT * 4);
+    expect(uniforms.uRecipeMotif.value.length).toBe(FACADE_PRESET_COUNT);
+    // Family rows 0..26 come from the catalog + motif overrides.
+    STYLE_RECIPES.forEach((recipe, index) => {
+      const preset = presetForRecipe(recipe);
       expect(uniforms.uPresetA.value[index * 4]).toBeCloseTo(preset.bayWidth, 5);
       expect(uniforms.uPresetA.value[index * 4 + 1]).toBeCloseTo(preset.windowWidthRatio, 5);
       expect(uniforms.uPresetA.value[index * 4 + 2]).toBeCloseTo(preset.windowHeightRatio, 5);
@@ -265,6 +291,36 @@ describe('createFacadeMaterial', () => {
       expect(uniforms.uPresetB.value[index * 4 + 2]).toBeCloseTo(preset.balconyRatio, 5);
       expect(uniforms.uPresetB.value[index * 4 + 3]).toBeCloseTo(preset.corniceHeight, 5);
     });
+    // Legacy rows 27..37 must be byte-for-byte the previous archetype presets.
+    ARCHETYPE_BY_ID.forEach((archetype, index) => {
+      const row = LEGACY_RECIPE_OFFSET + index;
+      const preset = FACADE_PRESETS[archetype];
+      expect(uniforms.uPresetA.value[row * 4]).toBeCloseTo(preset.bayWidth, 5);
+      expect(uniforms.uPresetA.value[row * 4 + 1]).toBeCloseTo(preset.windowWidthRatio, 5);
+      expect(uniforms.uPresetA.value[row * 4 + 2]).toBeCloseTo(preset.windowHeightRatio, 5);
+      expect(uniforms.uPresetA.value[row * 4 + 3]).toBeCloseTo(preset.sillRatio, 5);
+      expect(uniforms.uPresetB.value[row * 4]).toBeCloseTo(preset.floorHeight, 5);
+      expect(uniforms.uPresetB.value[row * 4 + 1]).toBeCloseTo(preset.groundFloorHeight, 5);
+      expect(uniforms.uPresetB.value[row * 4 + 2]).toBeCloseTo(preset.balconyRatio, 5);
+      expect(uniforms.uPresetB.value[row * 4 + 3]).toBeCloseTo(preset.corniceHeight, 5);
+      expect(uniforms.uRecipeMotif.value[row]).toBe(FACADE_MOTIF_IDS.legacy);
+    });
+    // Explicit checks for the protected/legacy archetypes named by the plan.
+    for (const archetype of ['palace', 'stadium', 'small', 'panel'] as const) {
+      const row = LEGACY_RECIPE_OFFSET + ARCHETYPE_ID[archetype];
+      const preset = FACADE_PRESETS[archetype];
+      expect(uniforms.uPresetA.value[row * 4]).toBeCloseTo(preset.bayWidth, 5);
+      expect(uniforms.uPresetB.value[row * 4]).toBeCloseTo(preset.floorHeight, 5);
+      expect(uniforms.uPresetB.value[row * 4 + 1]).toBeCloseTo(preset.groundFloorHeight, 5);
+      expect(presetForRecipe(legacyRecipeFor(archetype)).colors).toEqual([...preset.colors]);
+    }
+    // Motif rows: family rows carry their motif id, legacy rows carry -1.
+    const motifs = motifRowsForUniforms();
+    expect(motifs.length).toBe(FACADE_PRESET_COUNT);
+    expect(motifs[0]).toBe(FACADE_MOTIF_IDS.monument);
+    expect(motifs[18]).toBe(FACADE_MOTIF_IDS.clerestory);
+    expect(motifs[26]).toBe(FACADE_MOTIF_IDS.assembly_hall);
+    expect(motifs[27]).toBe(FACADE_MOTIF_IDS.legacy);
     disposeFacadeMaterial(material);
   });
 

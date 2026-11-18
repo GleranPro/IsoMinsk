@@ -91,6 +91,35 @@ export interface BuildingVolume {
   isPart?: boolean;
 }
 
+/**
+ * Provenance of an assigned style recipe (payload schema 1).
+ *
+ * `osm_hint` means a direct type/material/roof/date tag constrained the choice;
+ * `heuristic` means only footprint shape, height/levels and district context
+ * were used; `legacy_default` marks protected routes (curated landmarks,
+ * palace, stadium) that keep their pre-recipe facade preset.
+ */
+export type BuildingStyleSource = 'osm_hint' | 'heuristic' | 'legacy_default';
+
+/**
+ * Offline-assigned building style variant (payload schema 1).
+ *
+ * An integer recipe id keeps 76,004 records compact. The renderer resolves it
+ * through `src/shared/buildingStyles.ts`; ids `0..26` are the family catalog and
+ * `27..37` are the legacy archetype presets. `eligibility` is kept for audit
+ * only — it is not a claim of surveyed construction era or material.
+ */
+export interface BuildingStyleVariant {
+  /** Version of the selection rules; change only with a reviewed migration. */
+  schema: 1;
+  /** Stable id in the shared recipe catalog (`0..26` families, `27..37` legacy). */
+  recipeId: number;
+  /** Where the choice came from. */
+  source: BuildingStyleSource;
+  /** Eligibility reasons recorded by the offline selector (audit only). */
+  eligibility: string[];
+}
+
 /** A building, as rendered: one or more non-overlapping volumes. */
 export interface BuildingFeature {
   id: FeatureId;
@@ -107,6 +136,15 @@ export interface BuildingFeature {
   roofShape: RoofShape;
   /** Volumes to render; already de-overlapped by the offline pipeline. */
   volumes: BuildingVolume[];
+  /**
+   * Input volumes, recorded only when a style profile changed `volumes`.
+   *
+   * `sourceVolumes` is the mapped source massing; `volumes` is the rendered
+   * profile. Omitted when identical, so old data stays byte-compatible.
+   */
+  sourceVolumes?: BuildingVolume[];
+  /** Offline style recipe assignment (payload schema 1). Optional for old tiles. */
+  styleVariant?: BuildingStyleVariant;
   /** Filtered OSM tags that are useful for the info panel. */
   tags: Record<string, string>;
   /** Optional short description used by the info panel. */

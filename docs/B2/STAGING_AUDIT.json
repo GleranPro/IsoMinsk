@@ -1,8 +1,43 @@
 {
- "schema": 1,
- "tilesDir": "public\\data\\city-tiles-b2",
- "coverage": "data\\processed\\coverage_city_b2.json",
+ "schema": 2,
+ "tilesDir": "public/data/city-tiles-b2",
+ "coverage": "data/processed/coverage_city_b2.json",
+ "protectedBaseline": "<repo>\\docs\\building-quality\\BASELINE.json",
+ "addressReconciliation": {
+  "frozenAreaAddresses": 437,
+  "derivedAreaAddresses": 437,
+  "tileRange": {
+   "minX": -11,
+   "minY": -9,
+   "maxX": 11,
+   "maxY": 9
+  },
+  "note": "Older B-2 reports (399/400 addresses) predate the reviewed rectangle in scripts/geo_config.py; the 437-address book is derived from those bounds and the inclusive manifest range, not copied from a historical report.",
+  "manifestAddresses": 437,
+  "missing": [],
+  "extra": []
+ },
  "checks": [
+  {
+   "name": "area bounds come from reviewed geo_config",
+   "ok": true,
+   "detail": "geo_config [-11264.0, -9216.0, 12288.0, 10240.0] vs area.json [-11264.0, -9216.0, 12288.0, 10240.0]"
+  },
+  {
+   "name": "area tile size matches geo_config",
+   "ok": true,
+   "detail": "geo_config 1024.0 vs area.json 1024.0"
+  },
+  {
+   "name": "area tile range derives from reviewed bounds",
+   "ok": true,
+   "detail": "derived (-11, -9, 11, 9) vs area.json {'minX': -11, 'minY': -9, 'maxX': 11, 'maxY': 9}"
+  },
+  {
+   "name": "area address book derives from reviewed bounds",
+   "ok": true,
+   "detail": "derived 437 addresses vs frozen 437; missing=[] extra=[]"
+  },
   {
    "name": "manifest present",
    "ok": true,
@@ -27,6 +62,11 @@
    "name": "address book",
    "ok": true,
    "detail": "437 addresses, expected 437; missing=[] extra=[]"
+  },
+  {
+   "name": "address book derives from reviewed bounds",
+   "ok": true,
+   "detail": "437 manifest addresses vs 437 derived"
   },
   {
    "name": "tile count",
@@ -109,32 +149,47 @@
    "detail": "parts {'mapped points': 6124, 'mapped rows': 14745, 'heuristic': 1889755} vs payload 1910624"
   },
   {
-   "name": "baseline present",
+   "name": "accepted baseline present",
    "ok": true,
-   "detail": "D:\\Workk\\VoxelMinsk\\docs\\B2\\BASELINE.json"
+   "detail": "<repo>\\docs\\building-quality\\BASELINE.json"
   },
   {
    "name": "working dataset unchanged",
    "ok": true,
-   "detail": "public/data/city-tiles manifest differs from BASELINE.json"
+   "detail": "public/data/city-tiles manifest differs from <repo>\\docs\\building-quality\\BASELINE.json"
   },
   {
-   "name": "derived untouched: data/processed/coverage_city.json",
+   "name": "protected input untouched: data/processed/coverage_city_b2.json",
+   "ok": true,
+   "detail": "data/processed/coverage_city_b2.json changed during staging"
+  },
+  {
+   "name": "protected input untouched: data/processed/city_area_b2_normalized.json",
+   "ok": true,
+   "detail": "data/processed/city_area_b2_normalized.json changed during staging"
+  },
+  {
+   "name": "protected input untouched: data/processed/coverage_city.json",
    "ok": true,
    "detail": "data/processed/coverage_city.json changed during staging"
   },
   {
-   "name": "derived untouched: data/processed/city_area_normalized.json",
+   "name": "protected input untouched: data/processed/city_area_normalized.json",
    "ok": true,
    "detail": "data/processed/city_area_normalized.json changed during staging"
   },
   {
-   "name": "derived untouched: data/processed/city_normalized.json",
+   "name": "protected input untouched: data/processed/city_normalized.json",
    "ok": true,
    "detail": "data/processed/city_normalized.json changed during staging"
   },
   {
-   "name": "derived untouched: docs/COVERAGE_REPORT_CITY.md",
+   "name": "protected input untouched: data/processed/coverage.json",
+   "ok": true,
+   "detail": "data/processed/coverage.json changed during staging"
+  },
+  {
+   "name": "protected input untouched: docs/COVERAGE_REPORT_CITY.md",
    "ok": true,
    "detail": "docs/COVERAGE_REPORT_CITY.md changed during staging"
   }

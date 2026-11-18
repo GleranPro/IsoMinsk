@@ -1,0 +1,108 @@
+# Complete-city GitHub Pages publication (Tasks 10-11).
+#
+# The verify job builds and validates the static artifact exactly as reviewed;
+# the deploy job downloads that same artifact and publishes it through the
+# official GitHub Pages actions. A runner-local `.pages/` never crosses the job
+# boundary.
+#
+# Action versions below are the major versions required by the implementation
+# plan. Each one MUST be confirmed against upstream releases before merge, and a
+# resolved commit SHA should be recorded next to the version comment for
+# supply-chain safety instead of relying on a mutable tag.
+
+name: Complete city
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      site-manifest-sha256: ${{ steps.manifest-summary.outputs.site-manifest-sha256 }}
+      files: ${{ steps.manifest-summary.outputs.files }}
+      total-bytes: ${{ steps.manifest-summary.outputs.total-bytes }}
+      commit-sha: ${{ steps.manifest-summary.outputs.commit-sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: scripts/requirements.txt
+      - name: Install JavaScript dependencies (deterministic)
+        run: pnpm install --frozen-lockfile
+      - name: TypeScript strict check
+        run: pnpm run typecheck
+      - name: Unit tests (Vitest)
+        run: pnpm test
+      - name: Install Python geospatial dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r scripts/requirements.txt
+      - name: Geospatial pipeline tests (Python)
+        run: python -m unittest discover -s scripts/normalize/tests -p "test_*.py" -v
+      - name: Build static application
+        run: pnpm run build
+      - name: Assemble whitelisted Pages artifact
+        run: node scripts/qa/build-pages.mjs --dist dist --site .pages --city-dir public/data/city-tiles
+      - name: Static publication audit
+        run: node scripts/qa/publication-audit.mjs --site .pages --static-only
+      - name: Record artifact summary (counts and hash only)
+        id: manifest-summary
+        run: |
+          node --input-type=module -e '
+            import { createHash } from "node:crypto";
+            import { appendFileSync, readFileSync } from "node:fs";
+            const buffer = readFileSync(".pages/site-manifest.json");
+            const manifest = JSON.parse(buffer.toString("utf8"));
+            appendFileSync(process.env.GITHUB_OUTPUT, `site-manifest-sha256=${createHash("sha256").update(buffer).digest("hex")}\n`);
+            appendFileSync(process.env.GITHUB_OUTPUT, `files=${manifest.files.length}\n`);
+            appendFileSync(process.env.GITHUB_OUTPUT, `total-bytes=${manifest.totalBytes}\n`);
+            appendFileSync(process.env.GITHUB_OUTPUT, `commit-sha=${manifest.commitSha ?? "unknown"}\n`);
+          '
+      - name: Configure GitHub Pages
+        # enablement: true needs repository admin rights, which GITHUB_TOKEN
+        # does not have. The owner enables Pages once (Settings -> Pages ->
+        # Source: GitHub Actions); after that this step only reads the config.
+        uses: actions/configure-pages@v5
+      - name: Pack the verified artifact as the Pages deployment artifact
+        # The artifact is the 307 MB complete-city site. `upload-pages-artifact`
+        # stores it once for `deploy-pages` in the deploy job; an intermediate
+        # `upload-artifact`/`download-artifact` copy doubled the stored bytes and
+        # failed on the runner, so the official two-job Pages pattern is used.
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .pages
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
