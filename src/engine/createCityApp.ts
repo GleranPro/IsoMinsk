@@ -50,6 +50,7 @@ import { MuseumLayer } from './museum/museumLayer';
 import { LandmarkLayer } from './landmarks/landmarkLayer';
 import { landmarkFocusSlug } from '../shared/landmarks';
 import { MobilityController } from './mobility/controller';
+import { RailTrafficLayer } from './rail/railTrafficLayer';
 import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
@@ -550,6 +551,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const useCityMobility = mobilityParam !== 'corridors';
   const mobility = new MobilityController({
     baseUrl: useCityMobility ? publicAssetUrl('data/mobility-city') : undefined,
+    vehicleModelsUrl: publicAssetUrl('data/mobility/vehicles'),
     mobile: typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(pointer: coarse)').matches
       : false,
@@ -558,6 +560,20 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   scene.add(mobility.root);
   mobilityState.runtime = mobility;
   void mobility.start();
+
+  // --- ambient rail traffic: commuter/freight trains on real OSM rails ------
+  // No public timetable exists for these services, so this is a visual model:
+  // trains follow the extracted rail segments without stops. Failures are
+  // non-fatal; the map simply renders without trains.
+  const railTraffic = new RailTrafficLayer({
+    baseUrl: publicAssetUrl('data/mobility/rail'),
+    vehicleModelsUrl: publicAssetUrl('data/mobility/vehicles'),
+    mobile: typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false,
+  });
+  scene.add(railTraffic.root);
+  void railTraffic.load();
 
   const streamer = new TileStreamer({
     scene,
@@ -766,6 +782,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // --- debug surface (X-ray for the QA harness) ----------------------------
   const debugApi = {
     trees: () => ({ style: treeStyle, ...streamer.getTreeDiagnostics() }),
+    rail: () => ({ ...railTraffic.getStats(), samples: railTraffic.getTrainSamples() }),
     setCanopyAppearance: (change: Partial<CanopyAppearance>) => streamer.setCanopyAppearance(change),
     camera: () => {
       const camera = rig.camera;
@@ -1513,16 +1530,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     else focusLandmarkModel();
   }
 
-  /** Frame the War Museum Li-2 (`?focus=li2`, used by QA captures). */
-  function focusWarMuseum(): void {
-    if (disposed) return;
-    rig.focusOnLocal(WAR_MUSEUM.focus.x, WAR_MUSEUM.focus.y, true);
-    rig.setSettings({ orthoHeight: WAR_MUSEUM.orthoHeight });
-    streamer.ensureArea(WAR_MUSEUM.focus.x, WAR_MUSEUM.focus.y, 1);
-    void warMuseum.load();
-    markCameraDirty();
-  }
-
   /** Frame a landmark model (`?focus=<slug>`, used by QA captures). */
   function focusLandmarkModel(): void {
     const slug = landmarkFocusSlug();
@@ -1537,6 +1544,16 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       streamer.ensureArea(point.x, point.y, 1);
       markCameraDirty();
     });
+  }
+
+  /** Frame the War Museum Li-2 (`?focus=li2`, used by QA captures). */
+  function focusWarMuseum(): void {
+    if (disposed) return;
+    rig.focusOnLocal(WAR_MUSEUM.focus.x, WAR_MUSEUM.focus.y, true);
+    rig.setSettings({ orthoHeight: WAR_MUSEUM.orthoHeight });
+    streamer.ensureArea(WAR_MUSEUM.focus.x, WAR_MUSEUM.focus.y, 1);
+    void warMuseum.load();
+    markCameraDirty();
   }
 
   /** Frame the Lipki exhibits; the complete city always contains them. */
@@ -1784,6 +1801,17 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       },
       worldPerPixel: rig.getPixelWorldSize(sceneRenderHeight),
     });
+    railTraffic.update(dt, {
+      rect: {
+        minX: groundFootprint.minX,
+        maxX: groundFootprint.maxX,
+        minZ: groundFootprint.minZ,
+        maxZ: groundFootprint.maxZ,
+      },
+      worldPerPixel: rig.getPixelWorldSize(sceneRenderHeight),
+      visible: mobilityState.settings.vehiclesVisible !== false,
+      paused: mobilityState.settings.paused === true,
+    });
 
     // Keep the shadow map fresh while tiles stream in (new casters) and for a
     // few frames after any camera/light/tile change.
@@ -1920,6 +1948,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       museum.dispose();
       warMuseum.dispose();
       landmarkModels.dispose();
+      railTraffic.dispose();
       mobilityState.runtime = null;
       mobility.dispose();
       streamer.dispose();

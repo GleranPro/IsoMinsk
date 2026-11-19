@@ -72,7 +72,7 @@ describe('vehicle geometry', () => {
       expect(box.min.x, model).toBeLessThan(-5);
       expect(box.max.x, model).toBeGreaterThan(5);
       expect(Math.abs(box.max.x + box.min.x), model).toBeLessThan(0.1);
-      expect(box.max.z - box.min.z, model).toBeLessThan(3);
+      expect(box.max.z - box.min.z, model).toBeLessThan(VEHICLE_DIMENSIONS[model].widthM + 0.15);
       geometry.dispose();
     }
   });
@@ -108,23 +108,31 @@ describe('vehicle geometry', () => {
     }
   });
 
-  it('stores linear vertex colours, keeps body faces nearly white for the livery tint', () => {
-    const geometry = createVehicleTemplate('bus');
-    const colors = geometry.getAttribute('color').array as Float32Array;
-    let bodyVertices = 0;
-    for (let index = 0; index < colors.length; index += 3) {
-      const r = colors[index];
-      const g = colors[index + 1];
-      const b = colors[index + 2];
-      for (const channel of [r, g, b]) {
-        expect(channel).toBeGreaterThanOrEqual(0);
-        expect(channel).toBeLessThanOrEqual(1);
+  it('stores linear vertex colours; the fallback carries the Minsktrans livery', () => {
+    for (const model of VEHICLE_MODELS) {
+      const geometry = createVehicleTemplate(model);
+      const colors = geometry.getAttribute('color').array as Float32Array;
+      let minR = 1;
+      let maxR = 0;
+      for (let index = 0; index < colors.length; index += 3) {
+        const r = colors[index];
+        const g = colors[index + 1];
+        const b = colors[index + 2];
+        for (const channel of [r, g, b]) {
+          expect(channel, model).toBeGreaterThanOrEqual(0);
+          expect(channel, model).toBeLessThanOrEqual(1);
+        }
+        minR = Math.min(minR, r);
+        maxR = Math.max(maxR, r);
       }
-      if (r > 0.98 && g > 0.98 && b > 0.98) bodyVertices += 1;
+      // Каждый шаблон сочетает тёмные детали (стёкла, колёса) и светлые
+      // ливрейные кузовные грани: цвета запечены, а не назначаются материалом.
+      expect(minR, model).toBeLessThan(0.2);
+      // Полувагон полностью тёмный (уголь/бурая обшивка) — светлая деталь там
+      // только в Blender-модели, поэтому порог для него ниже.
+      expect(maxR, model).toBeGreaterThan(model === 'freightWagon' ? 0.08 : 0.6);
+      geometry.dispose();
     }
-    // Борта и передний торец оставлены белыми, чтобы instanceColor задавал ливрею.
-    expect(bodyVertices).toBeGreaterThan(20);
-    geometry.dispose();
   });
 
   it('uses a limited, deterministic livery palette', () => {
