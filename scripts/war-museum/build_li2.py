@@ -8,13 +8,14 @@ Patriotic War (OSM way 384806738; w127103385 is the museum building).
 Sources used:
   * Sketchfab "Li 2" by 3Ddesmark (CC-BY-4.0) - raw/scene.gltf;
   * Wikimedia Commons photos of this exact c/n (olive upper, light-blue
-    underside, red star on the fin, light-blue "56", white serial).
+    underside, red star on the fin).
 
-The script joins the downloaded model, normalises it to nose +X, drops the
-wheels onto z=0, decimates, paints the exhibit livery into a corner colour
-attribute, adds the star/numeral decals and a dark cabin liner (the source has
-open window holes), then writes baked/li-2.json in the museum payload format
-plus verification renders.
+The script joins the downloaded model, normalises it to nose +X, pitches the
+airframe into the parked tail-dragger stance (main wheels and tail wheel on
+z=0), decimates, paints the exhibit livery into a corner colour attribute,
+adds the fin star and a dark cabin liner (the source has open window holes),
+then writes baked/li-2.json in the museum payload format plus verification
+renders.
 
 Run:
   blender -b --factory-startup --python scripts/war-museum/build_li2.py -- \
@@ -33,7 +34,7 @@ import bmesh
 from mathutils import Matrix, Vector
 
 argv = sys.argv[sys.argv.index("--") + 1:]
-INFILE, ASSET_DIR = argv[0], argv[1]
+INFILE, ASSET_DIR = argv[0], os.path.abspath(argv[1])
 TARGET_TRIS = int(argv[2]) if len(argv) > 2 else 25000
 OUT_DIR = os.path.join(ASSET_DIR, "baked")
 RENDER_DIR = os.path.join(ASSET_DIR, "renders")
@@ -63,7 +64,6 @@ BLACK = srgb("#202124")
 YELLOW = srgb("#D8B93A")
 STAR_RED = srgb("#B23A2E")
 STAR_WHITE = srgb("#E6E1D3")
-MARK_BLUE = srgb("#A9CCD8")
 LINER = srgb("#1A2228")
 
 PAINT_SPECS = {
@@ -73,7 +73,6 @@ PAINT_SPECS = {
     "paint_liner": LINER,
     "paint_star_white": STAR_WHITE,
     "paint_star_red": STAR_RED,
-    "paint_mark_blue": MARK_BLUE,
 }
 
 
@@ -174,11 +173,75 @@ def load_and_normalise(path: str, materials):
         vertex.co *= scale
     mesh.update()
 
-    zmin = min(v.co.z for v in mesh.vertices)  # wheels touch the ground
+    zmin = min(v.co.z for v in mesh.vertices)  # main wheels touch the ground
     for vertex in mesh.vertices:
         vertex.co.z -= zmin
     mesh.update()
     return obj
+
+
+def apply_parked_stance(obj) -> None:
+    """Pitch the level source model into the real Li-2's tail-low stance.
+
+    The Sketchfab airframe is modelled level, so only the main wheels reach the
+    ground and the tail wheel hangs ~2.5 m up. Rotate the whole mesh (fin star
+    decals included) nose-up about the main-gear contact line until the tail
+    wheel reaches the same plane, then drop every wheel onto z=0. The Li-2
+    rests at roughly 12 degrees nose-up.
+    """
+    mesh = obj.data
+    zmin = min(v.co.z for v in mesh.vertices)
+    main_contact_x = [v.co.x for v in mesh.vertices if v.co.z < zmin + 0.03]
+    main_x = sum(main_contact_x) / len(main_contact_x)
+    xmin = min(v.co.x for v in mesh.vertices)
+    xmax = max(v.co.x for v in mesh.vertices)
+    tail_zone = [
+        vertex for vertex in mesh.vertices
+        if vertex.co.x < xmin + (xmax - xmin) * 0.25 and abs(vertex.co.y) < 0.6
+    ]
+    if not tail_zone:
+        return
+    # Main-gear tyres (the only low geometry away from the centreline).
+    main_zone = [
+        vertex for vertex in mesh.vertices
+        if vertex.co.x > main_x - 1.2 and abs(vertex.co.y) > 1.5 and vertex.co.z < 2.0
+    ]
+    tail_z = min(v.co.z for v in tail_zone)
+    tail_low_x = [v.co.x for v in tail_zone if v.co.z < tail_z + 0.03]
+    tail_x = sum(tail_low_x) / len(tail_low_x)
+    arm = main_x - tail_x
+    if arm > 0.5 and tail_z > zmin + 0.02:
+        pitch = -math.asin(min(1.0, (tail_z - zmin) / arm))
+        pivot = Vector((main_x, 0.0, zmin))
+        rotate_y = Matrix.Rotation(pitch, 4, "Y")
+        for vertex in mesh.vertices:
+            vertex.co = rotate_y @ (vertex.co - pivot) + pivot
+        mesh.update()
+
+    # The tyre arcs make a single asin pass leave one pair a few centimetres
+    # high; equalise the two contact heights before the final drop.
+    if main_zone:
+        for _ in range(3):
+            zmin = min(v.co.z for v in mesh.vertices)
+            main_min = min(v.co.z for v in main_zone)
+            tail_min = min(v.co.z for v in tail_zone)
+            if abs(main_min - tail_min) < 0.005:
+                break
+            delta = math.atan2(main_min - tail_min, arm)
+            pivot = Vector((main_x, 0.0, zmin))
+            rotate_y = Matrix.Rotation(delta, 4, "Y")
+            for vertex in mesh.vertices:
+                vertex.co = rotate_y @ (vertex.co - pivot) + pivot
+            mesh.update()
+            zmin = min(v.co.z for v in mesh.vertices)
+            for vertex in mesh.vertices:
+                vertex.co.z -= zmin
+            mesh.update()
+
+    zmin = min(v.co.z for v in mesh.vertices)  # every wheel touches the ground
+    for vertex in mesh.vertices:
+        vertex.co.z -= zmin
+    mesh.update()
 
 
 def triangle_count(obj) -> int:
@@ -240,46 +303,11 @@ def add_rect(bm, points, material_index, sign):
     face.material_index = material_index
 
 
-def add_digit(obj, bm, digit, x_start, direction, z_bottom, width, height, material_index, sign, offset):
-    """Blocky seven-segment digit, wrapped onto the fuselage skin.
-
-    `direction` is +1 (text runs +X) or -1.
-    """
-    def x(u):
-        return x_start + direction * u
-
-    t = height * 0.11
-    z_top = z_bottom + height
-    z_mid = z_bottom + height * 0.5
-    segs = {
-        "top": (0.0, width, z_top - t, z_top),
-        "mid": (0.0, width, z_mid - t / 2, z_mid + t / 2),
-        "bot": (0.0, width, z_bottom, z_bottom + t),
-        "ul": (0.0, t, z_mid, z_top - t),
-        "ll": (0.0, t, z_bottom + t, z_mid),
-        "ur": (width - t, width, z_mid, z_top - t),
-        "lr": (width - t, width, z_bottom + t, z_mid),
-    }
-    active = {
-        "5": ("top", "ul", "mid", "lr", "bot"),
-        "6": ("top", "ul", "mid", "ll", "lr", "bot"),
-    }[digit]
-    for name in active:
-        u0, u1, z0, z1 = segs[name]
-        corners = [(x(u0), z0), (x(u1), z0), (x(u1), z1), (x(u0), z1)]
-        add_rect(
-            bm,
-            [skin_point(obj, cx, cz, sign, offset) for cx, cz in corners],
-            material_index,
-            sign,
-        )
-
-
 def make_extras(obj, materials):
-    """Cabin liner, fin stars and the blue '56' numerals as separate geometry."""
+    """Cabin liner and fin stars as separate geometry."""
     extra = bpy.data.objects.new("Li2Extras", bpy.data.meshes.new("Li2Extras"))
     bpy.context.scene.collection.objects.link(extra)
-    slot_order = ["paint_liner", "paint_star_white", "paint_star_red", "paint_mark_blue"]
+    slot_order = ["paint_liner", "paint_star_white", "paint_star_red"]
     for name in slot_order:
         extra.data.materials.append(materials[name])
     index = {name: i for i, name in enumerate(slot_order)}
@@ -291,13 +319,6 @@ def make_extras(obj, materials):
     for sign in (1.0, -1.0):
         add_star(obj, bm, star_x, star_z, 0.62, index["paint_star_white"], sign, 0.018)
         add_star(obj, bm, star_x, star_z, 0.50, index["paint_star_red"], sign, 0.024)
-
-    # Light-blue "56", readable from each side and wrapped onto the fuselage.
-    for sign in (1.0, -1.0):
-        direction = 1.0 if sign > 0 else -1.0
-        x_start = -5.88 if sign > 0 else -4.55
-        add_digit(obj, bm, "5", x_start, direction, 2.65, 0.66, 1.20, index["paint_mark_blue"], sign, 0.04)
-        add_digit(obj, bm, "6", x_start + direction * 0.75, direction, 2.65, 0.66, 1.20, index["paint_mark_blue"], sign, 0.04)
 
     bm.to_mesh(extra.data)
     bm.free()
@@ -318,7 +339,7 @@ def paint(mesh, materials_indices):
     COLOR_0 attribute: it is much richer than anything we could repaint at this
     triangle budget. We keep it for the airframe, windows and cockpit, and only
     replace what the real c/n 33444309 shows differently: light-blue underside,
-    black tyres, black props with yellow tips, plus the star/numeral decals.
+    black tyres, black props with yellow tips, plus the fin star decals.
     """
     special = {name: color for name, color in PAINT_SPECS.items()}
     source = mesh.color_attributes.get("Color")
@@ -466,9 +487,13 @@ def main() -> None:
     obj = load_and_normalise(INFILE, materials)
     decimate(obj, TARGET_TRIS)
     obj = make_extras(obj, materials)
+    # Livery first: the underside/tyre classification thresholds are defined on
+    # the level airframe. Painting after the pitch would shift the olive/blue
+    # border and make it ragged.
     mesh = obj.data
     mesh.calc_loop_triangles()
     colors = paint(mesh, materials)
+    apply_parked_stance(obj)
     mesh = obj.data
     mesh.calc_loop_triangles()
     export_payload(mesh, colors)

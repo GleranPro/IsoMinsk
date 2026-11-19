@@ -5,33 +5,33 @@
   1646.18
  ],
  "positionScale": 10.0,
- "vertices": 75681,
- "triangles": 25227,
- "byteLength": 681129,
+ "vertices": 75549,
+ "triangles": 25183,
+ "byteLength": 679941,
  "sections": [
   {
    "name": "x",
    "type": "int16",
-   "count": 75681,
+   "count": 75549,
    "offset": 0
   },
   {
    "name": "z",
    "type": "int16",
-   "count": 75681,
-   "offset": 151362
+   "count": 75549,
+   "offset": 151098
   },
   {
    "name": "y",
    "type": "int16",
-   "count": 75681,
-   "offset": 302724
+   "count": 75549,
+   "offset": 302196
   },
   {
    "name": "rgb",
    "type": "uint8",
-   "count": 227043,
-   "offset": 454086
+   "count": 226647,
+   "offset": 453294
   }
  ],
  "exhibits": [
@@ -42,10 +42,10 @@
    "y": 1646.18,
    "heading": -28.7,
    "start": 0,
-   "count": 75249,
-   "triangles": 25083,
+   "count": 75117,
+   "triangles": 25039,
    "axisSource": "map-annotation",
-   "lengthM": 19.65,
+   "lengthM": 19.54,
    "spanM": 27.92
   },
   {
@@ -54,7 +54,7 @@
    "x": -1584.04,
    "y": 1646.18,
    "heading": 0.0,
-   "start": 75249,
+   "start": 75117,
    "count": 432,
    "triangles": 144,
    "axisSource": "generated",
@@ -64,9 +64,9 @@
  ],
  "missing": [],
  "bounds": {
-  "minX": -10.4,
-  "maxX": 8.6,
-  "minY": -12.9,
-  "maxY": 11.7
+  "minX": -10.9,
+  "maxX": 7.8,
+  "minY": -12.6,
+  "maxY": 12.0
  }
 }
