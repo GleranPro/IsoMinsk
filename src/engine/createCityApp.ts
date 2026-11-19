@@ -18,12 +18,15 @@
  *   ?zoom=800   initial ortho height
  *   ?az=0.785   initial azimuth in radians
  *   ?detail=0   start with facade detail disabled
+ *   ?focus=red-church  frame one landmark model
+ *   ?info=red-church   open the landmark card (deep link)
  */
 
 import * as THREE from 'three';
 import type {
   BuildingSelection,
   CameraSettings,
+  LandmarkSelection,
   MuseumExhibitSelection,
   CityAppHandle,
   CityAppOptions,
@@ -47,8 +50,8 @@ import {
 import { publicAssetUrl } from '../shared/assets';
 import { MUSEUM, WAR_MUSEUM, isLi2Focus, isMuseumFocus } from '../shared/museum';
 import { MuseumLayer } from './museum/museumLayer';
-import { LandmarkLayer } from './landmarks/landmarkLayer';
-import { landmarkFocusSlug } from '../shared/landmarks';
+import { LandmarkLayer, type LandmarkMeta } from './landmarks/landmarkLayer';
+import { landmarkFocusSlug, landmarkInfoSlug } from '../shared/landmarks';
 import { MobilityController } from './mobility/controller';
 import { RailTrafficLayer } from './rail/railTrafficLayer';
 import { IsometricCameraRig } from './camera/isometricCamera';
@@ -264,6 +267,8 @@ function createUnavailableHandle(container: HTMLElement, message: string): CityA
     focusMuseum: noop,
     getExhibitPreview: () => null,
     clearExhibit: noop,
+    getLandmarkPreview: () => null,
+    clearLandmark: noop,
     setPixelArt: noop,
     getPixelArt: () => ({ ...DEFAULT_PIXEL_ART }),
     setTimeOfDay: noop,
@@ -739,6 +744,12 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       } catch {
         /* ignore shell errors */
       }
+    },
+    getLandmarkPreview(slug: string) {
+      return landmarkModels.getPreview(slug);
+    },
+    clearLandmark() {
+      setLandmarkSelection(null);
     },
     highlightBuilding(id: FeatureId | null) {
       highlightId = id;
@@ -1527,6 +1538,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
     if (isMuseumFocus()) focusMuseum();
     else if (isLi2Focus()) focusWarMuseum();
+    else if (landmarkInfoSlug()) openLandmarkFromUrl();
     else focusLandmarkModel();
   }
 
@@ -1534,15 +1546,31 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function focusLandmarkModel(): void {
     const slug = landmarkFocusSlug();
     if (disposed || !slug) return;
+    focusLandmarkOn(slug, false);
+  }
+
+  /** Landmark card deep link (`?info=<slug>`): frame the model, open its card. */
+  function openLandmarkFromUrl(): void {
+    const slug = landmarkInfoSlug();
+    if (disposed || !slug) return;
+    focusLandmarkOn(slug, true);
+  }
+
+  function focusLandmarkOn(slug: string, openCard: boolean): void {
     void landmarkModels.load().then(() => {
+      const meta = landmarkModels.getMeta(slug);
       const point = landmarkModels.focusPoint(slug);
-      if (disposed || !point) return;
-      const meta = landmarkModels.manifest?.landmarks.find((entry) => entry.slug === slug);
-      const [minE, minN, maxE, maxN] = meta?.extent ?? [-40, -40, 40, 40];
+      if (disposed || !meta || !point) return;
       rig.focusOnLocal(point.x, point.y, true);
+      const [minE, minN, maxE, maxN] = meta.extent;
       rig.setSettings({ orthoHeight: Math.max(60, Math.max(maxE - minE, maxN - minN) * 1.6) });
       streamer.ensureArea(point.x, point.y, 1);
       markCameraDirty();
+      if (!openCard) return;
+      const rect = host!.canvas.getBoundingClientRect();
+      setLandmarkSelection(
+        landmarkSelection(meta, rect.left + rect.width / 2, rect.top + rect.height / 2),
+      );
     });
   }
 
@@ -1596,6 +1624,59 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     };
   }
 
+  /** One landmark selection record, shared by clicks and the `?info=` deep link. */
+  function landmarkSelection(
+    meta: LandmarkMeta,
+    screenX: number,
+    screenY: number,
+  ): LandmarkSelection {
+    const [minE, minN, maxE, maxN] = meta.extent;
+    return {
+      slug: meta.slug,
+      label: meta.label,
+      osm: meta.osm,
+      x: meta.x,
+      y: meta.y,
+      centreX: meta.x + (minE + maxE) / 2,
+      centreY: meta.y + (minN + maxN) / 2,
+      heightM: meta.heightM,
+      extent: [minE, minN, maxE, maxN],
+      triangles: meta.triangles,
+      screenX,
+      screenY,
+    };
+  }
+
+  const landmarkRaycaster = new THREE.Raycaster();
+  function pickLandmark(
+    clientX: number,
+    clientY: number,
+    rect: DOMRect,
+  ): LandmarkSelection | null {
+    if (landmarkModels.state !== 'ready') return null;
+    const width = Math.max(rect.width, 1);
+    const height = Math.max(rect.height, 1);
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / width) * 2 - 1,
+      -((clientY - rect.top) / height) * 2 + 1,
+    );
+    landmarkRaycaster.setFromCamera(ndc, rig.camera);
+    const hits = landmarkRaycaster.intersectObjects(landmarkModels.getPickables(), false);
+    const slug = hits[0]?.object.userData.slug;
+    const meta = typeof slug === 'string' ? landmarkModels.getMeta(slug) : null;
+    return meta ? landmarkSelection(meta, clientX, clientY) : null;
+  }
+
+  function setLandmarkSelection(selection: LandmarkSelection | null): void {
+    if (!selection && landmarkModels.selectedSlug === null) return;
+    landmarkModels.setSelected(selection?.slug ?? null);
+    try {
+      options.onLandmarkSelect?.(selection);
+    } catch {
+      /* ignore shell errors */
+    }
+  }
+
   function handleClick(clientX: number, clientY: number): void {
     if (disposed || !picker) return;
     const rect = host!.canvas.getBoundingClientRect();
@@ -1613,6 +1694,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       }
       const info = mobilityState.runtime?.describeTrip(vehicle.tripId) ?? null;
       mobilityState.runtime?.setSelectedTrip(info ? vehicle.tripId : null);
+      setLandmarkSelection(null);
       try {
         options.onMobilitySelect?.(
           info ? { ...info, screenX: clientX, screenY: clientY } : null,
@@ -1637,8 +1719,34 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       } catch {
         /* ignore shell errors */
       }
+      setLandmarkSelection(null);
       return;
     }
+    const landmark = pickLandmark(clientX, clientY, rect);
+    if (landmark) {
+      selected = null;
+      highlightId = null;
+      highlighter.setHighlight(null);
+      try {
+        options.onSelection?.(null);
+      } catch {
+        /* ignore shell errors */
+      }
+      try {
+        options.onExhibitSelect?.(null);
+      } catch {
+        /* ignore shell errors */
+      }
+      mobilityState.runtime?.setSelectedTrip(null);
+      try {
+        options.onMobilitySelect?.(null);
+      } catch {
+        /* ignore shell errors */
+      }
+      setLandmarkSelection(landmark);
+      return;
+    }
+    setLandmarkSelection(null);
     const selection = picker.pick(clientX, clientY, rect);
     selected = selection;
     if (selection) {
@@ -1849,6 +1957,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     applyDebugOverrides();
 
     highlighter.update(now);
+    landmarkModels.update(now);
 
     renderer.info.reset();
     post.render(scene, camera);

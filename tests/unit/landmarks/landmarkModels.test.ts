@@ -5,9 +5,13 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildBuildingsMesh } from '../../../src/city/buildings/buildingsMesh';
-import { createLandmarkGeometry, type LandmarkManifest } from '../../../src/engine/landmarks/landmarkLayer';
+import {
+  createLandmarkGeometry,
+  LandmarkLayer,
+  type LandmarkManifest,
+} from '../../../src/engine/landmarks/landmarkLayer';
 import { LANDMARK_HIDDEN_BUILDING_IDS, PLACED_LANDMARKS } from '../../../src/shared/landmarks';
 import { squarePrismBuilding } from '../../fixtures/buildings';
 
@@ -109,5 +113,60 @@ describe('mesh builder', () => {
     expect(visible.triangleCount).toBeGreaterThan(0);
     expect(hidden.triangleCount).toBe(0);
     expect(hidden.buildingIds).toEqual([hiddenId]);
+  });
+});
+
+describe('landmark interaction surface', () => {
+  const { manifest, buffer } = loadPayload();
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('exposes one pickable mesh per landmark, and a centred card preview', async () => {
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const body: BodyInit = url.endsWith('/manifest.json') ? JSON.stringify(manifest) : buffer;
+      return new Response(body, { status: 200 });
+    });
+
+    const layer = new LandmarkLayer();
+    await layer.load();
+    expect(layer.state).toBe('ready');
+    expect(layer.getPickables()).toHaveLength(manifest.landmarks.length);
+    for (const mesh of layer.getPickables()) {
+      expect(mesh.userData.slug, mesh.name).toBeTypeOf('string');
+      expect(layer.getMeta(mesh.userData.slug as string)).not.toBeNull();
+    }
+
+    const preview = layer.getPreview('red-church');
+    expect(preview).not.toBeNull();
+    const position = preview!.positions;
+    // The card viewer expects the model centred on x/z and resting on y=0.
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (let i = 0; i < position.length; i += 3) {
+      minX = Math.min(minX, position[i]);
+      maxX = Math.max(maxX, position[i]);
+      minY = Math.min(minY, position[i + 1]);
+      minZ = Math.min(minZ, position[i + 2]);
+      maxZ = Math.max(maxZ, position[i + 2]);
+    }
+    expect(minY).toBeCloseTo(0, 5);
+    expect(maxX + minX).toBeCloseTo(0, 4);
+    expect(maxZ + minZ).toBeCloseTo(0, 4);
+
+    layer.setSelected('red-church');
+    expect(layer.selectedSlug).toBe('red-church');
+    expect(layer.root.getObjectByName('landmark-highlight-red-church')).toBeDefined();
+    layer.update(16);
+    layer.setSelected(null);
+    expect(layer.selectedSlug).toBeNull();
+    expect(layer.root.getObjectByName('landmark-highlight-red-church')).toBeUndefined();
+    layer.dispose();
   });
 });

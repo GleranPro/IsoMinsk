@@ -47,3 +47,10 @@ export function landmarkFocusSlug(search?: string): string | null {
   const value = new URLSearchParams(raw).get('focus');
   return value && PLACED_LANDMARKS.some((entry) => entry.slug === value) ? value : null;
 }
+
+/** `?info=<slug>` value naming a placed landmark (card deep link), or null. */
+export function landmarkInfoSlug(search?: string): string | null {
+  const raw = search ?? (typeof location !== 'undefined' ? location.search : '');
+  const value = new URLSearchParams(raw).get('info');
+  return value && PLACED_LANDMARKS.some((entry) => entry.slug === value) ? value : null;
+}

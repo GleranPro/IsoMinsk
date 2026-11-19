@@ -35,14 +35,15 @@ SCALE = 10.0  # int16 decimetres
 # The Yandex Victory Monument GLB stops at the paved platform; the OSM way
 # 1308903766 (Вечны агонь) is a 9 m diamond slab south-west of the obelisk that
 # the model does not carry. Emit it here so the exhibit keeps its eternal flame.
-# Plan coordinates are anchor-local metres (catalog placement x/y).
+# Plan coordinates are absolute local metres (OSM geometry), shifted by the
+# landmark anchor at bake time so a moved placement keeps the flame on its slab.
 VICTORY_FLAME_RING = (
-    (-18.36, -10.77),
-    (-23.11, -15.02),
-    (-18.84, -19.76),
-    (-14.10, -15.51),
+    (900.991, 716.637),
+    (896.243, 712.393),
+    (900.505, 707.654),
+    (905.254, 711.898),
 )
-VICTORY_FLAME_CENTRE = (-18.55, -14.37)
+VICTORY_FLAME_CENTRE = (900.748, 712.146)
 VICTORY_FLAME_SLAB_HEIGHT = 0.45
 VICTORY_FLAME_BODY_TOP = 2.05
 VICTORY_FLAME_CORE_TOP = 2.75
@@ -51,11 +52,13 @@ VICTORY_FLAME_BODY_RGB = (224, 122, 31)    # flame body
 VICTORY_FLAME_CORE_RGB = (245, 194, 75)    # hot core
 
 
-def victory_flame_geometry():
+def victory_flame_geometry(anchor: tuple[float, float]):
     """(vertices (N,3), triangles (T,3), colours (T,3)) for the eternal flame."""
     verts: list[tuple[float, float, float]] = []
     tris: list[tuple[int, int, int]] = []
     cols: list[tuple[int, int, int]] = []
+    ax, ay = anchor
+    ring = tuple((x - ax, y - ay) for x, y in VICTORY_FLAME_RING)
 
     def tri(a, b, c, colour):
         base = len(verts)
@@ -63,7 +66,6 @@ def victory_flame_geometry():
         tris.append((base, base + 1, base + 2))
         cols.append(colour)
 
-    ring = VICTORY_FLAME_RING
     # Slab side walls (the ring is CCW, so a->b->b_top winds outward).
     for i in range(len(ring)):
         a = ring[i]
@@ -75,7 +77,7 @@ def victory_flame_geometry():
         tri(a0, b0, b1, VICTORY_FLAME_SLAB_RGB)
         tri(a0, b1, a1, VICTORY_FLAME_SLAB_RGB)
     # Slab deck.
-    centre = VICTORY_FLAME_CENTRE
+    centre = (VICTORY_FLAME_CENTRE[0] - ax, VICTORY_FLAME_CENTRE[1] - ay)
     top = VICTORY_FLAME_SLAB_HEIGHT
     for i in range(len(ring)):
         a = ring[i]
@@ -102,10 +104,10 @@ def victory_flame_geometry():
             np.asarray(cols, dtype=np.uint8))
 
 
-def landmark_decoration(slug: str):
+def landmark_decoration(slug: str, placement: dict):
     """Per-landmark extra geometry the source GLB does not contain."""
     if slug == "victory-monument":
-        return victory_flame_geometry()
+        return victory_flame_geometry((float(placement["x"]), float(placement["y"])))
     return None
 
 
@@ -125,7 +127,7 @@ def main() -> None:
         up = up - float(up.min()) if abs(float(up.min())) < 0.5 else up  # sit exactly on the ground
         tri = model.indices
         colors = triangle_colors(model)
-        decoration = landmark_decoration(entry["slug"])
+        decoration = landmark_decoration(entry["slug"], placement)
         if decoration is not None:
             extra_verts, extra_tri, extra_colors = decoration
             base = int(e.size)
