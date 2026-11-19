@@ -31,6 +31,83 @@ from lm_bake import triangle_colors  # noqa: E402
 OUT_DIR = ROOT / "public" / "data" / "landmarks"
 SCALE = 10.0  # int16 decimetres
 
+# --- curated decorations ----------------------------------------------------
+# The Yandex Victory Monument GLB stops at the paved platform; the OSM way
+# 1308903766 (Вечны агонь) is a 9 m diamond slab south-west of the obelisk that
+# the model does not carry. Emit it here so the exhibit keeps its eternal flame.
+# Plan coordinates are anchor-local metres (catalog placement x/y).
+VICTORY_FLAME_RING = (
+    (-18.36, -10.77),
+    (-23.11, -15.02),
+    (-18.84, -19.76),
+    (-14.10, -15.51),
+)
+VICTORY_FLAME_CENTRE = (-18.55, -14.37)
+VICTORY_FLAME_SLAB_HEIGHT = 0.45
+VICTORY_FLAME_BODY_TOP = 2.05
+VICTORY_FLAME_CORE_TOP = 2.75
+VICTORY_FLAME_SLAB_RGB = (110, 111, 107)   # dark granite slab
+VICTORY_FLAME_BODY_RGB = (224, 122, 31)    # flame body
+VICTORY_FLAME_CORE_RGB = (245, 194, 75)    # hot core
+
+
+def victory_flame_geometry():
+    """(vertices (N,3), triangles (T,3), colours (T,3)) for the eternal flame."""
+    verts: list[tuple[float, float, float]] = []
+    tris: list[tuple[int, int, int]] = []
+    cols: list[tuple[int, int, int]] = []
+
+    def tri(a, b, c, colour):
+        base = len(verts)
+        verts.extend([a, b, c])
+        tris.append((base, base + 1, base + 2))
+        cols.append(colour)
+
+    ring = VICTORY_FLAME_RING
+    # Slab side walls (the ring is CCW, so a->b->b_top winds outward).
+    for i in range(len(ring)):
+        a = ring[i]
+        b = ring[(i + 1) % len(ring)]
+        a0 = (a[0], a[1], 0.0)
+        b0 = (b[0], b[1], 0.0)
+        b1 = (b[0], b[1], VICTORY_FLAME_SLAB_HEIGHT)
+        a1 = (a[0], a[1], VICTORY_FLAME_SLAB_HEIGHT)
+        tri(a0, b0, b1, VICTORY_FLAME_SLAB_RGB)
+        tri(a0, b1, a1, VICTORY_FLAME_SLAB_RGB)
+    # Slab deck.
+    centre = VICTORY_FLAME_CENTRE
+    top = VICTORY_FLAME_SLAB_HEIGHT
+    for i in range(len(ring)):
+        a = ring[i]
+        b = ring[(i + 1) % len(ring)]
+        tri((centre[0], centre[1], top), (a[0], a[1], top), (b[0], b[1], top),
+            VICTORY_FLAME_SLAB_RGB)
+    # Flame body and hot core: two pyramids on the slab, aligned with the ring.
+    for scale, base_y, apex_y, colour in (
+        (0.40, top, VICTORY_FLAME_BODY_TOP, VICTORY_FLAME_BODY_RGB),
+        (0.16, top + 1.4, VICTORY_FLAME_CORE_TOP, VICTORY_FLAME_CORE_RGB),
+    ):
+        apex = (centre[0], centre[1], apex_y)
+        for i in range(len(ring)):
+            a = ring[i]
+            b = ring[(i + 1) % len(ring)]
+            pa = (centre[0] + (a[0] - centre[0]) * scale,
+                  centre[1] + (a[1] - centre[1]) * scale, base_y)
+            pb = (centre[0] + (b[0] - centre[0]) * scale,
+                  centre[1] + (b[1] - centre[1]) * scale, base_y)
+            tri(pa, pb, apex, colour)
+
+    return (np.asarray(verts, dtype=np.float64),
+            np.asarray(tris, dtype=np.int64),
+            np.asarray(cols, dtype=np.uint8))
+
+
+def landmark_decoration(slug: str):
+    """Per-landmark extra geometry the source GLB does not contain."""
+    if slug == "victory-monument":
+        return victory_flame_geometry()
+    return None
+
 
 def main() -> None:
     catalog = load_catalog()
@@ -48,6 +125,15 @@ def main() -> None:
         up = up - float(up.min()) if abs(float(up.min())) < 0.5 else up  # sit exactly on the ground
         tri = model.indices
         colors = triangle_colors(model)
+        decoration = landmark_decoration(entry["slug"])
+        if decoration is not None:
+            extra_verts, extra_tri, extra_colors = decoration
+            base = int(e.size)
+            e = np.concatenate([e, extra_verts[:, 0]])
+            n = np.concatenate([n, extra_verts[:, 1]])
+            up = np.concatenate([up, extra_verts[:, 2]])
+            tri = np.concatenate([tri, extra_tri + base])
+            colors = np.concatenate([colors, extra_colors])
         qe = np.round(e[tri].reshape(-1) * SCALE)
         qn = np.round(n[tri].reshape(-1) * SCALE)
         qh = np.round(up[tri].reshape(-1) * SCALE)

@@ -1,33 +1,33 @@
 {
  "version": 1,
  "positionScale": 10.0,
- "vertices": 186987,
- "triangles": 62329,
- "byteLength": 1682883,
+ "vertices": 187047,
+ "triangles": 62349,
+ "byteLength": 1683423,
  "sections": [
   {
    "name": "east",
    "type": "int16",
-   "count": 186987,
+   "count": 187047,
    "offset": 0
   },
   {
    "name": "height",
    "type": "int16",
-   "count": 186987,
-   "offset": 373974
+   "count": 187047,
+   "offset": 374094
   },
   {
    "name": "north",
    "type": "int16",
-   "count": 186987,
-   "offset": 747948
+   "count": 187047,
+   "offset": 748188
   },
   {
    "name": "rgb",
    "type": "uint8",
-   "count": 560961,
-   "offset": 1121922
+   "count": 561141,
+   "offset": 1122282
   }
  ],
  "landmarks": [
@@ -103,19 +103,19 @@
    "osm": "w346312699",
    "x": 919.35,
    "y": 727.41,
-   "yaw": 40.43,
+   "yaw": -4.57,
    "scale": 1.3165,
    "hide": [
     "w346312699"
    ],
    "start": 46956,
-   "count": 8256,
-   "triangles": 2752,
+   "count": 8316,
+   "triangles": 2772,
    "extent": [
-    -17.0,
-    -15.6,
-    17.6,
-    19.0
+    -23.1,
+    -19.8,
+    18.7,
+    18.3
    ],
    "heightM": 38.2
   },
@@ -130,7 +130,7 @@
    "hide": [
     "w127103385"
    ],
-   "start": 55212,
+   "start": 55272,
    "count": 6045,
    "triangles": 2015,
    "extent": [
@@ -157,7 +157,7 @@
     "w292848094",
     "w336355464"
    ],
-   "start": 61257,
+   "start": 61317,
    "count": 10836,
    "triangles": 3612,
    "extent": [
@@ -179,7 +179,7 @@
    "hide": [
     "w25319604"
    ],
-   "start": 72093,
+   "start": 72153,
    "count": 16953,
    "triangles": 5651,
    "extent": [
@@ -201,7 +201,7 @@
    "hide": [
     "w25327478"
    ],
-   "start": 89046,
+   "start": 89106,
    "count": 26772,
    "triangles": 8924,
    "extent": [
@@ -223,7 +223,7 @@
    "hide": [
     "w25327593"
    ],
-   "start": 115818,
+   "start": 115878,
    "count": 3969,
    "triangles": 1323,
    "extent": [
@@ -246,7 +246,7 @@
     "w25327627",
     "w25327631"
    ],
-   "start": 119787,
+   "start": 119847,
    "count": 14097,
    "triangles": 4699,
    "extent": [
@@ -268,7 +268,7 @@
    "hide": [
     "w25327560"
    ],
-   "start": 133884,
+   "start": 133944,
    "count": 8967,
    "triangles": 2989,
    "extent": [
@@ -290,7 +290,7 @@
    "hide": [
     "r11788611"
    ],
-   "start": 142851,
+   "start": 142911,
    "count": 11886,
    "triangles": 3962,
    "extent": [
@@ -312,7 +312,7 @@
    "hide": [
     "w25387231"
    ],
-   "start": 154737,
+   "start": 154797,
    "count": 12006,
    "triangles": 4002,
    "extent": [
@@ -334,7 +334,7 @@
    "hide": [
     "w346345132"
    ],
-   "start": 166743,
+   "start": 166803,
    "count": 1101,
    "triangles": 367,
    "extent": [
@@ -357,7 +357,7 @@
     "w135566700",
     "w358224860"
    ],
-   "start": 167844,
+   "start": 167904,
    "count": 19143,
    "triangles": 6381,
    "extent": [
