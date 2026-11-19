@@ -112,6 +112,8 @@ function buildFixtureSite(): FixtureSite {
     'data/museum/manifest.json',
     JSON.stringify({ version: 1, byteLength: 4, vertices: 0, triangles: 0, exhibits: [], missing: [], sections: [] }),
   );
+  writeFile(root, 'data/warmuseum/exhibits.bin', Buffer.from([1, 2, 3, 4]));
+  writeFile(root, 'data/warmuseum/manifest.json', JSON.stringify({ version: 1, byteLength: 4, exhibits: [] }));
   writeFile(root, 'data/landmarks/landmarks.bin', Buffer.from([1, 2, 3, 4]));
   writeFile(root, 'data/landmarks/manifest.json', JSON.stringify({ version: 1, vertices: 0, landmarks: [] }));
   writeFile(
@@ -347,6 +349,8 @@ describe('artifact path policy', () => {
       'data/city-tiles/-11_-9.json',
       'data/museum/manifest.json',
       'data/museum/exhibits.bin',
+      'data/warmuseum/manifest.json',
+      'data/warmuseum/exhibits.bin',
       'data/landmarks/manifest.json',
       'data/landmarks/landmarks.bin',
       'data/mobility/manifest.json',
@@ -392,6 +396,8 @@ describe('whitelist assembler', () => {
       'public/data/LICENSE-ODbL.txt',
       'public/data/museum/manifest.json',
       'public/data/museum/exhibits.bin',
+      'public/data/warmuseum/manifest.json',
+      'public/data/warmuseum/exhibits.bin',
       'public/data/landmarks/manifest.json',
       'public/data/landmarks/landmarks.bin',
       'public/data/mobility/manifest.json',
@@ -417,6 +423,7 @@ describe('whitelist assembler', () => {
     expect(paths).toContain('data/city-tiles/0_0.json');
     expect(paths).toContain('data/city-tiles/manifest.json');
     expect(paths).toContain('data/museum/manifest.json');
+    expect(paths).toContain('data/warmuseum/manifest.json');
     expect(paths).toContain('data/landmarks/manifest.json');
     expect(paths).toContain('data/landmarks/landmarks.bin');
     expect(paths).toContain('data/mobility/manifest.json');

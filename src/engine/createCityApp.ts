@@ -45,7 +45,7 @@ import {
   resolveManifestUrl,
 } from '../shared/config';
 import { publicAssetUrl } from '../shared/assets';
-import { MUSEUM, isMuseumFocus } from '../shared/museum';
+import { MUSEUM, WAR_MUSEUM, isLi2Focus, isMuseumFocus } from '../shared/museum';
 import { MuseumLayer } from './museum/museumLayer';
 import { LandmarkLayer } from './landmarks/landmarkLayer';
 import { landmarkFocusSlug } from '../shared/landmarks';
@@ -512,6 +512,19 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // loaded unconditionally. Failure is non-fatal: the map renders without them.
   void museum.load();
 
+  // --- War Museum Li-2 (one static exhibit, same binary format) ------------
+  const warMuseum = new MuseumLayer({
+    baseUrl: WAR_MUSEUM.dataUrl,
+    onReady: () => {
+      renderer.shadowMap.needsUpdate = true;
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
+    },
+    onError: recordDiagnostic,
+  });
+  warMuseum.root.name = 'war-museum';
+  scene.add(warMuseum.root);
+  void warMuseum.load();
+
   // --- Low-poly landmark models (baked payload, one mesh per landmark) ------
   // The tile builder skips the OSM buildings these models replace
   // (LANDMARK_HIDDEN_BUILDING_IDS), so a failed load leaves a hole: keep the
@@ -903,6 +916,14 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       bounds: museum.manifest?.bounds ?? null,
     }),
     museumObject: () => museum,
+    warMuseum: () => ({
+      state: warMuseum.state,
+      triangles: warMuseum.getTriangles(),
+      exhibits: warMuseum.manifest?.exhibits.length ?? 0,
+      error: warMuseum.error,
+      bounds: warMuseum.manifest?.bounds ?? null,
+    }),
+    warMuseumObject: () => warMuseum,
     landmarkModels: () => ({
       state: landmarkModels.state,
       triangles: landmarkModels.getTriangles(),
@@ -1488,7 +1509,18 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       /* ignore shell errors */
     }
     if (isMuseumFocus()) focusMuseum();
+    else if (isLi2Focus()) focusWarMuseum();
     else focusLandmarkModel();
+  }
+
+  /** Frame the War Museum Li-2 (`?focus=li2`, used by QA captures). */
+  function focusWarMuseum(): void {
+    if (disposed) return;
+    rig.focusOnLocal(WAR_MUSEUM.focus.x, WAR_MUSEUM.focus.y, true);
+    rig.setSettings({ orthoHeight: WAR_MUSEUM.orthoHeight });
+    streamer.ensureArea(WAR_MUSEUM.focus.x, WAR_MUSEUM.focus.y, 1);
+    void warMuseum.load();
+    markCameraDirty();
   }
 
   /** Frame a landmark model (`?focus=<slug>`, used by QA captures). */
@@ -1886,6 +1918,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     controls = null;
     try {
       museum.dispose();
+      warMuseum.dispose();
       landmarkModels.dispose();
       mobilityState.runtime = null;
       mobility.dispose();

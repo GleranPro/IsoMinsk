@@ -1,0 +1,72 @@
+{
+ "version": 1,
+ "origin": [
+  -1584.04,
+  1646.18
+ ],
+ "positionScale": 10.0,
+ "vertices": 75681,
+ "triangles": 25227,
+ "byteLength": 681129,
+ "sections": [
+  {
+   "name": "x",
+   "type": "int16",
+   "count": 75681,
+   "offset": 0
+  },
+  {
+   "name": "z",
+   "type": "int16",
+   "count": 75681,
+   "offset": 151362
+  },
+  {
+   "name": "y",
+   "type": "int16",
+   "count": 75681,
+   "offset": 302724
+  },
+  {
+   "name": "rgb",
+   "type": "uint8",
+   "count": 227043,
+   "offset": 454086
+  }
+ ],
+ "exhibits": [
+  {
+   "slug": "li-2",
+   "ref": "Ли-2 (c/n 33444309, борт 56)",
+   "x": -1584.04,
+   "y": 1646.18,
+   "heading": -28.7,
+   "start": 0,
+   "count": 75249,
+   "triangles": 25083,
+   "axisSource": "map-annotation",
+   "lengthM": 19.65,
+   "spanM": 27.92
+  },
+  {
+   "slug": "pad",
+   "ref": "Бетонная площадка",
+   "x": -1584.04,
+   "y": 1646.18,
+   "heading": 0.0,
+   "start": 75249,
+   "count": 432,
+   "triangles": 144,
+   "axisSource": "generated",
+   "lengthM": 25.2,
+   "spanM": 25.2
+  }
+ ],
+ "missing": [],
+ "bounds": {
+  "minX": -10.4,
+  "maxX": 8.6,
+  "minY": -12.9,
+  "maxY": 11.7
+ }
+}
