@@ -47,6 +47,8 @@ import {
 import { publicAssetUrl } from '../shared/assets';
 import { MUSEUM, isMuseumFocus } from '../shared/museum';
 import { MuseumLayer } from './museum/museumLayer';
+import { LandmarkLayer } from './landmarks/landmarkLayer';
+import { landmarkFocusSlug } from '../shared/landmarks';
 import { MobilityController } from './mobility/controller';
 import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
@@ -510,6 +512,20 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // loaded unconditionally. Failure is non-fatal: the map renders without them.
   void museum.load();
 
+  // --- Low-poly landmark models (baked payload, one mesh per landmark) ------
+  // The tile builder skips the OSM buildings these models replace
+  // (LANDMARK_HIDDEN_BUILDING_IDS), so a failed load leaves a hole: keep the
+  // payload next to the tiles in every deployment.
+  const landmarkModels = new LandmarkLayer({
+    onReady: () => {
+      renderer.shadowMap.needsUpdate = true;
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
+    },
+    onError: recordDiagnostic,
+  });
+  scene.add(landmarkModels.root);
+  void landmarkModels.load();
+
   // --- mobility: public transport + traffic signals ------------------------
   // Independent of the tile pipeline: a missing/incompatible payload leaves the
   // map fully usable (the status reports why nothing moves).
@@ -887,6 +903,13 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       bounds: museum.manifest?.bounds ?? null,
     }),
     museumObject: () => museum,
+    landmarkModels: () => ({
+      state: landmarkModels.state,
+      triangles: landmarkModels.getTriangles(),
+      landmarks: landmarkModels.manifest?.landmarks.length ?? 0,
+      error: landmarkModels.error,
+    }),
+    landmarkModelsObject: () => landmarkModels,
     targetObject: () => post.targetHandle,
     lightsObject: () => lighting,
     /** Grid samples (RGB) from the low-res scene target. */
@@ -1465,6 +1488,23 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       /* ignore shell errors */
     }
     if (isMuseumFocus()) focusMuseum();
+    else focusLandmarkModel();
+  }
+
+  /** Frame a landmark model (`?focus=<slug>`, used by QA captures). */
+  function focusLandmarkModel(): void {
+    const slug = landmarkFocusSlug();
+    if (disposed || !slug) return;
+    void landmarkModels.load().then(() => {
+      const point = landmarkModels.focusPoint(slug);
+      if (disposed || !point) return;
+      const meta = landmarkModels.manifest?.landmarks.find((entry) => entry.slug === slug);
+      const [minE, minN, maxE, maxN] = meta?.extent ?? [-40, -40, 40, 40];
+      rig.focusOnLocal(point.x, point.y, true);
+      rig.setSettings({ orthoHeight: Math.max(60, Math.max(maxE - minE, maxN - minN) * 1.6) });
+      streamer.ensureArea(point.x, point.y, 1);
+      markCameraDirty();
+    });
   }
 
   /** Frame the Lipki exhibits; the complete city always contains them. */
@@ -1846,6 +1886,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     controls = null;
     try {
       museum.dispose();
+      landmarkModels.dispose();
       mobilityState.runtime = null;
       mobility.dispose();
       streamer.dispose();

@@ -78,6 +78,13 @@ export interface BuildingMeshOptions {
    * mandatory walls/roofs (the same source ids are exported separately).
    */
   detailLevel?: 'near' | 'far';
+  /**
+   * OSM building ids that a baked landmark model replaces (see
+   * src/shared/landmarks). They keep their slot in `buildingIds` but emit no
+   * geometry. Supplied by the tile build; unit tests of the curated builders
+   * leave it unset.
+   */
+  hiddenBuildingIds?: ReadonlySet<string>;
 }
 
 /** Mandatory source massing vs optional decorative geometry of one tile. */
@@ -150,6 +157,11 @@ export function buildBuildingsMesh(
       warnings.push(`${id}: missing building feature`);
       continue;
     }
+
+    // A low-poly landmark model stands in for this OSM object (see
+    // src/shared/landmarks): the id stays in `buildingIds` so indices line up,
+    // but no geometry is emitted.
+    if (options?.hiddenBuildingIds?.has(id)) continue;
 
     let style: BuildingStyle;
     try {
