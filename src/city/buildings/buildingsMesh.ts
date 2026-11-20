@@ -40,6 +40,7 @@ import { addCuratedLandmark } from './landmarks';
 import { MeshSink } from './meshSink';
 import { addPalaceAccents } from './palaceAccents';
 import { profileVolumes } from './buildingProfiles';
+import { applyBuildingOverride } from './curatedOverrides';
 import {
   addBalconyStack,
   addEntranceTreatment,
@@ -149,11 +150,14 @@ export function buildBuildingsMesh(
   let moduleFailures = 0;
 
   for (let buildingIndex = 0; buildingIndex < input.length; buildingIndex++) {
-    const building = input[buildingIndex];
-    const id = building && typeof building.id === 'string' ? building.id : `#${buildingIndex}`;
+    const sourceBuilding = input[buildingIndex];
+    const id =
+      sourceBuilding && typeof sourceBuilding.id === 'string'
+        ? sourceBuilding.id
+        : `#${buildingIndex}`;
     buildingIds.push(id);
 
-    if (!building) {
+    if (!sourceBuilding) {
       warnings.push(`${id}: missing building feature`);
       continue;
     }
@@ -162,6 +166,10 @@ export function buildBuildingsMesh(
     // src/shared/landmarks): the id stays in `buildingIds` so indices line up,
     // but no geometry is emitted.
     if (options?.hiddenBuildingIds?.has(id)) continue;
+
+    // Curated corrections (verified OSM defects) are applied before styling and
+    // volume meshing, so height, archetype and facade all see the fixed values.
+    const building = applyBuildingOverride(sourceBuilding);
 
     let style: BuildingStyle;
     try {

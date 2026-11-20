@@ -35,7 +35,7 @@ import {
 } from '../../../src/engine/shaders/facadeShader';
 import { ARCHETYPE_BY_ID, ARCHETYPE_ID } from '../../../src/shared/geometry';
 import { FACADE_PRESETS, motifRowsForUniforms, presetForRecipe } from '../../../src/city/facades/presets';
-import { FACADE_PRESET_COUNT, LEGACY_RECIPE_OFFSET, STYLE_RECIPES, legacyRecipeFor } from '../../../src/shared/buildingStyles';
+import { FACADE_PRESET_COUNT, LEGACY_RECIPE_OFFSET, SHELL_RECIPE_COUNT, STYLE_RECIPES, legacyRecipeFor } from '../../../src/shared/buildingStyles';
 import { PIXEL_PALETTE, PIXEL_PALETTE_SIZE, hexToRgbUnit } from '../../../src/engine/postprocess/palette';
 
 function uniformsOf(material: THREE.Material): FacadeUniformSet {
@@ -109,11 +109,14 @@ describe('facade GLSL source', () => {
   });
 
   it('keeps the recipe preset uniform arrays in sync with the shared contract', () => {
-    // 27 family recipes + 11 legacy archetype presets = 38 preset rows, indexed
-    // by the packed recipe id. The broad archetype count stays 11.
+    // 27 family recipes + 11 legacy archetype presets + 3 renderer shells = 41
+    // preset rows, indexed by the packed recipe id. The broad archetype count
+    // stays 11.
     expect(FACADE_PRESET_ROWS).toBe(FACADE_PRESET_COUNT);
-    expect(FACADE_PRESET_COUNT).toBe(STYLE_RECIPES.length + ARCHETYPE_BY_ID.length);
-    expect(FACADE_PRESET_ROWS).toBe(38);
+    expect(FACADE_PRESET_COUNT).toBe(
+      STYLE_RECIPES.length + ARCHETYPE_BY_ID.length + SHELL_RECIPE_COUNT,
+    );
+    expect(FACADE_PRESET_ROWS).toBe(41);
     expect(FACADE_ARCHETYPE_COUNT).toBe(ARCHETYPE_BY_ID.length);
     expect(FACADE_FRAGMENT_GLSL).toContain(`#define FACADE_PRESET_ROWS ${FACADE_PRESET_COUNT}`);
     expect(FACADE_FRAGMENT_GLSL).toContain('uniform vec4 uPresetA[FACADE_PRESET_ROWS];');
@@ -137,6 +140,18 @@ describe('facade GLSL source', () => {
     expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_MOTIF_ASSEMBLY_HALL');
     // Legacy rows keep the pre-recipe branches (motif -1 never enters them).
     expect(FACADE_FRAGMENT_GLSL).toContain('if (motif >= 0 && !blank)');
+    // Blank facades must not keep painted window surrounds: the glass is zeroed
+    // above, so an ungated frame/sill/lintel would read as an empty window.
+    expect(FACADE_FRAGMENT_GLSL).toContain('float blankFade = blank ? 0.0 : 1.0;');
+    expect(FACADE_FRAGMENT_GLSL).toContain('frameMask *= churchFade * blankFade;');
+    expect(FACADE_FRAGMENT_GLSL).toContain('sillMask *= churchFade * blankFade;');
+    expect(FACADE_FRAGMENT_GLSL).toContain('lintelMask *= churchFade * blankFade;');
+    expect(FACADE_FRAGMENT_GLSL).toContain('float doorAllowed = blank ? 0.0 : 1.0;');
+    // Halls / service volumes replace the residential ground-floor grid with a
+    // solid base wall and a sparse utility door.
+    expect(FACADE_FRAGMENT_GLSL).toContain(
+      'motif == FACADE_MOTIF_ASSEMBLY_HALL || motif == FACADE_MOTIF_BLANK_SERVICE',
+    );
   });
 
   it('implements the palace colonnade/loggia look and the stadium fallback', () => {
@@ -273,7 +288,7 @@ describe('createFacadeMaterial', () => {
     disposeFacadeMaterial(clamped);
   });
 
-  it('uploads the 38 recipe preset rows as vec4 arrays', () => {
+  it('uploads the 41 recipe preset rows as vec4 arrays', () => {
     const material = createFacadeMaterial({ detail: true, night: 0 });
     const uniforms = uniformsOf(material);
     expect(uniforms.uPresetA.value.length).toBe(FACADE_PRESET_COUNT * 4);
@@ -321,6 +336,10 @@ describe('createFacadeMaterial', () => {
     expect(motifs[18]).toBe(FACADE_MOTIF_IDS.clerestory);
     expect(motifs[26]).toBe(FACADE_MOTIF_IDS.assembly_hall);
     expect(motifs[27]).toBe(FACADE_MOTIF_IDS.legacy);
+    // Renderer-only shells: church / monument / assembly hall.
+    expect(motifs[38]).toBe(FACADE_MOTIF_IDS.church);
+    expect(motifs[39]).toBe(FACADE_MOTIF_IDS.monument);
+    expect(motifs[40]).toBe(FACADE_MOTIF_IDS.assembly_hall);
     disposeFacadeMaterial(material);
   });
 

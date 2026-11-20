@@ -432,13 +432,15 @@ describe('red church landmark', () => {
     expect(centre).toBeCloseTo(26, 0);
   });
 
-  it('uses brick walls with window rhythm, cream stone trim and a dark slate roof', () => {
+  it('keeps the generic window grid off its brick walls (blank) with cream stone trim and a dark slate roof', () => {
+    // The curated church emits its own openings. Its brick wall surfaces must
+    // carry STYLE_FLAG.blank so the facade shader does not paint the civic grid.
     const brickWalls = faceColourTriangles(
       built.triangles,
       BRICK,
       (triangle) =>
         triangle.faceKind === FACE_KIND.wall &&
-        (triangle.vertices[0].face[1] & STYLE_FLAG.blank) === 0,
+        (triangle.vertices[0].face[1] & STYLE_FLAG.blank) !== 0,
     );
     expect(brickWalls.length).toBeGreaterThan(20);
     const slate = faceColourTriangles(

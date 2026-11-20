@@ -36,13 +36,13 @@ export const FACADE_ARCHETYPE_COUNT = ARCHETYPE_BY_ID.length;
 
 /**
  * Compile-time number of preset rows in `uPresetA/B` and `uRecipeMotif`:
- * 27 family recipes + 11 legacy archetype presets = 38, indexed by the packed
- * recipe id (bits 8..15 of `aFace.y`).
+ * 27 family recipes + 11 legacy archetype presets + 3 renderer shells = 41,
+ * indexed by the packed recipe id (bits 8..15 of `aFace.y`).
  */
 export const FACADE_PRESET_ROWS = FACADE_PRESET_COUNT;
 
 /** Program cache key for facade materials (identical GLSL for all instances). */
-export const FACADE_PROGRAM_CACHE_KEY = 'isometric-minsk-facade-v2';
+export const FACADE_PROGRAM_CACHE_KEY = 'isometric-minsk-facade-v3';
 
 /** Float uniforms the facade shader exposes (for tests / renderer wiring). */
 export const FACADE_FLOAT_UNIFORMS = [
@@ -72,6 +72,7 @@ export const FACADE_MOTIF_IDS = {
   clerestory: 7,
   blank_service: 8,
   assembly_hall: 9,
+  church: 10,
 } as const;
 
 export const FACADE_VERTEX_DECLARATIONS = /* glsl */ `
@@ -110,6 +111,7 @@ export const FACADE_FRAGMENT_DECLARATIONS = /* glsl */ `
 #define FACADE_MOTIF_CLERESTORY 7
 #define FACADE_MOTIF_BLANK_SERVICE 8
 #define FACADE_MOTIF_ASSEMBLY_HALL 9
+#define FACADE_MOTIF_CHURCH 10
 
 uniform float uNight;
 uniform float uDetailScale;
@@ -314,6 +316,7 @@ vec3 facadeUpperFloors(
   int motif,
   float mPerPx,
   float detail,
+  float trimK,
   out vec3 emit
 ) {
   emit = vec3(0.0);
@@ -462,6 +465,17 @@ vec3 facadeUpperFloors(
       float highGlazing = facadeRect(vec2(uWin, v), vec2(0.18, 0.72), vec2(0.82, 0.90), vec2(aaWin, aaV));
       highGlazing *= step(0.5, mod(row, 2.0)) * crisp * detail;
       win = highGlazing;
+    } else if (motif == FACADE_MOTIF_CHURCH) {
+      // Tall, narrow, round-headed openings on alternating bays. Three stacked
+      // rects read as an arch at 2-4 px; the stone springing line keeps the
+      // rhythm readable when the opening itself collapses to one pixel.
+      float bayPick = step(0.38, facadeHash11(col * 1.7 + seed * 9.0));
+      float body = facadeRect(vec2(uWin, v), vec2(0.35, 0.24), vec2(0.65, 0.80), vec2(aaWin, aaV));
+      float shoulder = facadeRect(vec2(uWin, v), vec2(0.38, 0.80), vec2(0.62, 0.86), vec2(aaWin, aaV));
+      float crown = facadeRect(vec2(uWin, v), vec2(0.44, 0.86), vec2(0.56, 0.91), vec2(aaWin, aaV));
+      win = max(max(body, shoulder), crown) * bayPick * detail * mix(0.45, 1.0, crisp);
+      float spring = facadeBand(v, 0.78, 0.82, aaV) * bayPick * crisp * detail;
+      outWall = mix(outWall, uTrimColor * 0.82, spring * 0.22);
     } else if (
       motif == FACADE_MOTIF_MONUMENT
       || motif == FACADE_MOTIF_GRID
@@ -502,9 +516,12 @@ vec3 facadeUpperFloors(
 
   // Frames and sills. These must NOT dominate the window: at overview/close
   // distances a light frame + sill can turn a dark window into a white block.
-  // Frames stay dark and only appear when the window is large enough; the light
-  // sill line is the only bright accent and appears once the window is >= ~2.5 px.
+  // Frames stay dark and only appear when the window is large enough. The light
+  // sill/lintel is gated by the recipe trim intensity, so a plain residential
+  // family gets almost none of it while a Stalinist ensemble or a palace keeps
+  // the stone surrounds.
   float windowPx = min(winW * winPitch, winH * fhLod) / px;
+  float trimFade = clamp(trimK, 0.0, 1.0);
   float frameFade = smoothstep(3.2, 5.5, windowPx) * (1.0 - stadiumity);
   float sillFade = smoothstep(2.4, 4.0, windowPx) * (1.0 - stadiumity);
   float frameM = max(0.45 * px, 0.03);
@@ -520,21 +537,32 @@ vec3 facadeUpperFloors(
   float sillLo = max(winLo.y - sillM / fhLod, 0.0);
   float sillMask = facadeBand(v, sillLo, winLo.y, aaV)
     * step(winLo.x, uWin) * (1.0 - step(winHi.x, uWin))
-    * crisp * detail * sillFade;
-  vec3 sillCol = mix(uTrimColor, wallSrgb * 1.06, 0.30);
+    * crisp * detail * sillFade * mix(0.25, 1.0, trimFade);
+  vec3 sillCol = mix(wallSrgb * 1.05, uTrimColor, 0.25);
 
   // Subtle lighter lintel above the window (only when resolvable).
   float lintelM = min(max(0.6 * px, 0.03), 0.14 * winH * fhLod);
   float lintelMask = facadeBand(v, winHi.y, winHi.y + lintelM / fhLod, aaV)
     * step(winLo.x, uWin) * (1.0 - step(winHi.x, uWin))
-    * crisp * detail * frameFade;
+    * crisp * detail * frameFade * trimFade;
+
+  // Churches carry their own stone springing line and arched openings: the
+  // residential frame/sill/lintel treatment must not be painted on them. Blank
+  // facades (stadium bowls, monuments, curated brick walls) must not get window
+  // outlines either — the glass is zeroed above, so the surrounds would read as
+  // empty window frames.
+  float blankFade = blank ? 0.0 : 1.0;
+  float churchFade = (motif == FACADE_MOTIF_CHURCH) ? 0.0 : 1.0;
+  frameMask *= churchFade * blankFade;
+  sillMask *= churchFade * blankFade;
+  lintelMask *= churchFade * blankFade;
 
   vec3 glassNight = mix(glass, uNightDarkColor, night * 0.78);
   float contrast = mix(0.88, 0.95, lodFade);
   outWall = mix(outWall, glassNight, win * contrast);
   outWall = mix(outWall, frameCol, frameMask * 0.70);
-  outWall = mix(outWall, sillCol, sillMask * 0.65);
-  outWall = mix(outWall, uTrimColor * 0.86, lintelMask * 0.30);
+  outWall = mix(outWall, sillCol, sillMask * 0.45);
+  outWall = mix(outWall, uTrimColor * 0.86, lintelMask * 0.20);
 
   if (ribbon) {
     float mullW = max(1.2 * px, 0.02) / bayLod;
@@ -591,6 +619,7 @@ vec3 facadeGroundFloor(
   int motif,
   float mPerPx,
   float detail,
+  float trimK,
   out vec3 emit
 ) {
   emit = vec3(0.0);
@@ -627,21 +656,41 @@ vec3 facadeGroundFloor(
     outWall *= 1.0 - rust * 0.09;
   }
 
-  // Entrances every few bays, deterministic from the building seed.
+  // Entrances every few bays, deterministic from the building seed. Blank
+  // facades (stadium bowls, monuments, curated brick walls) stay solid: no
+  // generic door, no reveal.
+  float doorAllowed = blank ? 0.0 : 1.0;
   float doorSpan = 4.0;
   float doorOffset = floor(facadeHash11(seed * 3.13 + 0.37) * doorSpan);
   float isDoor = step(mod(col - doorOffset, doorSpan), 0.5);
   float doorH = min(2.3, gh - 0.35);
-  float doorMask = facadeRect(vec2(u, uv.y), vec2(0.39, 0.0), vec2(0.61, doorH), vec2(aaU, aaM)) * isDoor * groundDetail;
+  float doorMask = facadeRect(vec2(u, uv.y), vec2(0.39, 0.0), vec2(0.61, doorH), vec2(aaU, aaM)) * isDoor * groundDetail * doorAllowed;
   vec3 doorCol = mix(uNightDarkColor, wallSrgb * 0.32, 0.30);
   outWall = mix(outWall, doorCol, doorMask * 0.95);
-  float doorInner = facadeRect(vec2(u, uv.y), vec2(0.42, 0.0), vec2(0.58, doorH - 0.06), vec2(aaU, aaM)) * isDoor * groundDetail;
+  float doorInner = facadeRect(vec2(u, uv.y), vec2(0.42, 0.0), vec2(0.58, doorH - 0.06), vec2(aaU, aaM)) * isDoor * groundDetail * doorAllowed;
   float doorFrame = clamp(doorMask - doorInner, 0.0, 1.0);
-  outWall = mix(outWall, uTrimColor * 0.82, doorFrame * 0.6);
+  outWall = mix(outWall, uTrimColor * 0.82, doorFrame * 0.6 * mix(0.3, 1.0, clamp(trimK, 0.0, 1.0)));
 
   if (blank) {
     float seam = facadeBand(fract(uv.y / max(gh, 2.0)), 0.0, 0.02, 0.02) * groundDetail;
     outWall *= 1.0 - seam * 0.08;
+  } else if (motif == FACADE_MOTIF_CHURCH) {
+    // Arched portal in the entrance bay; the rest of the base stays stone.
+    float portalH = min(2.9, gh - 0.4);
+    float portal = facadeRect(vec2(u, uv.y), vec2(0.40, 0.0), vec2(0.60, portalH), vec2(aaU, aaM));
+    float portalHead = facadeRect(
+      vec2(u, uv.y), vec2(0.44, portalH), vec2(0.56, min(portalH + 0.32, gh - 0.1)), vec2(aaU, aaM)
+    );
+    portal = max(portal, portalHead) * isDoor * groundDetail;
+    outWall = mix(outWall, mix(uNightDarkColor, wallSrgb * 0.30, 0.30), portal * 0.95);
+    float surround = clamp(
+      facadeRect(
+        vec2(u, uv.y), vec2(0.36, 0.0), vec2(0.64, min(portalH + 0.40, gh - 0.05)), vec2(aaU, aaM)
+      ) - portal,
+      0.0,
+      1.0
+    ) * isDoor * groundDetail;
+    outWall = mix(outWall, uTrimColor * 0.84, surround * 0.45);
   } else if (palaceity > 0.5) {
     // Palace loggia: a tall dark glazed wall recessed between the pilaster
     // columns, with stone columns/entablature and a regular entrance rhythm.
@@ -672,6 +721,15 @@ vec3 facadeGroundFloor(
     outWall = mix(outWall, mix(uNightDarkColor, wallSrgb * 0.30, 0.30), doorMask * 0.92);
 
     emit += facadeSrgbToLinear(mix(uNightWarmColor, uNightLitColor, 0.4)) * glassMask * night * 0.30;
+  } else if (motif == FACADE_MOTIF_ASSEMBLY_HALL || motif == FACADE_MOTIF_BLANK_SERVICE) {
+    // Halls and service volumes: a solid base wall with a single utility door
+    // every few bays. Without this branch the generic residential windows below
+    // would still paint a full ground-floor grid (the circus drum ring).
+    float utility = facadeRect(
+      vec2(u, uv.y), vec2(0.34, 0.0), vec2(0.66, min(2.6, gh - 0.4)), vec2(aaU, aaM)
+    ) * groundDetail;
+    float gate = step(0.7, facadeHash11(col * 0.7 + seed * 3.1));
+    outWall = mix(outWall, mix(uNightDarkColor, wallSrgb * 0.34, 0.3), utility * gate * 0.9);
   } else if (shopfront) {
     // Shop window: one wide glazed bay with mullions and a sign fascia.
     float shopBottom = 0.55;
@@ -719,7 +777,7 @@ vec3 facadeGroundFloor(
     emit += facadeSrgbToLinear(litCol) * gWin * lit * night * 0.45;
 
     float lintel = facadeBand(uv.y, gHi.y, gHi.y + max(1.2 * px, 0.06), aaM) * groundDetail;
-    outWall = mix(outWall, uTrimColor * 0.86, lintel * 0.45);
+    outWall = mix(outWall, uTrimColor * 0.86, lintel * 0.45 * clamp(trimK, 0.0, 1.0));
   }
 
   // Recipe motif ground treatment: a bounded recessed/loggia or service band.
@@ -729,13 +787,6 @@ vec3 facadeGroundFloor(
       vec2(u, uv.y), vec2(0.06, 0.9), vec2(0.94, max(gh - 1.2, 1.8)), vec2(aaU, aaM)
     ) * groundDetail;
     outWall = mix(outWall, mix(uShopfrontColor, uGlassColor, 0.4), recess * 0.9);
-  } else if (motif == FACADE_MOTIF_BLANK_SERVICE || motif == FACADE_MOTIF_ASSEMBLY_HALL) {
-    // Service halls: blank wall with a single wide utility door per few bays.
-    float utility = facadeRect(
-      vec2(u, uv.y), vec2(0.34, 0.0), vec2(0.66, min(2.6, gh - 0.4)), vec2(aaU, aaM)
-    ) * groundDetail;
-    float gate = step(0.7, facadeHash11(col * 0.7 + seed * 3.1));
-    outWall = mix(outWall, mix(uNightDarkColor, wallSrgb * 0.34, 0.3), utility * gate * 0.9);
   }
 
   // Far LOD: an averaged ground-floor band with a light reveal at its top edge,
@@ -743,7 +794,11 @@ vec3 facadeGroundFloor(
   // contrast is deliberately strong: 1-2 px of ground floor is all that
   // survives at overview zoom.
   vec3 average = wallSrgb * mix(1.0, 0.80, plinth);
-  if (blank) {
+  if (
+    blank
+    || motif == FACADE_MOTIF_ASSEMBLY_HALL
+    || motif == FACADE_MOTIF_BLANK_SERVICE
+  ) {
     average = wallSrgb * mix(1.0, 0.82, plinth);
   } else if (palaceity > 0.5) {
     // Palace: averaged dark loggia + light column/entablature mix.
@@ -836,7 +891,7 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
       vec3 palaceGroundEmit;
       outAlbedo = facadeGroundFloor(
         uv, baseSrgb, groundHeight, presetA, floorHeight,
-        seed, flags, archetype, motif, mPerPx, detail, palaceGroundEmit
+        seed, flags, archetype, motif, mPerPx, detail, trimK, palaceGroundEmit
       );
       outEmissive = palaceGroundEmit;
       return;
@@ -853,11 +908,11 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
   vec3 groundEmit;
   vec3 upper = facadeUpperFloors(
     uv, baseSrgb, floorHeight, groundHeight, presetA, balconyRatio,
-    seed, flags, archetype, motif, mPerPx, detail, upperEmit
+    seed, flags, archetype, motif, mPerPx, detail, trimK, upperEmit
   );
   vec3 ground = facadeGroundFloor(
     uv, baseSrgb, groundHeight, presetA, floorHeight,
-    seed, flags, archetype, motif, mPerPx, detail, groundEmit
+    seed, flags, archetype, motif, mPerPx, detail, trimK, groundEmit
   );
 
   float groundBlend;
