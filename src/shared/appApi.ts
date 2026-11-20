@@ -91,6 +91,20 @@ export interface MobilityVehicleSelection {
   screenY: number;
 }
 
+/** Atmosphere state reported with the stats (honesty contract). */
+export interface AtmosphereStats {
+  /** Lighting clock mode (live Minsk time or manual). */
+  timeMode: TimeOfDayMode;
+  /** Active season (override resolved to a concrete season). */
+  season: 'spring' | 'summer' | 'autumn' | 'winter';
+  /** Cloud-shade strength 0..1 (0 when disabled). */
+  clouds: number;
+  /** Current precipitation. */
+  weather: WeatherKind;
+  /** Night-lamp instances currently drawn. */
+  lamps: number;
+}
+
 export interface EngineStats {
   fps: number;
   frameMs: number;
@@ -109,6 +123,8 @@ export interface EngineStats {
    * city counters alone do not cover the dynamic layer.
    */
   mobility?: MobilityStatus;
+  /** Atmosphere state (time clock, season, clouds, weather, lamps). */
+  atmosphere?: AtmosphereStats;
 }
 
 export interface CityAppOptions {
@@ -162,6 +178,12 @@ export interface TimeOfDayInfo {
   mode: TimeOfDayMode;
 }
 
+/** Screen-space precipitation kinds. */
+export type WeatherKind = 'off' | 'rain' | 'snow';
+
+/** Season override: `auto` follows the real calendar date. */
+export type SeasonOverride = 'auto' | 'spring' | 'summer' | 'autumn' | 'winter';
+
 export interface CityAppHandle {
   /** Render loop control. */
   start(): void;
@@ -186,6 +208,13 @@ export interface CityAppHandle {
   /** Switch the lighting clock between live Minsk time and manual mode. */
   setTimeMode(mode: TimeOfDayMode): void;
   getTimeOfDayInfo(): TimeOfDayInfo;
+  /** Atmosphere: cloud shades (drifting shadow fields), weather, season. */
+  setCloudsEnabled(enabled: boolean): void;
+  getCloudsEnabled(): boolean;
+  setWeather(kind: WeatherKind, amount?: number): void;
+  getWeather(): { kind: WeatherKind; amount: number };
+  setSeason(season: SeasonOverride): void;
+  getSeason(): SeasonOverride;
   setFacadeDetail(enabled: boolean): void;
   setDebugWireframe(enabled: boolean): void;
   setPixelEffectEnabled(enabled: boolean): void;

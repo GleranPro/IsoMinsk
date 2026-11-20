@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { EngineStats } from '../shared/appApi';
+import type { EngineStats, SeasonOverride, WeatherKind } from '../shared/appApi';
 import type { MobilityStatus } from '../shared/mobility';
 import type { UiState } from './App';
 
@@ -168,6 +168,48 @@ export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshSt
               }
               data-testid="time-slider"
             />
+          </section>
+
+          <section>
+            <h2>Atmosphere</h2>
+            <label>
+              <input
+                type="checkbox"
+                checked={ui.clouds}
+                disabled={disabled}
+                onChange={(event) => onChange({ clouds: event.target.checked })}
+                data-testid="toggle-clouds"
+              />
+              Cloud shades
+            </label>
+            <label>
+              <span>Weather</span>
+              <select
+                value={ui.weather}
+                disabled={disabled}
+                onChange={(event) => onChange({ weather: event.target.value as WeatherKind })}
+                data-testid="select-weather"
+              >
+                <option value="off">Clear</option>
+                <option value="rain">Rain</option>
+                <option value="snow">Snow</option>
+              </select>
+            </label>
+            <label>
+              <span>Season</span>
+              <select
+                value={ui.season}
+                disabled={disabled}
+                onChange={(event) => onChange({ season: event.target.value as SeasonOverride })}
+                data-testid="select-season"
+              >
+                <option value="auto">Auto (real date)</option>
+                <option value="spring">Spring</option>
+                <option value="summer">Summer</option>
+                <option value="autumn">Autumn</option>
+                <option value="winter">Winter</option>
+              </select>
+            </label>
           </section>
 
           <section>

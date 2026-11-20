@@ -14,7 +14,9 @@ import type {
   LandmarkSelection,
   MobilityVehicleSelection,
   MuseumExhibitSelection,
+  SeasonOverride,
   TimeOfDayMode,
+  WeatherKind,
 } from '../shared/appApi';
 import type { MobilityStatus } from '../shared/mobility';
 import type { TileManifest } from '../shared/types';
@@ -35,6 +37,12 @@ export interface UiState {
   /** Lighting clock source: live Minsk time or the fixed slider value. */
   timeMode: TimeOfDayMode;
   timeOfDay: number;
+  /** Cloud shades (drifting shadow fields) on/off. */
+  clouds: boolean;
+  /** Screen-space precipitation. */
+  weather: WeatherKind;
+  /** Season: auto follows the real calendar date. */
+  season: SeasonOverride;
   orthoHeight: number;
   azimuth: number;
   azimuthMode: 'iso' | 'north' | 'free';
@@ -52,6 +60,9 @@ const DEFAULT_UI: UiState = {
   wireframe: false,
   timeMode: 'auto',
   timeOfDay: 13,
+  clouds: true,
+  weather: 'off',
+  season: 'auto',
   orthoHeight: 420,
   azimuth: Math.PI / 4,
   azimuthMode: 'iso',
@@ -97,6 +108,9 @@ export function App() {
           azimuth: camera.azimuth,
           timeMode: timeInfo.mode,
           timeOfDay: timeInfo.hours,
+          clouds: app.getCloudsEnabled(),
+          weather: app.getWeather().kind,
+          season: app.getSeason(),
         }));
       },
       onStats: (next) => {
@@ -159,7 +173,20 @@ export function App() {
     app.setDebugWireframe(ui.wireframe);
     if (ui.timeMode === 'manual') app.setTimeOfDay(ui.timeOfDay);
     else app.setTimeMode('auto');
-  }, [ready, ui.pixelEffect, ui.facadeDetail, ui.wireframe, ui.timeMode, ui.timeOfDay]);
+    app.setCloudsEnabled(ui.clouds);
+    app.setWeather(ui.weather);
+    app.setSeason(ui.season);
+  }, [
+    ready,
+    ui.pixelEffect,
+    ui.facadeDetail,
+    ui.wireframe,
+    ui.timeMode,
+    ui.timeOfDay,
+    ui.clouds,
+    ui.weather,
+    ui.season,
+  ]);
 
   // Live clock mirror: while the lighting runs on real Minsk time, the panel
   // label follows the engine clock (1 Hz is enough — the look drifts 1 h/h).
