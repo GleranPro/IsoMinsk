@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { buildBuildingsMesh } from '../../city/buildings/buildingsMesh';
 import { buildEnvironmentMeshes } from '../../city/environment/environmentMeshes';
+import { collectLampSpots } from '../../city/environment/lampSpots';
 import { LANDMARK_HIDDEN_BUILDING_IDS } from '../../shared/landmarks';
 import type { TileData } from '../../shared/types';
 import type { TreeRenderStyle } from '../../city/environment/treeInstances';
@@ -315,6 +316,16 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
   }
 
   const environmentMesh = environment.merged ? packGeometry(environment.merged) : null;
+
+  // Street lamp spots for the night layer: cheap stroke walk in the worker,
+  // engine only uploads them into one instanced batch.
+  let lamps: ArrayBuffer | null = null;
+  try {
+    const spots = collectLampSpots(data);
+    if (spots) lamps = spots.buffer as ArrayBuffer;
+  } catch {
+    lamps = null;
+  }
   const legacyTrees = environment.legacyTrees ? packGeometry(environment.legacyTrees) : null;
   const attractions = environment.attractions ? packGeometry(environment.attractions) : null;
   const triangleCount =
@@ -339,6 +350,7 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
     attractions,
     ground,
     decks,
+    lamps,
     triangleCount,
     bytes: 0,
     fetchMs: 0,

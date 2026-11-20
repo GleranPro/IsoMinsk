@@ -974,6 +974,13 @@ vec3 facadeAmbientFill = mix(
 totalEmissiveRadiance += facadeAlbedoLinear * facadeAmbientFill;
 `;
 
+/**
+ * Tail of the facade albedo block: cloud shades anchor here so they darken the
+ * finished wall albedo (lit windows stay lit — see cloudShade.ts).
+ */
+export const FACADE_FRAGMENT_ALBEDO_TAIL =
+  'totalEmissiveRadiance += facadeAlbedoLinear * facadeAmbientFill;';
+
 /** Injection after output encoding: snap facade pixels to the shared palette. */
 export const FACADE_FRAGMENT_QUANTISE = /* glsl */ `
 #include <colorspace_fragment>

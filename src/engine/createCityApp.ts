@@ -33,6 +33,10 @@ import type {
   EngineStats,
   MobilityVehicleSelection,
   PixelArtSettings,
+  SeasonOverride,
+  TimeOfDayInfo,
+  TimeOfDayMode,
+  WeatherKind,
 } from '../shared/appApi';
 import type { FeatureId, TileManifest } from '../shared/types';
 import type {
@@ -58,7 +62,12 @@ import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
 import { LightingRig } from './renderer/lighting';
+import { minskLocalHours } from './renderer/minskTime';
+import { CloudShadeController, createCloudShadeUniforms } from './renderer/cloudShade';
+import { parseSeason, seasonAppearance, seasonForDate } from './renderer/seasons';
+import { NightLampsLayer } from './tiles/nightLamps';
 import {
+  applyCloudShadeSafe,
   createFacadeMaterialSafe,
   disposeFacadeMaterialSafe,
   updateFacadeMaterialSafe,
@@ -273,6 +282,14 @@ function createUnavailableHandle(container: HTMLElement, message: string): CityA
     getPixelArt: () => ({ ...DEFAULT_PIXEL_ART }),
     setTimeOfDay: noop,
     getTimeOfDay: () => 13,
+    setTimeMode: noop,
+    getTimeOfDayInfo: () => ({ hours: 13, mode: 'auto' as const }),
+    setCloudsEnabled: noop,
+    getCloudsEnabled: () => false,
+    setWeather: noop,
+    getWeather: () => ({ kind: 'off' as const, amount: 0 }),
+    setSeason: noop,
+    getSeason: () => 'auto' as const,
     setFacadeDetail: noop,
     setDebugWireframe: noop,
     setPixelEffectEnabled: noop,
@@ -423,9 +440,23 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
   // --- art-direction materials --------------------------------------------
   const facadeDetail = { enabled: params.get('detail') !== '0' };
+  // Cloud shades: one shared uniforms set patched into facades, environment,
+  // trees and the raster ground. `?clouds=0` boots with the shade faded off
+  // (the toggle can still bring it back — the patches are always installed).
+  const cloudUniforms = createCloudShadeUniforms(params.get('clouds') === '0' ? 0 : 1);
+  const cloudController = new CloudShadeController(cloudUniforms);
   const facadeNear = createFacadeMaterialSafe({ detail: true, night: 0, quantise: false });
   const facadeFar = createFacadeMaterialSafe({ detail: true, night: 0, quantise: false });
-  const environment = createEnvironmentMaterialSet();
+  applyCloudShadeSafe(facadeNear, cloudUniforms);
+  applyCloudShadeSafe(facadeFar, cloudUniforms);
+  const environment = createEnvironmentMaterialSet(cloudUniforms);
+
+  // Seasons: real date by default; `?season=spring|summer|autumn|winter` pins
+  // one (QA / screenshots). Canopy recolours at runtime, snow lives in shaders.
+  let seasonOverride = parseSeason(params.get('season'));
+  const season = seasonOverride ?? seasonForDate();
+  const seasonLook = seasonAppearance(season);
+  cloudController.setSnow(seasonLook.snow);
 
   // --- lights --------------------------------------------------------------
   const defaultShadowSize = renderer.capabilities.maxTextureSize >= 4096 ? 2048 : 1024;
@@ -438,6 +469,21 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   if (params.get('realsun') === '1') lighting.setUseRealDateSun(true);
   let look = lighting.state.look;
   let timeHours = 13;
+  // Live clock: by default the lighting time follows real Minsk time, so night
+  // falls at night and the lit windows come on by themselves. The UI slider or
+  // `?time=H` pins a fixed manual time (QA convenience); `?time=auto` restores.
+  let timeMode: TimeOfDayMode = 'auto';
+  let autoTimeTimer = 0;
+  {
+    const timeParam = params.get('time');
+    if (timeParam !== 'auto') {
+      const initialTime = Number.parseFloat(timeParam ?? '');
+      if (Number.isFinite(initialTime)) {
+        timeMode = 'manual';
+        timeHours = clamp(initialTime, 0, 24);
+      }
+    }
+  }
 
   // --- camera --------------------------------------------------------------
   const rig = new IsometricCameraRig({
@@ -468,6 +514,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const post = new PixelArtPipeline(renderer, pixelArt);
   post.setSize(host.width, host.height, pixelArt);
   post.setEffectEnabled(pixelArt.enabled);
+  // Screen-space precipitation (QA param until the atmosphere panel lands).
+  const weatherParam = params.get('weather');
+  if (weatherParam === 'rain' || weatherParam === 'snow') post.setWeather(weatherParam);
 
   const postEnvironment: PixelArtEnvironment = {
     fogColor: [0.9, 0.92, 0.94],
@@ -580,9 +629,21 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   scene.add(railTraffic.root);
   void railTraffic.load();
 
+  // Night street lamps: worker-baked spots along major roads, drawn only at
+  // night; `?lamps=0` turns the layer off for A/B captures.
+  const isMobilePointer =
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false;
+  const nightLamps =
+    params.get('lamps') === '0' ? null : new NightLampsLayer({ mobile: isMobilePointer });
+  if (nightLamps) scene.add(nightLamps.root);
+
   const streamer = new TileStreamer({
     scene,
     root: cityRoot,
+    nightLamps: nightLamps ?? undefined,
+    cloudUniforms: cloudUniforms ?? undefined,
     environmentMaterial: environment.environment,
     treeMaterial: environment.trees,
     treeTrunkMaterial: environment.treeTrunks,
@@ -631,6 +692,13 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     onReady: () => {
       markReady();
     },
+  });
+
+  // Seasonal canopy: winter hides the canopies (bare branches), spring/autumn
+  // recolour them; all runtime work — no tile rebuilds.
+  streamer.setCanopyAppearance({
+    palette: seasonLook.canopyPalette ? [...seasonLook.canopyPalette] : undefined,
+    visible: seasonLook.canopyVisible,
   });
 
   picker = new BuildingPicker(streamer, rig.camera);
@@ -695,9 +763,36 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     },
     getPixelArt: () => ({ ...pixelArt }),
     setTimeOfDay(hours: number) {
+      // Any explicit time request pins the lighting clock to manual mode.
+      timeMode = 'manual';
+      autoTimeTimer = 0;
       applyTimeOfDay(hours);
     },
     getTimeOfDay: () => timeHours,
+    setTimeMode(mode: TimeOfDayMode) {
+      if (timeMode === mode) return;
+      timeMode = mode;
+      if (mode === 'auto') applyTimeOfDay(minskLocalHours());
+    },
+    getTimeOfDayInfo: (): TimeOfDayInfo => ({ hours: timeHours, mode: timeMode }),
+    setCloudsEnabled(enabled: boolean) {
+      cloudController.setStrength(enabled ? 1 : 0);
+    },
+    getCloudsEnabled: () => cloudController.getStrength() > 0.5,
+    setWeather(kind: WeatherKind, amount = 0.7) {
+      post.setWeather(kind, amount);
+    },
+    getWeather: () => post.getWeather(),
+    setSeason(value: SeasonOverride) {
+      seasonOverride = value === 'auto' ? null : value;
+      const look = seasonAppearance(seasonOverride ?? seasonForDate());
+      cloudController.setSnow(look.snow);
+      streamer.setCanopyAppearance({
+        palette: look.canopyPalette ? [...look.canopyPalette] : undefined,
+        visible: look.canopyVisible,
+      });
+    },
+    getSeason: () => seasonOverride ?? 'auto',
     setFacadeDetail(enabled: boolean) {
       facadeDetail.enabled = Boolean(enabled);
       applyFacadeDetailFlags();
@@ -882,6 +977,18 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         tiles: tiles.slice(0, 32),
       };
     },
+    lamps: () => ({
+      enabled: nightLamps !== null,
+      drawn: nightLamps?.getDrawnCount() ?? 0,
+    }),
+    atmosphere: () => ({
+      timeHours: timeHours,
+      timeMode: timeMode,
+      season: seasonOverride ?? seasonForDate(),
+      clouds: cloudController.getStrength(),
+      snow: cloudUniforms.uSnowAmount.value as number,
+      weather: post.getWeather(),
+    }),
     rendererInfo: () => ({
       drawCalls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -1457,6 +1564,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     });
     updateLookColors();
     streamer.setNightFactor(look.nightFactor);
+    nightLamps?.setNightFactor(look.nightFactor);
+    cloudController?.setNight(look.nightFactor);
     // Night exposure lift: ACES compresses the low-key night palette, so give
     // the lit windows enough headroom to read without washing out the darkness.
     const nightExposure = EXPOSURE * (1 + look.nightFactor * 0.22);
@@ -1843,6 +1952,13 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       stats.renderHeight = renderSize.height;
       stats.geometryMB = Math.round(streamer.geometryMB * 100) / 100;
       stats.mobility = mobility.getStatus();
+      stats.atmosphere = {
+        timeMode: timeMode,
+        season: seasonOverride ?? seasonForDate(),
+        clouds: Math.round(cloudController.getStrength() * 100) / 100,
+        weather: post.getWeather().kind,
+        lamps: nightLamps?.getDrawnCount() ?? 0,
+      };
       frames.count = 0;
       frames.windowStart = now;
       try {
@@ -1887,6 +2003,21 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function tick(dt: number, now: number): void {
     if (resizePending) applyResize();
 
+    // Cloud shades drift with time; the controller fades strength changes.
+    cloudController?.update(dt);
+    post.advanceWeather(dt);
+
+    // Live clock: re-apply the lighting palette at most once per second while
+    // it follows real Minsk time (the look drifts one hour per real hour).
+    if (timeMode === 'auto') {
+      autoTimeTimer += dt;
+      if (autoTimeTimer >= 1) {
+        autoTimeTimer = 0;
+        const hours = minskLocalHours();
+        if (Math.abs(hours - timeHours) >= 1 / 60) applyTimeOfDay(hours);
+      }
+    }
+
     controls?.update(dt);
     const cameraChanged = rig.update(dt);
     if (cameraChanged) {
@@ -1900,6 +2031,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     // Dynamic mobility layer: same frame, no second render loop. The visible
     // ground rect is converted to local metres (x east, y north) for the loader.
     const groundFootprint = rig.getVisibleGroundRect(40);
+    // Огни транспорта следуют за time-of-day (дешёвый сеттер, число).
+    mobility.setNightFactor(look.nightFactor);
     mobility.update(dt, {
       rect: {
         minX: groundFootprint.minX,
@@ -2007,8 +2140,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   });
   resizeObserver.observe(container);
 
-  // Initial view state.
-  applyTimeOfDay(13);
+  // Initial view state: the lighting clock starts on real Minsk time unless a
+  // fixed `?time=H` (or a UI slider value) pinned it to manual.
+  applyTimeOfDay(timeMode === 'auto' ? minskLocalHours() : timeHours);
   applyFacadeDetailFlags();
   applyFacadePixelFlagsInitial();
 
@@ -2025,10 +2159,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const initialAzimuth = Number.parseFloat(params.get('az') ?? '');
   if (Number.isFinite(initialAzimuth)) {
     handle.setCameraSettings({ azimuth: initialAzimuth });
-  }
-  const initialTime = Number.parseFloat(params.get('time') ?? '');
-  if (Number.isFinite(initialTime)) {
-    handle.setTimeOfDay(initialTime);
   }
 
   void streamer.start();
@@ -2060,6 +2190,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       railTraffic.dispose();
       mobilityState.runtime = null;
       mobility.dispose();
+      nightLamps?.dispose();
+      cloudController?.dispose();
       streamer.dispose();
     } catch (error) {
       recordDiagnostic(`streamer dispose failed: ${String(error)}`);

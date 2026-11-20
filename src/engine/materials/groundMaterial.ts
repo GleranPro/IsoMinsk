@@ -10,6 +10,7 @@
  */
 
 import * as THREE from 'three';
+import { applyCloudShade, type CloudShadeUniforms } from '../renderer/cloudShade';
 
 export const GROUND_EMISSIVE = new THREE.Color().setRGB(0.02, 0.022, 0.027);
 /** Anisotropy for the oblique isometric view (clamped by the GPU's maximum). */
@@ -44,13 +45,17 @@ export function createGroundTexture(
   return texture;
 }
 
-export function createGroundMaterial(texture: THREE.Texture): THREE.MeshLambertMaterial {
+export function createGroundMaterial(
+  texture: THREE.Texture,
+  cloudUniforms?: CloudShadeUniforms,
+): THREE.MeshLambertMaterial {
   const material = new THREE.MeshLambertMaterial({
     map: texture,
     fog: true,
     emissive: GROUND_EMISSIVE.clone(),
   });
   material.name = 'IsometricMinskRasterGround';
+  if (cloudUniforms) applyCloudShade(material, cloudUniforms);
   return material;
 }
 

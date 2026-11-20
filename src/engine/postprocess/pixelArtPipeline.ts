@@ -115,6 +115,71 @@ float bayer4(vec2 a) {
   return bayer2(0.5 * a) * 0.25 + bayer2(a);
 }
 
+// --- screen-space weather (rain / snow) ------------------------------------
+// Warsaw principle: precipitation is a post effect, no second geometry.
+// uWeather: 0 = off, 1 = rain, 2 = snow. uWeatherAmount scales density.
+uniform float uWeather;
+uniform float uWeatherAmount;
+uniform float uWeatherTime;
+uniform float uWeatherWind;
+
+float weatherHash(vec2 p) {
+  vec3 q = fract(vec3(p.xyx) * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+
+// One rain layer: thin slanted streaks in drifting cell space.
+float rainLayer(vec2 px, float t, float scale, float fallSpeed, float slant) {
+  vec2 p = px;
+  p.y += t * fallSpeed;
+  p.x += t * slant;
+  p /= scale;
+  vec2 cell = floor(p);
+  float h = weatherHash(cell);
+  // Only ~1/3 of cells carry a streak at any moment.
+  if (h < 0.66) return 0.0;
+  vec2 local = fract(p);
+  float centre = 0.2 + 0.6 * weatherHash(cell + 7.0);
+  float across = smoothstep(0.055, 0.0, abs(local.x - centre));
+  float along = smoothstep(0.0, 0.18, local.y) * smoothstep(1.0, 0.62, local.y);
+  return across * along;
+}
+
+// One snow layer: soft round flakes falling with a sideways sway.
+float snowLayer(vec2 px, float t, float scale, float fallSpeed, float phase) {
+  vec2 p = px / scale;
+  p.y += t * fallSpeed;
+  p.x += sin(t * 0.7 + phase + p.y * 1.4) * 0.4;
+  vec2 cell = floor(p);
+  float h = weatherHash(cell + phase);
+  if (h < 0.45) return 0.0;
+  vec2 local = fract(p) - 0.5;
+  float d = length(local + vec2(weatherHash(cell + 3.0) - 0.5, weatherHash(cell + 9.0) - 0.5) * 0.6);
+  return smoothstep(0.26, 0.10, d);
+}
+
+vec3 applyWeather(vec3 color, vec2 fragPx) {
+  float amount = clamp(uWeatherAmount, 0.0, 1.0);
+  if (uWeather < 0.5 || amount < 0.01) return color;
+  float t = uWeatherTime;
+  if (uWeather < 1.5) {
+    // Rain: two parallax layers of slanted streaks.
+    float a = rainLayer(fragPx, t, 26.0, 900.0, uWeatherWind * 260.0);
+    float b = rainLayer(fragPx, t, 38.0, 520.0, uWeatherWind * 150.0);
+    float streak = clamp(a + b * 0.8, 0.0, 1.0) * amount;
+    vec3 rainColor = mix(color, vec3(0.78, 0.85, 0.95), 0.45);
+    return mix(color, rainColor, streak * 0.55);
+  }
+  // Snow: three parallax layers of drifting flakes.
+  float a = snowLayer(fragPx, t, 24.0, 60.0, 0.0);
+  float b = snowLayer(fragPx, t, 34.0, 34.0, 2.1);
+  float c = snowLayer(fragPx, t, 48.0, 20.0, 4.4);
+  float flakes = clamp(a + b + c * 0.7, 0.0, 1.0) * amount;
+  vec3 snowColor = mix(color, vec3(0.93, 0.95, 0.99), 0.75);
+  return mix(color, snowColor, flakes * 0.85);
+}
+
 // --- limited palette -------------------------------------------------------
 vec3 nearestPalette(vec3 color) {
   float bestDistance = 1e9;
@@ -247,14 +312,16 @@ void main() {
   // Clean full-resolution 3D view (pixel-art effect disabled): tone mapping
   // only, no outlines / quantisation / vignette.
   if (uEnabled < 0.5) {
-    gl_FragColor = vec4(linearToSrgb(applyToneMapping(linearColor)), 1.0);
+    vec3 clean = linearToSrgb(applyToneMapping(linearColor));
+    gl_FragColor = vec4(applyWeather(clean, gl_FragCoord.xy), 1.0);
     return;
   }
 
   // Sky: keep the background clear colour, tone mapped but unquantised and
   // un-outlined, so the horizon converges to the same tone as fogged geometry.
   if (isSky) {
-    gl_FragColor = vec4(linearToSrgb(applyToneMapping(linearColor)), 1.0);
+    vec3 sky = linearToSrgb(applyToneMapping(linearColor));
+    gl_FragColor = vec4(applyWeather(sky, gl_FragCoord.xy), 1.0);
     return;
   }
 
@@ -284,7 +351,7 @@ void main() {
   float outline = edge * uOutline * (1.0 - fog * 0.85);
   color = mix(color, uOutlineColor, outline);
 
-  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+  gl_FragColor = vec4(applyWeather(clamp(color, 0.0, 1.0), gl_FragCoord.xy), 1.0);
 }
 `;
 
@@ -350,6 +417,10 @@ export class PixelArtPipeline {
       uDebugView: { value: 0 },
       uToneMode: { value: 2 },
       uEnabled: { value: 1 },
+      uWeather: { value: 0 },
+      uWeatherAmount: { value: 0 },
+      uWeatherTime: { value: 0 },
+      uWeatherWind: { value: 1 },
       uPalette: { value: palette },
     };
 
@@ -405,6 +476,27 @@ export class PixelArtPipeline {
     this.effectEnabled = Boolean(enabled);
     this.uniforms.uEnabled.value = this.effectEnabled ? 1 : 0;
     this.applyTargetSize();
+  }
+
+  /** Screen-space precipitation: 0 = off, 1 = rain, 2 = snow. */
+  setWeather(kind: 'off' | 'rain' | 'snow', amount = 0.7): void {
+    this.uniforms.uWeather.value = kind === 'rain' ? 1 : kind === 'snow' ? 2 : 0;
+    const intensity = Number.isFinite(amount) ? Math.min(1, Math.max(0, amount)) : 0.7;
+    this.uniforms.uWeatherAmount.value = kind === 'off' ? 0 : intensity;
+  }
+
+  getWeather(): { kind: 'off' | 'rain' | 'snow'; amount: number } {
+    const raw = this.uniforms.uWeather.value as number;
+    return {
+      kind: raw > 1.5 ? 'snow' : raw > 0.5 ? 'rain' : 'off',
+      amount: this.uniforms.uWeatherAmount.value as number,
+    };
+  }
+
+  /** Advance the weather clock; called from the engine tick with frame dt. */
+  advanceWeather(dtSeconds: number): void {
+    const dt = Number.isFinite(dtSeconds) ? dtSeconds : 0;
+    this.uniforms.uWeatherTime.value = (this.uniforms.uWeatherTime.value as number) + dt;
   }
 
   private applyTargetSize(): void {

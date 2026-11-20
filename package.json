@@ -52,7 +52,8 @@
     "data:mobility:city:export": ".venv\\Scripts\\python.exe scripts/mobility/export.py --network data/processed/mobility/network_city.json --out public/data/mobility-city --timetable=procedural",
     "data:mobility:city:audit": ".venv\\Scripts\\python.exe scripts/qa/mobility-audit.py --base public/data/mobility-city --out data/processed/mobility/audit-city.json",
     "qa:mobility-capture": "node scripts/qa/mobility-capture.mjs",
-    "qa:mobility-perf": "node scripts/qa/mobility-perf.mjs"
+    "qa:mobility-perf": "node scripts/qa/mobility-perf.mjs",
+    "qa:liveness-perf": "node scripts/qa/liveness-perf.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

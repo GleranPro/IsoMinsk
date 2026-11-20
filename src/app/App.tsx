@@ -14,6 +14,9 @@ import type {
   LandmarkSelection,
   MobilityVehicleSelection,
   MuseumExhibitSelection,
+  SeasonOverride,
+  TimeOfDayMode,
+  WeatherKind,
 } from '../shared/appApi';
 import type { MobilityStatus } from '../shared/mobility';
 import type { TileManifest } from '../shared/types';
@@ -31,7 +34,15 @@ export interface UiState {
   pixelEffect: boolean;
   facadeDetail: boolean;
   wireframe: boolean;
+  /** Lighting clock source: live Minsk time or the fixed slider value. */
+  timeMode: TimeOfDayMode;
   timeOfDay: number;
+  /** Cloud shades (drifting shadow fields) on/off. */
+  clouds: boolean;
+  /** Screen-space precipitation. */
+  weather: WeatherKind;
+  /** Season: auto follows the real calendar date. */
+  season: SeasonOverride;
   orthoHeight: number;
   azimuth: number;
   azimuthMode: 'iso' | 'north' | 'free';
@@ -47,7 +58,11 @@ const DEFAULT_UI: UiState = {
   pixelEffect: true,
   facadeDetail: true,
   wireframe: false,
+  timeMode: 'auto',
   timeOfDay: 13,
+  clouds: true,
+  weather: 'off',
+  season: 'auto',
   orthoHeight: 420,
   azimuth: Math.PI / 4,
   azimuthMode: 'iso',
@@ -86,7 +101,17 @@ export function App() {
         if (exposed) exposed.ready = true;
         else (window as unknown as Record<string, unknown>).__CITY_APP__ = { ready: true };
         const camera = app.getCameraSettings();
-        setUi((prev) => ({ ...prev, orthoHeight: camera.orthoHeight, azimuth: camera.azimuth }));
+        const timeInfo = app.getTimeOfDayInfo();
+        setUi((prev) => ({
+          ...prev,
+          orthoHeight: camera.orthoHeight,
+          azimuth: camera.azimuth,
+          timeMode: timeInfo.mode,
+          timeOfDay: timeInfo.hours,
+          clouds: app.getCloudsEnabled(),
+          weather: app.getWeather().kind,
+          season: app.getSeason(),
+        }));
       },
       onStats: (next) => {
         // The engine mutates one stats object and re-emits the same reference;
@@ -146,8 +171,39 @@ export function App() {
     app.setPixelEffectEnabled(ui.pixelEffect);
     app.setFacadeDetail(ui.facadeDetail);
     app.setDebugWireframe(ui.wireframe);
-    app.setTimeOfDay(ui.timeOfDay);
-  }, [ready, ui.pixelEffect, ui.facadeDetail, ui.wireframe, ui.timeOfDay]);
+    if (ui.timeMode === 'manual') app.setTimeOfDay(ui.timeOfDay);
+    else app.setTimeMode('auto');
+    app.setCloudsEnabled(ui.clouds);
+    app.setWeather(ui.weather);
+    app.setSeason(ui.season);
+  }, [
+    ready,
+    ui.pixelEffect,
+    ui.facadeDetail,
+    ui.wireframe,
+    ui.timeMode,
+    ui.timeOfDay,
+    ui.clouds,
+    ui.weather,
+    ui.season,
+  ]);
+
+  // Live clock mirror: while the lighting runs on real Minsk time, the panel
+  // label follows the engine clock (1 Hz is enough — the look drifts 1 h/h).
+  useEffect(() => {
+    if (!ready) return;
+    const timer = window.setInterval(() => {
+      const app = appRef.current;
+      if (!app) return;
+      const info = app.getTimeOfDayInfo();
+      setUi((prev) =>
+        prev.timeMode === info.mode && Math.abs(prev.timeOfDay - info.hours) < 0.005
+          ? prev
+          : { ...prev, timeMode: info.mode, timeOfDay: info.hours },
+      );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [ready]);
 
   // mobility switches go through the public handle; the engine keeps the rules
   // running even when vehicles/signals are hidden.

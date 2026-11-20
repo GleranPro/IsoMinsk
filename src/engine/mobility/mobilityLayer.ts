@@ -92,6 +92,8 @@ export interface MobilityView {
   signals: readonly MobilitySignalState[];
   /** Номер шага симуляции: смена запускает новый шаг интерполяции. */
   step?: number;
+  /** Ночь 0..1 (из time-of-day): включает фары и габариты транспорта. */
+  nightFactor?: number;
 }
 
 /** Источник геометрии светофоров (реализуется `MobilityLoader`). */
@@ -239,6 +241,17 @@ const DOT_COLORS: Record<string, number> = {
   tram: 0xff6a4a,
 };
 
+/**
+ * Огни транспорта (только ночью): тёплые фары и красные габариты — дешёвые
+ * additive-квадраты над дорогой, по одному инстансу на рейс из экранного
+ * бюджета. Днём непрозрачность 0, поэтому слой ничего не стоит.
+ */
+export const HEADLIGHT_NIGHT_MIN = 0.35;
+const HEADLIGHT_COLOR = 0xffedbe;
+const TAILLIGHT_COLOR = 0xff2d1e;
+const HEADLIGHT_OPACITY = 0.9;
+const TAILLIGHT_OPACITY = 0.65;
+
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
 }
@@ -318,6 +331,13 @@ export class MobilityLayer {
   private readonly signalBatchTriangles = new Map<string, number>();
   private shadowMesh: THREE.InstancedMesh;
   private signalBatches: SignalBatchSet;
+
+  private readonly headlightMaterial: THREE.MeshBasicMaterial;
+  private readonly taillightMaterial: THREE.MeshBasicMaterial;
+  private readonly headlightMesh: THREE.InstancedMesh;
+  private readonly taillightMesh: THREE.InstancedMesh;
+  /** Ночь 0..1 из кадра; управляет непрозрачностью огней (см. HEADLIGHT_NIGHT_MIN). */
+  private nightFactor = 0;
 
   private settings: MobilitySettings = {
     vehiclesVisible: true,
@@ -442,6 +462,50 @@ export class MobilityLayer {
     this.shadowMesh = this.createShadowMesh(this.budget);
     this.shadowRoot.add(this.shadowMesh);
 
+    // Огни транспорта: два instanced-батча (фары вперёд, габариты назад) поверх
+    // той же плоской геометрии, что и тени. Ночью opacity поднимается, днём 0.
+    this.headlightMaterial = new THREE.MeshBasicMaterial({
+      color: HEADLIGHT_COLOR,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -3,
+      polygonOffsetUnits: -3,
+    });
+    this.headlightMaterial.name = 'IsometricMinskMobilityHeadlights';
+    this.taillightMaterial = new THREE.MeshBasicMaterial({
+      color: TAILLIGHT_COLOR,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4,
+    });
+    this.taillightMaterial.name = 'IsometricMinskMobilityTaillights';
+    this.headlightMesh = new THREE.InstancedMesh(this.shadowGeometry, this.headlightMaterial, this.budget);
+    this.headlightMesh.name = 'mobility-headlights';
+    this.headlightMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.headlightMesh.frustumCulled = false;
+    this.headlightMesh.count = 0;
+    this.headlightMesh.visible = false;
+    this.taillightMesh = new THREE.InstancedMesh(this.shadowGeometry, this.taillightMaterial, this.budget);
+    this.taillightMesh.name = 'mobility-taillights';
+    this.taillightMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.taillightMesh.frustumCulled = false;
+    this.taillightMesh.count = 0;
+    this.taillightMesh.visible = false;
+    this.vehicleRoot.add(this.headlightMesh, this.taillightMesh);
+
     // Точки транспорта для обзорных видов: модель на городском обзоре меньше
     // пикселя и скрывается LOD, но город не должен выглядеть пустым.
     this.dotMaterial = new THREE.MeshBasicMaterial({
@@ -485,6 +549,9 @@ export class MobilityLayer {
     const stepDt = clamp(Number.isFinite(dt) ? dt : 0, 0, 0.25);
     if (Number.isFinite(view.worldPerPixel) && view.worldPerPixel > 0) {
       this.lastWorldPerPixel = view.worldPerPixel;
+    }
+    if (typeof view.nightFactor === 'number' && Number.isFinite(view.nightFactor)) {
+      this.nightFactor = clamp(view.nightFactor, 0, 1);
     }
     this.updateVehicles(view, stepDt);
     this.updateSignals(view);
@@ -651,6 +718,8 @@ export class MobilityLayer {
     this.dotMaterial.dispose();
     this.shadowGeometry.dispose();
     this.shadowMaterial.dispose();
+    this.headlightMaterial.dispose();
+    this.taillightMaterial.dispose();
     this.vehicleMaterial.dispose();
     this.signalMaterial.dispose();
     this.lensMaterial.dispose();
@@ -852,6 +921,8 @@ export class MobilityLayer {
     for (const model of VEHICLE_MODELS) counts.set(model, 0);
     let selectionPlaced = false;
     let shadowCount = 0;
+    let lightCount = 0;
+    const lightsOn = this.nightFactor >= HEADLIGHT_NIGHT_MIN;
     for (const candidate of allowed) {
       const state = this.tripStates.get(candidate.trip.tripId);
       if (!state) continue;
@@ -900,6 +971,31 @@ export class MobilityLayer {
         this.tmpMatrix.compose(this.tmpPosition, this.tmpQuaternion, shadowScale);
         this.shadowMesh.setMatrixAt(shadowCount, this.tmpMatrix);
         shadowCount += 1;
+      }
+
+      if (lightsOn && lightCount < this.budget) {
+        const dims = VEHICLE_DIMENSIONS[candidate.model];
+        this.tmpQuaternion.setFromAxisAngle(UP, heading);
+        // Фары: тёплое пятно перед кузовом; габариты: узкая красная полоса сзади.
+        const frontOffset = dims.lengthM * 0.5 + 0.5;
+        this.tmpPosition.set(
+          localX + Math.cos(heading) * frontOffset,
+          height + MOBILITY_VEHICLE_LIFT_M + 0.02,
+          -localY - Math.sin(heading) * frontOffset,
+        );
+        this.tmpScale.set(1.6, 1, dims.widthM * 1.9);
+        this.tmpMatrix.compose(this.tmpPosition, this.tmpQuaternion, this.tmpScale);
+        this.headlightMesh.setMatrixAt(lightCount, this.tmpMatrix);
+        const rearOffset = dims.lengthM * 0.5 + 0.15;
+        this.tmpPosition.set(
+          localX - Math.cos(heading) * rearOffset,
+          height + MOBILITY_VEHICLE_LIFT_M + 0.02,
+          -localY + Math.sin(heading) * rearOffset,
+        );
+        this.tmpScale.set(1.0, 1, dims.widthM * 1.15);
+        this.tmpMatrix.compose(this.tmpPosition, this.tmpQuaternion, this.tmpScale);
+        this.taillightMesh.setMatrixAt(lightCount, this.tmpMatrix);
+        lightCount += 1;
       }
 
       state.drawn = true;
@@ -967,6 +1063,18 @@ export class MobilityLayer {
       this.shadowMesh.count = 0;
       this.shadowMesh.visible = false;
     }
+
+    // Огни: непрозрачность = ночь; днём счётчик 0 — слой ничего не стоит.
+    this.headlightMesh.count = lightCount;
+    this.taillightMesh.count = lightCount;
+    this.headlightMaterial.opacity = HEADLIGHT_OPACITY * this.nightFactor;
+    this.taillightMaterial.opacity = TAILLIGHT_OPACITY * this.nightFactor;
+    this.headlightMesh.visible = lightsOn && lightCount > 0;
+    this.taillightMesh.visible = lightsOn && lightCount > 0;
+    if (lightCount > 0) {
+      this.headlightMesh.instanceMatrix.needsUpdate = true;
+      this.taillightMesh.instanceMatrix.needsUpdate = true;
+    }
   }
 
   private hideVehicles(): void {
@@ -976,6 +1084,10 @@ export class MobilityLayer {
     }
     this.shadowMesh.count = 0;
     this.shadowMesh.visible = false;
+    this.headlightMesh.count = 0;
+    this.headlightMesh.visible = false;
+    this.taillightMesh.count = 0;
+    this.taillightMesh.visible = false;
     if (this.dotMesh) {
       this.dotMesh.count = 0;
       this.dotMesh.visible = false;
