@@ -115,11 +115,6 @@ export interface TileWirePayload {
   ground?: WireGroundTexture | null;
   /** Bridge deck tops (payload 0.4.2): textured mesh + its atlas. */
   decks?: { mesh: WireMesh; texture: WireGroundTexture } | null;
-  /**
-   * Street lamp spots for the night layer (payload 0.4.4): flat
-   * [x, z, ...] world metres sampled from the major road strokes.
-   */
-  lamps?: ArrayBuffer | null;
   triangleCount: number;
   bytes: number;
   /** Worker-side timings, milliseconds. */
@@ -357,7 +352,6 @@ export function collectTransferables(payload: TileWirePayload): ArrayBuffer[] {
     addMesh(payload.decks.mesh);
     buffers.push(payload.decks.texture.data);
   }
-  if (payload.lamps) buffers.push(payload.lamps);
   if (payload.triangleOwner) buffers.push(payload.triangleOwner);
   return buffers;
 }
@@ -371,7 +365,6 @@ export function payloadBytes(payload: TileWirePayload): number {
     wireMeshBytes(payload.attractions ?? null) +
     (payload.ground?.data.byteLength ?? 0) +
     (payload.decks ? wireMeshBytes(payload.decks.mesh) + payload.decks.texture.data.byteLength : 0) +
-    (payload.lamps ? payload.lamps.byteLength : 0) +
     (payload.triangleOwner ? payload.triangleOwner.byteLength : 0)
   );
 }

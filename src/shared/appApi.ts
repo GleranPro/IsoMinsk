@@ -101,8 +101,6 @@ export interface AtmosphereStats {
   clouds: number;
   /** Current precipitation. */
   weather: WeatherKind;
-  /** Night-lamp instances currently drawn. */
-  lamps: number;
 }
 
 export interface EngineStats {

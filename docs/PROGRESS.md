@@ -11,23 +11,23 @@ Remaining work and completed shared prerequisites: [`docs/BACKLOG.md`](BACKLOG.m
 
 ## Current state
 
-**City liveness (atmosphere pass) — 2026-11-20:** the city now runs on real
-Minsk time (UTC+3): night windows and the palette follow the actual clock, the
-slider is the manual mode (`?time=H`, `?time=auto`). Night lamps (worker-baked
-spots along major road centerlines, one global instanced batch, ≤900 instances)
-and vehicle headlights/taillights turn on at night. Cloud shades are pure
-shader darkening by world XZ (no second geometry; damped at night); rain/snow
-is screen-space in the post pipeline (`?weather=rain|snow`); seasons follow the
-real date (`?season=`), winter hides canopies and feeds a snow uniform. All
-toggles are in the UI "Atmosphere" group and exposed on `CityAppHandle`
-(`setCloudsEnabled/setWeather/setSeason`) plus `__CITY_DEBUG__.atmosphere()`;
-`EngineStats.atmosphere` reports the live state honestly. Unit tests: minskTime,
-seasons, lampSpots, cloudShade chunks; e2e: `tests/e2e/atmosphere.spec.ts`
-(4 passed on hardware GPU); perf harness: `qa:liveness-perf` — measured on the
-reference RTX 3080 Laptop (district view, night, clouds+lights on): frame
-p95 1.3 ms vs 1.2 ms with atmosphere off, **+0.10 ms p95** (budget ≤1.5 ms).
-Verified visually on software WebGL at district and city zoom (night/rain/
-winter captures in `screenshots/liveness/`).
+**City liveness (atmosphere pass) — 2026-11-20, bugfix round:** after the
+first deploy the owner reviewed it and rejected four looks; all fixed and
+re-verified visually on hardware GPU (`screenshots/liveness/verify/`):
+- winter snow now lands only on up-facing surfaces (ground/roofs — world-space
+  normal varying in the shader chunk), amount 0.48, stronger patch breakup —
+  the city stays readable (the first version whitened walls: unusable);
+- every season sets an explicit canopy palette (a `null = keep current` made
+  Summer keep autumn trees after a runtime switch);
+- weather density/opacity cut ~2× (rain ≈1/8 cells, snow mix 0.5) — an accent,
+  not a curtain;
+- cloud shades fade out above ~700→1500 m ortho (patch pattern read as grey
+  haze at city overview) and stay visible+moving at district zoom;
+- the night-lamp layer was REMOVED entirely (worker spots, pools, head glow):
+  the owner rejected both iterations as visual noise over dark terrain. The
+  night look is: lit windows, lit facades, vehicle headlights only.
+Kept: real Minsk time clock, clouds (district zoom), rain/snow, seasons, the
+Atmosphere panel, `__CITY_DEBUG__.atmosphere()`, `EngineStats.atmosphere`.
 
 **Procedural building variety — 2026-11-14:** 27 coherent architectural
 families were added as a versioned recipe layer (payload 0.5.0). The offline

@@ -65,7 +65,6 @@ import { LightingRig } from './renderer/lighting';
 import { minskLocalHours } from './renderer/minskTime';
 import { CloudShadeController, createCloudShadeUniforms } from './renderer/cloudShade';
 import { parseSeason, seasonAppearance, seasonForDate } from './renderer/seasons';
-import { NightLampsLayer } from './tiles/nightLamps';
 import {
   applyCloudShadeSafe,
   createFacadeMaterialSafe,
@@ -629,20 +628,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   scene.add(railTraffic.root);
   void railTraffic.load();
 
-  // Night street lamps: worker-baked spots along major roads, drawn only at
-  // night; `?lamps=0` turns the layer off for A/B captures.
-  const isMobilePointer =
-    typeof window !== 'undefined' && window.matchMedia
-      ? window.matchMedia('(pointer: coarse)').matches
-      : false;
-  const nightLamps =
-    params.get('lamps') === '0' ? null : new NightLampsLayer({ mobile: isMobilePointer });
-  if (nightLamps) scene.add(nightLamps.root);
-
   const streamer = new TileStreamer({
     scene,
     root: cityRoot,
-    nightLamps: nightLamps ?? undefined,
     cloudUniforms: cloudUniforms ?? undefined,
     environmentMaterial: environment.environment,
     treeMaterial: environment.trees,
@@ -697,7 +685,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // Seasonal canopy: winter hides the canopies (bare branches), spring/autumn
   // recolour them; all runtime work — no tile rebuilds.
   streamer.setCanopyAppearance({
-    palette: seasonLook.canopyPalette ? [...seasonLook.canopyPalette] : undefined,
+    palette: [...seasonLook.canopyPalette],
     visible: seasonLook.canopyVisible,
   });
 
@@ -779,7 +767,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       cloudController.setStrength(enabled ? 1 : 0);
     },
     getCloudsEnabled: () => cloudController.getStrength() > 0.5,
-    setWeather(kind: WeatherKind, amount = 0.7) {
+    setWeather(kind: WeatherKind, amount = 0.55) {
       post.setWeather(kind, amount);
     },
     getWeather: () => post.getWeather(),
@@ -788,7 +776,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       const look = seasonAppearance(seasonOverride ?? seasonForDate());
       cloudController.setSnow(look.snow);
       streamer.setCanopyAppearance({
-        palette: look.canopyPalette ? [...look.canopyPalette] : undefined,
+        palette: [...look.canopyPalette],
         visible: look.canopyVisible,
       });
     },
@@ -977,10 +965,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         tiles: tiles.slice(0, 32),
       };
     },
-    lamps: () => ({
-      enabled: nightLamps !== null,
-      drawn: nightLamps?.getDrawnCount() ?? 0,
-    }),
     atmosphere: () => ({
       timeHours: timeHours,
       timeMode: timeMode,
@@ -1564,7 +1548,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     });
     updateLookColors();
     streamer.setNightFactor(look.nightFactor);
-    nightLamps?.setNightFactor(look.nightFactor);
     cloudController?.setNight(look.nightFactor);
     // Night exposure lift: ACES compresses the low-key night palette, so give
     // the lit windows enough headroom to read without washing out the darkness.
@@ -1957,7 +1940,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         season: seasonOverride ?? seasonForDate(),
         clouds: Math.round(cloudController.getStrength() * 100) / 100,
         weather: post.getWeather().kind,
-        lamps: nightLamps?.getDrawnCount() ?? 0,
       };
       frames.count = 0;
       frames.windowStart = now;
@@ -2003,7 +1985,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function tick(dt: number, now: number): void {
     if (resizePending) applyResize();
 
-    // Cloud shades drift with time; the controller fades strength changes.
+    // Cloud shades drift with time; strength fades by night and at overview
+    // zooms (a few-hundred-metre patch reads as grey noise from far away).
+    cloudController?.setOrthoHeight(rig.getOrthoHeight());
     cloudController?.update(dt);
     post.advanceWeather(dt);
 
@@ -2190,7 +2174,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       railTraffic.dispose();
       mobilityState.runtime = null;
       mobility.dispose();
-      nightLamps?.dispose();
       cloudController?.dispose();
       streamer.dispose();
     } catch (error) {

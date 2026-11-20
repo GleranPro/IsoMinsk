@@ -10,6 +10,8 @@
  * Pure math, no THREE: tests pin concrete dates.
  */
 
+import { CANOPY_PALETTE } from '../../city/environment/treeInstances';
+
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 
 /** Meteorological season from a calendar month (northern hemisphere). */
@@ -33,20 +35,27 @@ export function parseSeason(value: string | null): Season | null {
   }
 }
 
-/** Summer keeps the baseline canopy palette (see treeInstances.ts). */
-export const SEASON_CANOPY_PALETTES: Record<Season, readonly string[] | null> = {
+/**
+ * Canopy palette per season. Every season sets an EXPLICIT palette — a "null
+ * means keep current" would leave the previous season's colours behind a
+ * runtime switch (the summer-stays-autumn bug). Winter keeps a palette too;
+ * it is just hidden by SEASON_CANOPY_VISIBLE.
+ */
+export const SEASON_CANOPY_PALETTES: Record<Season, readonly string[]> = {
   spring: ['#5f8a44', '#74a052', '#84ad5c', '#52783c'],
-  summer: null,
+  summer: CANOPY_PALETTE,
   autumn: ['#8a7a34', '#a3873a', '#a05f2c', '#6e6a30'],
-  winter: null,
+  winter: ['#5b6b4e', '#64745a', '#6e7a5c', '#526040'],
 };
 
-/** Snow amount (0..1) fed to the surface shaders per season. */
+/** Snow amount (0..1) fed to the surface shaders per season. Snow lands only
+ * on up-facing surfaces (ground/roofs — see cloudShade.ts), so the city stays
+ * readable. */
 export const SEASON_SNOW: Record<Season, number> = {
   spring: 0,
   summer: 0,
   autumn: 0,
-  winter: 0.72,
+  winter: 0.48,
 };
 
 /** Winter canopy hides (bare branches — trunks stay visible). */
@@ -59,7 +68,7 @@ export const SEASON_CANOPY_VISIBLE: Record<Season, boolean> = {
 
 export interface SeasonAppearance {
   season: Season;
-  canopyPalette: readonly string[] | null;
+  canopyPalette: readonly string[];
   canopyVisible: boolean;
   snow: number;
 }

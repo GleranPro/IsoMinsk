@@ -84,7 +84,6 @@ test.describe('Isometric Minsk — atmosphere', () => {
     expect(['spring', 'summer', 'autumn', 'winter']).toContain(atmosphere!.season);
     expect(['off', 'rain', 'snow']).toContain(atmosphere!.weather);
     expect(atmosphere!.clouds).toBeGreaterThanOrEqual(0);
-    expect(atmosphere!.lamps).toBeGreaterThanOrEqual(0);
   });
 
   test('atmosphere debug accessor reflects a pinned winter night', async ({ page }) => {
@@ -94,14 +93,11 @@ test.describe('Isometric Minsk — atmosphere', () => {
     });
     // The debug surface is typed narrowly in museum.spec.ts; this spec reads
     // the atmosphere subset through a local cast (same pattern as city.spec).
-    type DebugApi = { atmosphere?: () => Record<string, unknown>; lamps?: () => Record<string, unknown> };
+    type DebugApi = { atmosphere?: () => Record<string, unknown> };
     const readDebug = () =>
       page.evaluate(() => {
         const api = (window as unknown as { __CITY_DEBUG__?: DebugApi }).__CITY_DEBUG__;
-        return {
-          atmosphere: api?.atmosphere?.() ?? null,
-          lamps: api?.lamps?.() ?? null,
-        };
+        return { atmosphere: api?.atmosphere?.() ?? null };
       });
     await expect
       .poll(async () => (await readDebug()).atmosphere)
@@ -110,7 +106,6 @@ test.describe('Isometric Minsk — atmosphere', () => {
     expect(debug.atmosphere!.timeMode).toBe('manual');
     expect(debug.atmosphere!.season).toBe('winter');
     expect((debug.atmosphere!.weather as { kind: string }).kind).toBe('snow');
-    expect(debug.atmosphere!.snow as number).toBeGreaterThan(0.5);
-    expect(debug.lamps!.enabled).toBe(true);
+    expect(debug.atmosphere!.snow as number).toBeGreaterThan(0.4);
   });
 });

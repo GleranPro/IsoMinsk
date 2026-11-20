@@ -37,7 +37,6 @@ import {
   type TileWirePayload,
 } from './serialization';
 import { TileWorkerPool } from './tileWorkerPool';
-import type { NightLampsLayer } from './nightLamps';
 import type { CloudShadeUniforms } from '../renderer/cloudShade';
 import { createDemoManifest, createDemoTiles } from './demoTiles';
 import { CANOPY_PALETTE, treeInstanceBytes, type TreeRenderStyle } from '../../city/environment/treeInstances';
@@ -109,8 +108,6 @@ export interface TileStreamerOptions {
   maxTopUpGeometryMB?: number;
   /** Manifest tile URL layout preference ('flat' central, 'nested' city). */
   tileLayout?: 'flat' | 'nested' | 'auto';
-  /** Night lamp layer: receives per-tile lamp spots on adopt/evict and the camera frame. */
-  nightLamps?: NightLampsLayer;
   /** Shared cloud-shade uniforms for ground/deck materials (see cloudShade.ts). */
   cloudUniforms?: CloudShadeUniforms;
   onError?: (message: string) => void;
@@ -540,12 +537,6 @@ export class TileStreamer {
     }
     this.updateLod(renderHeightPx, rig);
     this.updateLoadingProgress();
-    // Night lamps: refill buffers only when the camera cell changes; per-frame
-    // cost is the cheap setView compare.
-    if (this.options.nightLamps) {
-      this.options.nightLamps.setView(target.x, target.z, orthoHeight * 1.2);
-      this.options.nightLamps.update(performance.now());
-    }
     if (this.tilesChangedPending) {
       this.tilesChangedPending = false;
       this.options.onTilesChanged?.();
@@ -1073,19 +1064,12 @@ export class TileStreamer {
     this.geometryBytes += bytes;
     this.tilesChangedPending = true;
     this.failedKeys.delete(payload.key);
-    // Night lamps: adopt the worker-baked spots (transferred ArrayBuffer; the
-    // Float32Array is a view, no copy).
-    this.options.nightLamps?.setTileSpots(
-      payload.key,
-      payload.lamps ? new Float32Array(payload.lamps) : null,
-    );
   }
 
   private evictTile(key: string): void {
     const entry = this.tiles.get(key);
     if (!entry) return;
     this.tiles.delete(key);
-    this.options.nightLamps?.removeTile(key);
     this.root.remove(entry.group);
     entry.trees?.dispose();
     entry.group.traverse((object) => {

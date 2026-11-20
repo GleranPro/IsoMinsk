@@ -137,11 +137,12 @@ float rainLayer(vec2 px, float t, float scale, float fallSpeed, float slant) {
   p /= scale;
   vec2 cell = floor(p);
   float h = weatherHash(cell);
-  // Only ~1/3 of cells carry a streak at any moment.
-  if (h < 0.66) return 0.0;
+  // Only ~1/8 of cells carry a streak at any moment: weather must stay an
+  // accent, never a curtain over the city.
+  if (h < 0.86) return 0.0;
   vec2 local = fract(p);
   float centre = 0.2 + 0.6 * weatherHash(cell + 7.0);
-  float across = smoothstep(0.055, 0.0, abs(local.x - centre));
+  float across = smoothstep(0.035, 0.0, abs(local.x - centre));
   float along = smoothstep(0.0, 0.18, local.y) * smoothstep(1.0, 0.62, local.y);
   return across * along;
 }
@@ -153,10 +154,10 @@ float snowLayer(vec2 px, float t, float scale, float fallSpeed, float phase) {
   p.x += sin(t * 0.7 + phase + p.y * 1.4) * 0.4;
   vec2 cell = floor(p);
   float h = weatherHash(cell + phase);
-  if (h < 0.45) return 0.0;
+  if (h < 0.72) return 0.0;
   vec2 local = fract(p) - 0.5;
   float d = length(local + vec2(weatherHash(cell + 3.0) - 0.5, weatherHash(cell + 9.0) - 0.5) * 0.6);
-  return smoothstep(0.26, 0.10, d);
+  return smoothstep(0.16, 0.06, d);
 }
 
 vec3 applyWeather(vec3 color, vec2 fragPx) {
@@ -167,17 +168,17 @@ vec3 applyWeather(vec3 color, vec2 fragPx) {
     // Rain: two parallax layers of slanted streaks.
     float a = rainLayer(fragPx, t, 26.0, 900.0, uWeatherWind * 260.0);
     float b = rainLayer(fragPx, t, 38.0, 520.0, uWeatherWind * 150.0);
-    float streak = clamp(a + b * 0.8, 0.0, 1.0) * amount;
+    float streak = clamp(a + b * 0.7, 0.0, 1.0) * amount;
     vec3 rainColor = mix(color, vec3(0.78, 0.85, 0.95), 0.45);
-    return mix(color, rainColor, streak * 0.55);
+    return mix(color, rainColor, streak * 0.32);
   }
   // Snow: three parallax layers of drifting flakes.
   float a = snowLayer(fragPx, t, 24.0, 60.0, 0.0);
   float b = snowLayer(fragPx, t, 34.0, 34.0, 2.1);
   float c = snowLayer(fragPx, t, 48.0, 20.0, 4.4);
-  float flakes = clamp(a + b + c * 0.7, 0.0, 1.0) * amount;
-  vec3 snowColor = mix(color, vec3(0.93, 0.95, 0.99), 0.75);
-  return mix(color, snowColor, flakes * 0.85);
+  float flakes = clamp(a + b + c * 0.6, 0.0, 1.0) * amount;
+  vec3 snowColor = mix(color, vec3(0.93, 0.95, 0.99), 0.7);
+  return mix(color, snowColor, flakes * 0.5);
 }
 
 // --- limited palette -------------------------------------------------------
@@ -479,9 +480,9 @@ export class PixelArtPipeline {
   }
 
   /** Screen-space precipitation: 0 = off, 1 = rain, 2 = snow. */
-  setWeather(kind: 'off' | 'rain' | 'snow', amount = 0.7): void {
+  setWeather(kind: 'off' | 'rain' | 'snow', amount = 0.55): void {
     this.uniforms.uWeather.value = kind === 'rain' ? 1 : kind === 'snow' ? 2 : 0;
-    const intensity = Number.isFinite(amount) ? Math.min(1, Math.max(0, amount)) : 0.7;
+    const intensity = Number.isFinite(amount) ? Math.min(1, Math.max(0, amount)) : 0.55;
     this.uniforms.uWeatherAmount.value = kind === 'off' ? 0 : intensity;
   }
 

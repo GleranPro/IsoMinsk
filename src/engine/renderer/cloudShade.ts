@@ -19,11 +19,12 @@ const NOISE_SIZE = 256;
 /** World metres covered by one noise tile: cloud fields are ~1.4 km across. */
 const NOISE_WORLD_SIZE_M = 1400;
 /** Maximum darkening under the cloud core (0..1) — by day. */
-export const CLOUD_MAX_DARKEN = 0.22;
+export const CLOUD_MAX_DARKEN = 0.3;
 /** Clouds block sun, not city glow: at full night the shade is damped. */
 const NIGHT_DAMP = 0.75;
-/** Drift speed, metres per second towards +X/-Z (a gentle summer breeze). */
-export const CLOUD_DRIFT_MPS = 5.5;
+/** Drift speed, metres per second towards +X/-Z: fast enough that the shade
+ * fields visibly cross the map within a minute. */
+export const CLOUD_DRIFT_MPS = 9;
 
 export interface CloudShadeUniforms {
   uCloudMap: THREE.IUniform<THREE.DataTexture>;
@@ -120,16 +121,19 @@ export function createCloudShadeUniforms(strength = 0): CloudShadeUniforms {
 // shader chunks
 // ---------------------------------------------------------------------------
 
-/** Vertex: pass world XZ to the fragment (instance-aware). */
+/** Vertex: pass world XZ + world-space normal to the fragment (instance-aware). */
 export const CLOUD_VERTEX_GLSL = /* glsl */ `
 varying vec3 vCloudWorld;
+varying vec3 vCloudNormal;
 `;
 
 export const CLOUD_VERTEX_BODY_GLSL = /* glsl */ `
 #ifdef USE_INSTANCING
   vCloudWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+  vCloudNormal = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * objectNormal);
 #else
   vCloudWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
+  vCloudNormal = normalize(mat3(modelMatrix) * objectNormal);
 #endif
 `;
 
@@ -141,25 +145,30 @@ uniform float uCloudStrength;
 uniform float uSnowAmount;
 
 varying vec3 vCloudWorld;
+varying vec3 vCloudNormal;
 
 float cloudShadeMask(vec2 worldXZ) {
   if (uCloudStrength < 0.001) return 0.0;
   float n = texture2D(uCloudMap, worldXZ / ${NOISE_WORLD_SIZE_M.toFixed(1)} + uCloudOffset).r;
-  return smoothstep(0.62, 0.88, n);
+  return smoothstep(0.55, 0.78, n);
 }
 
-float snowMask(vec2 worldXZ) {
+// Snow lands only on up-facing surfaces (ground, roofs): walls stay dark so
+// the building massing stays readable in winter.
+float snowMask(vec2 worldXZ, float worldUp) {
   if (uSnowAmount < 0.001) return 0.0;
   // Decorrelated octave in the green channel breaks the blanket into patches.
   float n = texture2D(uCloudMap, worldXZ / ${(NOISE_WORLD_SIZE_M * 0.7).toFixed(1)}).g;
-  return uSnowAmount * smoothstep(0.30, 0.55, n + uSnowAmount * 0.35);
+  float up = smoothstep(0.25, 0.7, worldUp);
+  return uSnowAmount * smoothstep(0.34, 0.62, n + uSnowAmount * 0.30) * up;
 }
 `;
 
 /** Fragment statement: darken the lit albedo before lighting. */
 export const CLOUD_DARKEN_GLSL = /* glsl */ `
+float worldUp = clamp(vCloudNormal.y, 0.0, 1.0);
 diffuseColor.rgb *= 1.0 - clamp(uCloudStrength, 0.0, 1.0) * cloudShadeMask(vCloudWorld.xz) * ${CLOUD_MAX_DARKEN.toFixed(3)};
-diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.89, 0.94), snowMask(vCloudWorld.xz));
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.82, 0.855, 0.91), snowMask(vCloudWorld.xz, worldUp));
 `;
 
 /** Insert `insert` immediately after `anchor`; null when absent. */
@@ -233,6 +242,9 @@ export class CloudShadeController {
   private targetStrength = 0;
   /** Night 0..1 from the time-of-day look; dampens the shade after sunset. */
   private night = 0;
+  /** 0..1 zoom fade: patches of a few hundred metres read as grey noise at
+   * city-overview zooms, so the shade fades out there (LOD by view size). */
+  private zoomFade = 1;
   private drift = 0;
 
   constructor(uniforms: CloudShadeUniforms) {
@@ -249,6 +261,13 @@ export class CloudShadeController {
   /** Night 0..1 from the time-of-day look; weakens the shade at night. */
   setNight(value: number): void {
     this.night = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+  }
+
+  /** Current ortho height: the shade fades out on city-overview zooms. */
+  setOrthoHeight(value: number): void {
+    const h = Number.isFinite(value) ? value : 0;
+    const t = Math.min(1, Math.max(0, (h - 700) / (1500 - 700)));
+    this.zoomFade = 1 - t * t * (3 - 2 * t);
   }
 
   /** Seasonal snow blanket 0..1 (direct set — seasons change rarely). */
@@ -269,9 +288,10 @@ export class CloudShadeController {
     const rate = Math.min(1, Math.abs(this.targetStrength - this.strength));
     this.strength += Math.sign(this.targetStrength - this.strength) * rate * dt;
     if (Math.abs(this.targetStrength - this.strength) < 0.002) this.strength = this.targetStrength;
-    // Clouds block sunlight, not city glow: damp the shade after sunset.
+    // Clouds block sunlight, not city glow (night), and their patches turn
+    // into grey noise at overview zoom (zoom fade).
     this.uniforms.uCloudStrength.value =
-      this.strength * (1 - NIGHT_DAMP * this.night);
+      this.strength * (1 - NIGHT_DAMP * this.night) * this.zoomFade;
 
     this.drift += dt * CLOUD_DRIFT_MPS;
     const offset = this.uniforms.uCloudOffset.value as THREE.Vector2;

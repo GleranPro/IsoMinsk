@@ -31,13 +31,15 @@ describe('seasonAppearance', () => {
   it('hides the canopy and sets snow in winter', () => {
     const winter = seasonAppearance('winter');
     expect(winter.canopyVisible).toBe(false);
-    expect(winter.snow).toBeGreaterThan(0.5);
+    expect(winter.snow).toBeGreaterThan(0.4);
   });
 
-  it('recolours spring/autumn canopies and keeps summer stock', () => {
-    expect(seasonAppearance('summer').canopyPalette).toBeNull();
-    expect(seasonAppearance('autumn').canopyPalette).not.toBeNull();
-    expect(seasonAppearance('spring').canopyPalette).not.toBeNull();
+  it('gives every season an explicit palette (switching summer->autumn->summer works)', () => {
+    for (const season of ['spring', 'summer', 'autumn', 'winter'] as const) {
+      expect(seasonAppearance(season).canopyPalette).toHaveLength(4);
+    }
+    // Summer restores the baseline canopy, not the previous season's colours.
+    expect(seasonAppearance('summer').canopyPalette).toEqual(['#52783c', '#648749', '#73944f', '#456b36']);
     expect(seasonAppearance('autumn').snow).toBe(0);
   });
 });
