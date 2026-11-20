@@ -13,7 +13,6 @@
 
 import * as THREE from 'three';
 import * as facadeModuleNamespace from './facadeMaterial';
-import { applyCloudShade, type CloudShadeUniforms } from '../renderer/cloudShade';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -54,21 +53,12 @@ function tryCreateModuleMaterial(name: string): THREE.Material | null {
   return null;
 }
 
-export function createEnvironmentMaterialSet(
-  cloudUniforms?: CloudShadeUniforms,
-): EnvironmentMaterialSet {
+export function createEnvironmentMaterialSet(): EnvironmentMaterialSet {
   const environment = tryCreateModuleMaterial('environment') ?? createFallbackMaterial('environment');
   const trees = tryCreateModuleMaterial('trees') ?? createFallbackMaterial('trees');
   const treeTrunks = tryCreateModuleMaterial('tree-trunks') ?? createFallbackMaterial('tree-trunks');
   const treeCanopies = tryCreateModuleMaterial('tree-canopies') ?? createFallbackMaterial('tree-canopies');
   const attractions = tryCreateModuleMaterial('attractions') ?? createFallbackMaterial('attractions');
-  if (cloudUniforms) {
-    // Cloud shades darken every ground-facing surface (see cloudShade.ts);
-    // trees are instanced, the chunk handles USE_INSTANCING itself.
-    for (const material of [environment, trees, treeTrunks, treeCanopies, attractions]) {
-      applyCloudShade(material, cloudUniforms);
-    }
-  }
   return {
     environment,
     trees,

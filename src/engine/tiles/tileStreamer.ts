@@ -37,8 +37,6 @@ import {
   type TileWirePayload,
 } from './serialization';
 import { TileWorkerPool } from './tileWorkerPool';
-import type { NightLampsLayer } from './nightLamps';
-import type { CloudShadeUniforms } from '../renderer/cloudShade';
 import { createDemoManifest, createDemoTiles } from './demoTiles';
 import { CANOPY_PALETTE, treeInstanceBytes, type TreeRenderStyle } from '../../city/environment/treeInstances';
 import { applyCanopyAppearance, createTileTrees, TreeTemplateCache, type CanopyAppearance, type TileTrees } from './instancedTrees';
@@ -109,10 +107,6 @@ export interface TileStreamerOptions {
   maxTopUpGeometryMB?: number;
   /** Manifest tile URL layout preference ('flat' central, 'nested' city). */
   tileLayout?: 'flat' | 'nested' | 'auto';
-  /** Night lamp layer: receives per-tile lamp spots on adopt/evict and the camera frame. */
-  nightLamps?: NightLampsLayer;
-  /** Shared cloud-shade uniforms for ground/deck materials (see cloudShade.ts). */
-  cloudUniforms?: CloudShadeUniforms;
   onError?: (message: string) => void;
   onWarning?: (message: string) => void;
   onLoadingChange?: (loading: boolean, progress: number) => void;
@@ -540,12 +534,6 @@ export class TileStreamer {
     }
     this.updateLod(renderHeightPx, rig);
     this.updateLoadingProgress();
-    // Night lamps: refill buffers only when the camera cell changes; per-frame
-    // cost is the cheap setView compare.
-    if (this.options.nightLamps) {
-      this.options.nightLamps.setView(target.x, target.z, orthoHeight * 1.2);
-      this.options.nightLamps.update(performance.now());
-    }
     if (this.tilesChangedPending) {
       this.tilesChangedPending = false;
       this.options.onTilesChanged?.();
@@ -984,7 +972,7 @@ export class TileStreamer {
         payload.ground.width,
         payload.ground.height,
       );
-      const material = createGroundMaterial(texture, this.options.cloudUniforms);
+      const material = createGroundMaterial(texture);
       groundMesh = new THREE.Mesh(
         createGroundQuad(payload.ground.bounds, GROUND_LAYER_Y.base),
         material,
@@ -998,7 +986,7 @@ export class TileStreamer {
       bytes += payload.ground.data.byteLength;
     }
 
-    const deckMesh = createDeckMesh(payload, this.options.cloudUniforms);
+    const deckMesh = createDeckMesh(payload);
     if (deckMesh && payload.decks) {
       group.add(deckMesh);
       triangles += payload.decks.mesh.triangleCount;
@@ -1073,19 +1061,12 @@ export class TileStreamer {
     this.geometryBytes += bytes;
     this.tilesChangedPending = true;
     this.failedKeys.delete(payload.key);
-    // Night lamps: adopt the worker-baked spots (transferred ArrayBuffer; the
-    // Float32Array is a view, no copy).
-    this.options.nightLamps?.setTileSpots(
-      payload.key,
-      payload.lamps ? new Float32Array(payload.lamps) : null,
-    );
   }
 
   private evictTile(key: string): void {
     const entry = this.tiles.get(key);
     if (!entry) return;
     this.tiles.delete(key);
-    this.options.nightLamps?.removeTile(key);
     this.root.remove(entry.group);
     entry.trees?.dispose();
     entry.group.traverse((object) => {
@@ -1269,10 +1250,10 @@ export class TileStreamer {
     if (!entry.groundMesh || !payload.ground || payload.ground.data.byteLength === 0) return;
     const texture = createGroundTexture(payload.ground.data, payload.ground.width, payload.ground.height);
     const old = entry.groundMesh.material as THREE.MeshLambertMaterial;
-    entry.groundMesh.material = createGroundMaterial(texture, this.options.cloudUniforms);
+    entry.groundMesh.material = createGroundMaterial(texture);
     old.map?.dispose();
     old.dispose();
-    const decks = createDeckMesh(payload, this.options.cloudUniforms);
+    const decks = createDeckMesh(payload);
     if (entry.deckMesh) {
       entry.group.remove(entry.deckMesh);
       entry.deckMesh.geometry.dispose();
@@ -1443,14 +1424,14 @@ export class TileStreamer {
 }
 
 /** Textured bridge-deck mesh of a payload (payload 0.4.2), or null. */
-function createDeckMesh(payload: TileWirePayload, cloudUniforms?: CloudShadeUniforms): THREE.Mesh | null {
+function createDeckMesh(payload: TileWirePayload): THREE.Mesh | null {
   if (!payload.decks || payload.decks.mesh.triangleCount <= 0) return null;
   const texture = createGroundTexture(
     payload.decks.texture.data,
     payload.decks.texture.width,
     payload.decks.texture.height,
   );
-  const material = createGroundMaterial(texture, cloudUniforms);
+  const material = createGroundMaterial(texture);
   material.name = 'IsometricMinskBridgeDeck';
   const mesh = new THREE.Mesh(unpackGeometry(payload.decks.mesh), material);
   mesh.receiveShadow = true;

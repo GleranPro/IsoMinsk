@@ -37,12 +37,10 @@ import { FACADE_PRESET_COUNT } from '../../shared/buildingStyles';
 import { motifRowsForUniforms, presetRowsForUniforms } from '../../city/facades/presets';
 import { hexToRgb, PIXEL_PALETTE, paletteToFloat32 } from '../postprocess/palette';
 import {
-  FACADE_FRAGMENT_ALBEDO_TAIL,
   FACADE_PROGRAM_CACHE_KEY,
   patchFacadeFragmentShader,
   patchFacadeVertexShader,
 } from '../shaders/facadeShader';
-import { applyCloudShade, type CloudShadeUniforms } from '../renderer/cloudShade';
 import { FACADE_TRIM_COLOR, WINDOW_COLORS } from './palette';
 
 export interface FacadeMaterialOptions {
@@ -198,22 +196,6 @@ export function createFacadeMaterial(options: FacadeMaterialOptions): THREE.Mate
   material.customProgramCacheKey = () => FACADE_PROGRAM_CACHE_KEY;
 
   return material;
-}
-
-/**
- * Wire the shared cloud-shade uniforms into a facade material. The darkening
- * anchors after the facade albedo block (lit windows stay lit), so this must
- * run before the material's first compile and only after `onBeforeCompile` is
- * installed (it wraps the facade patch).
- */
-export function applyFacadeCloudShade(
-  material: THREE.Material,
-  uniforms: CloudShadeUniforms,
-): void {
-  applyCloudShade(material, uniforms, {
-    fragmentAfter: FACADE_FRAGMENT_ALBEDO_TAIL,
-    cacheKeySuffix: '-facade',
-  });
 }
 
 function getFacadeUniformSet(material: THREE.Material | undefined | null): FacadeUniformSet | null {

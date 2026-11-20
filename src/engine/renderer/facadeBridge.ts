@@ -13,7 +13,6 @@
 
 import * as THREE from 'three';
 import * as facadeModuleNamespace from '../materials/facadeMaterial';
-import type { CloudShadeUniforms } from './cloudShade';
 
 export interface FacadeMaterialOptionsLike {
   detail: boolean;
@@ -63,27 +62,6 @@ export function createFacadeMaterialSafe(options: FacadeMaterialOptionsLike): TH
     }
   }
   return new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-}
-
-/**
- * Wire the shared cloud-shade uniforms into a facade material (module helper
- * when present; a no-op keeps the fallback material rendering if the module is
- * stubbed). Must run before the material's first compile.
- */
-export function applyCloudShadeSafe(
-  material: THREE.Material | null | undefined,
-  uniforms: CloudShadeUniforms,
-): void {
-  if (!material) return;
-  const apply = getFunction('applyFacadeCloudShade');
-  if (apply) {
-    try {
-      apply(material, uniforms);
-      return;
-    } catch (error) {
-      warnOnce('applyFacadeCloudShade threw; facades keep unshaded albedo', error);
-    }
-  }
 }
 
 /**

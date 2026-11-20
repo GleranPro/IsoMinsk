@@ -139,8 +139,6 @@ export class MobilityController {
   private extraNotes: string[] = [];
   private readonly simulationSamples: number[] = [];
   private lastDrawnIds = new Set<string>();
-  /** Ночь 0..1 из time-of-day: слой включает фары транспорта. */
-  private nightFactor = 0;
   /**
    * Bounds of all verified corridors. Every frame requests the union of this
    * rect and the camera rect, so the corridor geometry is always resident: the
@@ -301,11 +299,6 @@ export class MobilityController {
     return { ...this.settings };
   }
 
-  /** Ночь 0..1 из time-of-day: включает фары и габариты транспорта. */
-  setNightFactor(value: number): void {
-    this.nightFactor = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
-  }
-
   /**
    * Явная переинициализация сервисной даты и времени суток (QA). `null` —
    * вернуться к живым часам. По умолчанию 08:00 местного времени зоны
@@ -388,7 +381,6 @@ export class MobilityController {
       trips,
       signals: this.signalStates(),
       step: this.clock.stepCount,
-      nightFactor: this.nightFactor,
     });
     // The layer decides what is actually drawn (LOD, budget, culling); record it
     // so the QA dump reports the same set the screen shows.
