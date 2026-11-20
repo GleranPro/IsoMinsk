@@ -60,13 +60,13 @@ export interface FacadeUniformSet {
   uPaletteMix: THREE.IUniform<number>;
   uTimeHours: THREE.IUniform<number>;
   /**
-   * vec4[38]: bayWidth, windowWidthRatio, windowHeightRatio, sillRatio, indexed
-   * by the packed recipe id (27 families + 11 legacy archetype presets).
+   * vec4[41]: bayWidth, windowWidthRatio, windowHeightRatio, sillRatio, indexed
+   * by the packed recipe id (27 families + 11 legacy presets + 3 shells).
    */
   uPresetA: THREE.IUniform<Float32Array>;
-  /** vec4[38]: floorHeight, groundFloorHeight, balconyRatio, corniceHeight. */
+  /** vec4[41]: floorHeight, groundFloorHeight, balconyRatio, corniceHeight. */
   uPresetB: THREE.IUniform<Float32Array>;
-  /** float[38]: shader motif id per recipe row (-1 = legacy archetype preset). */
+  /** float[41]: shader motif id per recipe row (-1 = legacy archetype preset). */
   uRecipeMotif: THREE.IUniform<Float32Array>;
   uGlassColor: THREE.IUniform<THREE.Vector3>;
   uGlassLightColor: THREE.IUniform<THREE.Vector3>;

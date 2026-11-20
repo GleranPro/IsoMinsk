@@ -2151,6 +2151,12 @@ def main() -> int:
             continue
         add_mask_geom(soft_mask_geoms, clearing)
 
+    # War Museum Li-2 display pad (OSM way 384806738, next to w127103385): the
+    # real round pad is fenced and treeless, while the park heuristic keeps
+    # planting canopies on it. Keep a clearing so the exhibit stays visible from
+    # the isometric camera.
+    add_mask_geom(soft_mask_geoms, Point(-1584.04, 1646.18).buffer(16.0, 16))
+
     tree_surfaces: list[tuple[str, Polygon]] = []
     for surface in surface_features:
         try:

@@ -288,7 +288,9 @@ describe('buildBuildingsMesh — facade attributes', () => {
           flags: preset.flags,
           recipeId: legacyRecipeId('panel'),
         });
-        expectClose(vertex.face[2], Math.min(1, preset.corniceHeight / 1.1));
+        // Anonymous `building=yes` fixtures are weak evidence: trim intensity is
+        // scaled down so plain houses do not get stone surrounds.
+        expectClose(vertex.face[2], Math.min(1, preset.corniceHeight / 1.1) * 0.4);
       }
     }
   });

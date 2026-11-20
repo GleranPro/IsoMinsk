@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-18T16:52:22Z",
+  "generator": "scripts/models/build_transport_models.py",
+  "source": "procedural low-poly transport templates authored in Blender 5.1",
+  "positionScale": 100,
+  "colorSpace": "srgb",
+  "axis": "runtime: +X forward, +Y up, +Z right",
+  "vertexCount": 19500,
+  "positionBytes": 117000,
+  "colorBytes": 58500,
+  "byteLength": 175500,
+  "models": {
+    "bus": {
+      "vertexStart": 0,
+      "vertexCount": 3228,
+      "triangles": 1076,
+      "positionStart": 0,
+      "colorStart": 0,
+      "bounds": {
+        "min": [
+          -6.11,
+          0.0,
+          -1.53
+        ],
+        "max": [
+          6.11,
+          3.53,
+          1.53
+        ]
+      },
+      "lengthM": 12.22,
+      "widthM": 3.06,
+      "heightM": 3.53
+    },
+    "trolleybus": {
+      "vertexStart": 3228,
+      "vertexCount": 3576,
+      "triangles": 1192,
+      "positionStart": 3228,
+      "colorStart": 3228,
+      "bounds": {
+        "min": [
+          -6.11,
+          0.0,
+          -1.53
+        ],
+        "max": [
+          6.11,
+          4.757,
+          1.53
+        ]
+      },
+      "lengthM": 12.22,
+      "widthM": 3.06,
+      "heightM": 4.757
+    },
+    "tram": {
+      "vertexStart": 6804,
+      "vertexCount": 2556,
+      "triangles": 852,
+      "positionStart": 6804,
+      "colorStart": 6804,
+      "bounds": {
+        "min": [
+          -7.82,
+          0.0,
+          -1.266
+        ],
+        "max": [
+          7.82,
+          4.99,
+          1.31
+        ]
+      },
+      "lengthM": 15.64,
+      "widthM": 2.576,
+      "heightM": 4.99
+    },
+    "commuterLead": {
+      "vertexStart": 9360,
+      "vertexCount": 2496,
+      "triangles": 832,
+      "positionStart": 9360,
+      "colorStart": 9360,
+      "bounds": {
+        "min": [
+          -12.595,
+          0.0,
+          -1.785
+        ],
+        "max": [
+          12.595,
+          4.4,
+          1.785
+        ]
+      },
+      "lengthM": 25.19,
+      "widthM": 3.57,
+      "heightM": 4.4
+    },
+    "commuterCar": {
+      "vertexStart": 11856,
+      "vertexCount": 2016,
+      "triangles": 672,
+      "positionStart": 11856,
+      "colorStart": 11856,
+      "bounds": {
+        "min": [
+          -12.52,
+          0.0,
+          -1.785
+        ],
+        "max": [
+          12.52,
+          5.405,
+          1.785
+        ]
+      },
+      "lengthM": 25.04,
+      "widthM": 3.57,
+      "heightM": 5.405
+    },
+    "freightLoco": {
+      "vertexStart": 13872,
+      "vertexCount": 3408,
+      "triangles": 1136,
+      "positionStart": 13872,
+      "colorStart": 13872,
+      "bounds": {
+        "min": [
+          -9.56,
+          0.0,
+          -1.562
+        ],
+        "max": [
+          9.56,
+          5.225,
+          1.562
+        ]
+      },
+      "lengthM": 19.12,
+      "widthM": 3.124,
+      "heightM": 5.225
+    },
+    "freightWagon": {
+      "vertexStart": 17280,
+      "vertexCount": 2220,
+      "triangles": 740,
+      "positionStart": 17280,
+      "colorStart": 17280,
+      "bounds": {
+        "min": [
+          -7.29,
+          0.0,
+          -1.63
+        ],
+        "max": [
+          7.29,
+          3.3532,
+          1.63
+        ]
+      },
+      "lengthM": 14.58,
+      "widthM": 3.26,
+      "heightM": 3.3532
+    }
+  }
+}

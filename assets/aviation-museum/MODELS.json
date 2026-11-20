@@ -30,11 +30,14 @@
   {
    "slug": "il-14",
    "label": "Ил-14П",
-   "uid": null,
-   "source": "missing",
-   "license": null,
-   "author": null,
-   "status": "missing"
+   "uid": "8fae02999b384793b368e240161b4e99",
+   "source": "sketchfab",
+   "license": "CC Attribution",
+   "author": "42manako",
+   "status": "downloaded",
+   "note": "Downloaded Il-14N model; passenger-window/door differences from the Il-14P exhibit need checking before baking.",
+   "raw": "raw/il-14/il-14.glb",
+   "bytes": 3702188
   },
   {
    "slug": "il-18",
@@ -362,6 +365,54 @@
    "bytes": 1488888,
    "decimated": "decimated/citation-x/citation-x.glb",
    "triangles": "[decimate] citation-x.glb: 43787 -> 4000 tris (ratio 0.091), glb 0.18 MB -> <repo>\\assets\\aviation-museum\\decimated\\citation-x\\citation-x.glb"
+  },
+  {
+   "slug": "tu-154",
+   "label": "Ту-154",
+   "uid": "dca474693e4b4b2da2e415c14ccf8900",
+   "source": "sketchfab",
+   "license": "CC Attribution",
+   "author": "manilov.ap",
+   "status": "downloaded",
+   "note": "Downloaded candidate; the museum exhibit is a Tu-154M, this generic Tu-154 still needs checking before baking.",
+   "raw": "raw/tu-154/tu-154.glb",
+   "bytes": 2956696
+  },
+  {
+   "slug": "an-12",
+   "label": "Ан-12Б",
+   "uid": "707e22f6edc64871b8c02f556be03075",
+   "source": "sketchfab",
+   "license": "CC Attribution",
+   "author": "helijah",
+   "status": "downloaded",
+   "note": "Downloaded candidate for the An-12B exhibit.",
+   "raw": "raw/an-12/an-12.glb",
+   "bytes": 12781412
+  },
+  {
+   "slug": "yak-52",
+   "label": "Як-52",
+   "uid": "4f16a9e742f94f99b06a81ac9cc9a0b2",
+   "source": "sketchfab",
+   "license": "CC Attribution",
+   "author": "helijah",
+   "status": "downloaded",
+   "note": "Downloaded candidate for the Yak-52 exhibit.",
+   "raw": "raw/yak-52/yak-52.glb",
+   "bytes": 13890520
+  },
+  {
+   "slug": "an-24",
+   "label": "Ан-24Б",
+   "uid": "49b37176c8d34a028e22b99f78239bc3",
+   "source": "sketchfab",
+   "license": "CC Attribution",
+   "author": "manilov.ap",
+   "status": "downloaded",
+   "note": "Downloaded An-24 model; variant/livery needs checking before baking.",
+   "raw": "raw/an-24/an-24.glb",
+   "bytes": 2162756
   }
  ]
 }

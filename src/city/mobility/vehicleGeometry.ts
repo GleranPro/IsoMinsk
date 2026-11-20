@@ -1,20 +1,21 @@
 /**
- * Isometric Minsk — процедурные low-poly модели общественного транспорта.
+ * Isometric Minsk — low-poly модели транспорта.
  *
- * Один цельный кузов на модель: автобус (~12 м), троллейбус со штангами
- * (~12 м) и трамвайный вагон (~15 м). Модели сознательно стилизованы под
- * pixel-art: силуэт, тёмная полоса остекления, колёса/обтекатели, юбка и
- * табло — без отдельных материалов, текстур и мешей на деталь.
+ * Основной источник геометрии — Blender-модели из
+ * `scripts/models/build_transport_models.py` (см. `vehiclePayload.ts`): ливреи
+ * запечены в vertex colors по референсам Минсктранса (жёлтый МАЗ-203,
+ * мятный МАЗ-203Т, бирюзовый АКСМ-60102, сине-оранжевый ЭР9М, зелёный ВЛ80).
+ * Функции ниже строят упрощённый процедурный fallback тех же габаритов: он
+ * работает до загрузки payload и при его отсутствии.
  *
  * Оси модели: +X — направление движения, +Y — вверх, +Z — правый борт.
  * Геометрия центрирована по длине и ширине; низ колёс на y = 0, поэтому
  * экземпляр ставится на высоту дорожного покрытия без дополнительной подгонки.
  *
  * Цвета запечены в vertex colors (линейное пространство). Кузовные грани
- * оставлены почти белыми: цвет конкретной машины задаётся `instanceColor`
- * (см. `vehicleTintColor`), который умножается на вершины. Тёмные детали
- * (стёкла, колёса, юбка) при умножении остаются тёмными, поэтому ливрея не
- * разрушает силуэт — это осознанное ограничение общей палитры.
+ * fallback-моделей остаются почти белыми, поэтому `instanceColor` с белым
+ * ливрейным оттенком (`MOBILITY_LIVERY`) не меняет их вид, а тёмные детали
+ * (стёкла, колёса, юбка) при умножении остаются тёмными.
  */
 
 import * as THREE from 'three';
@@ -28,40 +29,72 @@ import {
   type LinearRgb,
 } from './lowPoly';
 
-/** Модели первого этапа: цельный автобус, троллейбус и трамвайный вагон. */
-export type VehicleModel = 'bus' | 'trolleybus' | 'tram';
+/**
+ * Шаблоны транспорта. `bus`/`trolleybus`/`tram` совпадают с `MobilityMode` и
+ * приходят из расписания; четыре ж/д шаблона используются фоновым слоем
+ * поездов (`src/engine/rail`).
+ */
+export type VehicleModel = 'bus' | 'trolleybus' | 'tram' | 'commuterLead' | 'commuterCar' | 'freightLoco' | 'freightWagon';
 
-export const VEHICLE_MODELS: readonly VehicleModel[] = ['bus', 'trolleybus', 'tram'];
+/** Шаблоны, управляемые расписанием (`MobilityMode`). */
+export type TransitVehicleModel = 'bus' | 'trolleybus' | 'tram';
+
+export const TRANSIT_VEHICLE_MODELS: readonly TransitVehicleModel[] = ['bus', 'trolleybus', 'tram'];
+
+export const RAIL_VEHICLE_MODELS: readonly Exclude<VehicleModel, TransitVehicleModel>[] = [
+  'commuterLead',
+  'commuterCar',
+  'freightLoco',
+  'freightWagon',
+];
+
+export const VEHICLE_MODELS: readonly VehicleModel[] = [
+  ...TRANSIT_VEHICLE_MODELS,
+  ...RAIL_VEHICLE_MODELS,
+];
 
 /** Габариты моделей, метры (длина по +X, ширина по Z, высота по Y). */
 export const VEHICLE_DIMENSIONS: Readonly<
   Record<VehicleModel, { lengthM: number; widthM: number; bodyHeightM: number; totalHeightM: number }>
 > = {
-  bus: { lengthM: 12, widthM: 2.5, bodyHeightM: 3.04, totalHeightM: 3.04 },
-  trolleybus: { lengthM: 12, widthM: 2.5, bodyHeightM: 3.04, totalHeightM: 4.78 },
-  tram: { lengthM: 15, widthM: 2.5, bodyHeightM: 3.5, totalHeightM: 4.42 },
+  bus: { lengthM: 12.2, widthM: 2.5, bodyHeightM: 3.18, totalHeightM: 3.53 },
+  trolleybus: { lengthM: 12.2, widthM: 2.5, bodyHeightM: 3.18, totalHeightM: 4.76 },
+  tram: { lengthM: 15.6, widthM: 2.5, bodyHeightM: 3.62, totalHeightM: 4.99 },
+  commuterLead: { lengthM: 24.5, widthM: 3.45, bodyHeightM: 4.22, totalHeightM: 4.4 },
+  commuterCar: { lengthM: 24.5, widthM: 3.45, bodyHeightM: 4.22, totalHeightM: 5.41 },
+  freightLoco: { lengthM: 19.1, widthM: 2.95, bodyHeightM: 4.05, totalHeightM: 5.22 },
+  freightWagon: { lengthM: 14.4, widthM: 3.0, bodyHeightM: 3.21, totalHeightM: 3.35 },
 };
 
 /**
- * Бюджеты треугольников на шаблон. Значения подобраны с запасом ~15 % над
- * фактической моделью: тест `tests/unit/mobility/geometry.vehicles.test.ts`
- * не даёт силуэту незаметно разрастись.
+ * Бюджеты треугольников на шаблон: совпадают с бюджетами Blender-моделей.
+ * Тест `tests/unit/mobility/geometry.vehicles.test.ts` не даёт силуэту
+ * незаметно разрастись.
  */
 export const VEHICLE_TRIANGLE_BUDGET: Readonly<Record<VehicleModel, number>> = {
-  bus: 200,
-  trolleybus: 280,
-  tram: 280,
+  bus: 1100,
+  trolleybus: 1250,
+  tram: 900,
+  commuterLead: 900,
+  commuterCar: 780,
+  freightLoco: 1200,
+  freightWagon: 900,
 };
 
 /**
- * Ограниченная палитра ливрей: по три оттенка на модель. Это художественное
- * решение, а не сведения о реальном автопарке; источник данных о ливреях в
- * контракте отсутствует.
+ * Ливрея: цвет `instanceColor`. Основные ливреи (жёлтый автобус, мятный
+ * троллейбус, бирюзовый трамвай, синий ЭР9, зелёный ВЛ80) запечены в vertex
+ * colors Blender-моделей, поэтому tint остаётся белым. Палитра из одного
+ * оттенка сохраняет контракт `vehicleTintColor` для выделения рейса.
  */
 export const MOBILITY_LIVERY: Readonly<Record<VehicleModel, readonly string[]>> = {
-  bus: ['#d8a63c', '#c88f35', '#e0bb5f'],
-  trolleybus: ['#d9d5c8', '#c7c3b6', '#e3dfd2'],
-  tram: ['#b2493a', '#a34033', '#c05a47'],
+  bus: ['#ffffff'],
+  trolleybus: ['#ffffff'],
+  tram: ['#ffffff'],
+  commuterLead: ['#ffffff'],
+  commuterCar: ['#ffffff'],
+  freightLoco: ['#ffffff'],
+  freightWagon: ['#ffffff'],
 };
 
 /** Служебные цвета деталей (не ливрея). */
@@ -96,11 +129,21 @@ const POLE = linearRgb(VEHICLE_DETAIL_COLORS.pole);
 const POLE_SHOE = linearRgb(VEHICLE_DETAIL_COLORS.poleShoe);
 const BOGIE = linearRgb(VEHICLE_DETAIL_COLORS.bogie);
 
-const BUS_HALF_LENGTH = 6;
+/** Ливреи Минсктранса для процедурного fallback (ср. Blender-модели). */
+const BUS_YELLOW = linearRgb('#e9b900');
+const TROLLEY_MINT = linearRgb('#c9d9c7');
+const TRAM_TEAL = linearRgb('#35b4ad');
+const ER9_BLUE = linearRgb('#2f5f9e');
+const ER9_LIGHT = linearRgb('#c7d4dc');
+const ER9_ORANGE = linearRgb('#e87722');
+const LOCO_GREEN = linearRgb('#2f5a3a');
+const WAGON_BROWN = linearRgb('#5a4a3c');
+
+const BUS_HALF_LENGTH = 6.1;
 const BUS_HALF_WIDTH = 1.25;
 const BUS_BOTTOM = 0.62;
 const BUS_ROOF = 3.04;
-const TRAM_HALF_LENGTH = 7.5;
+const TRAM_HALF_LENGTH = 7.8;
 const TRAM_HALF_WIDTH = 1.25;
 const TRAM_BOTTOM = 0.55;
 const TRAM_ROOF = 3.5;
@@ -134,6 +177,19 @@ export function vehicleTintColor(model: VehicleModel, seed: string, target = new
   return target.setStyle(vehicleLiveryHex(model, seed));
 }
 
+/**
+ * Окраска сторон профиля кузова: низ тёмный, крыша чуть темнее корпуса,
+ * борта — цвет ливреи.
+ */
+function bodySegmentColor(body: LinearRgb): (index: number) => LinearRgb {
+  return (index: number) => {
+    if (index === 0) return UNDERBODY;
+    if (index === 3) return scaleRgb(body, 0.86);
+    if (index === 2 || index === 4) return scaleRgb(body, 0.92);
+    return body;
+  };
+}
+
 /** Общий профиль кузова автобуса/троллейбуса в плоскости (z, y), против часовой. */
 function busProfile(): readonly (readonly [number, number])[] {
   return [
@@ -144,14 +200,6 @@ function busProfile(): readonly (readonly [number, number])[] {
     [-0.99, BUS_ROOF],
     [-BUS_HALF_WIDTH, 2.7],
   ];
-}
-
-/** Окраска сторон профиля автобуса: низ тёмный, крыша светлее корпуса. */
-function busSegmentColor(index: number): LinearRgb {
-  if (index === 0) return UNDERBODY;
-  if (index === 3) return ROOF;
-  if (index === 2 || index === 4) return scaleRgb(WHITE, 0.9);
-  return WHITE;
 }
 
 /** Полоса остекления, табло и светотехника общего кузова. */
@@ -229,16 +277,21 @@ function addRoadWheels(builder: SurfaceBuilder): void {
 }
 
 function buildBus(builder: SurfaceBuilder): void {
-  builder.loft(busProfile(), -BUS_HALF_LENGTH, BUS_HALF_LENGTH, busSegmentColor, {
-    back: scaleRgb(WHITE, 0.86),
-    front: WHITE,
+  builder.loft(busProfile(), -BUS_HALF_LENGTH, BUS_HALF_LENGTH, bodySegmentColor(BUS_YELLOW), {
+    back: scaleRgb(BUS_YELLOW, 0.86),
+    front: BUS_YELLOW,
   });
   addBusDetails(builder);
   addRoadWheels(builder);
 }
 
 function buildTrolleybus(builder: SurfaceBuilder): void {
-  buildBus(builder);
+  builder.loft(busProfile(), -BUS_HALF_LENGTH, BUS_HALF_LENGTH, bodySegmentColor(TROLLEY_MINT), {
+    back: scaleRgb(TROLLEY_MINT, 0.86),
+    front: TROLLEY_MINT,
+  });
+  addBusDetails(builder);
+  addRoadWheels(builder);
   // Штанги: от крыши назад-вверх к контактной сети (точная сеть не моделируется).
   builder.box([-1.1, 3.12, 0], [1.5, 0.16, 1.45], scaleRgb(WHITE, 0.72), FLAT_FACE_SHADE);
   for (const side of [-1, 1]) {
@@ -264,13 +317,8 @@ function buildTram(builder: SurfaceBuilder): void {
     profile,
     -TRAM_HALF_LENGTH,
     TRAM_HALF_LENGTH,
-    (index) => {
-      if (index === 0) return UNDERBODY;
-      if (index === 3 || index === 4) return ROOF;
-      if (index === 2 || index === 5) return scaleRgb(WHITE, 0.9);
-      return WHITE;
-    },
-    { back: scaleRgb(WHITE, 0.86), front: WHITE },
+    bodySegmentColor(TRAM_TEAL),
+    { back: scaleRgb(TRAM_TEAL, 0.86), front: TRAM_TEAL },
   );
   // Боковые окна.
   builder.box([0, 2.2, halfW + 0.008], [13.2, 1.05, 0.02], GLASS, FLAT_FACE_SHADE);
@@ -347,14 +395,194 @@ function buildTram(builder: SurfaceBuilder): void {
   builder.box([0, 4.33, 0], [0.12, 0.1, 1.7], POLE, FLAT_FACE_SHADE);
 }
 
+// ---------------------------------------------------------------------------
+// ж/д fallback: упрощённые вагоны ЭР9 и грузового состава
+// ---------------------------------------------------------------------------
+const CAR_HALF_LENGTH = 12.25;
+const CAR_HALF_WIDTH = 1.725;
+const CAR_BOTTOM = 1.02;
+const CAR_ROOF = 4.22;
+const CAR_PROFILE: readonly (readonly [number, number])[] = [
+  [-CAR_HALF_WIDTH, CAR_BOTTOM],
+  [CAR_HALF_WIDTH, CAR_BOTTOM],
+  [CAR_HALF_WIDTH, 3.3],
+  [CAR_HALF_WIDTH * 0.9, 3.8],
+  [CAR_HALF_WIDTH * 0.45, CAR_ROOF],
+  [-CAR_HALF_WIDTH * 0.45, CAR_ROOF],
+  [-CAR_HALF_WIDTH * 0.9, 3.8],
+  [-CAR_HALF_WIDTH, 3.3],
+];
+
+function carSegmentColor(index: number): LinearRgb {
+  if (index === 0) return UNDERBODY;
+  if (index === 1 || index === 7) return ER9_BLUE;
+  if (index === 3 || index === 4 || index === 5) return scaleRgb(ROOF, 0.86);
+  return ER9_LIGHT;
+}
+
+function addRailWheels(builder: SurfaceBuilder, axles: readonly number[], radius = 0.46): void {
+  for (const axleX of axles) {
+    for (const side of [-1, 1]) {
+      // 8 сегментов: вершина ровно в точке контакта с рельсом (y = 0).
+      builder.cylinderZ([axleX, radius, side * 1.18], radius, 0.12, 8, RUBBER, WHEEL_HUB);
+    }
+  }
+}
+
+function addCommuterDetails(builder: SurfaceBuilder): void {
+  const halfW = CAR_HALF_WIDTH;
+  // Сплошная тёмная полоса остекления с светлыми простенками.
+  builder.box([0, 2.7, halfW + 0.01], [21.6, 0.95, 0.03], GLASS, FLAT_FACE_SHADE);
+  builder.box([0, 2.7, -halfW - 0.01], [21.6, 0.95, 0.03], GLASS, FLAT_FACE_SHADE);
+  // Оранжевая полоса ЭР9 под окнами.
+  builder.box([0, 2.14, halfW + 0.014], [23.6, 0.14, 0.02], ER9_ORANGE, FLAT_FACE_SHADE);
+  for (const x of [-6.9, 6.9]) {
+    for (const side of [-1, 1]) {
+      const z = side * (halfW + 0.016);
+      builder.quad(
+        [x - 0.75, 0.98, z],
+        [x + 0.75, 0.98, z],
+        [x + 0.75, 3.2, z],
+        [x - 0.75, 3.2, z],
+        [0, 0, side],
+        GLASS,
+      );
+    }
+  }
+  // Тележки.
+  for (const x of [-8.7, 8.7]) {
+    builder.box([x, 0.55, 0], [3.0, 0.5, 2.3], BOGIE, FLAT_FACE_SHADE);
+  }
+  addRailWheels(builder, [-9.75, -7.65, 7.65, 9.75]);
+}
+
+function buildCommuterLead(builder: SurfaceBuilder): void {
+  builder.loft(CAR_PROFILE, -CAR_HALF_LENGTH, CAR_HALF_LENGTH, carSegmentColor, {
+    back: scaleRgb(ER9_LIGHT, 0.86),
+    front: ER9_LIGHT,
+  });
+  addCommuterDetails(builder);
+  // Синяя маска кабины и лобовое стекло.
+  builder.quad(
+    [CAR_HALF_LENGTH + 0.006, 1.05, -1.4],
+    [CAR_HALF_LENGTH + 0.006, 1.05, 1.4],
+    [CAR_HALF_LENGTH + 0.006, 2.95, 1.4],
+    [CAR_HALF_LENGTH + 0.006, 2.95, -1.4],
+    [1, 0, 0],
+    ER9_BLUE,
+  );
+  builder.quad(
+    [CAR_HALF_LENGTH + 0.012, 2.3, -1.3],
+    [CAR_HALF_LENGTH + 0.012, 2.3, 1.3],
+    [CAR_HALF_LENGTH + 0.012, 3.5, 1.3],
+    [CAR_HALF_LENGTH + 0.012, 3.5, -1.3],
+    [1, 0, 0],
+    GLASS,
+  );
+  for (const side of [-1, 1]) {
+    const z = side * 1.1;
+    builder.quad(
+      [CAR_HALF_LENGTH + 0.02, 1.36, z - 0.09],
+      [CAR_HALF_LENGTH + 0.02, 1.36, z + 0.09],
+      [CAR_HALF_LENGTH + 0.02, 1.54, z + 0.09],
+      [CAR_HALF_LENGTH + 0.02, 1.54, z - 0.09],
+      [1, 0, 0],
+      HEADLIGHT,
+    );
+  }
+}
+
+function buildCommuterCar(builder: SurfaceBuilder): void {
+  buildCommuterLead(builder);
+  // Пантограф на промежуточном вагоне.
+  builder.box([-1.8, CAR_ROOF + 0.09, 0], [1.4, 0.18, 1.3], POLE_SHOE, FLAT_FACE_SHADE);
+  builder.rod([-2.5, CAR_ROOF + 0.16, 0], [0, 5.15, 0], 0.055, POLE);
+  builder.rod([-1.1, CAR_ROOF + 0.16, 0], [0, 5.15, 0], 0.055, POLE);
+  builder.box([0, 5.2, 0], [0.1, 0.07, 1.55], POLE, FLAT_FACE_SHADE);
+}
+
+function buildFreightLoco(builder: SurfaceBuilder): void {
+  const half = 9.5;
+  const halfW = 1.55;
+  // Рама, капот и две кабины ВЛ80.
+  builder.box([0, 1.02, 0], [18.0, 0.44, 2.7], UNDERBODY, FLAT_FACE_SHADE);
+  builder.box([0, 2.52, 0], [11.6, 2.2, 2.86], LOCO_GREEN);
+  builder.box([0, 3.72, 0], [11.9, 0.22, 2.94], ROOF, FLAT_FACE_SHADE);
+  for (const direction of [-1, 1]) {
+    builder.box([direction * 7.9, 2.62, 0], [2.5, 2.85, 2.95], LOCO_GREEN);
+    builder.quad(
+      [direction * (half + 0.006), 2.3, -1.12],
+      [direction * (half + 0.006), 2.3, 1.12],
+      [direction * (half + 0.006), 3.3, 1.12],
+      [direction * (half + 0.006), 3.3, -1.12],
+      [direction, 0, 0],
+      GLASS,
+    );
+    // Красная полоса на лобовой части.
+    builder.quad(
+      [direction * (half + 0.012), 1.08, -1.4],
+      [direction * (half + 0.012), 1.08, 1.4],
+      [direction * (half + 0.012), 1.38, 1.4],
+      [direction * (half + 0.012), 1.38, -1.4],
+      [direction, 0, 0],
+      TAILLIGHT,
+    );
+    for (const side of [-1, 1]) {
+      const z = side * 1.02;
+      builder.quad(
+        [direction * (half + 0.02), 1.34, z - 0.09],
+        [direction * (half + 0.02), 1.34, z + 0.09],
+        [direction * (half + 0.02), 1.52, z + 0.09],
+        [direction * (half + 0.02), 1.52, z - 0.09],
+        [direction, 0, 0],
+        HEADLIGHT,
+      );
+    }
+  }
+  for (const x of [-5.6, 5.6]) {
+    builder.box([x, 0.55, 0], [3.3, 0.5, 2.5], BOGIE, FLAT_FACE_SHADE);
+  }
+  addRailWheels(builder, [-6.75, -4.45, 4.45, 6.75], 0.52);
+}
+
+function buildFreightWagon(builder: SurfaceBuilder): void {
+  const half = 7.25;
+  const halfW = 1.5;
+  builder.box([0, 1.02, 0], [14.0, 0.34, 2.7], UNDERBODY, FLAT_FACE_SHADE);
+  builder.box([0, 2.26, 0], [13.5, 1.9, 2.98], WAGON_BROWN);
+  // Чёрный верх читается как уголь в полувагоне.
+  builder.box([0, 3.16, 0], [12.9, 0.06, 2.5], scaleRgb(UNDERBODY, 0.4), FLAT_FACE_SHADE);
+  for (const direction of [-1, 1]) {
+    builder.box([direction * (half - 0.2), 0.74, 0], [0.3, 0.28, 1.2], BOGIE, FLAT_FACE_SHADE);
+    for (const side of [-1, 1]) {
+      builder.box([direction * (half - 0.34), 0.98, side * 1.1], [0.3, 0.3, 0.3], BOGIE, FLAT_FACE_SHADE);
+    }
+  }
+  for (const x of [-5.1, 5.1]) {
+    builder.box([x, 0.52, 0], [2.85, 0.44, 2.5], BOGIE, FLAT_FACE_SHADE);
+  }
+  addRailWheels(builder, [-6.06, -4.14, 4.14, 6.06], 0.46);
+}
+
 /** Создаёт новый шаблон геометрии модели (владелец — вызывающий). */
 export function createVehicleTemplate(model: VehicleModel): THREE.BufferGeometry {
   const builder = new SurfaceBuilder();
   if (model === 'bus') buildBus(builder);
   else if (model === 'trolleybus') buildTrolleybus(builder);
   else if (model === 'tram') buildTram(builder);
+  else if (model === 'commuterLead') buildCommuterLead(builder);
+  else if (model === 'commuterCar') buildCommuterCar(builder);
+  else if (model === 'freightLoco') buildFreightLoco(builder);
+  else if (model === 'freightWagon') buildFreightWagon(builder);
   else throw new Error(`неизвестная модель транспорта: ${String(model)}`);
   const geometry = builder.build();
+  // Детали (фары, буферы) немного выступают за кузов: центрируем по X,
+  // чтобы шаблон всегда был симметричен относительно локального нуля.
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox as THREE.Box3;
+  geometry.translate(-(box.max.x + box.min.x) * 0.5, 0, 0);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
   geometry.name = `mobility-vehicle-${model}`;
   return geometry;
 }
@@ -362,6 +590,17 @@ export function createVehicleTemplate(model: VehicleModel): THREE.BufferGeometry
 /** Кеш общих шаблонов: инстансы разных тайлов/групп используют одну геометрию. */
 export class VehicleTemplateCache {
   private readonly templates = new Map<VehicleModel, THREE.BufferGeometry>();
+
+  /**
+   * Заменить шаблон готовой геометрией (например, запечённой из Blender).
+   * Предыдущая геометрия освобождается: владельцем шаблона остаётся кеш.
+   */
+  set(model: VehicleModel, geometry: THREE.BufferGeometry): void {
+    const previous = this.templates.get(model);
+    if (previous === geometry) return;
+    this.templates.set(model, geometry);
+    if (previous) previous.dispose();
+  }
 
   get(model: VehicleModel): THREE.BufferGeometry {
     let geometry = this.templates.get(model);

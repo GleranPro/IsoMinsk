@@ -11,6 +11,7 @@ import type {
   BuildingSelection,
   CityAppHandle,
   EngineStats,
+  LandmarkSelection,
   MobilityVehicleSelection,
   MuseumExhibitSelection,
 } from '../shared/appApi';
@@ -21,6 +22,7 @@ import { MUSEUM } from '../shared/museum';
 import { InfoPanel } from './InfoPanel';
 import { MobilityPanel } from './MobilityPanel';
 import { MuseumPanel } from './MuseumPanel';
+import { LandmarkPanel } from './LandmarkPanel';
 import { ControlPanel } from './ControlPanel';
 import { AttributionPanel } from './AttributionPanel';
 import { LoadingOverlay } from './LoadingOverlay';
@@ -64,6 +66,7 @@ export function App() {
   const [stats, setStats] = useState<EngineStats | null>(null);
   const [selection, setSelection] = useState<BuildingSelection | null>(null);
   const [exhibit, setExhibit] = useState<MuseumExhibitSelection | null>(null);
+  const [landmark, setLandmark] = useState<LandmarkSelection | null>(null);
   const [vehicle, setVehicle] = useState<MobilityVehicleSelection | null>(null);
   const [ui, setUi] = useState<UiState>(DEFAULT_UI);
   const [manifest, setManifest] = useState<TileManifest | null>(null);
@@ -105,6 +108,7 @@ export function App() {
       },
       onMobilitySelect: (next) => setVehicle(next),
       onExhibitSelect: (next) => setExhibit(next),
+      onLandmarkSelect: (next) => setLandmark(next),
       onLoadingChange: (isLoading, value) => {
         setLoading(isLoading);
         setProgress(value);
@@ -265,6 +269,17 @@ export function App() {
           onClose={() => {
             appRef.current?.clearExhibit();
             setExhibit(null);
+          }}
+        />
+      )}
+
+      {landmark && (
+        <LandmarkPanel
+          selection={landmark}
+          app={appRef.current}
+          onClose={() => {
+            appRef.current?.clearLandmark();
+            setLandmark(null);
           }}
         />
       )}
