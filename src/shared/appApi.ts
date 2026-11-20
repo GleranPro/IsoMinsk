@@ -42,34 +42,6 @@ export interface MuseumExhibitPreview {
   spanM: number;
 }
 
-/** A landmark model (Red Church, National Library, …) picked in the 3D scene. */
-export interface LandmarkSelection {
-  slug: string;
-  /** Localised name from the baked payload. */
-  label: string;
-  /** OSM object the model is named after (`w123` / `n123`). */
-  osm: string;
-  /** Local metres of the model anchor (x east, y north). */
-  x: number;
-  y: number;
-  /** Footprint centre in local metres — camera focus for the card. */
-  centreX: number;
-  centreY: number;
-  heightM: number;
-  /** Footprint extent [minEast, minNorth, maxEast, maxNorth] around the anchor. */
-  extent: [number, number, number, number];
-  triangles: number;
-  /** Screen-space pixel coordinates of the click, for the card anchor. */
-  screenX: number;
-  screenY: number;
-}
-
-/** Geometry of one landmark, centred and ready for the card's 3D preview. */
-export interface LandmarkPreview {
-  positions: Float32Array;
-  colors: Float32Array;
-}
-
 /** A public-transport vehicle picked on the map. */
 export interface MobilityVehicleSelection {
   tripId: string;
@@ -121,8 +93,6 @@ export interface CityAppOptions {
   onSelection?: (selection: BuildingSelection | null) => void;
   /** Called when a museum exhibit is clicked (or the selection is cleared). */
   onExhibitSelect?: (selection: MuseumExhibitSelection | null) => void;
-  /** Called when a landmark model is clicked (or the selection is cleared). */
-  onLandmarkSelect?: (selection: LandmarkSelection | null) => void;
   /** Called when a vehicle is clicked (or the selection is cleared). */
   onMobilitySelect?: (selection: MobilityVehicleSelection | null) => void;
   /** Called when a tile finishes loading (for the loading indicator). */
@@ -188,10 +158,6 @@ export interface CityAppHandle {
   getExhibitPreview(index: number): MuseumExhibitPreview | null;
   /** Clear the museum exhibit selection (card closes). */
   clearExhibit(): void;
-  /** Landmark card data: centred geometry of one model (null until loaded). */
-  getLandmarkPreview(slug: string): LandmarkPreview | null;
-  /** Clear the landmark selection highlight (the card closes in the shell). */
-  clearLandmark(): void;
 
   /* --- Mobility layer (public transport + traffic signals) --------------- */
 

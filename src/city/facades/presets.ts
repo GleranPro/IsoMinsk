@@ -28,9 +28,6 @@ import {
   FACADE_PRESET_COUNT,
   FAMILY_RECIPE_COUNT,
   LEGACY_RECIPE_OFFSET,
-  SHELL_RECIPE_COUNT,
-  SHELL_RECIPE_OFFSET,
-  SHELL_RECIPES,
   STYLE_RECIPES,
   legacyRecipeFor,
   type FacadeMotif,
@@ -303,12 +300,11 @@ export { PIXEL_PALETTE, PIXEL_PALETTE_SIZE } from '../../engine/postprocess/pale
  * Numeric facade parameters of one preset row, resolved for a recipe.
  *
  * Rows `0..26` come from the family catalog; rows `27..37` are the frozen legacy
- * archetype presets and rows `38..40` are renderer-only shells. The shader
- * indexes `uPresetA/B` with the packed recipe id, so a legacy building keeps
- * exactly the values it had before the registry.
+ * archetype presets. The shader indexes `uPresetA/B` with the packed recipe id,
+ * so a legacy building keeps exactly the values it had before the registry.
  */
 export interface RecipePreset extends FacadePreset {
-  /** Uniform row index (0..40). */
+  /** Uniform row index (0..37). */
   recipeId: number;
   /** Shader motif family; `legacy` keeps the pre-recipe branches. */
   motif: FacadeMotif;
@@ -372,7 +368,6 @@ const MOTIF_FLAG_ADD: Record<FacadeMotif, number> = {
   clerestory: F.ribbon,
   blank_service: 0,
   assembly_hall: F.ribbon | F.cornice,
-  church: F.cornice,
   legacy: 0,
 };
 
@@ -389,72 +384,11 @@ const MOTIF_FLAG_REMOVE: Record<FacadeMotif, number> = {
   blank_service:
     F.balconies | F.ribbon | F.monument | F.pilasters | F.attic | F.shopfront | F.cornice,
   assembly_hall: F.balconies | F.monument | F.pilasters,
-  church: F.balconies | F.ribbon | F.monument | F.pilasters | F.attic | F.shopfront,
   legacy: 0,
 };
 
-/**
- * Numeric preset of a renderer-only shell row. Shells are deliberately separate
- * from the family table: their values are tuned for a building use, not for an
- * archetype, and they must never leak into the offline catalog.
- */
-function shellPresetFor(recipe: StyleRecipe): RecipePreset {
-  const common = {
-    archetype: 'civic' as Archetype,
-    id: ARCHETYPE_ID.civic,
-    balconyRatio: 0,
-    roofColorFamily: 'flat' as const,
-    colors: recipe.palette,
-    recipeId: recipe.id,
-  };
-  if (recipe.name === 'shell_monument') {
-    // Blank granite mass: no window grid, no shopfront, no residential trim.
-    return {
-      ...common,
-      floorHeight: 4.0,
-      groundFloorHeight: 4.0,
-      bayWidth: 4.0,
-      windowWidthRatio: 0.2,
-      windowHeightRatio: 0.3,
-      sillRatio: 0.5,
-      flags: F.blank | F.cornice,
-      corniceHeight: 0.35,
-      motif: 'monument',
-    };
-  }
-  if (recipe.name === 'shell_assembly') {
-    // Halls / theatres / circuses: sparse high glazing over a tall base.
-    return {
-      ...common,
-      floorHeight: 6.0,
-      groundFloorHeight: 6.5,
-      bayWidth: 6.0,
-      windowWidthRatio: 0.7,
-      windowHeightRatio: 0.22,
-      sillRatio: 0.6,
-      flags: F.ribbon | F.cornice,
-      corniceHeight: 0.5,
-      motif: 'assembly_hall',
-    };
-  }
-  // shell_religious: tall floors and narrow bays for arched openings.
-  return {
-    ...common,
-    floorHeight: 5.2,
-    groundFloorHeight: 5.6,
-    bayWidth: 4.6,
-    windowWidthRatio: 0.3,
-    windowHeightRatio: 0.52,
-    sillRatio: 0.3,
-    flags: F.cornice,
-    corniceHeight: 0.8,
-    motif: 'church',
-  };
-}
-
-/** Resolve the complete numeric preset for one recipe (family, legacy or shell). */
+/** Resolve the complete numeric preset for one recipe (family or legacy). */
 export function presetForRecipe(recipe: StyleRecipe): RecipePreset {
-  if (recipe.id >= SHELL_RECIPE_OFFSET) return shellPresetFor(recipe);
   if (recipe.id >= LEGACY_RECIPE_OFFSET) {
     const legacy = FACADE_PRESETS[recipe.archetype];
     return { ...legacy, recipeId: recipe.id, motif: 'legacy' };
@@ -487,8 +421,8 @@ export function presetForRecipe(recipe: StyleRecipe): RecipePreset {
 }
 
 /**
- * The 41 shader preset rows in uniform order: family recipes `0..26`, the frozen
- * legacy archetype presets `27..37`, then the renderer-only shells `38..40`.
+ * The 38 shader preset rows in uniform order: family recipes `0..26` first, then
+ * the frozen legacy archetype presets `27..37`.
  */
 export function presetRowsForUniforms(): RecipePreset[] {
   const rows: RecipePreset[] = [];
@@ -497,9 +431,6 @@ export function presetRowsForUniforms(): RecipePreset[] {
   }
   for (const archetype of ARCHETYPE_BY_ID) {
     rows.push(presetForRecipe(legacyRecipeFor(archetype)));
-  }
-  for (let index = 0; index < SHELL_RECIPE_COUNT; index++) {
-    rows.push(presetForRecipe(SHELL_RECIPES[index]));
   }
   if (rows.length !== FACADE_PRESET_COUNT) {
     throw new Error(`facade preset rows ${rows.length} != ${FACADE_PRESET_COUNT}`);
@@ -516,9 +447,6 @@ export function motifRowsForUniforms(): Float32Array {
   rows.fill(-1);
   for (let id = 0; id < FAMILY_RECIPE_COUNT; id++) {
     rows[id] = FACADE_MOTIFS.indexOf(STYLE_RECIPES[id].facade);
-  }
-  for (let index = 0; index < SHELL_RECIPE_COUNT; index++) {
-    rows[SHELL_RECIPE_OFFSET + index] = FACADE_MOTIFS.indexOf(SHELL_RECIPES[index].facade);
   }
   return rows;
 }

@@ -19,9 +19,6 @@ import {
   LEGACY_RECIPE_COUNT,
   LEGACY_RECIPE_OFFSET,
   RECIPE_ROOFS,
-  SHELL_RECIPE_COUNT,
-  SHELL_RECIPE_OFFSET,
-  SHELL_RECIPES,
   STYLE_PROFILES,
   STYLE_RECIPES,
   facadePresetIndex,
@@ -191,8 +188,7 @@ describe('float32-safe style packing', () => {
     expect(facadePresetIndex(-5)).toBe(0);
     expect(facadePresetIndex(0)).toBe(0);
     expect(facadePresetIndex(37)).toBe(37);
-    expect(facadePresetIndex(38)).toBe(38);
-    expect(facadePresetIndex(FACADE_PRESET_COUNT + 10)).toBe(FACADE_PRESET_COUNT - 1);
+    expect(facadePresetIndex(38)).toBe(FACADE_PRESET_COUNT - 1);
     expect(facadePresetIndex(Number.NaN)).toBe(LEGACY_RECIPE_OFFSET);
     expect(facadePresetIndex(Number.POSITIVE_INFINITY)).toBe(LEGACY_RECIPE_OFFSET);
   });
@@ -202,9 +198,7 @@ describe('legacy fallback', () => {
   it('reserves ids 27..37 for the eleven archetype presets', () => {
     expect(LEGACY_RECIPE_OFFSET).toBe(FAMILY_RECIPE_COUNT);
     expect(LEGACY_RECIPE_COUNT).toBe(ARCHETYPE_BY_ID.length);
-    expect(FACADE_PRESET_COUNT).toBe(41);
-    expect(SHELL_RECIPE_OFFSET).toBe(38);
-    expect(SHELL_RECIPE_COUNT).toBe(3);
+    expect(FACADE_PRESET_COUNT).toBe(38);
     ARCHETYPE_BY_ID.forEach((archetype, index) => {
       expect(legacyRecipeId(archetype)).toBe(27 + index);
       expect(legacyArchetypeForRecipeId(27 + index)).toBe(archetype);
@@ -212,18 +206,6 @@ describe('legacy fallback', () => {
     });
     expect(legacyRecipeId('palace')).toBe(36);
     expect(legacyRecipeId('stadium')).toBe(37);
-  });
-
-  it('resolves the renderer-only shells after the legacy range', () => {
-    expect(SHELL_RECIPES).toHaveLength(SHELL_RECIPE_COUNT);
-    expect(getStyleRecipe(SHELL_RECIPE_OFFSET).name).toBe('shell_religious');
-    expect(getStyleRecipe(SHELL_RECIPE_OFFSET).facade).toBe('church');
-    expect(getStyleRecipe(SHELL_RECIPE_OFFSET + 1).facade).toBe('monument');
-    expect(getStyleRecipe(SHELL_RECIPE_OFFSET + 2).facade).toBe('assembly_hall');
-    for (const recipe of SHELL_RECIPES) {
-      expect(recipe.id).toBeGreaterThanOrEqual(SHELL_RECIPE_OFFSET);
-      expect(recipe.id).toBeLessThan(FACADE_PRESET_COUNT);
-    }
   });
 
   it('reproduces the exact prior facade preset values for every archetype', () => {

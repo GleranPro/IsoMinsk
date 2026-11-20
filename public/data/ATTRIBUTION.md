@@ -77,13 +77,6 @@ recorded upstream licence, author and source. The machine-readable inventory is
 | mi-26 | Ми-26 | SavyTheCreator | CC Attribution | <https://sketchfab.com/3d-models/272597d721e74a45914f7ffb846dda2a> |
 | citation-x | Cessna 750 Citation X | SnowCrow | CC Attribution | <https://sketchfab.com/3d-models/1d7bb0b48301482f8145cb121268dd7f> |
 
-The Li-2 beside the Museum of the History of the Great Patriotic War
-(`data/warmuseum`, not part of the Lipki collection) is based on "Li 2"
-(<https://sketchfab.com/3d-models/li-2-2b860a70497f4f3c86b560c4419d225d>) by
-3Ddesmark (<https://sketchfab.com/3digrm>), licensed under CC-BY-4.0
-(<http://creativecommons.org/licenses/by/4.0/>); it was decimated and repainted
-in the livery of the real aircraft c/n 33444309.
-
 A model that is not in this table is not shipped. The exhibition has empty
 spaces where no model exists (Ту-154, Ан-12Б, Ан-24Б, Як-25М, Ил-14П, Ка-26,
 PZL-104 Вильга, L-13 Blaník, Як-52); those spots contain no third-party

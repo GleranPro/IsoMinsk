@@ -490,38 +490,6 @@ export class MobilityLayer {
     this.updateSignals(view);
   }
 
-  /**
-   * Заменить процедурные шаблоны запечёнными из Blender (`vehiclePayload.ts`).
-   *
-   * Вызывается один раз после загрузки payload, до того как симуляция начнёт
-   * рисовать рейсы: старые instanced-меши пустые, поэтому замена не рвёт
-   * кадр. Геометрия переходит во владение слоя (кеш освобождает её в
-   * `dispose()`); модели без запечённой версии остаются процедурными.
-   */
-  replaceVehicleTemplates(geometries: ReadonlyMap<VehicleModel, THREE.BufferGeometry>): void {
-    if (this.disposed) return;
-    let replaced = 0;
-    for (const model of VEHICLE_MODELS) {
-      const geometry = geometries.get(model);
-      if (!geometry) continue;
-      const previous = this.vehicleMeshes.get(model);
-      if (previous) {
-        this.vehicleRoot.remove(previous);
-        disposeVehicleInstances(previous);
-      }
-      // Payload geometry is shared with the rail layer through a cached fetch;
-      // each layer owns a clone and disposes only its own copy.
-      const owned = geometry.clone();
-      this.templates.set(model, owned);
-      const mesh = createVehicleInstances(this.templates.get(model), this.budget, this.vehicleMaterial, model);
-      this.vehicleMeshes.set(model, mesh);
-      this.vehicleTriangles.set(model, geometryTriangleCount(owned));
-      this.vehicleRoot.add(mesh);
-      replaced += 1;
-    }
-    if (replaced > 0) this.applyVisibility();
-  }
-
   /** Настройки UI (видимость слоёв, пауза, QA). Правила симуляции не меняются. */
   setSettings(settings: MobilitySettings): void {
     if (this.disposed || !settings) return;

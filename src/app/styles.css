@@ -400,9 +400,8 @@ body,
   white-space: nowrap;
 }
 
-/* --- Model cards: Lipki museum exhibits and city landmarks ---------------- */
-.museum-card,
-.landmark-card {
+/* --- Lipki museum exhibit card ------------------------------------------- */
+.museum-card {
   bottom: calc(16px + env(safe-area-inset-bottom));
   left: calc(16px + env(safe-area-inset-left));
   width: 340px;
@@ -415,30 +414,26 @@ body,
   z-index: 6;
 }
 
-.museum-card header,
-.landmark-card header {
+.museum-card header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
 }
 
-.museum-card h2,
-.landmark-card h2 {
+.museum-card h2 {
   margin: 0;
   font-size: 16px;
   color: var(--accent);
 }
 
-.museum-subtitle,
-.landmark-subtitle {
+.museum-subtitle {
   margin: 2px 0 0;
   font-size: 11px;
   color: var(--text-dim);
 }
 
-.museum-close,
-.landmark-close {
+.museum-close {
   background: none;
   border: none;
   color: var(--text-dim);
@@ -448,12 +443,11 @@ body,
   padding: 2px 4px;
 }
 
-.museum-close:hover,
-.landmark-close:hover {
+.museum-close:hover {
   color: var(--text);
 }
 
-.model-preview {
+.museum-preview {
   position: relative;
   height: 190px;
   border-radius: 6px;
@@ -461,7 +455,7 @@ body,
   background: #1a2118;
 }
 
-.model-preview canvas {
+.museum-preview canvas {
   width: 100%;
   height: 100%;
   display: block;
@@ -469,11 +463,11 @@ body,
   touch-action: none;
 }
 
-.model-preview canvas:active {
+.museum-preview canvas:active {
   cursor: grabbing;
 }
 
-.model-preview-empty {
+.museum-preview-empty {
   position: absolute;
   inset: 0;
   display: grid;
@@ -482,23 +476,14 @@ body,
   color: var(--text-dim);
 }
 
-.museum-description,
-.landmark-description {
+.museum-description {
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
   color: var(--text);
 }
 
-.landmark-detail {
-  margin: -4px 0 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-dim);
-}
-
-.museum-facts,
-.landmark-facts {
+.museum-facts {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px 12px;
@@ -506,44 +491,37 @@ body,
   font-size: 11.5px;
 }
 
-.museum-facts div,
-.landmark-facts div {
+.museum-facts div {
   display: flex;
   justify-content: space-between;
   gap: 6px;
 }
 
-.museum-facts dt,
-.landmark-facts dt {
+.museum-facts dt {
   color: var(--text-dim);
 }
 
-.museum-facts dd,
-.landmark-facts dd {
+.museum-facts dd {
   margin: 0;
 }
 
-.museum-links,
-.landmark-links {
+.museum-links {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 11.5px;
 }
 
-.museum-links a,
-.landmark-links a {
+.museum-links a {
   color: var(--accent);
   text-decoration: none;
 }
 
-.museum-links a:hover,
-.landmark-links a:hover {
+.museum-links a:hover {
   text-decoration: underline;
 }
 
-.museum-hint,
-.landmark-hint {
+.museum-hint {
   margin: 0;
   font-size: 10px;
   color: var(--text-dim);
@@ -621,8 +599,7 @@ body,
     overflow-y: auto;
   }
 
-  .museum-card,
-  .landmark-card {
+  .museum-card {
     left: 12px;
     right: 12px;
     width: auto;

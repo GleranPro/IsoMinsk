@@ -288,7 +288,7 @@ export function addFacadeFrame(
   let emitted = 0;
   const edges = facadeEdges(context.rings);
   for (const edge of edges) {
-    if (plinth && style.trimIntensity >= 0.45 && wallHeight > context.groundFloorHeight + 0.6) {
+    if (plinth && wallHeight > context.groundFloorHeight + 0.6) {
       if (
         addWallBox(
           sink,
@@ -329,9 +329,7 @@ export function addFacadeFrame(
         emitted++;
       }
     }
-    // Piers are monumental trim: only recipes with a strong cornice keep them.
-    // Plain residential / office families used to get invented pilasters here.
-    if (!piers || style.trimIntensity < 0.5) continue;
+    if (!piers) continue;
     const bays = Math.floor(edge.length / bay);
     if (bays < 1) continue;
     const pierWidth = Math.min(0.62, Math.max(0.28, bay * 0.16));

@@ -17,10 +17,8 @@ import type { Archetype, BuildingFeature, RoofShape } from '../../shared/types';
 import { ARCHETYPE_ID } from '../../shared/geometry';
 import {
   LEGACY_RECIPE_OFFSET,
-  SHELL_RECIPE_OFFSET,
   getStyleRecipe,
   packStyleBits,
-  shellRecipeForUse,
   type DetailKind,
   type FacadeMotif,
   type StyleProfileName,
@@ -28,7 +26,6 @@ import {
 } from '../../shared/buildingStyles';
 import { hexToRgb, pickFacadeColor, pickRoofColor, trimColorFor } from '../../engine/materials/palette';
 import { presetForRecipe, recipePresetForId } from '../facades/presets';
-import { buildingUseFor, hasStrongStyleEvidence, type BuildingUse } from './buildingUse';
 import { noiseFromSeed, seedFromId } from './seed';
 import type { RGB, SurfaceStyle, Vec4 } from './meshSink';
 
@@ -40,8 +37,6 @@ export interface BuildingStyle {
   owner: number;
   archetype: Archetype;
   archetypeId: number;
-  /** Facade grammar class derived from the payload tags (church, monument, ...). */
-  use: BuildingUse;
   floorHeight: number;
   groundFloorHeight: number;
   seed: number;
@@ -143,60 +138,6 @@ function clampFacadeMetrics(
   return { floorHeight: safeFloor, groundFloorHeight: safeGround };
 }
 
-/**
- * Uses that must stay plain when the payload carries no explicit height, floor
- * count or building subtype. Anonymous `building=yes` footprints used to borrow
- * massing profiles and pilasters from monumental families.
- */
-const PLAIN_USES: ReadonlySet<BuildingUse> = new Set([
-  'residential',
-  'office',
-  'industrial',
-  'utility',
-]);
-
-/** Detail geometry allowed for a use. Only dispatched modules matter here. */
-function detailModulesFor(
-  use: BuildingUse,
-  recipe: StyleRecipe,
-  weakEvidence: boolean,
-): readonly DetailKind[] {
-  if (weakEvidence) return ['entrance'];
-  switch (use) {
-    case 'monument':
-    case 'roof':
-      // Steles, obelisks and roof-only structures: no door, no cornice
-      // geometry, no trim.
-      return [];
-    case 'religious':
-    case 'institutional':
-    case 'assembly':
-      return ['entrance', 'cornice'];
-    case 'office':
-      return ['entrance', 'canopy', 'cornice'];
-    case 'industrial':
-    case 'utility':
-      return ['entrance'];
-    case 'residential': {
-      // Keep the family's designed modules; the trim-intensity gate in
-      // `facadeDetails` decides whether the monumental ones (piers/plinth) are
-      // appropriate for this building.
-      const modules: DetailKind[] = [...recipe.details];
-      if (!modules.includes('entrance')) modules.unshift('entrance');
-      return modules;
-    }
-    default:
-      // Monumental / sport keep the recipe modules; palace and stadium have
-      // their own geometry routes.
-      return recipe.details;
-  }
-}
-
-/** The QA gallery renders one fixture per family: it must show the family as designed. */
-function isSyntheticGalleryFixture(building: BuildingFeature | null | undefined): boolean {
-  return building?.styleVariant?.eligibility?.includes('synthetic_gallery') === true;
-}
-
 /** Build the style context for one building. */
 export function styleForBuilding(
   building: BuildingFeature,
@@ -207,17 +148,9 @@ export function styleForBuilding(
   const archetype: Archetype =
     building && ARCHETYPE_ID[building.archetype] !== undefined ? building.archetype : 'small';
   const seed = seedFromId(building.id ?? `#${owner}`);
-  const use = buildingUseFor(building);
-  // Curated landmarks keep their data recipe: their bespoke geometry decides
-  // where walls, glass and stone go.
-  const shell = building?.landmark ? null : shellRecipeForUse(use);
-  const recipe = shell ?? getStyleRecipe(building?.styleVariant?.recipeId, archetype);
-  const isShell = recipe.id >= SHELL_RECIPE_OFFSET;
-  const isLegacy = recipe.id >= LEGACY_RECIPE_OFFSET && !isShell;
-  const galleryFixture = isSyntheticGalleryFixture(building);
-  const weakEvidence =
-    !galleryFixture && !hasStrongStyleEvidence(building) && PLAIN_USES.has(use);
-  const preset = isLegacy || isShell
+  const recipe = getStyleRecipe(building?.styleVariant?.recipeId, archetype);
+  const isLegacy = recipe.id >= LEGACY_RECIPE_OFFSET;
+  const preset = isLegacy
     ? presetForRecipe(recipe)
     : recipePresetForId(recipe.id, archetype);
   // Legacy features keep the exact previous numeric values (byte-compatible
@@ -230,9 +163,6 @@ export function styleForBuilding(
     ? // Old features keep the exact previous palette pick.
       pickFacadeColor(archetype, seed)
     : pickRecipeColor(recipe, seed);
-  const profile: StyleProfileName = weakEvidence ? 'base' : recipe.profile;
-  const resolvedRecipe =
-    profile === recipe.profile ? recipe : Object.freeze({ ...recipe, profile });
   const style: Vec4 = [
     ARCHETYPE_ID[archetype] ?? ARCHETYPE_ID.small,
     metrics.floorHeight,
@@ -243,12 +173,11 @@ export function styleForBuilding(
     owner,
     archetype,
     archetypeId: style[0],
-    use,
     floorHeight: metrics.floorHeight,
     groundFloorHeight: metrics.groundFloorHeight,
     seed,
     flags: packStyleBits(preset.flags, recipe.id),
-    trimIntensity: clamp(preset.corniceHeight / 1.1, 0, 1) * (weakEvidence ? 0.4 : 1),
+    trimIntensity: clamp(preset.corniceHeight / 1.1, 0, 1),
     detailScale,
     detail,
     style,
@@ -257,9 +186,9 @@ export function styleForBuilding(
     parapetHeight: 0.26 + 0.1 * noiseFromSeed(seed, 3),
     bayWidth: preset.bayWidth,
     corniceHeight: preset.corniceHeight,
-    recipe: resolvedRecipe,
-    detailModules: galleryFixture ? recipe.details : detailModulesFor(use, resolvedRecipe, weakEvidence),
-    profile,
+    recipe,
+    detailModules: recipe.details,
+    profile: recipe.profile,
     motif: recipe.facade,
   };
 }

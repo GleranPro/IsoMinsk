@@ -58,8 +58,7 @@
           "ribbon",
           "clerestory",
           "blank_service",
-          "assembly_hall",
-          "church"
+          "assembly_hall"
         ],
         "description": "Shader motif family; dispatched by one integer per recipe, never by 27 branches."
       },

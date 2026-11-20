@@ -47,25 +47,9 @@ tmp_*.py
 # DSH harness local plugin state
 .dsh-plugins/
 
-# ZCode CLI local state
-.zcode/
-
 # GitHub Pages artifact assembled by scripts/qa/build-pages.mjs (never committed).
 # Only its compact publication-report.json is committable.
 .pages/
 
 # Local staging output for regenerated data (never committed).
 data/staging/
-
-# Landmark 3D models pulled from Yandex Maps: restricted content, local reference only.
-assets/landmarks/*.glb
-assets/landmarks/low-poly/
-
-# Raw downloaded museum model sources: large binaries, local reference only.
-assets/aviation-museum/raw/
-assets/war-museum/raw/
-
-# Local analysis scratch and harness state.
-.tmp/
-.tmp-*
-.playwright-mcp/

@@ -36,12 +36,6 @@ export const REQUIRED_ARTIFACT_PATHS: readonly string[] = [
   'data/museum/exhibits.bin',
   'data/mobility/manifest.json',
   'data/mobility-city/manifest.json',
-  // The tile build hides the OSM buildings these models replace: shipping the
-  // tiles without the payload would leave holes.
-  'data/landmarks/manifest.json',
-  'data/landmarks/landmarks.bin',
-  'data/warmuseum/manifest.json',
-  'data/warmuseum/exhibits.bin',
 ];
 
 /** Directory names that must never appear inside a published artifact. */
@@ -413,7 +407,7 @@ function collectDirectories(entries: ArtifactEntry[]): string[] {
   return [...directories].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
-const PUBLIC_DATA_WHITELIST = ['data/city-tiles/', 'data/museum/', 'data/warmuseum/', 'data/landmarks/', 'data/mobility/', 'data/mobility-city/'];
+const PUBLIC_DATA_WHITELIST = ['data/city-tiles/', 'data/museum/', 'data/mobility/', 'data/mobility-city/'];
 
 function checkDataPath(sitePath: string): Problem | null {
   if (sitePath === 'data' || sitePath.startsWith('data/')) {
@@ -424,7 +418,7 @@ function checkDataPath(sitePath: string): Problem | null {
       return {
         code: 'forbidden-artifact-path',
         path: sitePath,
-        message: 'only data/city-tiles, data/museum, data/warmuseum, data/landmarks, data/mobility, data/mobility-city, data/ATTRIBUTION.md and data/LICENSE-ODbL.txt may be published',
+        message: 'only data/city-tiles, data/museum, data/mobility, data/mobility-city, data/ATTRIBUTION.md and data/LICENSE-ODbL.txt may be published',
       };
     }
   }
@@ -615,25 +609,17 @@ export function planWhitelistAdditions(options: PlanOptions): ArtifactEntry[] {
   // the walks below add them.
   requireFile(join(publicDir, 'data', 'museum', 'manifest.json'), 'required publication file public/data/museum/manifest.json');
   requireFile(join(publicDir, 'data', 'museum', 'exhibits.bin'), 'required publication file public/data/museum/exhibits.bin');
-  requireFile(join(publicDir, 'data', 'warmuseum', 'manifest.json'), 'required publication file public/data/warmuseum/manifest.json');
-  requireFile(join(publicDir, 'data', 'warmuseum', 'exhibits.bin'), 'required publication file public/data/warmuseum/exhibits.bin');
-  requireFile(join(publicDir, 'data', 'landmarks', 'manifest.json'), 'required publication file public/data/landmarks/manifest.json');
-  requireFile(join(publicDir, 'data', 'landmarks', 'landmarks.bin'), 'required publication file public/data/landmarks/landmarks.bin');
   requireFile(join(publicDir, 'data', 'mobility', 'manifest.json'), 'required publication file public/data/mobility/manifest.json');
   requireFile(join(publicDir, 'data', 'mobility-city', 'manifest.json'), 'required publication file public/data/mobility-city/manifest.json');
 
   const cityEntries = withSitePrefix(walkFiles(cityDir), 'data/city-tiles');
   const museumEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'museum')), 'data/museum');
-  const warMuseumEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'warmuseum')), 'data/warmuseum');
-  const landmarkEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'landmarks')), 'data/landmarks');
   const mobilityEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'mobility')), 'data/mobility');
   const mobilityCityEntries = withSitePrefix(walkFiles(join(publicDir, 'data', 'mobility-city')), 'data/mobility-city');
   const combined = sortBySitePath([
     ...entries,
     ...cityEntries,
     ...museumEntries,
-    ...warMuseumEntries,
-    ...landmarkEntries,
     ...mobilityEntries,
     ...mobilityCityEntries,
   ]);

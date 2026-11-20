@@ -19,13 +19,12 @@ import { presetFor, presetForRecipe } from '../../../src/city/facades/presets';
 import { FACADE_MOTIF_IDS } from '../../../src/engine/shaders/facadeShader';
 import {
   LEGACY_RECIPE_OFFSET,
-  SHELL_RECIPE_OFFSET,
   STYLE_RECIPES,
   getStyleRecipe,
   legacyRecipeId,
   unpackStyleBits,
 } from '../../../src/shared/buildingStyles';
-import { ARCHETYPE_ID, STYLE_FLAG } from '../../../src/shared/geometry';
+import { ARCHETYPE_ID } from '../../../src/shared/geometry';
 import { pickFacadeColor } from '../../../src/engine/materials/palette';
 import { seedFromId } from '../../../src/city/buildings/seed';
 import type { BuildingStyleVariant } from '../../../src/shared/types';
@@ -99,7 +98,6 @@ describe('legacy resolution', () => {
 describe('family recipe resolution', () => {
   it('changes geometry-facing recipe and retains broad archetype for night/panel handling', () => {
     const feature = squarePrismBuilding({
-      levels: 9,
       styleVariant: { schema: 1, recipeId: 8, source: 'heuristic', eligibility: ['levels'] },
     });
     const result = styleForBuilding(feature, 2, true, 1);
@@ -109,9 +107,7 @@ describe('family recipe resolution', () => {
     expect(unpackStyleBits(result.flags)).toMatchObject({ recipeId: 8 });
     expect(result.motif).toBe('staircore');
     expect(result.profile).toBe('base');
-    // Residential keeps the family's designed modules (the trim-intensity gate
-    // decides whether the monumental ones are appropriate).
-    expect(result.detailModules).toEqual(['entrance', 'staircore', 'parapet']);
+    expect(result.detailModules).toEqual([...getStyleRecipe(8).details]);
   });
 
   it('uses the recipe preset values and motif flags', () => {
@@ -175,86 +171,6 @@ describe('family recipe resolution', () => {
       expect(id, recipe.name).toBeGreaterThanOrEqual(0);
     }
     expect(byName.get('legacy')).toBe(-1);
-    expect(byName.get('church')).toBe(10);
-  });
-});
-
-describe('building use policy', () => {
-  it('gives churches the arched church shell', () => {
-    const feature = {
-      ...squarePrismBuilding({ archetype: 'civic' }),
-      tags: { building: 'church' },
-    };
-    const style = styleForBuilding(feature, 0, true, 1);
-    expect(style.use).toBe('religious');
-    expect(style.motif).toBe('church');
-    expect(unpackStyleBits(style.flags).recipeId).toBe(SHELL_RECIPE_OFFSET);
-    expect(style.flags & STYLE_FLAG.blank).toBe(0);
-  });
-
-  it('blanks monuments (no window grid, no detail modules)', () => {
-    const feature = {
-      ...squarePrismBuilding(),
-      tags: { building: 'yes', historic: 'monument' },
-    };
-    const style = styleForBuilding(feature, 0, true, 1);
-    expect(style.use).toBe('monument');
-    expect(style.motif).toBe('monument');
-    expect(style.flags & STYLE_FLAG.blank).not.toBe(0);
-    expect(style.detailModules).toEqual([]);
-  });
-
-  it('gives theatres and circuses the assembly shell', () => {
-    const feature = {
-      ...squarePrismBuilding({ archetype: 'civic' }),
-      tags: { building: 'yes', amenity: 'theatre' },
-    };
-    const style = styleForBuilding(feature, 0, true, 1);
-    expect(style.use).toBe('assembly');
-    expect(style.motif).toBe('assembly_hall');
-    expect(unpackStyleBits(style.flags).recipeId).toBe(SHELL_RECIPE_OFFSET + 2);
-  });
-
-  it('blanks roof-only structures (building=roof) so they cannot paint windows', () => {
-    const feature = {
-      ...squarePrismBuilding({ archetype: 'small' }),
-      tags: { building: 'roof' },
-    };
-    const style = styleForBuilding(feature, 0, true, 1);
-    expect(style.use).toBe('roof');
-    expect(style.flags & STYLE_FLAG.blank).not.toBe(0);
-    expect(style.detailModules).toEqual([]);
-  });
-
-  it('keeps anonymous building=yes plain: base profile, no pilasters, low trim', () => {
-    const feature = {
-      ...squarePrismBuilding({
-        archetype: 'stalin',
-        styleVariant: explicitRecipe(0), // ensemble_symmetric (frame profile, pilasters)
-      }),
-      tags: { building: 'yes' },
-    };
-    const style = styleForBuilding(feature, 0, true, 1);
-    expect(style.use).toBe('residential');
-    expect(style.profile).toBe('base');
-    expect(style.recipe.profile).toBe('base');
-    expect(style.detailModules).toEqual(['entrance']);
-    expect(style.trimIntensity).toBeLessThan(0.45);
-  });
-
-  it('keeps explicit residential evidence: profile and cornice survive', () => {
-    const feature = {
-      ...squarePrismBuilding({
-        archetype: 'stalin',
-        levels: 6,
-        styleVariant: explicitRecipe(0),
-      }),
-      tags: { building: 'apartments', 'building:levels': '6' },
-    };
-    const style = styleForBuilding(feature, 0, true, 1);
-    expect(style.profile).toBe('frame');
-    expect(style.detailModules).toEqual(['entrance', 'pilasters', 'cornice']);
-    expect(style.trimIntensity).toBeGreaterThanOrEqual(0.45);
   });
 });
 

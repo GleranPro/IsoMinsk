@@ -147,9 +147,6 @@ describe('profiles inside the rendered mesh', () => {
     const large = {
       ...building,
       height: 32,
-      // Explicit floor count: massing profiles are only allowed when the payload
-      // carries strong style evidence.
-      levels: 9,
       volumes: [makeVolume([rectRing(0, 0, 60, 16)], 0, 32, 'flat', 0)],
     };
     const result = buildBuildingsMesh([large], { facadeDetail: true, detailScale: 1 });

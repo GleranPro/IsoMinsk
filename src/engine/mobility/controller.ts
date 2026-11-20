@@ -34,7 +34,6 @@ import type {
   MobilitySignalNode,
   MobilityStatus,
 } from '../../shared/mobility';
-import { loadVehicleModelPayloadCached } from '../../city/mobility/vehiclePayload';
 import { MobilityLoader, type MobilityFetchImpl } from './loader';
 import { MobilityLayer } from './mobilityLayer';
 import { mobilityReleaseKey, mobilityReleaseLabel, type MobilityLoadRect } from './loaderCore';
@@ -57,12 +56,6 @@ export interface MobilityControllerOptions {
   maxTrips?: number;
   /** Стартовать симуляцию на паузе. */
   paused?: boolean;
-  /**
-   * Каталог запечённых Blender-моделей (`vehiclePayload.ts`). По умолчанию
-   * `data/mobility/vehicles`; ошибка загрузки не фатальна — остаётся
-   * процедурный fallback.
-   */
-  vehicleModelsUrl?: string;
 }
 
 const DEFAULT_SETTINGS: MobilitySettings = {
@@ -199,23 +192,7 @@ export class MobilityController {
   }
 
   private async startInternal(): Promise<void> {
-    // Blender-модели грузятся параллельно с manifest: подмена шаблонов
-    // безопасна в любой момент до первого кадра с рейсами.
-    const vehicleModels = loadVehicleModelPayloadCached({
-      baseUrl: this.options.vehicleModelsUrl,
-    }).then(
-      (payload) => {
-        if (this.disposed) return;
-        this.layer.replaceVehicleTemplates(payload.geometries);
-      },
-      (error: unknown) => {
-        this.note(
-          `модели транспорта из Blender не загрузились: ${error instanceof Error ? error.message : String(error)}`,
-          true,
-        );
-      },
-    );
-    await Promise.allSettled([this.loader.start(), vehicleModels]);
+    await this.loader.start();
     if (this.disposed) return;
     const manifest = this.loader.manifest;
     if (!manifest) {
