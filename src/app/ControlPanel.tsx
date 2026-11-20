@@ -142,6 +142,18 @@ export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshSt
           <section>
             <h2>Time of day</h2>
             <label>
+              <input
+                type="checkbox"
+                checked={ui.timeMode === 'auto'}
+                disabled={disabled}
+                onChange={(event) =>
+                  onChange({ timeMode: event.target.checked ? 'auto' : 'manual' })
+                }
+                data-testid="toggle-live-time"
+              />
+              Live Minsk time
+            </label>
+            <label>
               <span data-testid="time-label">{formatHours(ui.timeOfDay)}</span>
             </label>
             <input
@@ -150,8 +162,10 @@ export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshSt
               max={24}
               step={0.25}
               value={ui.timeOfDay}
-              disabled={disabled}
-              onChange={(event) => onChange({ timeOfDay: Number(event.target.value) })}
+              disabled={disabled || ui.timeMode === 'auto'}
+              onChange={(event) =>
+                onChange({ timeMode: 'manual', timeOfDay: Number(event.target.value) })
+              }
               data-testid="time-slider"
             />
           </section>

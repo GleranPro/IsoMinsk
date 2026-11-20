@@ -152,6 +152,16 @@ export interface CameraSettings {
   elevation: number;
 }
 
+/** Where the lighting clock comes from. */
+export type TimeOfDayMode = 'auto' | 'manual';
+
+export interface TimeOfDayInfo {
+  /** Lighting clock hours (0..24, fractional). */
+  hours: number;
+  /** `auto` = real Minsk time, `manual` = fixed slider / `?time=H` value. */
+  mode: TimeOfDayMode;
+}
+
 export interface CityAppHandle {
   /** Render loop control. */
   start(): void;
@@ -170,8 +180,12 @@ export interface CityAppHandle {
   /** Rendering */
   setPixelArt(settings: Partial<PixelArtSettings>): void;
   getPixelArt(): PixelArtSettings;
+  /** Pin the lighting clock to a fixed hour (switches to manual mode). */
   setTimeOfDay(hours: number): void;
   getTimeOfDay(): number;
+  /** Switch the lighting clock between live Minsk time and manual mode. */
+  setTimeMode(mode: TimeOfDayMode): void;
+  getTimeOfDayInfo(): TimeOfDayInfo;
   setFacadeDetail(enabled: boolean): void;
   setDebugWireframe(enabled: boolean): void;
   setPixelEffectEnabled(enabled: boolean): void;

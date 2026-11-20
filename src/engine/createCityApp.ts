@@ -33,6 +33,8 @@ import type {
   EngineStats,
   MobilityVehicleSelection,
   PixelArtSettings,
+  TimeOfDayInfo,
+  TimeOfDayMode,
 } from '../shared/appApi';
 import type { FeatureId, TileManifest } from '../shared/types';
 import type {
@@ -58,6 +60,7 @@ import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
 import { LightingRig } from './renderer/lighting';
+import { minskLocalHours } from './renderer/minskTime';
 import {
   createFacadeMaterialSafe,
   disposeFacadeMaterialSafe,
@@ -273,6 +276,8 @@ function createUnavailableHandle(container: HTMLElement, message: string): CityA
     getPixelArt: () => ({ ...DEFAULT_PIXEL_ART }),
     setTimeOfDay: noop,
     getTimeOfDay: () => 13,
+    setTimeMode: noop,
+    getTimeOfDayInfo: () => ({ hours: 13, mode: 'auto' as const }),
     setFacadeDetail: noop,
     setDebugWireframe: noop,
     setPixelEffectEnabled: noop,
@@ -438,6 +443,21 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   if (params.get('realsun') === '1') lighting.setUseRealDateSun(true);
   let look = lighting.state.look;
   let timeHours = 13;
+  // Live clock: by default the lighting time follows real Minsk time, so night
+  // falls at night and the lit windows come on by themselves. The UI slider or
+  // `?time=H` pins a fixed manual time (QA convenience); `?time=auto` restores.
+  let timeMode: TimeOfDayMode = 'auto';
+  let autoTimeTimer = 0;
+  {
+    const timeParam = params.get('time');
+    if (timeParam !== 'auto') {
+      const initialTime = Number.parseFloat(timeParam ?? '');
+      if (Number.isFinite(initialTime)) {
+        timeMode = 'manual';
+        timeHours = clamp(initialTime, 0, 24);
+      }
+    }
+  }
 
   // --- camera --------------------------------------------------------------
   const rig = new IsometricCameraRig({
@@ -695,9 +715,18 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     },
     getPixelArt: () => ({ ...pixelArt }),
     setTimeOfDay(hours: number) {
+      // Any explicit time request pins the lighting clock to manual mode.
+      timeMode = 'manual';
+      autoTimeTimer = 0;
       applyTimeOfDay(hours);
     },
     getTimeOfDay: () => timeHours,
+    setTimeMode(mode: TimeOfDayMode) {
+      if (timeMode === mode) return;
+      timeMode = mode;
+      if (mode === 'auto') applyTimeOfDay(minskLocalHours());
+    },
+    getTimeOfDayInfo: (): TimeOfDayInfo => ({ hours: timeHours, mode: timeMode }),
     setFacadeDetail(enabled: boolean) {
       facadeDetail.enabled = Boolean(enabled);
       applyFacadeDetailFlags();
@@ -1887,6 +1916,17 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function tick(dt: number, now: number): void {
     if (resizePending) applyResize();
 
+    // Live clock: re-apply the lighting palette at most once per second while
+    // it follows real Minsk time (the look drifts one hour per real hour).
+    if (timeMode === 'auto') {
+      autoTimeTimer += dt;
+      if (autoTimeTimer >= 1) {
+        autoTimeTimer = 0;
+        const hours = minskLocalHours();
+        if (Math.abs(hours - timeHours) >= 1 / 60) applyTimeOfDay(hours);
+      }
+    }
+
     controls?.update(dt);
     const cameraChanged = rig.update(dt);
     if (cameraChanged) {
@@ -2007,8 +2047,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   });
   resizeObserver.observe(container);
 
-  // Initial view state.
-  applyTimeOfDay(13);
+  // Initial view state: the lighting clock starts on real Minsk time unless a
+  // fixed `?time=H` (or a UI slider value) pinned it to manual.
+  applyTimeOfDay(timeMode === 'auto' ? minskLocalHours() : timeHours);
   applyFacadeDetailFlags();
   applyFacadePixelFlagsInitial();
 
@@ -2025,10 +2066,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const initialAzimuth = Number.parseFloat(params.get('az') ?? '');
   if (Number.isFinite(initialAzimuth)) {
     handle.setCameraSettings({ azimuth: initialAzimuth });
-  }
-  const initialTime = Number.parseFloat(params.get('time') ?? '');
-  if (Number.isFinite(initialTime)) {
-    handle.setTimeOfDay(initialTime);
   }
 
   void streamer.start();
