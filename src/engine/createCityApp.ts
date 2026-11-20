@@ -450,12 +450,12 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   applyCloudShadeSafe(facadeFar, cloudUniforms);
   const environment = createEnvironmentMaterialSet(cloudUniforms);
 
-  // Seasons: real date by default; `?season=spring|summer|autumn|winter` pins
-  // one (QA / screenshots). Canopy recolours at runtime, snow lives in shaders.
+  // Seasons: real date by default; `?season=spring|summer|autumn` pins one
+  // (QA / screenshots). Canopy recolours at runtime, no tile rebuilds. Winter
+  // is intentionally absent (owner decision): cold months fall back to autumn.
   let seasonOverride = parseSeason(params.get('season'));
   const season = seasonOverride ?? seasonForDate();
   const seasonLook = seasonAppearance(season);
-  cloudController.setSnow(seasonLook.snow);
 
   // --- lights --------------------------------------------------------------
   const defaultShadowSize = renderer.capabilities.maxTextureSize >= 4096 ? 2048 : 1024;
@@ -682,11 +682,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     },
   });
 
-  // Seasonal canopy: winter hides the canopies (bare branches), spring/autumn
-  // recolour them; all runtime work — no tile rebuilds.
+  // Seasonal canopy: spring/summer/autumn recolour at runtime — no rebuilds.
   streamer.setCanopyAppearance({
     palette: [...seasonLook.canopyPalette],
-    visible: seasonLook.canopyVisible,
+    visible: true,
   });
 
   picker = new BuildingPicker(streamer, rig.camera);
@@ -774,10 +773,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     setSeason(value: SeasonOverride) {
       seasonOverride = value === 'auto' ? null : value;
       const look = seasonAppearance(seasonOverride ?? seasonForDate());
-      cloudController.setSnow(look.snow);
       streamer.setCanopyAppearance({
         palette: [...look.canopyPalette],
-        visible: look.canopyVisible,
+        visible: true,
       });
     },
     getSeason: () => seasonOverride ?? 'auto',
@@ -970,7 +968,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       timeMode: timeMode,
       season: seasonOverride ?? seasonForDate(),
       clouds: cloudController.getStrength(),
-      snow: cloudUniforms.uSnowAmount.value as number,
       weather: post.getWeather(),
     }),
     rendererInfo: () => ({
@@ -1597,10 +1594,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function currentFogRange(): { near: number; far: number } {
     const camDistance = rig.getCameraDistanceValue();
     // Scale the preset fog distances with the visible extent: at a district view
-    // (660 m) this is byte-identical to the old preset offsets, at the ~9.6 km
-    // complete-city overview the haze grows with the view instead of fogging the
-    // whole city out.
-    const viewScale = Math.max(1, rig.getOrthoHeight() / 660);
+    // (660 m) this is byte-identical to the old preset offsets. The scale is
+    // QUADRATIC so the fog band stays beyond the visible city at every zoom —
+    // a linear scale put the band start inside the city at the complete-city
+    // overview, veiling the whole map in a grey gradient (the "дымка").
+    const viewScale = Math.max(1, (rig.getOrthoHeight() / 660) ** 2);
     return {
       near: Math.max(60, camDistance + (look.fogNear - FOG_REFERENCE_DISTANCE) * viewScale),
       far: Math.max(300, camDistance + (look.fogFar - FOG_REFERENCE_DISTANCE) * viewScale),

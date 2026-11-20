@@ -64,8 +64,8 @@ test.describe('Isometric Minsk — atmosphere', () => {
     expect(weather.kind).toBe('snow');
     expect(weather.amount).toBeCloseTo(0.5, 2);
 
-    await page.evaluate(() => window.__CITY_APP__?.app?.setSeason('winter'));
-    expect(await callApp<string>(page, 'getSeason')).toBe('winter');
+    await page.evaluate(() => window.__CITY_APP__?.app?.setSeason('autumn'));
+    expect(await callApp<string>(page, 'getSeason')).toBe('autumn');
     await page.evaluate(() => window.__CITY_APP__?.app?.setSeason('auto'));
     expect(await callApp<string>(page, 'getSeason')).toBe('auto');
   });
@@ -81,13 +81,13 @@ test.describe('Isometric Minsk — atmosphere', () => {
     const atmosphere = await page.evaluate(() => window.__CITY_STATS__?.atmosphere ?? null);
     expect(atmosphere).not.toBeNull();
     expect(['auto', 'manual']).toContain(atmosphere!.timeMode);
-    expect(['spring', 'summer', 'autumn', 'winter']).toContain(atmosphere!.season);
+    expect(['spring', 'summer', 'autumn']).toContain(atmosphere!.season);
     expect(['off', 'rain', 'snow']).toContain(atmosphere!.weather);
     expect(atmosphere!.clouds).toBeGreaterThanOrEqual(0);
   });
 
-  test('atmosphere debug accessor reflects a pinned winter night', async ({ page }) => {
-    await page.goto('/?time=23&season=winter&weather=snow', { waitUntil: 'domcontentloaded' });
+  test('atmosphere debug accessor reflects a pinned autumn night', async ({ page }) => {
+    await page.goto('/?time=23&season=autumn&weather=snow', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__CITY_APP__?.ready === true, null, {
       timeout: 120_000,
     });
@@ -104,8 +104,7 @@ test.describe('Isometric Minsk — atmosphere', () => {
       .not.toBeNull();
     const debug = await readDebug();
     expect(debug.atmosphere!.timeMode).toBe('manual');
-    expect(debug.atmosphere!.season).toBe('winter');
+    expect(debug.atmosphere!.season).toBe('autumn');
     expect((debug.atmosphere!.weather as { kind: string }).kind).toBe('snow');
-    expect(debug.atmosphere!.snow as number).toBeGreaterThan(0.4);
   });
 });

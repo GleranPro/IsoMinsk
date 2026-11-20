@@ -207,7 +207,6 @@ export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshSt
                 <option value="spring">Spring</option>
                 <option value="summer">Summer</option>
                 <option value="autumn">Autumn</option>
-                <option value="winter">Winter</option>
               </select>
             </label>
           </section>

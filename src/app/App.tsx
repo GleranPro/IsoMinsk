@@ -196,10 +196,17 @@ export function App() {
       const app = appRef.current;
       if (!app) return;
       const info = app.getTimeOfDayInfo();
+      const clouds = app.getCloudsEnabled();
+      const weather = app.getWeather().kind;
+      const season = app.getSeason();
       setUi((prev) =>
-        prev.timeMode === info.mode && Math.abs(prev.timeOfDay - info.hours) < 0.005
+        prev.timeMode === info.mode &&
+        Math.abs(prev.timeOfDay - info.hours) < 0.005 &&
+        prev.clouds === clouds &&
+        prev.weather === weather &&
+        prev.season === season
           ? prev
-          : { ...prev, timeMode: info.mode, timeOfDay: info.hours },
+          : { ...prev, timeMode: info.mode, timeOfDay: info.hours, clouds, weather, season },
       );
     }, 1000);
     return () => window.clearInterval(timer);

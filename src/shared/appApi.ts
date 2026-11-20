@@ -96,7 +96,7 @@ export interface AtmosphereStats {
   /** Lighting clock mode (live Minsk time or manual). */
   timeMode: TimeOfDayMode;
   /** Active season (override resolved to a concrete season). */
-  season: 'spring' | 'summer' | 'autumn' | 'winter';
+  season: 'spring' | 'summer' | 'autumn';
   /** Cloud-shade strength 0..1 (0 when disabled). */
   clouds: number;
   /** Current precipitation. */
@@ -180,7 +180,7 @@ export interface TimeOfDayInfo {
 export type WeatherKind = 'off' | 'rain' | 'snow';
 
 /** Season override: `auto` follows the real calendar date. */
-export type SeasonOverride = 'auto' | 'spring' | 'summer' | 'autumn' | 'winter';
+export type SeasonOverride = 'auto' | 'spring' | 'summer' | 'autumn';
 
 export interface CityAppHandle {
   /** Render loop control. */
