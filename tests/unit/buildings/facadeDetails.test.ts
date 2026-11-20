@@ -21,7 +21,7 @@ import {
 } from '../../../src/city/buildings/facadeDetails';
 import { styleForBuilding } from '../../../src/city/buildings/style';
 import { FACE_KIND } from '../../../src/shared/geometry';
-import type { BuildingVolume } from '../../../src/shared/types';
+import type { Archetype, BuildingVolume } from '../../../src/shared/types';
 import {
   courtyardPolygon,
   decodeMesh,
@@ -53,11 +53,14 @@ function finish(sink: MeshSink): BuildingMeshResult {
 
 function contextFor(
   volume: BuildingVolume,
-  options: { styleRecipe?: number; detail?: boolean } = {},
+  options: { styleRecipe?: number; detail?: boolean; archetype?: Archetype } = {},
 ): { style: ReturnType<typeof styleForBuilding>; context: FacadeDetailContext; volume: BuildingVolume } {
   const building = squarePrismBuilding({
     id: 'w-detail',
-    archetype: 'panel',
+    archetype: options.archetype ?? 'panel',
+    // Explicit floor count: detail geometry is only emitted for buildings with
+    // strong style evidence (anonymous building=yes stays plain).
+    levels: 9,
     styleVariant: {
       schema: 1,
       recipeId: options.styleRecipe ?? 6,
@@ -133,7 +136,8 @@ describe('addBox', () => {
 describe('addFacadeFrame', () => {
   it('projects piers, a plinth and a cornice outward within the tolerance', () => {
     const volume = makeVolume([rectRing(0, 0, 40, 14)], 0, 24, 'flat', 0);
-    const { style, context } = contextFor(volume);
+    // Stalinist ensemble: strong cornice (trimIntensity 1.0) keeps piers + plinth.
+    const { style, context } = contextFor(volume, { styleRecipe: 0, archetype: 'stalin' });
     const sink = new MeshSink();
     const emitted = addFacadeFrame(sink, style, context, { piers: true, plinth: true, cornice: true });
     expect(emitted).toBeGreaterThan(0);
@@ -210,6 +214,25 @@ describe('addFacadeFrame', () => {
     }
     const sink = new MeshSink();
     expect(addFacadeFrame(sink, style, context)).toBeGreaterThan(0);
+  });
+
+  it('drops invented piers and plinth for plain (low-trim) families', () => {
+    const volume = makeVolume([rectRing(0, 0, 40, 14)], 0, 24, 'flat', 0);
+    // framed_residential: cornice 0.25 m => trimIntensity ~0.23, below the
+    // monumental threshold. Piers/plinth must not appear.
+    const { style, context } = contextFor(volume, {
+      styleRecipe: 11,
+      archetype: 'modern',
+    });
+    expect(style.trimIntensity).toBeLessThan(0.45);
+    const sink = new MeshSink();
+    const emitted = addFacadeFrame(sink, style, context, {
+      piers: true,
+      plinth: true,
+      cornice: false,
+    });
+    expect(emitted).toBe(0);
+    expect(sink.triangles).toBe(0);
   });
 });
 

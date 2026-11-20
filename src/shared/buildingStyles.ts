@@ -6,7 +6,9 @@
  * (`scripts/normalize/style_recipes.py`). Family recipe ids are stable `0..26`;
  * ids `27..37` are reserved at runtime for the eleven *legacy* archetype presets
  * so old tile data and protected routes (palace, stadium) reproduce their exact
- * previous facade values instead of borrowing a modern family.
+ * previous facade values instead of borrowing a modern family. Ids `38..40` are
+ * renderer-only facade shells (church / monument / assembly hall) chosen from the
+ * building use; they are never written to tile data.
  *
  * The registry owns:
  *  - strict, fail-safe recipe lookup (`getStyleRecipe`),
@@ -17,7 +19,7 @@
  *
  * Contract notes:
  *  - `packStyleBits` refuses recipe ids outside `0..255`; the shader masks the
- *    low byte for flags and clamps the high byte to `0..37`.
+ *    low byte for flags and clamps the high byte to `0..40`.
  *  - `getStyleRecipe` never returns `undefined`: an unknown or mismatched id
  *    falls back to `legacyRecipeFor(archetype)` and warns once per key.
  */
@@ -41,6 +43,8 @@ export type FacadeMotif =
   | 'clerestory'
   | 'blank_service'
   | 'assembly_hall'
+  // Renderer-only shell motif: tall narrow arched openings (churches).
+  | 'church'
   // Legacy presets are not motif families: they keep the pre-recipe shader path.
   | 'legacy';
 
@@ -84,6 +88,8 @@ export const FACADE_MOTIFS: readonly FacadeMotif[] = [
   'clerestory',
   'blank_service',
   'assembly_hall',
+  // Renderer-only shell motif: tall narrow arched openings (churches).
+  'church',
 ] as const;
 
 export const RECIPE_ROOFS: readonly RecipeRoofName[] = [
@@ -145,8 +151,20 @@ export const FAMILY_RECIPE_COUNT = 27;
 export const LEGACY_RECIPE_OFFSET = 27;
 /** Number of legacy archetype presets (one per archetype). */
 export const LEGACY_RECIPE_COUNT = ARCHETYPE_BY_ID.length;
-/** Shader uniform rows: 27 families + 11 legacy presets = 38. */
-export const FACADE_PRESET_COUNT = FAMILY_RECIPE_COUNT + LEGACY_RECIPE_COUNT;
+/**
+ * First runtime-only "shell" recipe id (renderer facade grammar).
+ *
+ * Shell rows are not part of the offline catalog: they are chosen at render time
+ * from the building use (church / monument / assembly hall) and never appear in
+ * tile data. They are appended after the legacy rows so every existing recipe id
+ * (families 0..26, legacy 27..37) keeps its meaning.
+ */
+export const SHELL_RECIPE_OFFSET = LEGACY_RECIPE_OFFSET + LEGACY_RECIPE_COUNT;
+/** Number of renderer-only shell recipes. */
+export const SHELL_RECIPE_COUNT = 3;
+/** Shader uniform rows: 27 families + 11 legacy + 3 shells = 41. */
+export const FACADE_PRESET_COUNT =
+  FAMILY_RECIPE_COUNT + LEGACY_RECIPE_COUNT + SHELL_RECIPE_COUNT;
 
 const F = STYLE_FLAG;
 
@@ -420,6 +438,63 @@ export const STYLE_RECIPES: readonly StyleRecipe[] = Object.freeze(
   ),
 );
 
+/**
+ * Renderer-only facade shells, in id order (`SHELL_RECIPE_OFFSET..+2`).
+ *
+ * A shell is a complete recipe row (preset + motif + detail modules) chosen from
+ * the building use at render time, so a church does not have to borrow a
+ * residential family and a monument does not have to keep a window grid. The
+ * offline catalog and the payload are untouched: shells never appear in data.
+ */
+export const SHELL_RECIPES: readonly StyleRecipe[] = Object.freeze([
+  Object.freeze({
+    id: SHELL_RECIPE_OFFSET,
+    name: 'shell_religious',
+    archetype: 'civic' as Archetype,
+    profile: 'base' as StyleProfileName,
+    facade: 'church' as FacadeMotif,
+    roof: 'source' as RecipeRoofName,
+    details: Object.freeze(['entrance', 'cornice'] as DetailKind[]),
+    palette: Object.freeze(['#d8cbb4', '#cdbfa6', '#e0d5c0']),
+  }),
+  Object.freeze({
+    id: SHELL_RECIPE_OFFSET + 1,
+    name: 'shell_monument',
+    archetype: 'civic' as Archetype,
+    profile: 'base' as StyleProfileName,
+    facade: 'monument' as FacadeMotif,
+    roof: 'source' as RecipeRoofName,
+    details: Object.freeze([] as DetailKind[]),
+    palette: Object.freeze(['#8f8b84', '#9a958d', '#85817a']),
+  }),
+  Object.freeze({
+    id: SHELL_RECIPE_OFFSET + 2,
+    name: 'shell_assembly',
+    archetype: 'civic' as Archetype,
+    profile: 'base' as StyleProfileName,
+    facade: 'assembly_hall' as FacadeMotif,
+    roof: 'source' as RecipeRoofName,
+    details: Object.freeze(['entrance', 'cornice'] as DetailKind[]),
+    palette: Object.freeze(['#c6beac', '#bdb7a6', '#cbc2ad']),
+  }),
+]);
+
+/** Shell recipe id for a building use, or null when the use keeps its family. */
+export function shellRecipeForUse(use: string): StyleRecipe | null {
+  switch (use) {
+    case 'religious':
+      return SHELL_RECIPES[0] ?? null;
+    case 'monument':
+    case 'roof':
+      // Roof-only structures reuse the blank shell: no windows, no doors.
+      return SHELL_RECIPES[1] ?? null;
+    case 'assembly':
+      return SHELL_RECIPES[2] ?? null;
+    default:
+      return null;
+  }
+}
+
 /** Legacy preset recipe id for an archetype (`27 + ARCHETYPE_ID[archetype]`). */
 export function legacyRecipeId(archetype: Archetype): number {
   const index = ARCHETYPE_ID[archetype] ?? ARCHETYPE_ID.small;
@@ -473,6 +548,7 @@ function warnOnce(key: string, message: string): void {
  *   disagrees is rejected, warns once and returns the legacy preset; omitting it
  *   is a pure registry lookup used for cross-language parity.
  * - `27..37` resolves the legacy preset row (protected routes and old tiles).
+ * - `38..40` resolves a renderer-only shell row (church / monument / assembly).
  * - anything else (missing, negative, NaN, out of range) warns once per key and
  *   returns `legacyRecipeFor(archetype)` — never `undefined`, never id `-1`.
  */
@@ -482,6 +558,11 @@ export function getStyleRecipe(id: number | undefined, archetype?: Archetype): S
   if (!Number.isInteger(id) || id < 0 || id >= FACADE_PRESET_COUNT) {
     warnOnce(`unknown:${String(id)}:${archetype ?? ''}`, `[buildingStyles] unknown recipe id ${String(id)}; using ${fallback.name}`);
     return fallback;
+  }
+  if (id >= SHELL_RECIPE_OFFSET) {
+    const shell = SHELL_RECIPES[id - SHELL_RECIPE_OFFSET];
+    if (!shell) return fallback;
+    return shell;
   }
   if (id >= LEGACY_RECIPE_OFFSET) {
     const legacyArchetype = legacyArchetypeForRecipeId(id);
@@ -503,7 +584,7 @@ export function getStyleRecipe(id: number | undefined, archetype?: Archetype): S
   return recipe;
 }
 
-/** Numeric shader uniform index for a recipe (0..37), clamped defensively. */
+/** Numeric shader uniform index for a recipe (0..40), clamped defensively. */
 export function facadePresetIndex(recipeId: number): number {
   if (!Number.isFinite(recipeId)) return LEGACY_RECIPE_OFFSET;
   const index = Math.trunc(recipeId);

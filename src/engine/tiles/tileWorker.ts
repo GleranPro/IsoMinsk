@@ -13,6 +13,7 @@
  */
 
 import type { TileData } from '../../shared/types';
+import { applyBuildingOverride } from '../../city/buildings/curatedOverrides';
 import { buildTilePayload } from './tileBuild';
 import {
   collectTransferables,
@@ -53,6 +54,11 @@ async function handleLoad(request: Extract<TileWorkerRequest, { type: 'load' }>)
       throw new Error(`HTTP ${response.status} while fetching ${request.url}`);
     }
     const data = (await response.json()) as TileData;
+    // Curated corrections (verified OSM defects) must reach the mesh *and* the
+    // metadata returned for picking / the info panel.
+    if (Array.isArray(data.buildings)) {
+      data.buildings = data.buildings.map(applyBuildingOverride);
+    }
     const fetchMs = now() - fetchStart;
     if (controller.signal.aborted) {
       respond({ type: 'cancelled', id: request.id });

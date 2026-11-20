@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { buildBuildingsMesh } from '../../city/buildings/buildingsMesh';
 import { buildEnvironmentMeshes } from '../../city/environment/environmentMeshes';
+import { LANDMARK_HIDDEN_BUILDING_IDS } from '../../shared/landmarks';
 import type { TileData } from '../../shared/types';
 import type { TreeRenderStyle } from '../../city/environment/treeInstances';
 import {
@@ -289,6 +290,7 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
   try {
     const result = buildBuildingsMesh(data.buildings, {
       facadeDetail: options.facadeDetail,
+      hiddenBuildingIds: LANDMARK_HIDDEN_BUILDING_IDS,
     });
     triangleOwnerLength = result.triangleOwner ? result.triangleOwner.length : 0;
     if (result.triangleCount > 0 && result.geometry.getAttribute('position')) {

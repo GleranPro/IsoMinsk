@@ -40,6 +40,7 @@ import { addCuratedLandmark } from './landmarks';
 import { MeshSink } from './meshSink';
 import { addPalaceAccents } from './palaceAccents';
 import { profileVolumes } from './buildingProfiles';
+import { applyBuildingOverride } from './curatedOverrides';
 import {
   addBalconyStack,
   addEntranceTreatment,
@@ -78,6 +79,13 @@ export interface BuildingMeshOptions {
    * mandatory walls/roofs (the same source ids are exported separately).
    */
   detailLevel?: 'near' | 'far';
+  /**
+   * OSM building ids that a baked landmark model replaces (see
+   * src/shared/landmarks). They keep their slot in `buildingIds` but emit no
+   * geometry. Supplied by the tile build; unit tests of the curated builders
+   * leave it unset.
+   */
+  hiddenBuildingIds?: ReadonlySet<string>;
 }
 
 /** Mandatory source massing vs optional decorative geometry of one tile. */
@@ -142,14 +150,26 @@ export function buildBuildingsMesh(
   let moduleFailures = 0;
 
   for (let buildingIndex = 0; buildingIndex < input.length; buildingIndex++) {
-    const building = input[buildingIndex];
-    const id = building && typeof building.id === 'string' ? building.id : `#${buildingIndex}`;
+    const sourceBuilding = input[buildingIndex];
+    const id =
+      sourceBuilding && typeof sourceBuilding.id === 'string'
+        ? sourceBuilding.id
+        : `#${buildingIndex}`;
     buildingIds.push(id);
 
-    if (!building) {
+    if (!sourceBuilding) {
       warnings.push(`${id}: missing building feature`);
       continue;
     }
+
+    // A low-poly landmark model stands in for this OSM object (see
+    // src/shared/landmarks): the id stays in `buildingIds` so indices line up,
+    // but no geometry is emitted.
+    if (options?.hiddenBuildingIds?.has(id)) continue;
+
+    // Curated corrections (verified OSM defects) are applied before styling and
+    // volume meshing, so height, archetype and facade all see the fixed values.
+    const building = applyBuildingOverride(sourceBuilding);
 
     let style: BuildingStyle;
     try {

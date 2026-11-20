@@ -1134,7 +1134,9 @@ export function addRedChurch(
     }
 
     // --- nave: brick walls, plinth, cornice --------------------------------
-    const brickWall = surface(style, FACE_KIND.wall, BRICK);
+    // The curated church emits its own openings; the generic facade grid must
+    // stay off its brick walls.
+    const brickWall = surface(style, FACE_KIND.wall, BRICK, STYLE_FLAG.blank);
     const brickTrim = surface(style, FACE_KIND.trim, BRICK, STYLE_FLAG.blank);
     const stoneTrim = surface(style, FACE_KIND.trim, STONE);
     emitRingWalls(sink, planRing, 0, NAVE_EAVE, brickWall);

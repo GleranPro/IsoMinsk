@@ -176,7 +176,7 @@ evidence ─► eligibility ─► weighted hash  ─► styleVariant.recipeId
                                              │
                           ┌──────────────────┴───────────────────┐
                           ▼                                      ▼
-            preset row 0..37 (uPresetA/B)              geometry modules
+            preset row 0..40 (uPresetA/B)              geometry modules
             motif id (uRecipeMotif)                    (profiles, frames,
             flags | recipeId << 8  → aFace.y            balconies, entrances,
                                                         variant roofs)
@@ -184,19 +184,32 @@ evidence ─► eligibility ─► weighted hash  ─► styleVariant.recipeId
 
 * **Bit packing.** `aFace.y = flags | (recipeId << 8)` (16 bits, exact in
   float32). The fragment shader masks the low byte for `facadeFlag` tests and
-  reads the high byte as the preset row index, clamped to `0..37`; the broad
+  reads the high byte as the preset row index, clamped to `0..40`; the broad
   archetype id stays in `aStyle.x` for palace/stadium semantics.
-* **Preset rows.** `uPresetA/B` have 38 rows: `0..26` are family recipes
+* **Preset rows.** `uPresetA/B` have 41 rows: `0..26` are family recipes
   (`src/city/facades/presets.ts` derives them from the archetype preset plus a
   per-family rhythm override and a motif flag adjustment), `27..37` are the
-  frozen legacy archetype presets. A feature without `styleVariant` resolves
-  `legacyRecipeFor(archetype)` and reproduces the exact previous values.
-* **Motif dispatch.** One `uRecipeMotif[38]` float array selects a small motif
+  frozen legacy archetype presets, and `38..40` are renderer-only *shells*
+  (church / monument / assembly hall) chosen at render time from the building
+  use. A feature without `styleVariant` resolves `legacyRecipeFor(archetype)` and
+  reproduces the exact previous values.
+* **Building use.** `src/city/buildings/buildingUse.ts` derives a finer class
+  than the eleven archetypes from the payload tags (`building`, `amenity`,
+  `historic`, `man_made`, `religion`, `tourism`, name fallbacks). Religious,
+  monument and assembly uses switch to a shell row; anonymous `building=yes`
+  footprints are "weak evidence" and lose massing profiles, pilasters and most
+  trim so the renderer stops inventing decoration. Curated landmarks keep their
+  data recipe and their bespoke geometry.
+* **Motif dispatch.** One `uRecipeMotif[41]` float array selects a small motif
   integer (`monument`, `historic`, `grid`, `loggia`, `balcony_stack`,
-  `staircore`, `ribbon`, `clerestory`, `blank_service`, `assembly_hall`, or `-1`
-  for legacy rows) instead of 27 shader branches. Each motif reuses the same
-  real-metre UVs as the punched-window lattice, so painted openings and the
-  geometry frames stay aligned.
+  `staircore`, `ribbon`, `clerestory`, `blank_service`, `assembly_hall`,
+  `church`, or `-1` for legacy rows) instead of 27 shader branches. Each motif
+  reuses the same real-metre UVs as the punched-window lattice, so painted
+  openings and the geometry frames stay aligned. `church` draws tall narrow
+  round-headed openings; `monument` + `STYLE_FLAG.blank` keeps steles solid, and
+  `blank` also suppresses the painted window frames/sills (otherwise they would
+  read as empty window outlines); `assembly_hall` / `blank_service` replace the
+  residential ground-floor windows with a solid base and a sparse utility door.
 * **Massing profiles** (`src/city/buildings/buildingProfiles.ts`) split a convex
   single-ring footprint by a half-plane along its minimum-area rectangle and
   lower one side (`end_pavilion`, `stepped`). Explicit `building:part`
@@ -207,6 +220,9 @@ evidence ─► eligibility ─► weighted hash  ─► styleVariant.recipeId
   (piers, plinth/cornice bands, balcony slabs/rails, entrance canopy, roof
   service boxes) through `MeshSink`, with explicit outward normals, metric UVs,
   the host recipe's palette and every projection inside the source AABB + 0.45 m.
+  Piers and the plinth are gated by `style.trimIntensity` (only monumental
+  families keep them), and the shader's sill/lintel accents scale with the same
+  value, so plain residential facades no longer get white stone surrounds.
   Each module is called in its own try/catch: a failure drops only that module
   and keeps the mandatory walls/roof.
 * **Variant roofs** (`src/city/roofs/variantRoofs.ts`) provide analytic mansard
