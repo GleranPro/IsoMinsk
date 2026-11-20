@@ -22,9 +22,12 @@ real date (`?season=`), winter hides canopies and feeds a snow uniform. All
 toggles are in the UI "Atmosphere" group and exposed on `CityAppHandle`
 (`setCloudsEnabled/setWeather/setSeason`) plus `__CITY_DEBUG__.atmosphere()`;
 `EngineStats.atmosphere` reports the live state honestly. Unit tests: minskTime,
-seasons, lampSpots, cloudShade chunks; e2e: `tests/e2e/atmosphere.spec.ts`;
-perf harness: `qa:liveness-perf`. Verified visually on software WebGL at
-district and city zoom (night/rain/winter captures in `screenshots/liveness/`).
+seasons, lampSpots, cloudShade chunks; e2e: `tests/e2e/atmosphere.spec.ts`
+(4 passed on hardware GPU); perf harness: `qa:liveness-perf` — measured on the
+reference RTX 3080 Laptop (district view, night, clouds+lights on): frame
+p95 1.3 ms vs 1.2 ms with atmosphere off, **+0.10 ms p95** (budget ≤1.5 ms).
+Verified visually on software WebGL at district and city zoom (night/rain/
+winter captures in `screenshots/liveness/`).
 
 **Procedural building variety — 2026-11-14:** 27 coherent architectural
 families were added as a versioned recipe layer (payload 0.5.0). The offline
