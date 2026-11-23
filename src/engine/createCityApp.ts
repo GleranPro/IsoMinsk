@@ -89,7 +89,9 @@ const DEFAULT_PIXEL_ART: PixelArtSettings = {
   resolution: 360,
   outline: 0.55,
   colorLevels: 20,
-  dither: 0.35,
+  // Ordered dither breaks posterisation bands. It is adaptive in the post
+  // shader (flat surfaces skip it), so this is the strength on real gradients.
+  dither: 0.25,
 };
 
 /** Mobility switches before the layer has any data: layer off, nothing simulated. */

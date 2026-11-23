@@ -115,6 +115,39 @@ float bayer4(vec2 a) {
   return bayer2(0.5 * a) * 0.25 + bayer2(a);
 }
 
+// Local scene contrast (linear light) from the four neighbouring texels.
+// Ordered dithering a flat mid-tone puts the whole Bayer grid on screen as a
+// checkerboard; flat surfaces therefore snap to one posterisation step while
+// edges/gradients keep the dither.
+float sceneDetail(vec2 uv) {
+  vec2 texel = uTexelSize;
+  vec3 centre = texture2D(tScene, uv).rgb;
+  vec3 left = texture2D(tScene, uv - vec2(texel.x, 0.0)).rgb;
+  vec3 right = texture2D(tScene, uv + vec2(texel.x, 0.0)).rgb;
+  vec3 up = texture2D(tScene, uv - vec2(0.0, texel.y)).rgb;
+  vec3 down = texture2D(tScene, uv + vec2(0.0, texel.y)).rgb;
+  vec3 delta = max(
+    max(abs(centre - left), abs(centre - right)),
+    max(abs(centre - up), abs(centre - down))
+  );
+  return max(delta.r, max(delta.g, delta.b));
+}
+
+// 3x3 box average of the scene in linear light.
+vec3 sceneFlatColor(vec2 uv) {
+  vec2 texel = uTexelSize;
+  vec3 sum = texture2D(tScene, uv).rgb;
+  sum += texture2D(tScene, uv + vec2(texel.x, 0.0)).rgb;
+  sum += texture2D(tScene, uv - vec2(texel.x, 0.0)).rgb;
+  sum += texture2D(tScene, uv + vec2(0.0, texel.y)).rgb;
+  sum += texture2D(tScene, uv - vec2(0.0, texel.y)).rgb;
+  sum += texture2D(tScene, uv + texel).rgb;
+  sum += texture2D(tScene, uv - texel).rgb;
+  sum += texture2D(tScene, uv + vec2(texel.x, -texel.y)).rgb;
+  sum += texture2D(tScene, uv + vec2(-texel.x, texel.y)).rgb;
+  return sum / 9.0;
+}
+
 // --- screen-space weather (rain / snow) ------------------------------------
 // Warsaw principle: precipitation is a post effect, no second geometry.
 // uWeather: 0 = off, 1 = rain, 2 = snow. uWeatherAmount scales density.
@@ -326,6 +359,16 @@ void main() {
     return;
   }
 
+  // Pixel-art path. Flat surfaces carry sub-level texture/noise that the
+  // posteriser turns into a checkerboard; average the 3x3 neighbourhood there.
+  // Edges and detail keep the original texel (sceneDetail gates the blend).
+  float flatDetail = sceneDetail(vUv);
+  linearColor = mix(
+    linearColor,
+    sceneFlatColor(vUv),
+    1.0 - smoothstep(0.008, 0.03, flatDetail)
+  );
+
   // Subtle vignette in linear light (so the palette quantisation below still
   // produces flat posterised regions).
   float radius = length(vUv - vec2(0.5));
@@ -339,12 +382,18 @@ void main() {
   float fog = smoothstep(uFogNear, uFogFar, viewDist);
   color = mix(color, uFogColor, fog);
 
+  // Dither only where the scene actually changes: a flat ground tone must not
+  // show the Bayer grid as a checkerboard. Thresholds are in linear light and
+  // deliberately high — soft gradients/flat ground posterise cleanly, while
+  // real edges (buildings, kerbs, shadows) keep the dither.
+  float ditherMask = smoothstep(0.01, 0.04, flatDetail);
+
   if (uPaletteMix > 0.0) {
-    float dither = (bayer4(gl_FragCoord.xy) - 0.5) * uDither * 0.16;
+    float dither = (bayer4(gl_FragCoord.xy) - 0.5) * uDither * 0.16 * ditherMask;
     vec3 candidate = clamp(color + dither, 0.0, 1.0);
     color = mix(candidate, nearestPalette(candidate), uPaletteMix);
   } else if (uLevels > 1.0) {
-    float dither = (bayer4(gl_FragCoord.xy) - 0.5) * (uDither / uLevels);
+    float dither = (bayer4(gl_FragCoord.xy) - 0.5) * (uDither / uLevels) * ditherMask;
     vec3 candidate = clamp(color + dither, 0.0, 1.0);
     color = floor(candidate * uLevels + 0.5) / uLevels;
   }

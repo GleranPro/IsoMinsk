@@ -166,13 +166,14 @@ float seasonSnowNoise(vec2 world) {
 }
 
 float seasonLeafNoise(vec2 world) {
-  float fine = seasonValueNoise(world / 2.0);
-  float coarse = seasonValueNoise(world / 8.0 + 23.0);
-  return mix(fine, coarse, smoothstep(4.0, 12.0, uSnowCell));
+  // One low-frequency octave: the mask G already carries the fine shape
+  // (under-crown circles, kerb strips), and high-frequency shader noise only
+  // turns into a checker once the post pass posterises the ground.
+  return seasonValueNoise(world / 10.0);
 }
 
 float seasonLeafTone(vec2 world) {
-  return seasonValueNoise(world / 3.0 + 37.0);
+  return seasonValueNoise(world / 14.0 + 37.0);
 }
 `;
 
@@ -195,9 +196,12 @@ if (uWinter > 0.001 || uAutumn > 0.001) {
   // pixel grid so leaves stay crisp instead of becoming a soft gradient.
   if (uAutumn > 0.001) {
     float seasonLeaf = seasonSample.g * uAutumn * smoothstep(0.04, 0.18, seasonClass);
+    // Only real litter patches: a faint G tint on paving (isolated antialiased
+    // texels) posterises into a checkerboard instead of reading as leaves.
+    seasonLeaf *= smoothstep(0.16, 0.32, seasonSample.g);
     float leafNoise = seasonLeafNoise(vSeasonWorld.xz);
     // Smooth density clumps: a hard per-texel threshold reads as a checker.
-    seasonLeaf *= 0.55 + 0.45 * smoothstep(0.25, 0.75, leafNoise);
+    seasonLeaf *= 0.7 + 0.3 * smoothstep(0.25, 0.75, leafNoise);
     float leafTone = seasonLeafTone(vSeasonWorld.xz);
     vec3 leafColor = mix(uLeafA, uLeafB, smoothstep(0.2, 0.8, leafTone));
     leafColor = mix(leafColor, uLeafC, smoothstep(0.62, 0.9, leafTone));
