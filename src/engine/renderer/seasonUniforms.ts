@@ -38,6 +38,8 @@ export interface SeasonUniforms {
   uLeafC: THREE.IUniform<THREE.Color>;
   /** Yellow-brown autumn lawn tint. */
   uGrassAutumn: THREE.IUniform<THREE.Color>;
+  /** 0..1 night factor: snow catches a little sky light instead of going black. */
+  uSeasonNight: THREE.IUniform<number>;
 }
 
 /** Cold whites from the pixel palette (docs/SEASONS_TECHNICAL_PLAN.md §9.5). */
@@ -74,6 +76,7 @@ export function createSeasonUniforms(weights?: SeasonWeights): SeasonUniforms {
     uLeafB: { value: new THREE.Color(AUTUMN_COLORS.leafB) },
     uLeafC: { value: new THREE.Color(AUTUMN_COLORS.leafC) },
     uGrassAutumn: { value: new THREE.Color(AUTUMN_COLORS.grass) },
+    uSeasonNight: { value: 0 },
   };
 }
 

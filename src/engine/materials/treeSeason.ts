@@ -40,6 +40,7 @@ vTreeWinterBranch = aWinterBranch;
 export const TREE_SEASON_FRAGMENT_GLSL = /* glsl */ `
 uniform float uWinter;
 uniform float uSnowCell;
+uniform float uSeasonNight;
 uniform vec3 uSnowDeep;
 uniform vec3 uSnowShadow;
 
@@ -70,6 +71,8 @@ vec3 treeSeasonSnow = mix(uSnowShadow, uSnowDeep, smoothstep(0.15, 0.9, treeSeas
 // bark so they still read as branches under the snow.
 float treeSeasonMix = mix(0.90, 0.66, clamp(vTreeWinterBranch, 0.0, 1.0));
 diffuseColor.rgb = mix(diffuseColor.rgb, treeSeasonSnow, treeSeasonCap * treeSeasonMix);
+// Faint sky reflection on snow-laden canopies at night (not a glow).
+totalEmissiveRadiance += treeSeasonSnow * treeSeasonCap * uSeasonNight * 0.03;
 `;
 
 /** Insert `insert` immediately after `anchor`; unchanged when absent. */

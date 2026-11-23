@@ -52,8 +52,11 @@ describe('ground season shader', () => {
     expect(GROUND_SEASON_SNOW_GLSL).toContain('seasonSample.b');
     expect(GROUND_SEASON_SNOW_GLSL).toContain('smoothstep(0.08, 0.22, seasonClass)');
     expect(GROUND_SEASON_SNOW_GLSL).toContain('uWinter');
-    // Ground albedo only: no emissive/global pass, no up-normal blanket.
-    expect(GROUND_SEASON_SNOW_GLSL).not.toContain('totalEmissiveRadiance');
+    // No global emissive: the only lift is the faint night sky reflection on
+    // snow cover (snow × cover × winter × night), never a scene-wide glow.
+    expect(GROUND_SEASON_SNOW_GLSL).toContain(
+      'totalEmissiveRadiance += seasonSnow * seasonCover * uWinter * uSeasonNight',
+    );
     expect(GROUND_SEASON_SNOW_GLSL).not.toContain('vCloudNormal');
     expect(GROUND_SEASON_SNOW_GLSL).not.toContain('uSnowAmount');
   });

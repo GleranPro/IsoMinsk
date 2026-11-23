@@ -480,6 +480,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       ? Math.min(shadowParam, renderer.capabilities.maxTextureSize)
       : defaultShadowSize;
   const lighting = new LightingRig(scene, shadowSize);
+  // Winter QA amount also lowers/cools the sun (P3); summer/autumn unchanged.
+  if (seasonUniforms.uWinter.value > 0) {
+    lighting.setSeasonWinter(seasonUniforms.uWinter.value);
+  }
   // Stylised summer-solstice sun by default; `?realsun=1` restores today's date.
   if (params.get('realsun') === '1') lighting.setUseRealDateSun(true);
   let look = lighting.state.look;
@@ -1559,6 +1563,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     timeHours = clamp(hours, 0, 24);
     const state = lighting.setTimeOfDay(timeHours);
     look = state.look;
+    // Snow's faint sky reflection follows the same night factor.
+    seasonUniforms.uSeasonNight.value = look.nightFactor;
     background.copy(new THREE.Color(look.skyHex));
     updateFacadeMaterialSafe(facadeNear, {
       night: look.nightFactor,

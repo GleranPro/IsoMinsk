@@ -53,6 +53,7 @@ export const FACADE_FLOAT_UNIFORMS = [
   'uTimeHours',
   'uWinter',
   'uSnowCell',
+  'uAutumn',
 ] as const;
 
 /** Vertex attributes the facade shader consumes. */
@@ -127,6 +128,8 @@ uniform float uTimeHours;
 // Seasons P1: snow on roofs and horizontal trim only (walls stay clean).
 uniform float uWinter;
 uniform float uSnowCell;
+// Seasons P3: autumn/winter wetness for streaks and a dark plinth.
+uniform float uAutumn;
 
 uniform vec4 uPresetA[FACADE_PRESET_ROWS];
 uniform vec4 uPresetB[FACADE_PRESET_ROWS];
@@ -614,6 +617,19 @@ vec3 facadeUpperFloors(
   outWall = mix(outWall, sillCol, sillMask * 0.45);
   outWall = mix(outWall, uTrimColor * 0.86, lintelMask * 0.20);
 
+  // Wet seasons: a dirty streak runs down the wall below each sill. Kept at
+  // ~9% and faded out at overview zoom (crisp), so it adds weathering without
+  // becoming a pattern of vertical stripes.
+  float facadeWet = clamp(uWinter + uAutumn, 0.0, 1.0);
+  if (facadeWet > 0.001) {
+    float streakDepth = clamp(1.4 / fhLod, 0.04, 0.28);
+    float belowSill = facadeBand(v, winLo.y - streakDepth, winLo.y, aaV);
+    float across = step(winLo.x, uWin) * (1.0 - step(winHi.x, uWin));
+    float wetVar = 0.55 + 0.45 * facadeHash11(colWin * 3.7 + seed * 17.0);
+    float wetStreak = belowSill * across * wetVar * crisp * detail;
+    outWall *= 1.0 - wetStreak * 0.09 * facadeWet;
+  }
+
   if (ribbon) {
     float mullW = max(1.2 * px, 0.02) / bayLod;
     float mull = facadeBand(min(u, 1.0 - u), 0.0, mullW, aaU) * crisp * detail;
@@ -872,6 +888,13 @@ vec3 facadeGroundFloor(
       * night * (1.0 - groundDetail) * (shopfront ? 0.30 : 0.06);
   }
 
+  // Wet seasons: the plinth is the first 1-1.5 m — darker and slightly colder
+  // from splash-back. Not a global darkening: it fades with height.
+  float facadeWetGround = clamp(uWinter + uAutumn, 0.0, 1.0);
+  float plinthWet = facadeWetGround * (1.0 - smoothstep(0.12, 1.1, uv.y));
+  outWall *= 1.0 - plinthWet * 0.06;
+  outWall = mix(outWall, outWall * vec3(0.94, 0.97, 1.03), plinthWet * 0.4);
+
   return outWall;
 }
 
@@ -923,12 +946,17 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
     // FACE_KIND.roof: aFace.w carries ROOF_SHAPE_ID here, not a detail hint.
     outAlbedo = facadeRoof(uv, baseSrgb, faceW, 0.0, seed, mPerPx, detail);
     outAlbedo = facadeApplySnow(outAlbedo, faceKind, vFacadeWorldUp);
+    // Snowy roofs catch a little sky light at night; never a self-glow.
+    outEmissive += FACADE_SNOW_DEEP * facadeSnowCover(faceKind, vFacadeWorldUp)
+      * clamp(uNight, 0.0, 1.0) * 0.025;
     return;
   }
   if (faceKind > 4.5 && faceKind < 5.5) {
     // FACE_KIND.roofRidge: sloped roof surface, always shingle-ish.
     outAlbedo = facadeRoof(uv, baseSrgb, faceW, 1.0, seed, mPerPx, detail);
     outAlbedo = facadeApplySnow(outAlbedo, faceKind, vFacadeWorldUp);
+    outEmissive += FACADE_SNOW_DEEP * facadeSnowCover(faceKind, vFacadeWorldUp)
+      * clamp(uNight, 0.0, 1.0) * 0.025;
     return;
   }
   if (faceKind > 2.5 && faceKind < 3.5) {
@@ -936,6 +964,8 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
     // Cornices, ledges and parapet caps hold a light dusting; the vertical
     // sides of the same trim geometry have up≈0 and stay clean.
     outAlbedo = facadeApplySnow(outAlbedo, faceKind, vFacadeWorldUp);
+    outEmissive += FACADE_SNOW_DEEP * facadeSnowCover(faceKind, vFacadeWorldUp)
+      * clamp(uNight, 0.0, 1.0) * 0.02;
     return;
   }
   if (faceKind > 3.5 && faceKind < 4.5) {

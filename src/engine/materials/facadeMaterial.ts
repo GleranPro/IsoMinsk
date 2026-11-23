@@ -66,6 +66,8 @@ export interface FacadeUniformSet {
   uWinter: THREE.IUniform<number>;
   /** Seasons P1: world metres per snow-detail cell. */
   uSnowCell: THREE.IUniform<number>;
+  /** Seasons P3: autumn/winter wetness (streaks, dark plinth). */
+  uAutumn: THREE.IUniform<number>;
   /**
    * vec4[41]: bayWidth, windowWidthRatio, windowHeightRatio, sillRatio, indexed
    * by the packed recipe id (27 families + 11 legacy presets + 3 shells).
@@ -157,6 +159,7 @@ export function createFacadeUniforms(options: {
     uTimeHours: { value: 13 },
     uWinter: { value: 0 },
     uSnowCell: { value: 0.75 },
+    uAutumn: { value: 0 },
     uPresetA: { value: presets.a },
     uPresetB: { value: presets.b },
     uRecipeMotif: { value: presets.motif },
@@ -249,6 +252,7 @@ export function applyFacadeSeason(
   if (!set) return;
   set.uWinter = season.uWinter;
   set.uSnowCell = season.uSnowCell;
+  set.uAutumn = season.uAutumn;
 }
 
 /**

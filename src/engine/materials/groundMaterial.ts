@@ -132,12 +132,25 @@ uniform vec3 uLeafA;
 uniform vec3 uLeafB;
 uniform vec3 uLeafC;
 uniform vec3 uGrassAutumn;
+uniform float uSeasonNight;
 
 varying vec3 vSeasonWorld;
 
 float seasonHash(vec2 p) {
   p = floor(p);
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+/** Smooth value noise: leaf clumps, not a per-texel checkerboard. */
+float seasonValueNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = seasonHash(i);
+  float b = seasonHash(i + vec2(1.0, 0.0));
+  float c = seasonHash(i + vec2(0.0, 1.0));
+  float d = seasonHash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 `;
 
@@ -160,11 +173,14 @@ if (uWinter > 0.001 || uAutumn > 0.001) {
   // pixel grid so leaves stay crisp instead of becoming a soft gradient.
   if (uAutumn > 0.001) {
     float seasonLeaf = seasonSample.g * uAutumn * smoothstep(0.04, 0.18, seasonClass);
-    float leafNoise = seasonHash(vSeasonWorld.xz / max(0.6, uSnowCell * 0.5));
-    seasonLeaf *= step(0.35, leafNoise + 0.25);
-    float leafTone = seasonHash(vSeasonWorld.xz / max(0.35, uSnowCell * 0.35) + 41.0);
-    vec3 leafColor = mix(uLeafA, uLeafB, leafTone);
-    leafColor = mix(leafColor, uLeafC, step(0.72, leafTone));
+    float leafCell = max(1.2, uSnowCell * 0.9);
+    vec2 leafP = vSeasonWorld.xz / leafCell;
+    float leafNoise = seasonValueNoise(leafP);
+    // Smooth density clumps: a hard per-texel threshold reads as a checker.
+    seasonLeaf *= 0.55 + 0.45 * smoothstep(0.25, 0.75, leafNoise);
+    float leafTone = seasonValueNoise(leafP * 0.63 + 37.0);
+    vec3 leafColor = mix(uLeafA, uLeafB, smoothstep(0.2, 0.8, leafTone));
+    leafColor = mix(leafColor, uLeafC, smoothstep(0.62, 0.9, leafTone));
     diffuseColor.rgb = mix(diffuseColor.rgb, leafColor, clamp(seasonLeaf, 0.0, 0.85));
     float seasonGrass = smoothstep(0.40, 0.55, seasonClass) * (1.0 - step(0.70, seasonClass));
     diffuseColor.rgb = mix(diffuseColor.rgb, uGrassAutumn, seasonGrass * uAutumn * 0.30);
@@ -184,6 +200,9 @@ if (uWinter > 0.001 || uAutumn > 0.001) {
     float seasonWater = step(0.70, seasonClass) * (1.0 - step(0.85, seasonClass));
     seasonSnow = mix(seasonSnow, uIce, seasonWater * 0.85);
     diffuseColor.rgb = mix(diffuseColor.rgb, seasonSnow, seasonCover * uWinter);
+    // Snow reflects a little sky at night; the lift is tiny and snow-only, so
+    // the city stays dark and the windows still carry the night look.
+    totalEmissiveRadiance += seasonSnow * seasonCover * uWinter * uSeasonNight * 0.035;
   }
 
   // Wet asphalt and dirty slush read darker than dry summer ground.

@@ -720,12 +720,14 @@ function seasonSurface(
     case 'forest':
     case 'scrub':
     case 'cemetery':
-      return { snow: 235, leaf: 60, cls: SEASON_CLASS.grass };
+      // Open lawns stay clean: litter is painted under crowns and along kerbs,
+      // a uniform base tint would only dither into a checkerboard.
+      return { snow: 235, leaf: 0, cls: SEASON_CLASS.grass };
     case 'pitch':
     case 'sand':
-      return { snow: 220, leaf: 30, cls: SEASON_CLASS.grass };
+      return { snow: 220, leaf: 0, cls: SEASON_CLASS.grass };
     case 'construction':
-      return { snow: 160, leaf: 20, cls: SEASON_CLASS.grass };
+      return { snow: 160, leaf: 0, cls: SEASON_CLASS.grass };
     case 'water':
     case 'river':
       // The middle stays dark; `applyIceBanks` adds the pale shoreline ring.
@@ -733,16 +735,16 @@ function seasonSurface(
     case 'plaza':
       return { snow: 40, leaf: 0, cls: SEASON_CLASS.paving };
     case 'parking':
-      return { snow: 90, leaf: 25, cls: SEASON_CLASS.paving };
+      return { snow: 90, leaf: 0, cls: SEASON_CLASS.paving };
     case 'residential':
     case 'industrial':
     case 'commercial':
       // Courtyard/landuse ground: a light, trodden cover, not bare asphalt.
       // Snow values above ~110 render as a solid white slab after the 3-step
       // shader quantisation, which would hide the courtyard layout entirely.
-      return { snow: 90, leaf: 35, cls: SEASON_CLASS.paving };
+      return { snow: 90, leaf: 0, cls: SEASON_CLASS.paving };
     case 'railway':
-      return { snow: 60, leaf: 10, cls: SEASON_CLASS.asphalt };
+      return { snow: 60, leaf: 0, cls: SEASON_CLASS.asphalt };
     default:
       return { snow: 0, leaf: 0, cls: SEASON_CLASS.asphalt };
   }
