@@ -30,8 +30,6 @@ export interface CloudShadeUniforms {
   uCloudMap: THREE.IUniform<THREE.DataTexture>;
   uCloudOffset: THREE.IUniform<THREE.Vector2>;
   uCloudStrength: THREE.IUniform<number>;
-  /** Seasonal snow blanket 0..1 (see seasons.ts); whitens surface albedo. */
-  uSnowAmount: THREE.IUniform<number>;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +111,6 @@ export function createCloudShadeUniforms(strength = 0): CloudShadeUniforms {
     uCloudMap: { value: createCloudNoiseTexture() },
     uCloudOffset: { value: new THREE.Vector2(0, 0) },
     uCloudStrength: { value: Math.min(1, Math.max(0, strength)) },
-    uSnowAmount: { value: 0 },
   };
 }
 
@@ -142,7 +139,6 @@ export const CLOUD_FRAGMENT_GLSL = /* glsl */ `
 uniform sampler2D uCloudMap;
 uniform vec2 uCloudOffset;
 uniform float uCloudStrength;
-uniform float uSnowAmount;
 
 varying vec3 vCloudWorld;
 varying vec3 vCloudNormal;
@@ -152,23 +148,17 @@ float cloudShadeMask(vec2 worldXZ) {
   float n = texture2D(uCloudMap, worldXZ / ${NOISE_WORLD_SIZE_M.toFixed(1)} + uCloudOffset).r;
   return smoothstep(0.55, 0.78, n);
 }
-
-// Snow lands only on up-facing surfaces (ground, roofs): walls stay dark so
-// the building massing stays readable in winter.
-float snowMask(vec2 worldXZ, float worldUp) {
-  if (uSnowAmount < 0.001) return 0.0;
-  // Decorrelated octave in the green channel breaks the blanket into patches.
-  float n = texture2D(uCloudMap, worldXZ / ${(NOISE_WORLD_SIZE_M * 0.7).toFixed(1)}).g;
-  float up = smoothstep(0.25, 0.7, worldUp);
-  return uSnowAmount * smoothstep(0.34, 0.62, n + uSnowAmount * 0.30) * up;
-}
 `;
 
-/** Fragment statement: darken the lit albedo before lighting. */
+/**
+ * Fragment statement: darken the lit albedo before lighting.
+ *
+ * Season snow is deliberately NOT here: the rejected winter mixed one cold
+ * white into every up-facing surface. Snow is now a property of the ground
+ * surface mask (see `seasons.ts` / `groundMaterial.ts`).
+ */
 export const CLOUD_DARKEN_GLSL = /* glsl */ `
-float worldUp = clamp(vCloudNormal.y, 0.0, 1.0);
 diffuseColor.rgb *= 1.0 - clamp(uCloudStrength, 0.0, 1.0) * cloudShadeMask(vCloudWorld.xz) * ${CLOUD_MAX_DARKEN.toFixed(3)};
-diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.82, 0.855, 0.91), snowMask(vCloudWorld.xz, worldUp));
 `;
 
 /** Insert `insert` immediately after `anchor`; null when absent. */
@@ -268,13 +258,6 @@ export class CloudShadeController {
     const h = Number.isFinite(value) ? value : 0;
     const t = Math.min(1, Math.max(0, (h - 700) / (1500 - 700)));
     this.zoomFade = 1 - t * t * (3 - 2 * t);
-  }
-
-  /** Seasonal snow blanket 0..1 (direct set — seasons change rarely). */
-  setSnow(amount: number): void {
-    this.uniforms.uSnowAmount.value = Number.isFinite(amount)
-      ? Math.min(1, Math.max(0, amount))
-      : 0;
   }
 
   getStrength(): number {

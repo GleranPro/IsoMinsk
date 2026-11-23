@@ -17,7 +17,6 @@ describe('cloud shade shader chunks', () => {
     expect(CLOUD_FRAGMENT_GLSL).toContain('uniform sampler2D uCloudMap');
     expect(CLOUD_FRAGMENT_GLSL).toContain('uniform vec2 uCloudOffset');
     expect(CLOUD_FRAGMENT_GLSL).toContain('uniform float uCloudStrength');
-    expect(CLOUD_FRAGMENT_GLSL).toContain('uniform float uSnowAmount');
     expect(CLOUD_FRAGMENT_GLSL).toContain('varying vec3 vCloudWorld');
     expect(CLOUD_VERTEX_GLSL).toContain('varying vec3 vCloudWorld');
   });
@@ -28,10 +27,14 @@ describe('cloud shade shader chunks', () => {
     expect(CLOUD_VERTEX_BODY_GLSL).toContain('modelMatrix * vec4(transformed');
   });
 
-  it('darkens albedo and whitens with snow, leaving emissive untouched', () => {
+  it('darkens albedo, leaving emissive untouched — and carries no global snow', () => {
     expect(CLOUD_DARKEN_GLSL).toContain('diffuseColor.rgb');
     expect(CLOUD_DARKEN_GLSL).not.toContain('totalEmissiveRadiance');
-    expect(CLOUD_DARKEN_GLSL).toContain('snowMask');
+    // The rejected winter mixed one cold white into every up-facing surface;
+    // season snow belongs to the ground mask, never to the cloud shade.
+    expect(CLOUD_DARKEN_GLSL).not.toContain('snow');
+    expect(CLOUD_FRAGMENT_GLSL).not.toContain('snow');
+    expect(CLOUD_FRAGMENT_GLSL).not.toContain('uSnowAmount');
   });
 });
 
@@ -69,8 +72,7 @@ describe('CloudShadeController', () => {
     controller.update(2);
     const offsetAfter = uniforms.uCloudOffset.value as THREE.Vector2;
     expect(offsetAfter.length()).toBeGreaterThan(offsetBefore.length());
-    controller.setSnow(0.7);
-    expect(uniforms.uSnowAmount.value).toBeCloseTo(0.7, 5);
+    expect('uSnowAmount' in uniforms).toBe(false);
     controller.dispose();
   });
 });

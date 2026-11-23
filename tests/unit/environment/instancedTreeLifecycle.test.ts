@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { TileData } from '../../../src/shared/types';
+import type { TileData, TreeInstance } from '../../../src/shared/types';
 import { buildTilePayload } from '../../../src/engine/tiles/tileBuild';
 import { collectTransferables, payloadBytes } from '../../../src/engine/tiles/serialization';
 import { TileStreamer } from '../../../src/engine/tiles/tileStreamer';
@@ -49,6 +49,72 @@ describe('tree payload transport', () => {
 });
 
 describe('instanced mesh ownership and appearance', () => {
+  it('swaps broadleaf crowns for snow-ready bare branches in winter', () => {
+    const cache = new TreeTemplateCache(), material = new THREE.MeshLambertMaterial();
+    const trees = Array.from({ length: 24 }, (_, i): TreeInstance => ({
+      x: 40 + i * 5, y: 100, height: 12, radius: 4, variation: i / 24, mapped: false,
+      species: i % 4 === 0 ? 1 : 0,
+    }));
+    const data = buildTreeInstances(trees, 'clustered')!;
+    const tile = createTileTrees(data, cache, material, material, 'winter');
+    expect(tile.winterCrowns.length).toBeGreaterThan(0);
+    expect(tile.winterCrowns.every(mesh => !mesh.visible)).toBe(true);
+    expect(tile.crowns.every(mesh => mesh.visible)).toBe(true);
+
+    applyCanopyAppearance(tile, { visible: true, winter: true, palette: CANOPY_PALETTE });
+    for (let b = 0; b < tile.crowns.length; b++) {
+      const batch = data.crowns[b];
+      expect(tile.crowns[b].visible).toBe(batch.species === 1);
+    }
+    expect(tile.winterCrowns.every(mesh => mesh.visible)).toBe(true);
+    // Bare branches reuse the summer matrices: no second instance buffer.
+    // Crown batches are species-major, so the broadleaf index matches the
+    // winterCrowns index.
+    const broadleafIndex = data.crowns.findIndex(batch => batch.species === 0);
+    const broadleaf = data.crowns[broadleafIndex];
+    expect(tile.winterCrowns[broadleafIndex].instanceMatrix.array).toBe(broadleaf.matrices);
+
+    applyCanopyAppearance(tile, { visible: true, winter: false, palette: CANOPY_PALETTE });
+    expect(tile.winterCrowns.every(mesh => !mesh.visible)).toBe(true);
+    expect(tile.crowns.every(mesh => mesh.visible)).toBe(true);
+    tile.dispose();
+    cache.dispose();
+    material.dispose();
+  });
+
+  it('blends broadleaf trees to autumn tones while conifers stay green', () => {
+    const cache = new TreeTemplateCache(), material = new THREE.MeshLambertMaterial();
+    const trees = Array.from({ length: 24 }, (_, i): TreeInstance => ({
+      x: 40 + i * 5, y: 100, height: 12, radius: 4, variation: i / 24, mapped: false,
+      species: i % 4 === 0 ? 1 : 0,
+    }));
+    const data = buildTreeInstances(trees, 'clustered')!;
+    const tile = createTileTrees(data, cache, material, material, 'autumn');
+    const conifer = data.crowns.find(batch => batch.species === 1)!;
+    const broadleaf = data.crowns.find(batch => batch.species === 0)!;
+    const palettes = {
+      palette: CANOPY_PALETTE,
+      autumnPalette: ['#c9a13b', '#c07a32', '#9a5a2e', '#8a7a34'],
+      coniferPalette: ['#3f5b34', '#4a6a3c', '#557a45', '#36502c'],
+      visible: true,
+    };
+    applyCanopyAppearance(tile, { ...palettes, autumnMix: 0 });
+    const coniferSummer = conifer.colors.slice();
+    const broadleafSummer = broadleaf.colors.slice();
+    applyCanopyAppearance(tile, { ...palettes, autumnMix: 1 });
+    expect(conifer.colors).toEqual(coniferSummer);
+    expect(broadleaf.colors).not.toEqual(broadleafSummer);
+    const broadleafFull = broadleaf.colors.slice();
+    // A half-turned autumn still has green broadleaf trees (phase by variation).
+    applyCanopyAppearance(tile, { ...palettes, autumnMix: 0.5 });
+    const half = broadleaf.colors.slice();
+    expect(half).not.toEqual(broadleafSummer);
+    expect(half).not.toEqual(broadleafFull);
+    tile.dispose();
+    cache.dispose();
+    material.dispose();
+  });
+
   it('keeps a real wheel in a separate mesh/material while hiding and recolouring leaves', () => {
     const root = new THREE.Group(), material = new THREE.MeshLambertMaterial();
     const attractionMaterial = new THREE.MeshLambertMaterial(), canopyMaterial = new THREE.MeshLambertMaterial();

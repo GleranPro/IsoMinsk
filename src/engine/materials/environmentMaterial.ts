@@ -14,6 +14,8 @@
 import * as THREE from 'three';
 import * as facadeModuleNamespace from './facadeMaterial';
 import { applyCloudShade, type CloudShadeUniforms } from '../renderer/cloudShade';
+import type { SeasonUniforms } from '../renderer/seasonUniforms';
+import { applyTreeSeason } from './treeSeason';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -56,6 +58,7 @@ function tryCreateModuleMaterial(name: string): THREE.Material | null {
 
 export function createEnvironmentMaterialSet(
   cloudUniforms?: CloudShadeUniforms,
+  seasonUniforms?: SeasonUniforms,
 ): EnvironmentMaterialSet {
   const environment = tryCreateModuleMaterial('environment') ?? createFallbackMaterial('environment');
   const trees = tryCreateModuleMaterial('trees') ?? createFallbackMaterial('trees');
@@ -69,6 +72,8 @@ export function createEnvironmentMaterialSet(
       applyCloudShade(material, cloudUniforms);
     }
   }
+  // Season snow sits on top of the cloud shade (clouds also shade snow).
+  if (seasonUniforms) applyTreeSeason(treeCanopies, seasonUniforms);
   return {
     environment,
     trees,

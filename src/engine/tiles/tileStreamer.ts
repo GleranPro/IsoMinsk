@@ -25,7 +25,8 @@ import {
   TILE_SIZE_M,
 } from '../../shared/config';
 import { ENV_PALETTE } from '../materials/palette';
-import { createGroundMaterial, createGroundQuad, createGroundTexture } from '../materials/groundMaterial';
+import { createGroundMaterial, createGroundQuad, createGroundTexture,
+  createSeasonTexture, disposeGroundMaterial } from '../materials/groundMaterial';
 import { tileBounds, tileKey, tilesInRect } from '../../shared/tileMath';
 import type { TileData, TileIndexEntry, TileManifest, BuildingFeature, FeatureId } from '../../shared/types';
 import type { IsometricCameraRig } from '../camera/isometricCamera';
@@ -38,6 +39,7 @@ import {
 } from './serialization';
 import { TileWorkerPool } from './tileWorkerPool';
 import type { CloudShadeUniforms } from '../renderer/cloudShade';
+import type { SeasonUniforms } from '../renderer/seasonUniforms';
 import { createDemoManifest, createDemoTiles } from './demoTiles';
 import { CANOPY_PALETTE, treeInstanceBytes, type TreeRenderStyle } from '../../city/environment/treeInstances';
 import { applyCanopyAppearance, createTileTrees, TreeTemplateCache, type CanopyAppearance, type TileTrees } from './instancedTrees';
@@ -110,6 +112,8 @@ export interface TileStreamerOptions {
   tileLayout?: 'flat' | 'nested' | 'auto';
   /** Shared cloud-shade uniforms for ground/deck materials (see cloudShade.ts). */
   cloudUniforms?: CloudShadeUniforms;
+  /** Shared season uniforms for the ground snow mask (see seasonUniforms.ts). */
+  seasonUniforms?: SeasonUniforms;
   onError?: (message: string) => void;
   onWarning?: (message: string) => void;
   onLoadingChange?: (loading: boolean, progress: number) => void;
@@ -975,7 +979,22 @@ export class TileStreamer {
         payload.ground.width,
         payload.ground.height,
       );
-      const material = createGroundMaterial(texture, this.options.cloudUniforms);
+      // Baked season mask (seasons P0): optional — old tiles fall back to the
+      // shared 1×1 no-snow mask and keep the same ground program.
+      const seasonTexture = this.options.seasonUniforms
+        && payload.season
+        && payload.season.data.byteLength > 0
+        ? createSeasonTexture(
+            payload.season.data,
+            payload.season.width,
+            payload.season.height,
+          )
+        : null;
+      const material = createGroundMaterial(texture, {
+        clouds: this.options.cloudUniforms,
+        season: this.options.seasonUniforms,
+        seasonTexture,
+      });
       groundMesh = new THREE.Mesh(
         createGroundQuad(payload.ground.bounds, GROUND_LAYER_Y.base),
         material,
@@ -986,7 +1005,7 @@ export class TileStreamer {
       groundMesh.name = `ground-${payload.key}`;
       group.add(groundMesh);
       triangles += 2;
-      bytes += payload.ground.data.byteLength;
+      bytes += payload.ground.data.byteLength + (payload.season?.data.byteLength ?? 0);
     }
 
     const deckMesh = createDeckMesh(payload, this.options.cloudUniforms);
@@ -1015,7 +1034,7 @@ export class TileStreamer {
         this.options.treeTrunkMaterial ?? this.options.treeMaterial,
         this.options.treeCanopyMaterial ?? this.options.treeMaterial,
         payload.key, this.canopyAppearance);
-      group.add(trees.trunks, ...trees.crowns);
+      group.add(trees.trunks, ...trees.crowns, ...trees.winterCrowns);
       triangles += payload.trees.triangleCount;
       bytes += treeInstanceBytes(payload.trees);
     }
@@ -1088,10 +1107,7 @@ export class TileStreamer {
     for (const textured of [entry.groundMesh, entry.deckMesh]) {
       if (textured) materials.add(textured.material as THREE.Material);
     }
-    for (const material of materials) {
-      (material as THREE.MeshLambertMaterial).map?.dispose();
-      material.dispose();
-    }
+    for (const material of materials) disposeGroundMaterial(material);
     entry.group.clear();
     this.buildingCount = Math.max(0, this.buildingCount - entry.buildings.size);
     this.geometryBytes = Math.max(0, this.geometryBytes - entry.bytes);
@@ -1109,12 +1125,23 @@ export class TileStreamer {
   /** Internal seasonal foundation, independent of UI and tile geometry builds. */
   setCanopyAppearance(change: Partial<CanopyAppearance>): void {
     if (this.disposed) return;
-    if (change.palette && (change.palette.length !== 4 || change.palette.some(c => !/^#[0-9a-f]{6}$/i.test(c)))) {
+    const validPalette = (palette: readonly string[] | undefined): boolean =>
+      !palette || (palette.length === 4 && palette.every(c => /^#[0-9a-f]{6}$/i.test(c)));
+    if (!validPalette(change.palette) || !validPalette(change.autumnPalette)
+      || !validPalette(change.coniferPalette)) {
       throw new Error('A canopy palette must contain four #RRGGBB colours');
     }
     this.canopyAppearance = {
       palette: change.palette ? [...change.palette] : this.canopyAppearance.palette,
+      autumnPalette: change.autumnPalette
+        ? [...change.autumnPalette]
+        : this.canopyAppearance.autumnPalette,
+      coniferPalette: change.coniferPalette
+        ? [...change.coniferPalette]
+        : this.canopyAppearance.coniferPalette,
+      autumnMix: change.autumnMix ?? this.canopyAppearance.autumnMix,
       visible: change.visible ?? this.canopyAppearance.visible,
+      winter: change.winter ?? this.canopyAppearance.winter,
     };
     for (const entry of this.tiles.values()) if (entry.trees) applyCanopyAppearance(entry.trees, this.canopyAppearance);
     this.tilesChangedPending = true;
@@ -1125,7 +1152,7 @@ export class TileStreamer {
     for (const entry of this.tiles.values()) if (entry.trees) {
       count += entry.trees.data.count;
       instanceBytes += treeInstanceBytes(entry.trees.data);
-      batches += 1 + entry.trees.crowns.length;
+      batches += 1 + entry.trees.crowns.length + entry.trees.winterCrowns.length;
     }
     return { count, instanceBytes, templateBytes: this.treeTemplates.bytes, batches };
   }
@@ -1252,17 +1279,23 @@ export class TileStreamer {
   private applyGround(entry: TileEntry, payload: TileWirePayload): void {
     if (!entry.groundMesh || !payload.ground || payload.ground.data.byteLength === 0) return;
     const texture = createGroundTexture(payload.ground.data, payload.ground.width, payload.ground.height);
+    const seasonTexture = this.options.seasonUniforms
+      && payload.season
+      && payload.season.data.byteLength > 0
+      ? createSeasonTexture(payload.season.data, payload.season.width, payload.season.height)
+      : null;
     const old = entry.groundMesh.material as THREE.MeshLambertMaterial;
-    entry.groundMesh.material = createGroundMaterial(texture, this.options.cloudUniforms);
-    old.map?.dispose();
-    old.dispose();
+    entry.groundMesh.material = createGroundMaterial(texture, {
+      clouds: this.options.cloudUniforms,
+      season: this.options.seasonUniforms,
+      seasonTexture,
+    });
+    disposeGroundMaterial(old);
     const decks = createDeckMesh(payload, this.options.cloudUniforms);
     if (entry.deckMesh) {
       entry.group.remove(entry.deckMesh);
       entry.deckMesh.geometry.dispose();
-      const deckMaterial = entry.deckMesh.material as THREE.MeshLambertMaterial;
-      deckMaterial.map?.dispose();
-      deckMaterial.dispose();
+      disposeGroundMaterial(entry.deckMesh.material as THREE.Material);
     }
     if (decks) {
       entry.group.add(decks);
@@ -1434,7 +1467,7 @@ function createDeckMesh(payload: TileWirePayload, cloudUniforms?: CloudShadeUnif
     payload.decks.texture.width,
     payload.decks.texture.height,
   );
-  const material = createGroundMaterial(texture, cloudUniforms);
+  const material = createGroundMaterial(texture, { clouds: cloudUniforms });
   material.name = 'IsometricMinskBridgeDeck';
   const mesh = new THREE.Mesh(unpackGeometry(payload.decks.mesh), material);
   mesh.receiveShadow = true;

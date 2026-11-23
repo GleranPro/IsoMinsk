@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import * as facadeModuleNamespace from '../materials/facadeMaterial';
 import type { CloudShadeUniforms } from './cloudShade';
+import type { SeasonUniforms } from './seasonUniforms';
 
 export interface FacadeMaterialOptionsLike {
   detail: boolean;
@@ -82,6 +83,27 @@ export function applyCloudShadeSafe(
       return;
     } catch (error) {
       warnOnce('applyFacadeCloudShade threw; facades keep unshaded albedo', error);
+    }
+  }
+}
+
+/**
+ * Share the season uniforms (snow on roofs/trim) with a facade material.
+ * Same defensive pattern as the cloud-shade bridge: a missing helper only
+ * leaves roofs unsnowed, never breaks the renderer.
+ */
+export function applyFacadeSeasonSafe(
+  material: THREE.Material | null | undefined,
+  uniforms: SeasonUniforms,
+): void {
+  if (!material) return;
+  const apply = getFunction('applyFacadeSeason');
+  if (apply) {
+    try {
+      apply(material, uniforms);
+      return;
+    } catch (error) {
+      warnOnce('applyFacadeSeason threw; roofs keep their summer albedo', error);
     }
   }
 }

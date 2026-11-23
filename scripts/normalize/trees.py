@@ -245,6 +245,28 @@ def _inside_bounds(x: float, y: float, bounds: tuple[float, float, float, float]
     return minx <= x <= maxx and miny <= y <= maxy
 
 
+# OSM tags that explicitly mark a conifer. Only datum-backed tags are used:
+# guessing from urban context would invent pines where OSM has none.
+CONIFER_LEAF_TYPES = {"needleleaved", "needleleaf", "needle-leaved"}
+BROADLEAF_LEAF_TYPES = {"broadleaved", "broadleaf", "broad-leaved"}
+CONIFER_GENERA = {"picea", "pinus", "abies"}
+
+
+def conifer_species(raw: dict) -> int:
+    """0 = broadleaf, 1 = conifer, from `leaf_type`/`genus`.
+
+    `leaf_type` wins when present; `genus` covers trees whose leaf type was not
+    tagged. No tag → 0: old tiles without the field are read as broadleaf too.
+    """
+    leaf = str(raw.get("leaf_type") or "").strip().lower()
+    if leaf in CONIFER_LEAF_TYPES:
+        return 1
+    if leaf in BROADLEAF_LEAF_TYPES:
+        return 0
+    genus = str(raw.get("genus") or "").strip().lower()
+    return 1 if genus in CONIFER_GENERA else 0
+
+
 def mapped_tree_instance(
     raw: dict, to_local: Callable, bounds: tuple[float, float, float, float]
 ) -> dict | None:
@@ -258,7 +280,7 @@ def mapped_tree_instance(
         height = 7.0 + seed * 8.0
     crown = _number(raw.get("crown"))
     radius = crown / 2 if crown and 0.5 <= crown <= 25 else height * 0.32
-    return {
+    instance = {
         "x": round(x, 2),
         "y": round(y, 2),
         "height": round(height, 2),
@@ -266,6 +288,11 @@ def mapped_tree_instance(
         "variation": round(seed, 3),
         "mapped": True,
     }
+    # Emitted only for conifers: the field is optional and 0 is the default,
+    # so broadleaf records keep the pre-species payload size.
+    if conifer_species(raw):
+        instance["species"] = 1
+    return instance
 
 
 def _stable_row_seed(osm_id, index: int) -> float:
@@ -327,9 +354,8 @@ def row_point_instances(
     """Tree-row records -> `(raw row, point index, TreeInstance)` candidates.
 
     Rows are clipped to the area rectangle before sampling. The instances carry
-    the same fields as mapped nodes; `TreeInstance` has no `leaf_type` field, so
-    conifers are only counted in the statistics (the payload format change is
-    deliberately avoided in W3).
+    the same fields as mapped nodes, plus `species` when the row's
+    `leaf_type`/`genus` marks a conifer (optional field; absent = broadleaf).
     """
     candidates: list[tuple[dict, int, dict]] = []
     area = box(*bounds)
@@ -351,18 +377,17 @@ def row_point_instances(
                 seed = _stable_row_seed(raw.get("osm_id"), index)
                 index += 1
                 height = _row_height(raw, seed)
-                candidates.append((
-                    raw,
-                    index,
-                    {
-                        "x": round(x, 2),
-                        "y": round(y, 2),
-                        "height": round(height, 2),
-                        "radius": round(height * 0.32, 2),
-                        "variation": round(seed, 3),
-                        "mapped": True,
-                    },
-                ))
+                instance = {
+                    "x": round(x, 2),
+                    "y": round(y, 2),
+                    "height": round(height, 2),
+                    "radius": round(height * 0.32, 2),
+                    "variation": round(seed, 3),
+                    "mapped": True,
+                }
+                if conifer_species(raw):
+                    instance["species"] = 1
+                candidates.append((raw, index, instance))
     return candidates
 
 
@@ -840,6 +865,9 @@ def build_trees(
     stats["trees_mapped_rows_needleleaved"] = row_needleleaved
 
     mapped_trees: list[dict] = [*kept_points, *row_trees]
+    stats["trees_mapped_conifers"] = sum(
+        1 for tree in mapped_trees if tree.get("species") == 1
+    )
 
     # 4. W4: disjoint vegetation zones. Open surfaces are cut out of the zones
     # so `area / density` counts plantable ground; the masks below still keep a

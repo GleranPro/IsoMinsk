@@ -84,6 +84,11 @@ export const PIXEL_PALETTE: Hex[] = [
   '#e8e2d2',
   '#ddd5c2',
   '#f1ece0',
+  // cold snow whites (seasons P1): keep roof snow from snapping to warm trim.
+  // Same values the facade snow shader mixes; depths thin → deep → shadow.
+  '#eef4f7',
+  '#cfdae1',
+  '#93a4b2',
   // warm beige plaster (Stalinist ensembles, civic): the Minsk signature range.
   // Kept warm (r > g > b) so sunlit facades snap to sand/ochre, not to the
   // near-white trim entries above.

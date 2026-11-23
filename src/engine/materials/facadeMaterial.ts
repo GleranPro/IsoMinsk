@@ -43,6 +43,7 @@ import {
   patchFacadeVertexShader,
 } from '../shaders/facadeShader';
 import { applyCloudShade, type CloudShadeUniforms } from '../renderer/cloudShade';
+import type { SeasonUniforms } from '../renderer/seasonUniforms';
 import { FACADE_TRIM_COLOR, WINDOW_COLORS } from './palette';
 
 export interface FacadeMaterialOptions {
@@ -61,6 +62,10 @@ export interface FacadeUniformSet {
   uPixelSize: THREE.IUniform<number>;
   uPaletteMix: THREE.IUniform<number>;
   uTimeHours: THREE.IUniform<number>;
+  /** Seasons P1: shared with `SeasonUniforms` so one value drives every face. */
+  uWinter: THREE.IUniform<number>;
+  /** Seasons P1: world metres per snow-detail cell. */
+  uSnowCell: THREE.IUniform<number>;
   /**
    * vec4[41]: bayWidth, windowWidthRatio, windowHeightRatio, sillRatio, indexed
    * by the packed recipe id (27 families + 11 legacy presets + 3 shells).
@@ -150,6 +155,8 @@ export function createFacadeUniforms(options: {
     uPixelSize: { value: DEFAULT_PIXEL_SIZE_M },
     uPaletteMix: { value: options.quantise ? 1 : 0 },
     uTimeHours: { value: 13 },
+    uWinter: { value: 0 },
+    uSnowCell: { value: 0.75 },
     uPresetA: { value: presets.a },
     uPresetB: { value: presets.b },
     uRecipeMotif: { value: presets.motif },
@@ -225,6 +232,23 @@ function getFacadeUniformSet(material: THREE.Material | undefined | null): Facad
   if (!candidate || typeof candidate !== 'object') return null;
   const night = (candidate as FacadeUniformSet).uNight;
   return night && typeof night.value === 'number' ? candidate : null;
+}
+
+/**
+ * Share the season uniforms with a facade material (seasons P1).
+ *
+ * The facade GLSL always contains the roof/trim snow branch; only `uWinter`
+ * and `uSnowCell` change, so no separate program variant or cache key is
+ * needed. Must run before the first compile (like the cloud-shade patch).
+ */
+export function applyFacadeSeason(
+  material: THREE.Material,
+  season: SeasonUniforms,
+): void {
+  const set = getFacadeUniformSet(material);
+  if (!set) return;
+  set.uWinter = season.uWinter;
+  set.uSnowCell = season.uSnowCell;
 }
 
 /**

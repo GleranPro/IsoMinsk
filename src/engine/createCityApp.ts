@@ -64,9 +64,11 @@ import { createRendererHost, type RendererHost } from './renderer/createRenderer
 import { LightingRig } from './renderer/lighting';
 import { minskLocalHours } from './renderer/minskTime';
 import { CloudShadeController, createCloudShadeUniforms } from './renderer/cloudShade';
-import { parseSeason, seasonAppearance, seasonForDate } from './renderer/seasons';
+import { parseSeason, seasonAppearance, seasonAutumnMix, seasonForDate } from './renderer/seasons';
+import { createSeasonUniforms, updateSnowCell } from './renderer/seasonUniforms';
 import {
   applyCloudShadeSafe,
+  applyFacadeSeasonSafe,
   createFacadeMaterialSafe,
   disposeFacadeMaterialSafe,
   updateFacadeMaterialSafe,
@@ -89,10 +91,6 @@ const DEFAULT_PIXEL_ART: PixelArtSettings = {
   colorLevels: 20,
   dither: 0.35,
 };
-const FOG_NEAR_FACTOR = 0.55;
-const FOG_FAR_FACTOR = 2.1;
-/** Reference camera distance the palette fog presets were authored for. */
-const FOG_REFERENCE_DISTANCE = 3000;
 
 /** Mobility switches before the layer has any data: layer off, nothing simulated. */
 const DEFAULT_MOBILITY_SETTINGS: MobilitySettings = {
@@ -434,8 +432,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const scene = new THREE.Scene();
   const background = new THREE.Color('#e6ecef');
   scene.background = background;
-  const fog = new THREE.Fog(new THREE.Color('#e6ecef'), 1_000_000, 2_000_000);
-  scene.fog = fog;
+  // No distance fog (owner decision 2026-11-23): it read as a grey haze over
+  // the whole city at overview/dusk in every season. The sky colour stays;
+  // materials keep `fog: true` but a scene without fog ignores it.
 
   // --- art-direction materials --------------------------------------------
   const facadeDetail = { enabled: params.get('detail') !== '0' };
@@ -444,11 +443,23 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   // (the toggle can still bring it back — the patches are always installed).
   const cloudUniforms = createCloudShadeUniforms(params.get('clouds') === '0' ? 0 : 1);
   const cloudController = new CloudShadeController(cloudUniforms);
+
+  // Surface season uniforms (seasons P0/P1). `uWinter` stays 0 by default: the
+  // baked ground mask and shaders are installed, but nothing whitens the city
+  // until the designed winter content is accepted. `?winter=0..1` is a
+  // QA-only override for the season gate — not a UI season.
+  const seasonUniforms = createSeasonUniforms();
+  const winterParam = Number.parseFloat(params.get('winter') ?? '');
+  if (Number.isFinite(winterParam)) seasonUniforms.uWinter.value = clamp(winterParam, 0, 1);
+
   const facadeNear = createFacadeMaterialSafe({ detail: true, night: 0, quantise: false });
   const facadeFar = createFacadeMaterialSafe({ detail: true, night: 0, quantise: false });
   applyCloudShadeSafe(facadeNear, cloudUniforms);
   applyCloudShadeSafe(facadeFar, cloudUniforms);
-  const environment = createEnvironmentMaterialSet(cloudUniforms);
+  // Roofs/cornices and tree canopies read the same shared season uniforms.
+  applyFacadeSeasonSafe(facadeNear, seasonUniforms);
+  applyFacadeSeasonSafe(facadeFar, seasonUniforms);
+  const environment = createEnvironmentMaterialSet(cloudUniforms, seasonUniforms);
 
   // Seasons: real date by default; `?season=spring|summer|autumn` pins one
   // (QA / screenshots). Canopy recolours at runtime, no tile rebuilds. Winter
@@ -456,6 +467,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   let seasonOverride = parseSeason(params.get('season'));
   const season = seasonOverride ?? seasonForDate();
   const seasonLook = seasonAppearance(season);
+  // Autumn phase drives both the canopy blend and the ground litter/wetness.
+  // Winter stays off by date (uWinter is 0); the cold months keep a full
+  // autumn look until a designed winter is accepted.
+  const autumnMix = seasonAutumnMix(season, undefined, Boolean(seasonOverride));
+  seasonUniforms.uAutumn.value = autumnMix;
 
   // --- lights --------------------------------------------------------------
   const defaultShadowSize = renderer.capabilities.maxTextureSize >= 4096 ? 2048 : 1024;
@@ -521,8 +537,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     fogColor: [0.9, 0.92, 0.94],
     skyColor: [0.9, 0.92, 0.94],
     outlineColor: [0.07, 0.09, 0.11],
-    // Atmospheric fog is done by the scene materials in both render paths;
-    // the post pass must not add a second fog layer.
+    // Distance fog is removed entirely (owner decision): the post pass must
+    // not reintroduce the grey haze the scene no longer has.
     fogNear: 1_000_000_000,
     fogFar: 2_000_000_000,
     pixelWorld: 1,
@@ -632,6 +648,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     scene,
     root: cityRoot,
     cloudUniforms: cloudUniforms ?? undefined,
+    seasonUniforms,
     environmentMaterial: environment.environment,
     treeMaterial: environment.trees,
     treeTrunkMaterial: environment.treeTrunks,
@@ -683,9 +700,15 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   });
 
   // Seasonal canopy: spring/summer/autumn recolour at runtime — no rebuilds.
+  // Autumn blends each broadleaf tree from green to its species tone by
+  // `autumnMix` and variation; conifers stay green in their own palette.
   streamer.setCanopyAppearance({
-    palette: [...seasonLook.canopyPalette],
+    palette: [...seasonLook.basePalette],
+    autumnPalette: [...seasonLook.autumnPalette],
+    coniferPalette: [...seasonLook.coniferPalette],
+    autumnMix,
     visible: true,
+    winter: seasonUniforms.uWinter.value > 0.5,
   });
 
   picker = new BuildingPicker(streamer, rig.camera);
@@ -772,10 +795,17 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     getWeather: () => post.getWeather(),
     setSeason(value: SeasonOverride) {
       seasonOverride = value === 'auto' ? null : value;
-      const look = seasonAppearance(seasonOverride ?? seasonForDate());
+      const nextSeason = seasonOverride ?? seasonForDate();
+      const look = seasonAppearance(nextSeason);
+      const mix = seasonAutumnMix(nextSeason, undefined, value !== 'auto');
+      seasonUniforms.uAutumn.value = mix;
       streamer.setCanopyAppearance({
-        palette: [...look.canopyPalette],
+        palette: [...look.basePalette],
+        autumnPalette: [...look.autumnPalette],
+        coniferPalette: [...look.coniferPalette],
+        autumnMix: mix,
         visible: true,
+        winter: seasonUniforms.uWinter.value > 0.5,
       });
     },
     getSeason: () => seasonOverride ?? 'auto',
@@ -1381,13 +1411,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       maxOrthoHeight: rig.getMaxOrthoHeight(),
       defaultView: { ...defaultView },
       shadowCasting: lighting.isShadowCasting(),
-      fog: { near: fog.near, far: fog.far },
       pixelArt: post.getRenderSize(),
     }),
     materialDebug: () => ({
       background: background.getHexString(THREE.SRGBColorSpace),
       backgroundLinear: background.toArray(),
-      fog: { near: fog.near, far: fog.far, color: fog.color.getHexString(THREE.SRGBColorSpace) },
       sun: {
         intensity: lighting.sun.intensity,
         color: lighting.sun.color.getHexString(THREE.SRGBColorSpace),
@@ -1406,8 +1434,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       exposure: renderer.toneMappingExposure,
       toneMapping: renderer.toneMapping,
       post: {
-        fogNear: fog.near,
-        fogFar: fog.far,
         edgeLow: postEnvironment.edgeLow,
         edgeHigh: postEnvironment.edgeHigh,
         pixelWorld: postEnvironment.pixelWorld,
@@ -1534,7 +1560,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     const state = lighting.setTimeOfDay(timeHours);
     look = state.look;
     background.copy(new THREE.Color(look.skyHex));
-    fog.color.copy(new THREE.Color(look.fogHex));
     updateFacadeMaterialSafe(facadeNear, {
       night: look.nightFactor,
       timeHours,
@@ -1589,31 +1614,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     lastPixelSize = pixelSize;
     updateFacadeMaterialSafe(facadeNear, { pixelSize });
     updateFacadeMaterialSafe(facadeFar, { pixelSize });
-  }
-
-  function currentFogRange(): { near: number; far: number } {
-    const camDistance = rig.getCameraDistanceValue();
-    // Scale the preset fog distances with the visible extent: at a district view
-    // (660 m) this is byte-identical to the old preset offsets. The scale is
-    // QUADRATIC so the fog band stays beyond the visible city at every zoom —
-    // a linear scale put the band start inside the city at the complete-city
-    // overview, veiling the whole map in a grey gradient (the "дымка").
-    const viewScale = Math.max(1, (rig.getOrthoHeight() / 660) ** 2);
-    return {
-      near: Math.max(60, camDistance + (look.fogNear - FOG_REFERENCE_DISTANCE) * viewScale),
-      far: Math.max(300, camDistance + (look.fogFar - FOG_REFERENCE_DISTANCE) * viewScale),
-    };
-  }
-
-  /**
-   * Scene materials own the atmospheric fog in both render paths, so the
-   * clean-3D debug view and the pixel-art view agree on the horizon. The post
-   * pass fog is effectively disabled.
-   */
-  function updateSceneFog(): void {
-    const range = currentFogRange();
-    fog.near = range.near;
-    fog.far = range.far;
   }
 
   function markReady(): void {
@@ -2009,6 +2009,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
     const sceneRenderHeight = post.getRenderSize().height;
     streamer.update(rig, sceneRenderHeight);
+    // Snow detail cell follows the pixel grid (no per-frame texture uploads:
+    // this is one shared uniform).
+    updateSnowCell(seasonUniforms, rig.getPixelWorldSize(sceneRenderHeight));
 
     // Dynamic mobility layer: same frame, no second render loop. The visible
     // ground rect is converted to local metres (x east, y north) for the loader.
@@ -2048,9 +2051,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
 
     updateFacadePixelSize(sceneRenderHeight);
-    updateSceneFog();
 
-    // Depth range + fog/edge uniforms for the post pass.
+    // Depth range + edge uniforms for the post pass (no distance fog).
     const camera = rig.camera;
     const sinElevation = Math.max(0.2, Math.sin(rig.getElevation()));
     const pixelWorld = rig.getPixelWorldSize(sceneRenderHeight);
@@ -2130,7 +2132,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
   function applyFacadePixelFlagsInitial(): void {
     applyPixelArtFlags();
-    updateSceneFog();
   }
 
   // URL-driven initial camera/time overrides (QA convenience).
