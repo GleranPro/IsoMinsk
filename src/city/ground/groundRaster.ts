@@ -733,20 +733,22 @@ function seasonSurface(
       // The middle stays dark; `applyIceBanks` adds the pale shoreline ring.
       return { snow: 0, leaf: 0, cls: SEASON_CLASS.water };
     case 'plaza':
-      return { snow: 40, leaf: 0, cls: SEASON_CLASS.paving };
+      // Plazas are ploughed/cleared; a thin depth here only produced sparse
+      // snow dots that slid with the zoom.
+      return { snow: 0, leaf: 0, cls: SEASON_CLASS.paving };
     case 'parking':
-      return { snow: 90, leaf: 0, cls: SEASON_CLASS.paving };
+      return { snow: 140, leaf: 0, cls: SEASON_CLASS.paving };
     case 'residential':
     case 'industrial':
     case 'commercial':
-      // Courtyard/landuse ground: a light, trodden cover, not bare asphalt.
-      // Snow values above ~110 render as a solid white slab after the 3-step
-      // shader quantisation, which would hide the courtyard layout entirely.
-      return { snow: 90, leaf: 0, cls: SEASON_CLASS.paving };
+      // Courtyard/landuse ground: a trodden but continuous cover. Depths below
+      // ~110 leave bare ground through the 3-step quantiser (the dark green
+      // gaps between buildings in winter).
+      return { snow: 140, leaf: 0, cls: SEASON_CLASS.paving };
     case 'railway':
-      return { snow: 60, leaf: 0, cls: SEASON_CLASS.asphalt };
+      return { snow: 120, leaf: 0, cls: SEASON_CLASS.asphalt };
     default:
-      return { snow: 0, leaf: 0, cls: SEASON_CLASS.asphalt };
+      return { snow: 140, leaf: 0, cls: SEASON_CLASS.paving };
   }
 }
 
@@ -944,7 +946,7 @@ function paintSeasonSidewalk(
   if (!(value > 0)) return;
   const centre = side * (band.w / 2 + kerb + value / 2);
   seasonStroke(channels, offsetPolyline(band.p, centre), Math.max(minLine, value * 0.5), {
-    snow: 40,
+    snow: 0,
     leaf: 10,
     cls: SEASON_CLASS.paving,
   });
@@ -1066,7 +1068,7 @@ function paintSeasonGround(tile: TileData, channels: SeasonChannel[], res: numbe
   for (const stroke of strokes) {
     if (stroke.k !== 'tram') continue;
     seasonStroke(channels, stroke.p, stroke.w + TRAM_BED_EXTRA_M, {
-      snow: 90,
+      snow: 110,
       leaf: 0,
       cls: SEASON_CLASS.asphalt,
     });
@@ -1074,13 +1076,13 @@ function paintSeasonGround(tile: TileData, channels: SeasonChannel[], res: numbe
   for (const fill of fills) {
     if (fill.m === 'platform') {
       seasonFillFlat(channels, [fill.p, ...(fill.h ?? [])], {
-        snow: 40,
+        snow: 0,
         leaf: 10,
         cls: SEASON_CLASS.paving,
       });
     } else if (fill.m === 'tram') {
       seasonFillFlat(channels, [fill.p, ...(fill.h ?? [])], {
-        snow: 90,
+        snow: 110,
         leaf: 0,
         cls: SEASON_CLASS.asphalt,
       });
@@ -1310,10 +1312,13 @@ export function paintSeasonMask(
   const wet = seasonChannel(width, height);
   if (!snow || !leaf || !cls || !wet) return null;
 
-  // Base: paved/unknown, no snow. Green (litter) and alpha (wet) start at 0.
-  fillSeasonChannel(snow, 0);
+  // Base: unknown ground is open/courtyard in the city, so it holds snow in
+  // winter. Roads, pavements, plazas and water are painted over below with
+  // their explicit (often cleared) classes; this fill is what removes the
+  // dark green gaps between buildings.
+  fillSeasonChannel(snow, 200);
   fillSeasonChannel(leaf, 0);
-  fillSeasonChannel(cls, SEASON_CLASS.asphalt);
+  fillSeasonChannel(cls, SEASON_CLASS.other);
   fillSeasonChannel(wet, 0);
 
   const channels = [snow, leaf, cls, wet];

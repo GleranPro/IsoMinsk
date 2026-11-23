@@ -152,6 +152,28 @@ float seasonValueNoise(vec2 p) {
   float d = seasonHash(i + vec2(1.0, 1.0));
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
+
+// World-anchored octaves. uSnowCell only cross-fades BETWEEN fixed 1/4/16 m
+// grids; it never rescales one grid, so snow patches stay pinned to the world
+// instead of sliding sideways while zooming.
+float seasonSnowNoise(vec2 world) {
+  float fine = seasonHash(floor(world / 1.0));
+  float mid = seasonHash(floor(world / 4.0) + 17.0);
+  float coarse = seasonHash(floor(world / 16.0) + 41.0);
+  float tMid = smoothstep(1.5, 3.5, uSnowCell);
+  float tCoarse = smoothstep(6.0, 14.0, uSnowCell);
+  return mix(mix(fine, mid, tMid), coarse, tCoarse);
+}
+
+float seasonLeafNoise(vec2 world) {
+  float fine = seasonValueNoise(world / 2.0);
+  float coarse = seasonValueNoise(world / 8.0 + 23.0);
+  return mix(fine, coarse, smoothstep(4.0, 12.0, uSnowCell));
+}
+
+float seasonLeafTone(vec2 world) {
+  return seasonValueNoise(world / 3.0 + 37.0);
+}
 `;
 
 /**
@@ -173,12 +195,10 @@ if (uWinter > 0.001 || uAutumn > 0.001) {
   // pixel grid so leaves stay crisp instead of becoming a soft gradient.
   if (uAutumn > 0.001) {
     float seasonLeaf = seasonSample.g * uAutumn * smoothstep(0.04, 0.18, seasonClass);
-    float leafCell = max(1.2, uSnowCell * 0.9);
-    vec2 leafP = vSeasonWorld.xz / leafCell;
-    float leafNoise = seasonValueNoise(leafP);
+    float leafNoise = seasonLeafNoise(vSeasonWorld.xz);
     // Smooth density clumps: a hard per-texel threshold reads as a checker.
     seasonLeaf *= 0.55 + 0.45 * smoothstep(0.25, 0.75, leafNoise);
-    float leafTone = seasonValueNoise(leafP * 0.63 + 37.0);
+    float leafTone = seasonLeafTone(vSeasonWorld.xz);
     vec3 leafColor = mix(uLeafA, uLeafB, smoothstep(0.2, 0.8, leafTone));
     leafColor = mix(leafColor, uLeafC, smoothstep(0.62, 0.9, leafTone));
     diffuseColor.rgb = mix(diffuseColor.rgb, leafColor, clamp(seasonLeaf, 0.0, 0.85));
@@ -188,7 +208,7 @@ if (uWinter > 0.001 || uAutumn > 0.001) {
 
   if (uWinter > 0.001) {
     float seasonGate = smoothstep(0.08, 0.22, seasonClass);
-    float seasonNoise = seasonHash(vSeasonWorld.xz / max(0.75, uSnowCell));
+    float seasonNoise = seasonSnowNoise(vSeasonWorld.xz);
     float seasonCover = seasonDepth * seasonGate;
     seasonCover = smoothstep(0.18, 0.42, seasonCover + (seasonNoise - 0.5) * 0.18);
     // Three coverage steps; the pixel-art post pass owns the final dither.
@@ -200,9 +220,9 @@ if (uWinter > 0.001 || uAutumn > 0.001) {
     float seasonWater = step(0.70, seasonClass) * (1.0 - step(0.85, seasonClass));
     seasonSnow = mix(seasonSnow, uIce, seasonWater * 0.85);
     diffuseColor.rgb = mix(diffuseColor.rgb, seasonSnow, seasonCover * uWinter);
-    // Snow reflects a little sky at night; the lift is tiny and snow-only, so
-    // the city stays dark and the windows still carry the night look.
-    totalEmissiveRadiance += seasonSnow * seasonCover * uWinter * uSeasonNight * 0.035;
+    // Snow reflects a little sky at night; only full-coverage cells glow, so
+    // partial snow does not turn into blue dots over plazas and courtyards.
+    totalEmissiveRadiance += seasonSnow * step(0.99, seasonCover) * uWinter * uSeasonNight * 0.03;
   }
 
   // Wet asphalt and dirty slush read darker than dry summer ground.

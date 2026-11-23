@@ -55,7 +55,7 @@ describe('ground season shader', () => {
     // No global emissive: the only lift is the faint night sky reflection on
     // snow cover (snow × cover × winter × night), never a scene-wide glow.
     expect(GROUND_SEASON_SNOW_GLSL).toContain(
-      'totalEmissiveRadiance += seasonSnow * seasonCover * uWinter * uSeasonNight',
+      'totalEmissiveRadiance += seasonSnow * step(0.99, seasonCover) * uWinter * uSeasonNight',
     );
     expect(GROUND_SEASON_SNOW_GLSL).not.toContain('vCloudNormal');
     expect(GROUND_SEASON_SNOW_GLSL).not.toContain('uSnowAmount');

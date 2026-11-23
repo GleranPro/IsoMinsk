@@ -469,8 +469,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const seasonLook = seasonAppearance(season);
   // Autumn phase drives both the canopy blend and the ground litter/wetness.
   // Winter stays off by date (uWinter is 0); the cold months keep a full
-  // autumn look until a designed winter is accepted.
-  const autumnMix = seasonAutumnMix(season, undefined, Boolean(seasonOverride));
+  // autumn look until a designed winter is accepted. When winter IS on, the
+  // autumn tint fades out: leaves and yellow grass under snow were the red and
+  // green speckles seen through the cover.
+  const winterAmount = seasonUniforms.uWinter.value;
+  const autumnMix = seasonAutumnMix(season, undefined, Boolean(seasonOverride)) * (1 - winterAmount);
   seasonUniforms.uAutumn.value = autumnMix;
 
   // --- lights --------------------------------------------------------------
@@ -801,7 +804,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       seasonOverride = value === 'auto' ? null : value;
       const nextSeason = seasonOverride ?? seasonForDate();
       const look = seasonAppearance(nextSeason);
-      const mix = seasonAutumnMix(nextSeason, undefined, value !== 'auto');
+      const mix = seasonAutumnMix(nextSeason, undefined, value !== 'auto')
+        * (1 - seasonUniforms.uWinter.value);
       seasonUniforms.uAutumn.value = mix;
       streamer.setCanopyAppearance({
         palette: [...look.basePalette],

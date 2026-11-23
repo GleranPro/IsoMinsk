@@ -19,9 +19,9 @@ const NOISE_SIZE = 256;
 /** World metres covered by one noise tile: cloud fields are ~1.4 km across. */
 const NOISE_WORLD_SIZE_M = 1400;
 /** Maximum darkening under the cloud core (0..1) — by day. */
-export const CLOUD_MAX_DARKEN = 0.3;
+export const CLOUD_MAX_DARKEN = 0.5;
 /** Clouds block sun, not city glow: at full night the shade is damped. */
-const NIGHT_DAMP = 0.75;
+const NIGHT_DAMP = 0.35;
 /** Drift speed, metres per second towards +X/-Z: fast enough that the shade
  * fields visibly cross the map within a minute. */
 export const CLOUD_DRIFT_MPS = 9;
@@ -146,7 +146,7 @@ varying vec3 vCloudNormal;
 float cloudShadeMask(vec2 worldXZ) {
   if (uCloudStrength < 0.001) return 0.0;
   float n = texture2D(uCloudMap, worldXZ / ${NOISE_WORLD_SIZE_M.toFixed(1)} + uCloudOffset).r;
-  return smoothstep(0.55, 0.78, n);
+  return smoothstep(0.42, 0.60, n);
 }
 `;
 

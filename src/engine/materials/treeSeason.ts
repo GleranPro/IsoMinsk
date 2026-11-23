@@ -52,6 +52,14 @@ float treeSeasonHash(vec2 p) {
   p = floor(p);
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
+
+// Fixed world-anchored octaves; uSnowCell only cross-fades between them, so
+// snow caps stay pinned to the trees instead of sliding while zooming.
+float treeSeasonNoiseAt(vec2 world) {
+  float fine = treeSeasonHash(floor(world / 1.5));
+  float coarse = treeSeasonHash(floor(world / 8.0) + 17.0);
+  return mix(fine, coarse, smoothstep(4.0, 12.0, uSnowCell));
+}
 `;
 
 /**
@@ -61,7 +69,7 @@ float treeSeasonHash(vec2 p) {
  */
 export const TREE_SEASON_SNOW_GLSL = /* glsl */ `
 float treeSeasonUp = clamp(vTreeWorldUp, 0.0, 1.0);
-float treeSeasonNoise = treeSeasonHash(vTreeWorldPos.xz / max(0.75, uSnowCell));
+float treeSeasonNoise = treeSeasonNoiseAt(vTreeWorldPos.xz);
 float treeSeasonCap = uWinter
   * smoothstep(0.25, 0.75, treeSeasonUp)
   * smoothstep(0.26, 0.56, treeSeasonNoise + 0.35 * treeSeasonUp);

@@ -186,6 +186,14 @@ float facadeBand(float x, float lo, float hi, float aa) {
   return smoothstep(lo - w, lo + w, x) * (1.0 - smoothstep(hi - w, hi + w, x));
 }
 
+// Fixed world-anchored snow octaves; uSnowCell cross-fades them so roof snow
+// stays pinned to the building while zooming (no sideways "scroll").
+float facadeSnowNoise(vec2 world) {
+  float fine = facadeHash21(floor(world / 2.0) + 17.0);
+  float coarse = facadeHash21(floor(world / 8.0) + 29.0);
+  return mix(fine, coarse, smoothstep(4.0, 12.0, uSnowCell));
+}
+
 // --------------------------------------------------------------------- snow
 // Seasons P1: snow is a property of the face, not a screen filter.
 //   roof / roofRidge: cover by world-up slope (flat roofs solid, steep slopes
@@ -207,8 +215,7 @@ float facadeSnowCover(float faceKind, float up) {
   float gate = clamp(isRoof + isTrim * 0.45, 0.0, 1.0);
   if (gate < 0.001) return 0.0;
   float slope = smoothstep(0.50, 0.80, u);
-  float cell = max(0.75, uSnowCell);
-  float n = facadeHash21(floor(vFacadeWorldPos.xz / cell) + 17.0);
+  float n = facadeSnowNoise(vFacadeWorldPos.xz);
   float cover = gate * slope * smoothstep(0.30, 0.55, n * 0.6 + 0.55 * u);
   // Keep a fifth of the roofing colour: a fully white slab loses the tile
   // material and merges the roof into the snowy ground.
