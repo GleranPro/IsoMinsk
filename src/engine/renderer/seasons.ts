@@ -5,22 +5,23 @@
  * seasons; Minsk is northern hemisphere) and drives the tree canopy palette
  * (runtime recolour, no tile rebuild — see `TileStreamer.setCanopyAppearance`).
  *
- * WINTER IS INTENTIONALLY ABSENT (owner decision, 2026-11-20): a convincing
- * winter needs designed content — clean roads, snowdrifts on sidewalks, clean
- * non-white facades — not a uniform whitening shader. Until that exists the
- * cold months fall back to the autumn look.
+ * Winter is a first-class season (owner request, 2026-11-24): the per-surface
+ * snow mask (`uWinter`, painted into the ground texture and read by the
+ * facade/roof shaders), bare broadleaf crowns and the low cold sun were already
+ * installed, so the season is exposed in the UI and on the calendar again.
+ * The rejected global `uSnowAmount` whitening is still not used.
  *
  * Pure math, no THREE: tests pin concrete dates.
  */
 
 import { CANOPY_PALETTE } from '../../city/environment/treeInstances';
 
-export type Season = 'spring' | 'summer' | 'autumn';
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 
-/** Meteorological season from a calendar month (northern hemisphere); the
- * cold months fall back to autumn until a designed winter ships. */
+/** Meteorological season from a calendar month (northern hemisphere). */
 export function seasonForDate(date: Date = new Date()): Season {
   const month = date.getUTCMonth();
+  if (month === 11 || month <= 1) return 'winter';
   if (month >= 2 && month <= 4) return 'spring';
   if (month >= 5 && month <= 7) return 'summer';
   return 'autumn';
@@ -31,6 +32,7 @@ export function parseSeason(value: string | null): Season | null {
     case 'spring':
     case 'summer':
     case 'autumn':
+    case 'winter':
       return value;
     default:
       return null;
@@ -41,7 +43,9 @@ export function parseSeason(value: string | null): Season | null {
  * Canopy palette per season; every season sets an EXPLICIT palette (a "null
  * means keep current" left the previous season's colours behind a runtime
  * switch — the summer-stays-autumn bug). Spring is visibly lighter and
- * yellower than summer's deep green; autumn goes yellow/orange/rust.
+ * yellower than summer's deep green; autumn goes yellow/orange/rust. Winter
+ * broadleaf crowns are hidden in favour of bare-branch templates, so its
+ * palette is a muted bark tone rather than foliage.
  */
 export const SEASON_CANOPY_PALETTES: Record<Season, readonly string[]> = {
   spring: ['#9ab95e', '#aac66d', '#8fb257', '#7ca44f'],
@@ -49,6 +53,7 @@ export const SEASON_CANOPY_PALETTES: Record<Season, readonly string[]> = {
   // Several species tones in one palette; the per-tree phase (autumnMix ×
   // variation) decides which tree has already turned.
   autumn: ['#c9a13b', '#c07a32', '#9a5a2e', '#8a7a34'],
+  winter: ['#6f5b46', '#7a6650', '#5e4c3b', '#86705a'],
 };
 
 /** Conifers stay green through autumn and winter (no leaf-off). */
@@ -101,11 +106,12 @@ export function seasonAppearance(season: Season): SeasonAppearance {
 /**
  * Continuous season weights for the surface shaders.
  *
- * `seasonForDate` above still drives the UI/canopy look and keeps winter out
- * of the product. These weights are the *intensity* layer of the new surface
- * model (docs/SEASONS_TECHNICAL_PLAN.md §10.1): they are deliberately not
- * wired to a calendar switch — `winterMix` feeds `uWinter`, so snow appears
- * gradually through December instead of popping on 1 December.
+ * `seasonForDate` drives the UI season and the canopy look; these weights are
+ * the *intensity* layer of the new surface model
+ * (docs/SEASONS_TECHNICAL_PLAN.md §10.1): `winterMix` feeds `uWinter`, so snow
+ * can appear gradually through December instead of popping on 1 December.
+ * The shipped UI still switches the mask at the season boundary; the ramps are
+ * kept for the planned continuous weather pass.
  *
  * Month ramps (progress inside the month, smoothstep):
  *   autumn  Sep 0→0.4, Oct 0.4→0.9, Nov 0.9→1, Dec 1→0
@@ -223,10 +229,9 @@ export function seasonMembershipSum(weights: SeasonWeights): number {
 /**
  * Autumn phase actually shown by the UI.
  *
- * Until a designed winter ships, the cold months map to the autumn look
- * (`seasonForDate`). Raw `winterMix`-style ramps would turn January trees
- * summer-green, so the phase keeps a floor of 0.65 outside the calendar
- * autumn; a pinned `?season=autumn` is always full strength.
+ * Winter keeps the phase at 0 (leaves and yellow grass under snow were the red
+ * and green speckles seen through the cover). A pinned `?season=autumn` is
+ * always full strength; the floor keeps early autumn from reading as summer.
  */
 export function seasonAutumnMix(
   season: Season,

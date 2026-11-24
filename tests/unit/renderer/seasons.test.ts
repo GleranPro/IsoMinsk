@@ -14,19 +14,19 @@ describe('seasonForDate', () => {
     expect(seasonForDate(new Date('2026-03-15T00:00:00Z'))).toBe('spring');
     expect(seasonForDate(new Date('2026-06-21T00:00:00Z'))).toBe('summer');
     expect(seasonForDate(new Date('2026-10-30T00:00:00Z'))).toBe('autumn');
-    // Winter is intentionally absent: cold months fall back to autumn until a
-    // designed winter ships (owner decision, 2026-11-20).
-    expect(seasonForDate(new Date('2026-01-10T00:00:00Z'))).toBe('autumn');
-    expect(seasonForDate(new Date('2026-12-01T00:00:00Z'))).toBe('autumn');
+    // Winter is a UI season again (owner request, 2026-11-24): Dec–Feb.
+    expect(seasonForDate(new Date('2026-01-10T00:00:00Z'))).toBe('winter');
+    expect(seasonForDate(new Date('2026-02-20T00:00:00Z'))).toBe('winter');
+    expect(seasonForDate(new Date('2026-12-01T00:00:00Z'))).toBe('winter');
   });
 });
 
 describe('parseSeason', () => {
-  it('accepts the three season names and rejects anything else', () => {
+  it('accepts the four season names and rejects anything else', () => {
     expect(parseSeason('spring')).toBe('spring');
     expect(parseSeason('summer')).toBe('summer');
     expect(parseSeason('autumn')).toBe('autumn');
-    expect(parseSeason('winter')).toBeNull();
+    expect(parseSeason('winter')).toBe('winter');
     expect(parseSeason('auto')).toBeNull();
     expect(parseSeason(null)).toBeNull();
   });
@@ -34,11 +34,13 @@ describe('parseSeason', () => {
 
 describe('seasonAppearance', () => {
   it('gives every season an explicit palette (switching summer->autumn->summer works)', () => {
-    for (const season of ['spring', 'summer', 'autumn'] as const) {
+    for (const season of ['spring', 'summer', 'autumn', 'winter'] as const) {
       expect(seasonAppearance(season).canopyPalette).toHaveLength(4);
     }
     // Summer restores the baseline canopy, not the previous season's colours.
     expect(seasonAppearance('summer').canopyPalette).toEqual(['#52783c', '#648749', '#73944f', '#456b36']);
+    // Winter hides broadleaf crowns for bare branches; conifers stay green.
+    expect(seasonAppearance('winter').coniferPalette).toEqual(['#3f5b34', '#4a6a3c', '#557a45', '#36502c']);
   });
 
   it('keeps spring visibly lighter than summer (fresh foliage)', () => {
@@ -120,11 +122,10 @@ describe('seasonWeights', () => {
     }
   });
 
-  it('does not expose winter through the UI-facing season enum', () => {
-    // The weights are internal; `seasonForDate`/`parseSeason` still route the
-    // cold months to the autumn look until the winter content is accepted.
-    expect(seasonForDate(new Date('2027-01-15T00:00:00Z'))).toBe('autumn');
-    expect(parseSeason('winter')).toBeNull();
+  it('exposes winter through the UI-facing season enum', () => {
+    expect(seasonForDate(new Date('2027-01-15T00:00:00Z'))).toBe('winter');
+    expect(parseSeason('winter')).toBe('winter');
+    expect(seasonAutumnMix('winter', new Date('2027-01-15T00:00:00Z'))).toBe(0);
   });
 });
 
@@ -141,12 +142,13 @@ describe('autumn appearance and phase', () => {
     expect(seasonAppearance('summer').basePalette).toEqual(seasonAppearance('summer').canopyPalette);
   });
 
-  it('pins full autumn for a QA override and keeps a floor in the cold months', () => {
+  it('pins full autumn for a QA override and keeps a floor for a forced autumn look', () => {
     expect(seasonAutumnMix('summer', new Date('2026-10-15T00:00:00Z'))).toBe(0);
     expect(seasonAutumnMix('spring', new Date('2026-10-15T00:00:00Z'))).toBe(0);
+    expect(seasonAutumnMix('winter', new Date('2027-01-15T00:00:00Z'))).toBe(0);
     expect(seasonAutumnMix('autumn', new Date('2026-07-15T00:00:00Z'), true)).toBe(1);
     expect(seasonAutumnMix('autumn', new Date('2026-10-15T00:00:00Z'))).toBeGreaterThan(0.4);
-    // The UI maps winter months to autumn; the trees must not go summer-green.
+    // A forced autumn look outside its window must not fade to summer-green.
     expect(seasonAutumnMix('autumn', new Date('2027-01-15T00:00:00Z'))).toBeGreaterThanOrEqual(0.65);
   });
 });
