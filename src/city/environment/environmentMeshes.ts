@@ -42,6 +42,7 @@ import { buildTreeInstances, type TreeInstances, type TreeRenderStyle } from './
 import { emitAttractions, type AttractionEmitStats } from './ferrisWheel';
 import { createRoadStats, emitRoadLayer, type RoadBuildStats } from '../roads/roadMeshes';
 import { emitRoadSurfaces } from '../roads/surfaceMeshes';
+import { createGroundEdgeStats, emitGroundEdges } from '../ground/groundEdges';
 
 export interface EnvironmentMeshOptions {
   /** Ground rectangle of the tile in local metres [minX, minY, maxX, maxY]. */
@@ -74,6 +75,10 @@ export interface EnvironmentMeshCounts {
   attractions: number;
   /** Triangles in the merged attraction geometry. */
   attractionTriangles: number;
+  /** Kerb casing strips emitted as crisp geometry (raster ground). */
+  kerbEdges?: number;
+  /** Outer pavement edges emitted as crisp geometry (raster ground). */
+  sidewalkEdges?: number;
   /** Total number of polygons skipped because of malformed data. */
   skippedPolygons: number;
 }
@@ -107,6 +112,7 @@ export function buildEnvironmentMeshes(
   const roadStats = createRoadStats();
   const groundSink = new GeometrySink();
   const roadsSink = new GeometrySink();
+  const edgeStats = createGroundEdgeStats();
 
   const raster = options?.rasterGround === true;
   try {
@@ -138,6 +144,17 @@ export function buildEnvironmentMeshes(
     }
   } catch {
     // Same as above.
+  }
+
+  // Crisp kerb/pavement edges over the raster ground. The raster texture at
+  // kerb scale reads as texel squares; geometry edges stay clean in both
+  // render paths. Cosmetic — never breaks a tile.
+  if (raster && tile) {
+    try {
+      emitGroundEdges(roadsSink, tile, bounds, edgeStats);
+    } catch {
+      /* keep the raster ground */
+    }
   }
 
   let treeGeometry: THREE.BufferGeometry | null = null;
@@ -200,6 +217,8 @@ export function buildEnvironmentMeshes(
     treeTier,
     attractions: attractionStats.attractions,
     attractionTriangles: attractionStats.triangles,
+    kerbEdges: edgeStats.kerbs,
+    sidewalkEdges: edgeStats.sidewalkEdges,
     skippedPolygons: surfaceStats.skippedPolygons + roadStats.skippedPolygons,
   };
 

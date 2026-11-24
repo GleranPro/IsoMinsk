@@ -934,30 +934,6 @@ function seasonStrokeFill(
   }
 }
 
-/** Winter snow on a raised sidewalk: cleared centre, drifted wall edge. */
-function paintSeasonSidewalk(
-  channels: SeasonChannel[],
-  band: { p: number[]; w: number },
-  kerb: number,
-  value: number,
-  minLine: number,
-  side: -1 | 1,
-): void {
-  if (!(value > 0)) return;
-  const centre = side * (band.w / 2 + kerb + value / 2);
-  seasonStroke(channels, offsetPolyline(band.p, centre), Math.max(minLine, value * 0.5), {
-    snow: 0,
-    leaf: 10,
-    cls: SEASON_CLASS.paving,
-  });
-  const edge = side * (band.w / 2 + kerb + value * 0.85);
-  seasonStroke(channels, offsetPolyline(band.p, edge), Math.max(minLine, value * 0.3), {
-    snow: 150,
-    leaf: 90,
-    cls: SEASON_CLASS.paving,
-  });
-}
-
 /** Zebra / signal crossing: compacted snow, broken berm and autumn puddles. */
 function paintSeasonCrossing(
   channels: SeasonChannel[],
@@ -1034,18 +1010,15 @@ function paintSeasonGround(tile: TileData, channels: SeasonChannel[], res: numbe
     const band = kerbBand(road);
     if (Math.abs(left - right) < 0.05) {
       seasonStroke(channels, band.p, band.w + 2 * (kerb + left), {
-        snow: 75,
-        leaf: 20,
+        snow: 160,
+        leaf: 0,
         cls: SEASON_CLASS.paving,
       });
-      paintSeasonSidewalk(channels, band, kerb, left, minLine, 1);
-      paintSeasonSidewalk(channels, band, kerb, left, minLine, -1);
     } else {
       for (const [side, value] of [[1, left], [-1, right]] as const) {
         if (value <= 0) continue;
         seasonStroke(channels, offsetPolyline(band.p, side * ((kerb + value) / 2)),
-          band.w + kerb + value, { snow: 75, leaf: 20, cls: SEASON_CLASS.paving });
-        paintSeasonSidewalk(channels, band, kerb, value, minLine, side);
+          band.w + kerb + value, { snow: 160, leaf: 0, cls: SEASON_CLASS.paving });
       }
     }
   }
@@ -1082,7 +1055,7 @@ function paintSeasonGround(tile: TileData, channels: SeasonChannel[], res: numbe
       });
     } else if (fill.m === 'tram') {
       seasonFillFlat(channels, [fill.p, ...(fill.h ?? [])], {
-        snow: 110,
+        snow: 150,
         leaf: 0,
         cls: SEASON_CLASS.asphalt,
       });
@@ -1150,7 +1123,7 @@ function paintSeasonGround(tile: TileData, channels: SeasonChannel[], res: numbe
   for (const stroke of strokes) {
     if (stroke.k === 'rail') {
       seasonStroke(channels, stroke.p, stroke.w, {
-        snow: 60,
+        snow: 150,
         cls: SEASON_CLASS.asphalt,
       });
     } else if (stroke.k === 'tram') {
@@ -1234,6 +1207,46 @@ function maskSeasonOutsideClip(
   if (cx1 < bx1) ctx.fillRect(cx1, by0 - pad, bx1 - cx1 + pad, by1 - by0 + 2 * pad);
   if (cy0 > by0) ctx.fillRect(bx0 - pad, by0 - pad, bx1 - bx0 + 2 * pad, cy0 - by0 + pad);
   if (cy1 < by1) ctx.fillRect(bx0 - pad, cy1, bx1 - bx0 + 2 * pad, by1 - cy1 + pad);
+}
+
+/**
+ * Snap the painted mask to hard steps.
+ *
+ * Canvas antialiasing leaves 1–2 m intermediate values along every stroke and
+ * polygon edge. The snow shader quantises those into 3 coverage steps, which
+ * at kerb scale reads as dark diamond squares. Hard steps (snow 0 / 200,
+ * class nearest of 0/64/128/192/255, litter 0 / 200) keep the same data to
+ * the shader without the intermediate banding; the vector edge overlay
+ * (groundEdges.ts) provides the crisp kerb line on top.
+ */
+function hardenSeasonMask(data: Uint8ClampedArray, width: number, height: number): void {
+  const classSteps = [0, 64, 128, 192, 255];
+  const pixels = width * height;
+  for (let i = 0; i < pixels; i += 1) {
+    const o = i * 4;
+    const b = data[o + 2];
+    let cls = 0;
+    let best = Infinity;
+    for (const step of classSteps) {
+      const distance = Math.abs(b - step);
+      if (distance < best) {
+        best = distance;
+        cls = step;
+      }
+    }
+    data[o + 2] = cls;
+    if (cls === SEASON_CLASS.asphalt) {
+      data[o] = 0;
+    } else if (cls === SEASON_CLASS.water) {
+      // Ice banks stay bright, the middle stays dark water.
+      data[o] = data[o] >= 128 ? 255 : 0;
+    } else {
+      data[o] = data[o] >= 96 ? 200 : 0;
+    }
+    // Litter only where it is dense enough to read as leaves (not a tint).
+    data[o + 1] = data[o + 1] >= 64 ? 200 : 0;
+    // A (wetness) stays smooth: it only darkens the surface.
+  }
 }
 
 /** Ice along the actual shoreline; tile borders are treated as open water. */
@@ -1344,5 +1357,6 @@ export function paintSeasonMask(
     data[base + 3] = buffers[3][base]; // A = wet / dirt
   }
   applyIceBanks(data, width, height);
+  hardenSeasonMask(data, width, height);
   return { width, height, res, data };
 }

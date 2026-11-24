@@ -817,6 +817,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         visible: true,
         winter: seasonUniforms.uWinter.value > 0.5,
       });
+      // Crown visibility changed: refresh the shadow map, otherwise the
+      // previous season's canopy blobs stay baked on the ground until pan.
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
     },
     getSeason: () => seasonOverride ?? 'auto',
     setFacadeDetail(enabled: boolean) {
@@ -915,7 +918,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const debugApi = {
     trees: () => ({ style: treeStyle, ...streamer.getTreeDiagnostics() }),
     rail: () => ({ ...railTraffic.getStats(), samples: railTraffic.getTrainSamples() }),
-    setCanopyAppearance: (change: Partial<CanopyAppearance>) => streamer.setCanopyAppearance(change),
+    setCanopyAppearance: (change: Partial<CanopyAppearance>) => {
+      streamer.setCanopyAppearance(change);
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
+    },
     camera: () => {
       const camera = rig.camera;
       const direction = new THREE.Vector3();
