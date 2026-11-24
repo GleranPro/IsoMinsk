@@ -66,6 +66,8 @@ test.describe('Isometric Minsk — atmosphere', () => {
 
     await page.evaluate(() => window.__CITY_APP__?.app?.setSeason('autumn'));
     expect(await callApp<string>(page, 'getSeason')).toBe('autumn');
+    await page.evaluate(() => window.__CITY_APP__?.app?.setSeason('winter'));
+    expect(await callApp<string>(page, 'getSeason')).toBe('winter');
     await page.evaluate(() => window.__CITY_APP__?.app?.setSeason('auto'));
     expect(await callApp<string>(page, 'getSeason')).toBe('auto');
   });
@@ -81,7 +83,7 @@ test.describe('Isometric Minsk — atmosphere', () => {
     const atmosphere = await page.evaluate(() => window.__CITY_STATS__?.atmosphere ?? null);
     expect(atmosphere).not.toBeNull();
     expect(['auto', 'manual']).toContain(atmosphere!.timeMode);
-    expect(['spring', 'summer', 'autumn']).toContain(atmosphere!.season);
+    expect(['spring', 'summer', 'autumn', 'winter']).toContain(atmosphere!.season);
     expect(['off', 'rain', 'snow']).toContain(atmosphere!.weather);
     expect(atmosphere!.clouds).toBeGreaterThanOrEqual(0);
   });

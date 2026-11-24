@@ -447,10 +447,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const cloudUniforms = createCloudShadeUniforms(params.get('clouds') === '0' ? 0 : 1);
   const cloudController = new CloudShadeController(cloudUniforms);
 
-  // Surface season uniforms (seasons P0/P1). `uWinter` stays 0 by default: the
-  // baked ground mask and shaders are installed, but nothing whitens the city
-  // until the designed winter content is accepted. `?winter=0..1` is a
-  // QA-only override for the season gate — not a UI season.
+  // Surface season uniforms (seasons P0/P1). Winter is a UI season again
+  // (2026-11-24): its per-surface snow mask, bare branches and low cold sun
+  // were already accepted, so selecting Winter — or the Dec–Feb calendar on
+  // Auto — switches `uWinter` on. `?winter=0..1` stays a QA amount override.
   const seasonUniforms = createSeasonUniforms();
   const winterParam = Number.parseFloat(params.get('winter') ?? '');
   if (Number.isFinite(winterParam)) seasonUniforms.uWinter.value = clamp(winterParam, 0, 1);
@@ -464,17 +464,19 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   applyFacadeSeasonSafe(facadeFar, seasonUniforms);
   const environment = createEnvironmentMaterialSet(cloudUniforms, seasonUniforms);
 
-  // Seasons: real date by default; `?season=spring|summer|autumn` pins one
-  // (QA / screenshots). Canopy recolours at runtime, no tile rebuilds. Winter
-  // is intentionally absent (owner decision): cold months fall back to autumn.
+  // Seasons: real date by default; `?season=spring|summer|autumn|winter` pins
+  // one (QA / screenshots). Canopy recolours at runtime, no tile rebuilds.
   let seasonOverride = parseSeason(params.get('season'));
   const season = seasonOverride ?? seasonForDate();
+  // Winter — explicit or the Dec–Feb calendar on Auto — turns the per-surface
+  // snow mask on. The `?winter` amount above wins at boot as a QA override.
+  if (!Number.isFinite(winterParam) && season === 'winter') {
+    seasonUniforms.uWinter.value = 1;
+  }
   const seasonLook = seasonAppearance(season);
   // Autumn phase drives both the canopy blend and the ground litter/wetness.
-  // Winter stays off by date (uWinter is 0); the cold months keep a full
-  // autumn look until a designed winter is accepted. When winter IS on, the
-  // autumn tint fades out: leaves and yellow grass under snow were the red and
-  // green speckles seen through the cover.
+  // Winter zeroes it: leaves and yellow grass under snow were the red and green
+  // speckles seen through the cover.
   const winterAmount = seasonUniforms.uWinter.value;
   const autumnMix = seasonAutumnMix(season, undefined, Boolean(seasonOverride)) * (1 - winterAmount);
   seasonUniforms.uAutumn.value = autumnMix;
@@ -817,6 +819,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       seasonOverride = value === 'auto' ? null : value;
       const nextSeason = seasonOverride ?? seasonForDate();
       const look = seasonAppearance(nextSeason);
+      // Snow follows the selected/calendar season; an explicit pick replaces a
+      // boot-time `?winter` QA amount.
+      seasonUniforms.uWinter.value = nextSeason === 'winter' ? 1 : 0;
       const mix = seasonAutumnMix(nextSeason, undefined, value !== 'auto')
         * (1 - seasonUniforms.uWinter.value);
       seasonUniforms.uAutumn.value = mix;
@@ -826,8 +831,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         coniferPalette: [...look.coniferPalette],
         autumnMix: mix,
         visible: true,
-        winter: seasonUniforms.uWinter.value > 0.5,
+        winter: nextSeason === 'winter',
       });
+      // Lower/colder winter sun, or restore the summer/autumn rig.
+      lighting.setSeasonWinter(seasonUniforms.uWinter.value);
       // Crown visibility changed: refresh the shadow map, otherwise the
       // previous season's canopy blobs stay baked on the ground until pan.
       shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
