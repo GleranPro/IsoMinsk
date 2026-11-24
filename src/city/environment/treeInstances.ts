@@ -14,6 +14,8 @@ export const CANOPY_PALETTE = ['#52783c', '#648749', '#73944f', '#456b36'] as co
 
 export interface TreeInstanceBatch {
   template: number;
+  /** 0 = broadleaf, 1 = conifer; one crown batch per (species, template). */
+  species: 0 | 1;
   count: number;
   matrices: Float32Array;
   colors: Float32Array;
@@ -53,10 +55,16 @@ export function crownTriangles(style: TreeStyle, tier: TreeDetailTier): number {
   return style === 'faceted' ? 32 : style === 'clustered' ? 44 : 48;
 }
 
-function batch(template: number, count: number): TreeInstanceBatch {
-  return { template, count, matrices: new Float32Array(count * 16),
+function batch(template: number, species: 0 | 1, count: number): TreeInstanceBatch {
+  return { template, species, count, matrices: new Float32Array(count * 16),
     colors: new Float32Array(count * 3), variations: new Float32Array(count) };
 }
+
+/** Crown batch slots: broadleaf variants then conifer variants. */
+const CROWN_SLOTS: ReadonlyArray<readonly [0 | 1, number]> = [
+  [0, 0], [0, 1], [0, 2],
+  [1, 0], [1, 1], [1, 2],
+];
 
 /** Keep nominal total height and crown radius; only the silhouette changes. */
 export function buildTreeInstances(
@@ -70,13 +78,17 @@ export function buildTreeInstances(
   const valid = capped.filter(t => t && [t.x, t.y, t.height, t.radius].every(Number.isFinite));
   if (!valid.length) return null;
   const variations = valid.map(t => Math.fround(Number.isFinite(t.variation) ? clamp(t.variation, 0, 1) : 0));
+  // Old tiles have no `species`; treat them as broadleaf (0) so the payload
+  // stays byte-compatible.
+  const species = valid.map(t => (t.species === 1 ? 1 : 0));
   // Forest tiles contain 97% of the city trees. At this tier the three variants
   // share one silhouette; per-tree yaw and proportions retain the variation.
-  // Keeping one crown batch avoids 218 extra city-wide draw calls.
+  // Keeping one crown batch per species avoids 218 extra city-wide draw calls.
   const variants = variations.map(v => tier === 'dense' ? 0 : Math.min(2, Math.floor(noise(v, 7) * 3)));
-  const trunks = batch(0, valid.length);
-  const crowns = [0, 1, 2].map(id => batch(id, variants.filter(v => v === id).length));
-  const offsets = [0, 0, 0];
+  const trunks = batch(0, 0, valid.length);
+  const crowns = CROWN_SLOTS.map(([sp, id]) => batch(id, sp,
+    variants.filter((v, i) => v === id && species[i] === sp).length));
+  const offsets = [0, 0, 0, 0, 0, 0];
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
   const scale = new THREE.Vector3();
@@ -91,7 +103,8 @@ export function buildTreeInstances(
     matrix.compose(position, rotation.identity(), scale).toArray(trunks.matrices, i * 16);
     new THREE.Color('#71553b').multiplyScalar(0.9 + v * 0.16).toArray(trunks.colors, i * 3);
     trunks.variations[i] = v;
-    const target = crowns[variants[i]], j = offsets[variants[i]]++;
+    const slot = species[i] * 3 + variants[i];
+    const target = crowns[slot], j = offsets[slot]++;
     position.y += height * 0.34;
     scale.set(radius * (0.88 + noise(v, 1) * 0.12), height * 0.66,
       radius * (0.86 + noise(v, 2) * 0.14));
@@ -158,8 +171,7 @@ export function createCrownTemplate(style: TreeStyle, tier: TreeDetailTier, vari
   return finishCrown(positions, colors);
 }
 
-function facetedCrown(variant: number): THREE.BufferGeometry {
-  const positions: number[] = [], colors: number[] = [];
+function facetedCrown(variant: number): THREE.BufferGeometry {  const positions: number[] = [], colors: number[] = [];
   const ring = (i: number, upper: boolean): number[] => {
     const angle = i * Math.PI / 4;
     const r = (upper ? 0.83 : 1) * (1 + Math.sin(i * 2.7 + variant * 1.9) * 0.12);
@@ -206,4 +218,80 @@ function finishCrown(positions: number[], colors: number[]): THREE.BufferGeometr
 
 export function treeInstanceBytes(trees: TreeInstances | null | undefined): number {
   return trees ? [trees.trunks, ...trees.crowns].reduce((n, b) => n + b.matrices.byteLength + b.colors.byteLength + b.variations.byteLength, 0) : 0;
+}
+
+// ---------------------------------------------------------------------------
+// winter branches (seasons P3)
+// ---------------------------------------------------------------------------
+
+/** Bare-branch colour: dark bark that still reads against snow. */
+export const WINTER_CROWN_COLOR = '#4a382a';
+
+/**
+ * Bare-branch crown template for broadleaf trees in winter.
+ *
+ * A broom of thin spikes in the same normalised volume as a summer crown (the
+ * instance matrix is shared with the summer mesh, so one GPU upload drives
+ * both). Triangle budget comes from `crownTriangles`, four triangles per
+ * spike. Normals are biased upward on purpose: it makes snow settle on the
+ * branches and keeps the winter geometry lit from above.
+ */
+export function createWinterCrownTemplate(
+  style: TreeStyle,
+  tier: TreeDetailTier,
+  variant: number,
+): THREE.BufferGeometry {
+  const budget = crownTriangles(style, tier);
+  const branches = Math.max(2, Math.floor(budget / 4));
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const base = new THREE.Color(WINTER_CROWN_COLOR);
+  const random = (salt: number): number => {
+    const n = Math.sin((variant * 7.13 + salt) * 127.1 + 0.37) * 43758.5453;
+    return n - Math.floor(n);
+  };
+
+  const addBranch = (angle: number, reach: number, tipY: number, radius: number, tone: number): void => {
+    const ring: Array<[number, number, number]> = [
+      [radius, 0.03, 0],
+      [0, 0.03, radius],
+      [-radius, 0.03, 0],
+      [0, 0.03, -radius],
+    ];
+    const tip: [number, number, number] = [Math.cos(angle) * reach, tipY, Math.sin(angle) * reach];
+    const shade = base.clone().multiplyScalar(tone);
+    for (let i = 0; i < 4; i += 1) {
+      const a = ring[i], b = ring[(i + 1) % 4];
+      positions.push(a[0], a[1], a[2], tip[0], tip[1], tip[2], b[0], b[1], b[2]);
+      for (let k = 0; k < 3; k += 1) colors.push(shade.r, shade.g, shade.b);
+    }
+  };
+
+  // A central leader plus a deterministic spiral of side branches.
+  addBranch(0, 0.06, 1.0, 0.07, 1.0);
+  for (let i = 0; i < branches - 1; i += 1) {
+    const angle = i * 2.399963 + variant * 0.81 + random(i + 1) * 0.45;
+    const reach = 0.5 + random(i + 11) * 0.48;
+    const tipY = 0.36 + random(i + 23) * 0.6;
+    const radius = 0.035 + random(i + 37) * 0.03;
+    addBranch(angle, reach, tipY, radius, 0.82 + random(i + 51) * 0.3);
+  }
+
+  const geometry = finishCrown(positions, colors);
+  // Mark every vertex as a winter branch: the shared canopy shader keeps more
+  // bark visible here than on conifer needles (see treeSeason.ts).
+  const branch = new Float32Array(geometry.getAttribute('position').count).fill(1);
+  geometry.setAttribute('aWinterBranch', new THREE.BufferAttribute(branch, 1));
+  // Bias normals upward: snow settles on branches and the flat-shaded spikes
+  // get top light instead of disappearing into the trunk silhouette.
+  const normal = geometry.getAttribute('normal') as THREE.BufferAttribute;
+  for (let i = 0; i < normal.count; i += 1) {
+    const x = normal.getX(i) * 0.35;
+    const y = 1;
+    const z = normal.getZ(i) * 0.35;
+    const length = Math.hypot(x, y, z);
+    normal.setXYZ(i, x / length, y / length, z / length);
+  }
+  normal.needsUpdate = true;
+  return geometry;
 }

@@ -14,6 +14,9 @@ import type {
   LandmarkSelection,
   MobilityVehicleSelection,
   MuseumExhibitSelection,
+  SeasonOverride,
+  TimeOfDayMode,
+  WeatherKind,
 } from '../shared/appApi';
 import type { MobilityStatus } from '../shared/mobility';
 import type { TileManifest } from '../shared/types';
@@ -23,15 +26,38 @@ import { InfoPanel } from './InfoPanel';
 import { MobilityPanel } from './MobilityPanel';
 import { MuseumPanel } from './MuseumPanel';
 import { LandmarkPanel } from './LandmarkPanel';
+import { LANDMARK_INFO } from './landmarkInfo';
 import { ControlPanel } from './ControlPanel';
 import { AttributionPanel } from './AttributionPanel';
 import { LoadingOverlay } from './LoadingOverlay';
+
+/**
+ * Mirror the open landmark card in the URL (`?info=<slug>`), as in the Warsaw
+ * reference: the card can be shared/reloaded and closing it clears the link.
+ * Unrelated query parameters (`dataset`, `time`, …) stay intact.
+ */
+function syncLandmarkInfoParam(slug: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (slug) url.searchParams.set('info', slug);
+  else url.searchParams.delete('info');
+  if (url.toString() === window.location.href) return;
+  window.history.replaceState(window.history.state, '', url);
+}
 
 export interface UiState {
   pixelEffect: boolean;
   facadeDetail: boolean;
   wireframe: boolean;
+  /** Lighting clock source: live Minsk time or the fixed slider value. */
+  timeMode: TimeOfDayMode;
   timeOfDay: number;
+  /** Cloud shades (drifting shadow fields) on/off. */
+  clouds: boolean;
+  /** Screen-space precipitation. */
+  weather: WeatherKind;
+  /** Season: auto follows the real calendar date. */
+  season: SeasonOverride;
   orthoHeight: number;
   azimuth: number;
   azimuthMode: 'iso' | 'north' | 'free';
@@ -43,11 +69,20 @@ export interface UiState {
   mobilityPaused: boolean;
 }
 
+/** Card titles reused by the landmark pins' hover tooltip. */
+const LANDMARK_TITLES: Record<string, string> = Object.fromEntries(
+  Object.entries(LANDMARK_INFO).map(([slug, info]) => [slug, info.title]),
+);
+
 const DEFAULT_UI: UiState = {
   pixelEffect: true,
   facadeDetail: true,
   wireframe: false,
+  timeMode: 'auto',
   timeOfDay: 13,
+  clouds: true,
+  weather: 'off',
+  season: 'auto',
   orthoHeight: 420,
   azimuth: Math.PI / 4,
   azimuthMode: 'iso',
@@ -86,7 +121,17 @@ export function App() {
         if (exposed) exposed.ready = true;
         else (window as unknown as Record<string, unknown>).__CITY_APP__ = { ready: true };
         const camera = app.getCameraSettings();
-        setUi((prev) => ({ ...prev, orthoHeight: camera.orthoHeight, azimuth: camera.azimuth }));
+        const timeInfo = app.getTimeOfDayInfo();
+        setUi((prev) => ({
+          ...prev,
+          orthoHeight: camera.orthoHeight,
+          azimuth: camera.azimuth,
+          timeMode: timeInfo.mode,
+          timeOfDay: timeInfo.hours,
+          clouds: app.getCloudsEnabled(),
+          weather: app.getWeather().kind,
+          season: app.getSeason(),
+        }));
       },
       onStats: (next) => {
         // The engine mutates one stats object and re-emits the same reference;
@@ -108,7 +153,11 @@ export function App() {
       },
       onMobilitySelect: (next) => setVehicle(next),
       onExhibitSelect: (next) => setExhibit(next),
-      onLandmarkSelect: (next) => setLandmark(next),
+      onLandmarkSelect: (next) => {
+        setLandmark(next);
+        syncLandmarkInfoParam(next?.slug ?? null);
+      },
+      landmarkTitles: LANDMARK_TITLES,
       onLoadingChange: (isLoading, value) => {
         setLoading(isLoading);
         setProgress(value);
@@ -146,8 +195,46 @@ export function App() {
     app.setPixelEffectEnabled(ui.pixelEffect);
     app.setFacadeDetail(ui.facadeDetail);
     app.setDebugWireframe(ui.wireframe);
-    app.setTimeOfDay(ui.timeOfDay);
-  }, [ready, ui.pixelEffect, ui.facadeDetail, ui.wireframe, ui.timeOfDay]);
+    if (ui.timeMode === 'manual') app.setTimeOfDay(ui.timeOfDay);
+    else app.setTimeMode('auto');
+    app.setCloudsEnabled(ui.clouds);
+    app.setWeather(ui.weather);
+    app.setSeason(ui.season);
+  }, [
+    ready,
+    ui.pixelEffect,
+    ui.facadeDetail,
+    ui.wireframe,
+    ui.timeMode,
+    ui.timeOfDay,
+    ui.clouds,
+    ui.weather,
+    ui.season,
+  ]);
+
+  // Live clock mirror: while the lighting runs on real Minsk time, the panel
+  // label follows the engine clock (1 Hz is enough — the look drifts 1 h/h).
+  useEffect(() => {
+    if (!ready) return;
+    const timer = window.setInterval(() => {
+      const app = appRef.current;
+      if (!app) return;
+      const info = app.getTimeOfDayInfo();
+      const clouds = app.getCloudsEnabled();
+      const weather = app.getWeather().kind;
+      const season = app.getSeason();
+      setUi((prev) =>
+        prev.timeMode === info.mode &&
+        Math.abs(prev.timeOfDay - info.hours) < 0.005 &&
+        prev.clouds === clouds &&
+        prev.weather === weather &&
+        prev.season === season
+          ? prev
+          : { ...prev, timeMode: info.mode, timeOfDay: info.hours, clouds, weather, season },
+      );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [ready]);
 
   // mobility switches go through the public handle; the engine keeps the rules
   // running even when vehicles/signals are hidden.

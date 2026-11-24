@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { buildTreeInstances, createCrownTemplate, createTrunkTemplate, crownTriangles,
-  MAX_INSTANCED_TREES_PER_TILE, resolveTreeStyle, TREE_STYLES, treeInstanceBytes } from '../../../src/city/environment/treeInstances';
+  createWinterCrownTemplate, MAX_INSTANCED_TREES_PER_TILE, resolveTreeStyle, TREE_STYLES,
+  treeInstanceBytes } from '../../../src/city/environment/treeInstances';
 import type { TreeInstance } from '../../../src/shared/types';
 import type { TreeDetailTier } from '../../../src/city/environment/treeMeshes';
 
@@ -73,6 +74,26 @@ describe('instanced vegetation data', () => {
       expect(result.triangleCount).toBe(count * (8 + crownTriangles(result.style, tier)));
     });
 
+  it('splits crown batches by species and reads missing species as broadleaf', () => {
+    const input = Array.from({ length: 60 }, (_, i) =>
+      tree(i, i % 3 === 0 ? { species: 1 } : {}));
+    const result = buildTreeInstances(input, 'clustered')!;
+    expect(result.crowns.reduce((n, b) => n + b.count, 0)).toBe(input.length);
+    expect(result.crowns.some(b => b.species === 1)).toBe(true);
+    expect(result.crowns.some(b => b.species === 0)).toBe(true);
+    for (const batch of result.crowns) {
+      for (let i = 0; i < batch.count; i += 1) {
+        const matrix = new THREE.Matrix4().fromArray(batch.matrices, i * 16);
+        const source = input.find(t => Math.abs(t.x - matrix.elements[12]) < 1e-6)!;
+        expect(batch.species).toBe(source.species === 1 ? 1 : 0);
+      }
+    }
+    // Old tiles without the field produce only broadleaf batches.
+    const legacy = buildTreeInstances(input.map(t => ({ ...t, species: undefined })), 'clustered')!;
+    expect(legacy.crowns.every(b => b.species === 0)).toBe(true);
+    expect(legacy.crowns).toHaveLength(3);
+  });
+
   it('caps input before filtering and keeps transfer storage at 160 bytes/tree', () => {
     const input = Array.from({ length: MAX_INSTANCED_TREES_PER_TILE + 1 }, (_, i) => tree(i));
     const result = buildTreeInstances(input, 'clustered')!;
@@ -80,6 +101,46 @@ describe('instanced vegetation data', () => {
     expect(treeInstanceBytes(result)).toBe(result.count * 160);
     input[0].x = NaN;
     expect(buildTreeInstances(input, 'clustered')!.count).toBe(MAX_INSTANCED_TREES_PER_TILE - 1);
+  });
+});
+
+describe('winter branch templates', () => {
+  for (const style of TREE_STYLES) for (const tier of ['full', 'lod', 'simple', 'dense'] as TreeDetailTier[]) {
+    it(`${style}/${tier}: bare branches fit the crown triangle budget`, () => {
+      for (let variant = 0; variant < 3; variant++) {
+        const g = createWinterCrownTemplate(style, tier, variant);
+        expect(triangles(g)).toBeLessThanOrEqual(crownTriangles(style, tier));
+        expect(triangles(g)).toBeGreaterThanOrEqual(8);
+        expect(g.boundingBox!.min.y).toBeCloseTo(0);
+        expect(g.boundingBox!.max.y).toBeCloseTo(1);
+        const p = g.getAttribute('position'), n = g.getAttribute('normal');
+        for (let i = 0; i < p.count; i++) {
+          expect(Math.hypot(p.getX(i), p.getZ(i))).toBeLessThanOrEqual(1 + 1e-6);
+          const normal = new THREE.Vector3().fromBufferAttribute(n, i);
+          expect(normal.length()).toBeCloseTo(1);
+          // Normals are biased up so snow settles on the branches.
+          expect(normal.y).toBeGreaterThan(0.8);
+        }
+        expect(g.getAttribute('color')).toBeDefined();
+        const branch = g.getAttribute('aWinterBranch');
+        expect(branch).toBeDefined();
+        expect(branch.count).toBe(p.count);
+        expect(branch.getX(0)).toBe(1);
+        g.dispose();
+      }
+    });
+  }
+
+  it('uses a dark bark colour that reads against snow', () => {
+    const g = createWinterCrownTemplate('asymmetric', 'full', 0);
+    const color = g.getAttribute('color');
+    const r = color.getX(0), green = color.getY(0), b = color.getZ(0);
+    expect(r).toBeGreaterThan(0.02);
+    expect(r).toBeLessThan(0.2);
+    // Brown bark: red > green > blue.
+    expect(r).toBeGreaterThan(green);
+    expect(green).toBeGreaterThan(b);
+    g.dispose();
   });
 });
 

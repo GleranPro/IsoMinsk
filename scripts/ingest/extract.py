@@ -370,6 +370,8 @@ class TreeCollector:
             "lon": round(lon, 7),
             "height": tags.get("height"),
             "species": tags.get("species"),
+            "genus": tags.get("genus"),
+            "leaf_type": tags.get("leaf_type"),
             "crown": tags.get("diameter_crown") or tags.get("crown_diameter"),
         })
 
@@ -394,6 +396,7 @@ class TreeCollector:
             "osm_id": way.id,
             "coords": round_coords(coords),
             "leaf_type": tags.get("leaf_type"),
+            "genus": tags.get("genus"),
             "height": tags.get("height"),
         })
 

@@ -65,10 +65,12 @@ describe('facade GLSL source', () => {
     expect(FACADE_VERTEX_GLSL).toContain('attribute vec3 aColor');
     expect(FACADE_VERTEX_GLSL).toContain('attribute vec4 aStyle');
     expect(FACADE_VERTEX_GLSL).toContain('attribute vec4 aFace');
-    for (const varying of ['vFacadeUV', 'vFacadeColor', 'vFacadeStyle', 'vFacadeFace']) {
+    for (const varying of ['vFacadeUV', 'vFacadeColor', 'vFacadeStyle', 'vFacadeFace',
+      'vFacadeWorldPos', 'vFacadeWorldUp']) {
       expect(FACADE_VERTEX_GLSL).toContain(varying);
     }
     expect(FACADE_VERTEX_GLSL).toContain('vFacadeUV = aUV;');
+    expect(FACADE_VERTEX_GLSL).toContain('vFacadeWorldUp = normalize(');
   });
 
   it('declares every uniform the renderer pushes', () => {
@@ -106,6 +108,14 @@ describe('facade GLSL source', () => {
     expect(FACADE_FRAGMENT_GLSL).toContain('uNight');
     expect(FACADE_FRAGMENT_GLSL).toContain('uPixelSize');
     expect(FACADE_FRAGMENT_GLSL).toContain('FACADE_PALETTE_SIZE');
+  });
+
+  it('snows roofs, roof ridges and trim only — never walls, glass or plinths', () => {
+    // One call per snow-capable early-return branch: roof, roofRidge, trim.
+    expect(FACADE_FRAGMENT_GLSL.match(/facadeApplySnow\(outAlbedo/g)).toHaveLength(3);
+    expect(FACADE_FRAGMENT_GLSL).toContain('float isRoof = step(0.5, faceKind)');
+    expect(FACADE_FRAGMENT_GLSL).toContain('float isTrim = step(2.5, faceKind)');
+    expect(FACADE_FRAGMENT_GLSL).toContain('facadeSnowCover');
   });
 
   it('keeps the recipe preset uniform arrays in sync with the shared contract', () => {

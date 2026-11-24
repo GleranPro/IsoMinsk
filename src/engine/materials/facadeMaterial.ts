@@ -37,10 +37,13 @@ import { FACADE_PRESET_COUNT } from '../../shared/buildingStyles';
 import { motifRowsForUniforms, presetRowsForUniforms } from '../../city/facades/presets';
 import { hexToRgb, PIXEL_PALETTE, paletteToFloat32 } from '../postprocess/palette';
 import {
+  FACADE_FRAGMENT_ALBEDO_TAIL,
   FACADE_PROGRAM_CACHE_KEY,
   patchFacadeFragmentShader,
   patchFacadeVertexShader,
 } from '../shaders/facadeShader';
+import { applyCloudShade, type CloudShadeUniforms } from '../renderer/cloudShade';
+import type { SeasonUniforms } from '../renderer/seasonUniforms';
 import { FACADE_TRIM_COLOR, WINDOW_COLORS } from './palette';
 
 export interface FacadeMaterialOptions {
@@ -59,6 +62,12 @@ export interface FacadeUniformSet {
   uPixelSize: THREE.IUniform<number>;
   uPaletteMix: THREE.IUniform<number>;
   uTimeHours: THREE.IUniform<number>;
+  /** Seasons P1: shared with `SeasonUniforms` so one value drives every face. */
+  uWinter: THREE.IUniform<number>;
+  /** Seasons P1: world metres per snow-detail cell. */
+  uSnowCell: THREE.IUniform<number>;
+  /** Seasons P3: autumn/winter wetness (streaks, dark plinth). */
+  uAutumn: THREE.IUniform<number>;
   /**
    * vec4[41]: bayWidth, windowWidthRatio, windowHeightRatio, sillRatio, indexed
    * by the packed recipe id (27 families + 11 legacy presets + 3 shells).
@@ -148,6 +157,9 @@ export function createFacadeUniforms(options: {
     uPixelSize: { value: DEFAULT_PIXEL_SIZE_M },
     uPaletteMix: { value: options.quantise ? 1 : 0 },
     uTimeHours: { value: 13 },
+    uWinter: { value: 0 },
+    uSnowCell: { value: 0.75 },
+    uAutumn: { value: 0 },
     uPresetA: { value: presets.a },
     uPresetB: { value: presets.b },
     uRecipeMotif: { value: presets.motif },
@@ -198,6 +210,22 @@ export function createFacadeMaterial(options: FacadeMaterialOptions): THREE.Mate
   return material;
 }
 
+/**
+ * Wire the shared cloud-shade uniforms into a facade material. The darkening
+ * anchors after the facade albedo block (lit windows stay lit), so this must
+ * run before the material's first compile and only after `onBeforeCompile` is
+ * installed (it wraps the facade patch).
+ */
+export function applyFacadeCloudShade(
+  material: THREE.Material,
+  uniforms: CloudShadeUniforms,
+): void {
+  applyCloudShade(material, uniforms, {
+    fragmentAfter: FACADE_FRAGMENT_ALBEDO_TAIL,
+    cacheKeySuffix: '-facade',
+  });
+}
+
 function getFacadeUniformSet(material: THREE.Material | undefined | null): FacadeUniformSet | null {
   if (!material || typeof material !== 'object') return null;
   const userData = material.userData as
@@ -207,6 +235,24 @@ function getFacadeUniformSet(material: THREE.Material | undefined | null): Facad
   if (!candidate || typeof candidate !== 'object') return null;
   const night = (candidate as FacadeUniformSet).uNight;
   return night && typeof night.value === 'number' ? candidate : null;
+}
+
+/**
+ * Share the season uniforms with a facade material (seasons P1).
+ *
+ * The facade GLSL always contains the roof/trim snow branch; only `uWinter`
+ * and `uSnowCell` change, so no separate program variant or cache key is
+ * needed. Must run before the first compile (like the cloud-shade patch).
+ */
+export function applyFacadeSeason(
+  material: THREE.Material,
+  season: SeasonUniforms,
+): void {
+  const set = getFacadeUniformSet(material);
+  if (!set) return;
+  set.uWinter = season.uWinter;
+  set.uSnowCell = season.uSnowCell;
+  set.uAutumn = season.uAutumn;
 }
 
 /**

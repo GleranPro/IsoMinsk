@@ -19,7 +19,9 @@ import {
   groundRasterAvailable,
   groundResolutionFor,
   hasGroundLayer,
+  paintSeasonMask,
   rasterizeGround,
+  seasonMaskResolutionFor,
 } from '../../city/ground/groundRaster';
 import {
   buildDeckTopGeometry,
@@ -211,6 +213,29 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
     }
   }
 
+  // Season mask (seasons P0): baked next to the ground texture, same worker
+  // pass. It stores the *potential* of each surface (snow depth, class); the
+  // current season only changes uniforms, never the texture.
+  let season: TileWirePayload['season'] = null;
+  if (ground) {
+    try {
+      const mask = paintSeasonMask(data, data.bounds, seasonMaskResolutionFor(ground.res));
+      if (mask) {
+        const copy = new Uint8Array(mask.data.byteLength);
+        copy.set(mask.data);
+        season = {
+          width: mask.width,
+          height: mask.height,
+          res: mask.res,
+          data: copy.buffer,
+        };
+      }
+    } catch (error) {
+      buildingsError = `season mask: ${String(error)}`;
+      season = null;
+    }
+  }
+
   // Bridge decks (payload 0.4.2): textured top surface, painted like the ground.
   let decks: TileWirePayload['decks'] = null;
   if (ground && usesGroundDecks(data)) {
@@ -252,6 +277,7 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
       environment: null,
       trees: null,
       ground,
+      season,
       decks,
       triangleCount: decks ? decks.mesh.triangleCount : 0,
       bytes: 0,
@@ -338,6 +364,7 @@ export function buildTilePayload(data: TileData, options: TileBuildOptions): Til
     legacyTrees,
     attractions,
     ground,
+    season,
     decks,
     triangleCount,
     bytes: 0,

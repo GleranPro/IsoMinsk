@@ -92,6 +92,22 @@ export interface WireGroundTexture {
   data: ArrayBuffer;
 }
 
+/**
+ * Baked season mask of one tile (seasons P0).
+ *
+ * R snow depth, G leaf litter, B surface class, A wet/dirt; see
+ * `paintSeasonMask` in `src/city/ground/groundRaster.ts`. Optional: old
+ * payloads have no mask and the ground material falls back to a 1×1 tile.
+ */
+export interface WireSeasonMask {
+  width: number;
+  height: number;
+  /** Metres per texel. */
+  res: number;
+  /** Owned ArrayBuffer (RGBA8), transferable. */
+  data: ArrayBuffer;
+}
+
 /** How the flat ground of a tile is built. */
 export type GroundBuildMode = 'raster' | 'vector';
 
@@ -113,6 +129,8 @@ export interface TileWirePayload {
   attractions?: WireMesh | null;
   /** Raster ground texture (payload 0.4.0), or null for the vector ground. */
   ground?: WireGroundTexture | null;
+  /** Baked season mask for the ground texture (seasons P0), or null. */
+  season?: WireSeasonMask | null;
   /** Bridge deck tops (payload 0.4.2): textured mesh + its atlas. */
   decks?: { mesh: WireMesh; texture: WireGroundTexture } | null;
   triangleCount: number;
@@ -348,6 +366,7 @@ export function collectTransferables(payload: TileWirePayload): ArrayBuffer[] {
     }
   }
   if (payload.ground?.data) buffers.push(payload.ground.data);
+  if (payload.season?.data) buffers.push(payload.season.data);
   if (payload.decks) {
     addMesh(payload.decks.mesh);
     buffers.push(payload.decks.texture.data);
@@ -364,6 +383,7 @@ export function payloadBytes(payload: TileWirePayload): number {
     wireMeshBytes(payload.legacyTrees ?? null) +
     wireMeshBytes(payload.attractions ?? null) +
     (payload.ground?.data.byteLength ?? 0) +
+    (payload.season?.data.byteLength ?? 0) +
     (payload.decks ? wireMeshBytes(payload.decks.mesh) + payload.decks.texture.data.byteLength : 0) +
     (payload.triangleOwner ? payload.triangleOwner.byteLength : 0)
   );

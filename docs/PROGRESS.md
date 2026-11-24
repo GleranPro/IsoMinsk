@@ -11,6 +11,24 @@ Remaining work and completed shared prerequisites: [`docs/BACKLOG.md`](BACKLOG.m
 
 ## Current state
 
+**City liveness (atmosphere pass) — 2026-11-20, bugfix round:** after the
+first deploy the owner reviewed it and rejected four looks; all fixed and
+re-verified visually on hardware GPU (`screenshots/liveness/verify/`):
+- winter snow now lands only on up-facing surfaces (ground/roofs — world-space
+  normal varying in the shader chunk), amount 0.48, stronger patch breakup —
+  the city stays readable (the first version whitened walls: unusable);
+- every season sets an explicit canopy palette (a `null = keep current` made
+  Summer keep autumn trees after a runtime switch);
+- weather density/opacity cut ~2× (rain ≈1/8 cells, snow mix 0.5) — an accent,
+  not a curtain;
+- cloud shades fade out above ~700→1500 m ortho (patch pattern read as grey
+  haze at city overview) and stay visible+moving at district zoom;
+- the night-lamp layer was REMOVED entirely (worker spots, pools, head glow):
+  the owner rejected both iterations as visual noise over dark terrain. The
+  night look is: lit windows, lit facades, vehicle headlights only.
+Kept: real Minsk time clock, clouds (district zoom), rain/snow, seasons, the
+Atmosphere panel, `__CITY_DEBUG__.atmosphere()`, `EngineStats.atmosphere`.
+
 **Procedural building variety — 2026-11-14:** 27 coherent architectural
 families were added as a versioned recipe layer (payload 0.5.0). The offline
 selector assigns a recipe per building from mapped evidence plus a stable hash;

@@ -46,6 +46,17 @@ const STYLISED_SUN_DATE = new Date(2026, 5, 21);
  * clamp (instead of the real 20-25°) so the ground stays bright.
  */
 const STYLISED_AZIMUTH_OFFSET_DEG = -140;
+/**
+ * Winter preset (P3): the sun sits lower (26-31° instead of 40-45°), so
+ * shadows run longer; the sky fill turns colder so shadows read blue rather
+ * than grey. Applied only with the winter QA/season amount — summer/autumn
+ * keep the byte-identical stylised rig.
+ */
+const WINTER_SUN_ELEVATION_MIN = 26;
+const WINTER_SUN_ELEVATION_MAX = 31;
+const WINTER_SUN_COLOR = hexToColor('#f3f0e4');
+const WINTER_AMBIENT_COLOR = hexToColor('#a9bed6');
+const WINTER_GROUND_COLOR = hexToColor('#6f7784');
 /** Lower clamp for the shadow-frustum half extent (metres). */
 const MIN_SHADOW_EXTENT = 260;
 /** Upper clamp for the central-district shadow frustum (metres). */
@@ -85,6 +96,7 @@ export class LightingRig {
   private elevationOverrideDeg: number | null = null;
   private energyGains = { sun: 1, ambient: 1, fill: 1 };
   private useRealDateSun = false;
+  private seasonWinter = 0;
   private shadowEnabled = true;
 
   constructor(scene: THREE.Scene, shadowMapSize = 4096) {
@@ -132,6 +144,7 @@ export class LightingRig {
    */
   setTimeOfDay(hours: number, date: Date = new Date()): LightState {
     const look = sampleLook(hours);
+    const night = THREE.MathUtils.clamp(look.nightFactor, 0, 1);
     // Stylised summer-solstice sun by default (see STYLISED_SUN_DATE).
     const referenceDate = this.useRealDateSun ? date : STYLISED_SUN_DATE;
     const solar = solarPosition(hours, PILOT_CENTER.lat, PILOT_CENTER.lon, referenceDate);
@@ -149,6 +162,17 @@ export class LightingRig {
         STYLISED_MAX_ELEVATION_DEG,
       );
     }
+    // Winter lowers the sun during daylight only; the night fill keeps its
+    // direction (no 26° "day" light after sunset).
+    if (this.seasonWinter > 0.001 && !this.useRealDateSun && this.elevationOverrideDeg === null) {
+      const winterDay = this.seasonWinter * (1 - night);
+      const winterElevation = THREE.MathUtils.clamp(
+        solar.elevation,
+        WINTER_SUN_ELEVATION_MIN,
+        WINTER_SUN_ELEVATION_MAX,
+      );
+      elevationDeg = THREE.MathUtils.lerp(elevationDeg, winterElevation, winterDay);
+    }
     const elevation = (elevationDeg * Math.PI) / 180;
     const azimuthFromNorth =
       this.useRealDateSun || this.elevationOverrideDeg !== null
@@ -164,7 +188,6 @@ export class LightingRig {
     // gains bring sunlit surfaces to ~0.7-0.9 linear so the limited palette
     // reads the way the reference art does. Night stays dark; lit windows do
     // the storytelling there.
-    const night = THREE.MathUtils.clamp(look.nightFactor, 0, 1);
     const sunGain = 1 + (1 - night) * 1.0 + night * 3.6;
     const ambientGain = 1 + (1 - night) * 2.0 + night * 6.4;
     const fillGain = 1 + (1 - night) * 0.9 + night * 2.2;
@@ -189,6 +212,23 @@ export class LightingRig {
     // stylised look; it comes from the opposite horizontal side of the sun.
     this.fill.color.copy(look.ambientColor);
     this.fill.intensity = look.ambientIntensity * fillGain;
+
+    // Winter: same rig, colder sky fill and a lower sun; shadows get longer
+    // through `updateShadow` (it derives reach from the elevation).
+    if (this.seasonWinter > 0.001) {
+      const w = this.seasonWinter;
+      this.sun.color.lerp(WINTER_SUN_COLOR, w * 0.35);
+      this.sun.intensity *= 1 - w * 0.08;
+      this.ambient.color.lerp(WINTER_AMBIENT_COLOR, w * 0.55);
+      this.ambient.groundColor.lerp(WINTER_GROUND_COLOR, w * 0.55);
+      this.ambient.intensity *= 1 - w * 0.05;
+      this.sun.shadow.intensity = THREE.MathUtils.clamp(
+        this.sun.shadow.intensity * (1 + w * 0.12),
+        0,
+        0.9,
+      );
+      this.fill.color.copy(this.ambient.color);
+    }
 
     const fillDirection = this.scratch
       .set(-direction.x, direction.y * 0.55 + 0.25, -direction.z)
@@ -301,6 +341,21 @@ export class LightingRig {
   setUseRealDateSun(useRealDate: boolean): void {
     this.useRealDateSun = Boolean(useRealDate);
     this.setTimeOfDay(this.state.hours);
+  }
+
+  /**
+   * Winter lighting amount 0..1: lower/colder sun during daylight, blue fill,
+   * longer shadows. 0 restores the byte-identical summer/autumn rig.
+   */
+  setSeasonWinter(amount: number): void {
+    const next = Number.isFinite(amount) ? Math.min(1, Math.max(0, amount)) : 0;
+    if (Math.abs(next - this.seasonWinter) < 1e-4) return;
+    this.seasonWinter = next;
+    this.setTimeOfDay(this.state.hours);
+  }
+
+  getSeasonWinter(): number {
+    return this.seasonWinter;
   }
 
   getUseRealDateSun(): boolean {

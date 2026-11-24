@@ -8,8 +8,11 @@ import {
   kerbBand,
   paintGround,
   paintRailHeads,
+  paintSeasonMask,
   RAIL_HEAD_WIDTH_M,
   roadColor,
+  SEASON_CLASS,
+  seasonMaskResolutionFor,
   type GroundContext2D,
 } from '../../../src/city/ground/groundRaster';
 import {
@@ -305,12 +308,33 @@ describe('colour and resolution', () => {
   });
 });
 
+describe('season mask', () => {
+  it('anchors the mask at two ground texels and never below 0.5 m', () => {
+    expect(seasonMaskResolutionFor(0.25)).toBe(0.5);
+    expect(seasonMaskResolutionFor(0.5)).toBe(1);
+    expect(seasonMaskResolutionFor(1)).toBe(2);
+    expect(seasonMaskResolutionFor(4)).toBe(8);
+    expect(seasonMaskResolutionFor(Number.NaN)).toBe(2);
+  });
+
+  it('keeps the channel contract (asphalt 0, paving 64, grass 128, water 192)', () => {
+    expect(SEASON_CLASS).toEqual({ asphalt: 0, paving: 64, grass: 128, water: 192, other: 255 });
+  });
+
+  it('returns null without OffscreenCanvas, so the tile build stays safe', () => {
+    const data = tile([]);
+    data.surfaces = [{ kind: 'grass', polygon: [[[0, 0], [50, 0], [50, 50], [0, 50]]] }];
+    expect(paintSeasonMask(data, [0, 0, 512, 512], 1)).toBeNull();
+  });
+});
+
 describe('tile build integration', () => {
   it('falls back to the vector ground when OffscreenCanvas is unavailable', () => {
     const data = tile([road({})]);
     data.surfaces = [{ kind: 'grass', polygon: [[[0, 0], [50, 0], [50, 50], [0, 50]]] }];
     const payload = buildTilePayload(data, { facadeDetail: false, trees: false });
     expect(payload.ground ?? null).toBeNull();
+    expect(payload.season ?? null).toBeNull();
     expect(payload.environment?.triangleCount ?? 0).toBeGreaterThan(0);
   });
 });

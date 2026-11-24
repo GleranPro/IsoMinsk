@@ -390,6 +390,11 @@ export interface TreeInstance {
   variation: number;
   /** Explicitly mapped OSM tree (true) or heuristically placed (false). */
   mapped: boolean;
+  /**
+   * 0 = broadleaf, 1 = conifer, from OSM `leaf_type`/`genus` where present.
+   * Optional: old tiles without the field are read as 0 (broadleaf).
+   */
+  species?: 0 | 1;
 }
 
 /**

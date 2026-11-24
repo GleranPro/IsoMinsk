@@ -33,6 +33,10 @@ import type {
   EngineStats,
   MobilityVehicleSelection,
   PixelArtSettings,
+  SeasonOverride,
+  TimeOfDayInfo,
+  TimeOfDayMode,
+  WeatherKind,
 } from '../shared/appApi';
 import type { FeatureId, TileManifest } from '../shared/types';
 import type {
@@ -51,6 +55,7 @@ import { publicAssetUrl } from '../shared/assets';
 import { MUSEUM, WAR_MUSEUM, isLi2Focus, isMuseumFocus } from '../shared/museum';
 import { MuseumLayer } from './museum/museumLayer';
 import { LandmarkLayer, type LandmarkMeta } from './landmarks/landmarkLayer';
+import { LandmarkPinLayer } from './landmarks/landmarkPins';
 import { landmarkFocusSlug, landmarkInfoSlug } from '../shared/landmarks';
 import { MobilityController } from './mobility/controller';
 import { RailTrafficLayer } from './rail/railTrafficLayer';
@@ -58,7 +63,13 @@ import { IsometricCameraRig } from './camera/isometricCamera';
 import { CameraControls } from './camera/controls';
 import { createRendererHost, type RendererHost } from './renderer/createRenderer';
 import { LightingRig } from './renderer/lighting';
+import { minskLocalHours } from './renderer/minskTime';
+import { CloudShadeController, createCloudShadeUniforms } from './renderer/cloudShade';
+import { parseSeason, seasonAppearance, seasonAutumnMix, seasonForDate } from './renderer/seasons';
+import { createSeasonUniforms, updateSnowCell } from './renderer/seasonUniforms';
 import {
+  applyCloudShadeSafe,
+  applyFacadeSeasonSafe,
   createFacadeMaterialSafe,
   disposeFacadeMaterialSafe,
   updateFacadeMaterialSafe,
@@ -79,12 +90,10 @@ const DEFAULT_PIXEL_ART: PixelArtSettings = {
   resolution: 360,
   outline: 0.55,
   colorLevels: 20,
-  dither: 0.35,
+  // Ordered dither breaks posterisation bands. It is adaptive in the post
+  // shader (flat surfaces skip it), so this is the strength on real gradients.
+  dither: 0.25,
 };
-const FOG_NEAR_FACTOR = 0.55;
-const FOG_FAR_FACTOR = 2.1;
-/** Reference camera distance the palette fog presets were authored for. */
-const FOG_REFERENCE_DISTANCE = 3000;
 
 /** Mobility switches before the layer has any data: layer off, nothing simulated. */
 const DEFAULT_MOBILITY_SETTINGS: MobilitySettings = {
@@ -273,6 +282,14 @@ function createUnavailableHandle(container: HTMLElement, message: string): CityA
     getPixelArt: () => ({ ...DEFAULT_PIXEL_ART }),
     setTimeOfDay: noop,
     getTimeOfDay: () => 13,
+    setTimeMode: noop,
+    getTimeOfDayInfo: () => ({ hours: 13, mode: 'auto' as const }),
+    setCloudsEnabled: noop,
+    getCloudsEnabled: () => false,
+    setWeather: noop,
+    getWeather: () => ({ kind: 'off' as const, amount: 0 }),
+    setSeason: noop,
+    getSeason: () => 'auto' as const,
     setFacadeDetail: noop,
     setDebugWireframe: noop,
     setPixelEffectEnabled: noop,
@@ -418,14 +435,49 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const scene = new THREE.Scene();
   const background = new THREE.Color('#e6ecef');
   scene.background = background;
-  const fog = new THREE.Fog(new THREE.Color('#e6ecef'), 1_000_000, 2_000_000);
-  scene.fog = fog;
+  // No distance fog (owner decision 2026-11-23): it read as a grey haze over
+  // the whole city at overview/dusk in every season. The sky colour stays;
+  // materials keep `fog: true` but a scene without fog ignores it.
 
   // --- art-direction materials --------------------------------------------
   const facadeDetail = { enabled: params.get('detail') !== '0' };
+  // Cloud shades: one shared uniforms set patched into facades, environment,
+  // trees and the raster ground. `?clouds=0` boots with the shade faded off
+  // (the toggle can still bring it back — the patches are always installed).
+  const cloudUniforms = createCloudShadeUniforms(params.get('clouds') === '0' ? 0 : 1);
+  const cloudController = new CloudShadeController(cloudUniforms);
+
+  // Surface season uniforms (seasons P0/P1). `uWinter` stays 0 by default: the
+  // baked ground mask and shaders are installed, but nothing whitens the city
+  // until the designed winter content is accepted. `?winter=0..1` is a
+  // QA-only override for the season gate — not a UI season.
+  const seasonUniforms = createSeasonUniforms();
+  const winterParam = Number.parseFloat(params.get('winter') ?? '');
+  if (Number.isFinite(winterParam)) seasonUniforms.uWinter.value = clamp(winterParam, 0, 1);
+
   const facadeNear = createFacadeMaterialSafe({ detail: true, night: 0, quantise: false });
   const facadeFar = createFacadeMaterialSafe({ detail: true, night: 0, quantise: false });
-  const environment = createEnvironmentMaterialSet();
+  applyCloudShadeSafe(facadeNear, cloudUniforms);
+  applyCloudShadeSafe(facadeFar, cloudUniforms);
+  // Roofs/cornices and tree canopies read the same shared season uniforms.
+  applyFacadeSeasonSafe(facadeNear, seasonUniforms);
+  applyFacadeSeasonSafe(facadeFar, seasonUniforms);
+  const environment = createEnvironmentMaterialSet(cloudUniforms, seasonUniforms);
+
+  // Seasons: real date by default; `?season=spring|summer|autumn` pins one
+  // (QA / screenshots). Canopy recolours at runtime, no tile rebuilds. Winter
+  // is intentionally absent (owner decision): cold months fall back to autumn.
+  let seasonOverride = parseSeason(params.get('season'));
+  const season = seasonOverride ?? seasonForDate();
+  const seasonLook = seasonAppearance(season);
+  // Autumn phase drives both the canopy blend and the ground litter/wetness.
+  // Winter stays off by date (uWinter is 0); the cold months keep a full
+  // autumn look until a designed winter is accepted. When winter IS on, the
+  // autumn tint fades out: leaves and yellow grass under snow were the red and
+  // green speckles seen through the cover.
+  const winterAmount = seasonUniforms.uWinter.value;
+  const autumnMix = seasonAutumnMix(season, undefined, Boolean(seasonOverride)) * (1 - winterAmount);
+  seasonUniforms.uAutumn.value = autumnMix;
 
   // --- lights --------------------------------------------------------------
   const defaultShadowSize = renderer.capabilities.maxTextureSize >= 4096 ? 2048 : 1024;
@@ -434,10 +486,29 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       ? Math.min(shadowParam, renderer.capabilities.maxTextureSize)
       : defaultShadowSize;
   const lighting = new LightingRig(scene, shadowSize);
+  // Winter QA amount also lowers/cools the sun (P3); summer/autumn unchanged.
+  if (seasonUniforms.uWinter.value > 0) {
+    lighting.setSeasonWinter(seasonUniforms.uWinter.value);
+  }
   // Stylised summer-solstice sun by default; `?realsun=1` restores today's date.
   if (params.get('realsun') === '1') lighting.setUseRealDateSun(true);
   let look = lighting.state.look;
   let timeHours = 13;
+  // Live clock: by default the lighting time follows real Minsk time, so night
+  // falls at night and the lit windows come on by themselves. The UI slider or
+  // `?time=H` pins a fixed manual time (QA convenience); `?time=auto` restores.
+  let timeMode: TimeOfDayMode = 'auto';
+  let autoTimeTimer = 0;
+  {
+    const timeParam = params.get('time');
+    if (timeParam !== 'auto') {
+      const initialTime = Number.parseFloat(timeParam ?? '');
+      if (Number.isFinite(initialTime)) {
+        timeMode = 'manual';
+        timeHours = clamp(initialTime, 0, 24);
+      }
+    }
+  }
 
   // --- camera --------------------------------------------------------------
   const rig = new IsometricCameraRig({
@@ -468,13 +539,16 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const post = new PixelArtPipeline(renderer, pixelArt);
   post.setSize(host.width, host.height, pixelArt);
   post.setEffectEnabled(pixelArt.enabled);
+  // Screen-space precipitation (QA param until the atmosphere panel lands).
+  const weatherParam = params.get('weather');
+  if (weatherParam === 'rain' || weatherParam === 'snow') post.setWeather(weatherParam);
 
   const postEnvironment: PixelArtEnvironment = {
     fogColor: [0.9, 0.92, 0.94],
     skyColor: [0.9, 0.92, 0.94],
     outlineColor: [0.07, 0.09, 0.11],
-    // Atmospheric fog is done by the scene materials in both render paths;
-    // the post pass must not add a second fog layer.
+    // Distance fog is removed entirely (owner decision): the post pass must
+    // not reintroduce the grey haze the scene no longer has.
     fogNear: 1_000_000_000,
     fogFar: 2_000_000_000,
     pixelWorld: 1,
@@ -543,7 +617,17 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     onError: recordDiagnostic,
   });
   scene.add(landmarkModels.root);
-  void landmarkModels.load();
+  // DOM pins above the models (Warsaw IZO §4): the markers stay visible when
+  // the model is too small or hidden to raycast, and clicks within 20 px open
+  // the same card. The layer is pointer-inert; the canvas input path hit-tests
+  // it, so dragging a pin still pans the map.
+  const landmarkPins = new LandmarkPinLayer(container);
+  void landmarkModels.load().then(() => {
+    landmarkPins.setLandmarks(
+      landmarkModels.manifest?.landmarks ?? [],
+      options.landmarkTitles ?? {},
+    );
+  });
 
   // --- mobility: public transport + traffic signals ------------------------
   // Independent of the tile pipeline: a missing/incompatible payload leaves the
@@ -583,6 +667,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const streamer = new TileStreamer({
     scene,
     root: cityRoot,
+    cloudUniforms: cloudUniforms ?? undefined,
+    seasonUniforms,
     environmentMaterial: environment.environment,
     treeMaterial: environment.trees,
     treeTrunkMaterial: environment.treeTrunks,
@@ -631,6 +717,18 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     onReady: () => {
       markReady();
     },
+  });
+
+  // Seasonal canopy: spring/summer/autumn recolour at runtime — no rebuilds.
+  // Autumn blends each broadleaf tree from green to its species tone by
+  // `autumnMix` and variation; conifers stay green in their own palette.
+  streamer.setCanopyAppearance({
+    palette: [...seasonLook.basePalette],
+    autumnPalette: [...seasonLook.autumnPalette],
+    coniferPalette: [...seasonLook.coniferPalette],
+    autumnMix,
+    visible: true,
+    winter: seasonUniforms.uWinter.value > 0.5,
   });
 
   picker = new BuildingPicker(streamer, rig.camera);
@@ -695,9 +793,46 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     },
     getPixelArt: () => ({ ...pixelArt }),
     setTimeOfDay(hours: number) {
+      // Any explicit time request pins the lighting clock to manual mode.
+      timeMode = 'manual';
+      autoTimeTimer = 0;
       applyTimeOfDay(hours);
     },
     getTimeOfDay: () => timeHours,
+    setTimeMode(mode: TimeOfDayMode) {
+      if (timeMode === mode) return;
+      timeMode = mode;
+      if (mode === 'auto') applyTimeOfDay(minskLocalHours());
+    },
+    getTimeOfDayInfo: (): TimeOfDayInfo => ({ hours: timeHours, mode: timeMode }),
+    setCloudsEnabled(enabled: boolean) {
+      cloudController.setStrength(enabled ? 1 : 0);
+    },
+    getCloudsEnabled: () => cloudController.getStrength() > 0.5,
+    setWeather(kind: WeatherKind, amount = 0.55) {
+      post.setWeather(kind, amount);
+    },
+    getWeather: () => post.getWeather(),
+    setSeason(value: SeasonOverride) {
+      seasonOverride = value === 'auto' ? null : value;
+      const nextSeason = seasonOverride ?? seasonForDate();
+      const look = seasonAppearance(nextSeason);
+      const mix = seasonAutumnMix(nextSeason, undefined, value !== 'auto')
+        * (1 - seasonUniforms.uWinter.value);
+      seasonUniforms.uAutumn.value = mix;
+      streamer.setCanopyAppearance({
+        palette: [...look.basePalette],
+        autumnPalette: [...look.autumnPalette],
+        coniferPalette: [...look.coniferPalette],
+        autumnMix: mix,
+        visible: true,
+        winter: seasonUniforms.uWinter.value > 0.5,
+      });
+      // Crown visibility changed: refresh the shadow map, otherwise the
+      // previous season's canopy blobs stay baked on the ground until pan.
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
+    },
+    getSeason: () => seasonOverride ?? 'auto',
     setFacadeDetail(enabled: boolean) {
       facadeDetail.enabled = Boolean(enabled);
       applyFacadeDetailFlags();
@@ -794,7 +929,10 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const debugApi = {
     trees: () => ({ style: treeStyle, ...streamer.getTreeDiagnostics() }),
     rail: () => ({ ...railTraffic.getStats(), samples: railTraffic.getTrainSamples() }),
-    setCanopyAppearance: (change: Partial<CanopyAppearance>) => streamer.setCanopyAppearance(change),
+    setCanopyAppearance: (change: Partial<CanopyAppearance>) => {
+      streamer.setCanopyAppearance(change);
+      shadowRefreshFrames = Math.max(shadowRefreshFrames, 3);
+    },
     camera: () => {
       const camera = rig.camera;
       const direction = new THREE.Vector3();
@@ -882,6 +1020,13 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
         tiles: tiles.slice(0, 32),
       };
     },
+    atmosphere: () => ({
+      timeHours: timeHours,
+      timeMode: timeMode,
+      season: seasonOverride ?? seasonForDate(),
+      clouds: cloudController.getStrength(),
+      weather: post.getWeather(),
+    }),
     rendererInfo: () => ({
       drawCalls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -959,6 +1104,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       error: landmarkModels.error,
     }),
     landmarkModelsObject: () => landmarkModels,
+    /** Visible DOM pins (slug + container-local position) for QA click tests. */
+    landmarkPins: () => landmarkPins.getState(),
     targetObject: () => post.targetHandle,
     lightsObject: () => lighting,
     /** Grid samples (RGB) from the low-res scene target. */
@@ -1293,13 +1440,11 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       maxOrthoHeight: rig.getMaxOrthoHeight(),
       defaultView: { ...defaultView },
       shadowCasting: lighting.isShadowCasting(),
-      fog: { near: fog.near, far: fog.far },
       pixelArt: post.getRenderSize(),
     }),
     materialDebug: () => ({
       background: background.getHexString(THREE.SRGBColorSpace),
       backgroundLinear: background.toArray(),
-      fog: { near: fog.near, far: fog.far, color: fog.color.getHexString(THREE.SRGBColorSpace) },
       sun: {
         intensity: lighting.sun.intensity,
         color: lighting.sun.color.getHexString(THREE.SRGBColorSpace),
@@ -1318,8 +1463,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       exposure: renderer.toneMappingExposure,
       toneMapping: renderer.toneMapping,
       post: {
-        fogNear: fog.near,
-        fogFar: fog.far,
         edgeLow: postEnvironment.edgeLow,
         edgeHigh: postEnvironment.edgeHigh,
         pixelWorld: postEnvironment.pixelWorld,
@@ -1445,8 +1588,9 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     timeHours = clamp(hours, 0, 24);
     const state = lighting.setTimeOfDay(timeHours);
     look = state.look;
+    // Snow's faint sky reflection follows the same night factor.
+    seasonUniforms.uSeasonNight.value = look.nightFactor;
     background.copy(new THREE.Color(look.skyHex));
-    fog.color.copy(new THREE.Color(look.fogHex));
     updateFacadeMaterialSafe(facadeNear, {
       night: look.nightFactor,
       timeHours,
@@ -1457,6 +1601,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     });
     updateLookColors();
     streamer.setNightFactor(look.nightFactor);
+    cloudController?.setNight(look.nightFactor);
     // Night exposure lift: ACES compresses the low-key night palette, so give
     // the lit windows enough headroom to read without washing out the darkness.
     const nightExposure = EXPOSURE * (1 + look.nightFactor * 0.22);
@@ -1500,30 +1645,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     lastPixelSize = pixelSize;
     updateFacadeMaterialSafe(facadeNear, { pixelSize });
     updateFacadeMaterialSafe(facadeFar, { pixelSize });
-  }
-
-  function currentFogRange(): { near: number; far: number } {
-    const camDistance = rig.getCameraDistanceValue();
-    // Scale the preset fog distances with the visible extent: at a district view
-    // (660 m) this is byte-identical to the old preset offsets, at the ~9.6 km
-    // complete-city overview the haze grows with the view instead of fogging the
-    // whole city out.
-    const viewScale = Math.max(1, rig.getOrthoHeight() / 660);
-    return {
-      near: Math.max(60, camDistance + (look.fogNear - FOG_REFERENCE_DISTANCE) * viewScale),
-      far: Math.max(300, camDistance + (look.fogFar - FOG_REFERENCE_DISTANCE) * viewScale),
-    };
-  }
-
-  /**
-   * Scene materials own the atmospheric fog in both render paths, so the
-   * clean-3D debug view and the pixel-art view agree on the horizon. The post
-   * pass fog is effectively disabled.
-   */
-  function updateSceneFog(): void {
-    const range = currentFogRange();
-    fog.near = range.near;
-    fog.far = range.far;
   }
 
   function markReady(): void {
@@ -1670,6 +1791,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function setLandmarkSelection(selection: LandmarkSelection | null): void {
     if (!selection && landmarkModels.selectedSlug === null) return;
     landmarkModels.setSelected(selection?.slug ?? null);
+    landmarkPins.setSelected(selection?.slug ?? null);
     try {
       options.onLandmarkSelect?.(selection);
     } catch {
@@ -1677,11 +1799,54 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
   }
 
+  /**
+   * Open one landmark's card: a document-like selection that closes the other
+   * cards. Shared by the model raycast, the DOM pins and the `?info=` deep link
+   * so the three entry points cannot drift apart.
+   */
+  function selectLandmark(selection: LandmarkSelection): void {
+    selected = null;
+    highlightId = null;
+    highlighter.setHighlight(null);
+    try {
+      options.onSelection?.(null);
+    } catch {
+      /* ignore shell errors */
+    }
+    try {
+      options.onExhibitSelect?.(null);
+    } catch {
+      /* ignore shell errors */
+    }
+    mobilityState.runtime?.setSelectedTrip(null);
+    try {
+      options.onMobilitySelect?.(null);
+    } catch {
+      /* ignore shell errors */
+    }
+    setLandmarkSelection(selection);
+  }
+
   function handleClick(clientX: number, clientY: number): void {
     if (disposed || !picker) return;
     const rect = host!.canvas.getBoundingClientRect();
-    // Транспорт проверяется ПЕРВЫМ: машина на экране стоит перед зданиями, и
-    // клик по ней должен открывать карточку рейса, а не выбор дома за ней.
+    // Pins are UI chrome: a click inside the 20 px marker radius wins over the
+    // scene so a landmark that is too small/occluded to raycast is still
+    // reachable. The reference also glides the camera onto the picked model.
+    const pinSlug = landmarkPins.hitTest(clientX, clientY);
+    if (pinSlug) {
+      const meta = landmarkModels.getMeta(pinSlug);
+      if (meta) {
+        selectLandmark(landmarkSelection(meta, clientX, clientY));
+        const point = landmarkModels.focusPoint(pinSlug);
+        if (point) rig.focusOnLocal(point.x, point.y, false);
+        landmarkPins.setHover(null);
+        return;
+      }
+    }
+    // Транспорт проверяется первым после пинов: машина на экране стоит перед
+    // зданиями, и клик по ней должен открывать карточку рейса, а не выбор дома
+    // за ней.
     const vehicle = pickMobilityTrip(clientX, clientY, rect);
     if (vehicle) {
       selected = null;
@@ -1724,26 +1889,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
     const landmark = pickLandmark(clientX, clientY, rect);
     if (landmark) {
-      selected = null;
-      highlightId = null;
-      highlighter.setHighlight(null);
-      try {
-        options.onSelection?.(null);
-      } catch {
-        /* ignore shell errors */
-      }
-      try {
-        options.onExhibitSelect?.(null);
-      } catch {
-        /* ignore shell errors */
-      }
-      mobilityState.runtime?.setSelectedTrip(null);
-      try {
-        options.onMobilitySelect?.(null);
-      } catch {
-        /* ignore shell errors */
-      }
-      setLandmarkSelection(landmark);
+      selectLandmark(landmark);
       return;
     }
     setLandmarkSelection(null);
@@ -1843,6 +1989,12 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       stats.renderHeight = renderSize.height;
       stats.geometryMB = Math.round(streamer.geometryMB * 100) / 100;
       stats.mobility = mobility.getStatus();
+      stats.atmosphere = {
+        timeMode: timeMode,
+        season: seasonOverride ?? seasonForDate(),
+        clouds: Math.round(cloudController.getStrength() * 100) / 100,
+        weather: post.getWeather().kind,
+      };
       frames.count = 0;
       frames.windowStart = now;
       try {
@@ -1887,6 +2039,23 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function tick(dt: number, now: number): void {
     if (resizePending) applyResize();
 
+    // Cloud shades drift with time; strength fades by night and at overview
+    // zooms (a few-hundred-metre patch reads as grey noise from far away).
+    cloudController?.setOrthoHeight(rig.getOrthoHeight());
+    cloudController?.update(dt);
+    post.advanceWeather(dt);
+
+    // Live clock: re-apply the lighting palette at most once per second while
+    // it follows real Minsk time (the look drifts one hour per real hour).
+    if (timeMode === 'auto') {
+      autoTimeTimer += dt;
+      if (autoTimeTimer >= 1) {
+        autoTimeTimer = 0;
+        const hours = minskLocalHours();
+        if (Math.abs(hours - timeHours) >= 1 / 60) applyTimeOfDay(hours);
+      }
+    }
+
     controls?.update(dt);
     const cameraChanged = rig.update(dt);
     if (cameraChanged) {
@@ -1896,10 +2065,15 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
     const sceneRenderHeight = post.getRenderSize().height;
     streamer.update(rig, sceneRenderHeight);
+    // Snow detail cell follows the pixel grid (no per-frame texture uploads:
+    // this is one shared uniform).
+    updateSnowCell(seasonUniforms, rig.getPixelWorldSize(sceneRenderHeight));
 
     // Dynamic mobility layer: same frame, no second render loop. The visible
     // ground rect is converted to local metres (x east, y north) for the loader.
     const groundFootprint = rig.getVisibleGroundRect(40);
+    // Огни транспорта следуют за time-of-day (дешёвый сеттер, число).
+    mobility.setNightFactor(look.nightFactor);
     mobility.update(dt, {
       rect: {
         minX: groundFootprint.minX,
@@ -1933,9 +2107,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
 
     updateFacadePixelSize(sceneRenderHeight);
-    updateSceneFog();
 
-    // Depth range + fog/edge uniforms for the post pass.
+    // Depth range + edge uniforms for the post pass (no distance fog).
     const camera = rig.camera;
     const sinElevation = Math.max(0.2, Math.sin(rig.getElevation()));
     const pixelWorld = rig.getPixelWorldSize(sceneRenderHeight);
@@ -1958,6 +2131,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
     highlighter.update(now);
     landmarkModels.update(now);
+    landmarkPins.update(camera);
 
     renderer.info.reset();
     post.render(scene, camera);
@@ -1985,6 +2159,45 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   }
 
   // --- wiring --------------------------------------------------------------
+  // Landmark pins are pointer-inert, so their hover is hit-tested from the
+  // canvas: the map stays draggable over a marker, the cursor changes to a
+  // pointer and the name tooltip appears after the reference's 66 ms delay.
+  // Touch input has no hover state.
+  let pinHoverTimer = 0;
+  let pinCursor = false;
+  const clearPinHover = (): void => {
+    if (pinHoverTimer) {
+      window.clearTimeout(pinHoverTimer);
+      pinHoverTimer = 0;
+    }
+    landmarkPins.setHover(null);
+    if (pinCursor) {
+      pinCursor = false;
+      host.canvas.style.cursor = '';
+    }
+  };
+  const onPinPointerMove = (event: PointerEvent): void => {
+    if (disposed) return;
+    if (event.pointerType === 'touch' || event.buttons !== 0) {
+      clearPinHover();
+      return;
+    }
+    const { clientX, clientY } = event;
+    if (pinHoverTimer) window.clearTimeout(pinHoverTimer);
+    pinHoverTimer = window.setTimeout(() => {
+      pinHoverTimer = 0;
+      if (disposed) return;
+      const slug = landmarkPins.hitTest(clientX, clientY);
+      landmarkPins.setHover(slug);
+      if (Boolean(slug) !== pinCursor) {
+        pinCursor = Boolean(slug);
+        host.canvas.style.cursor = slug ? 'pointer' : '';
+      }
+    }, 66);
+  };
+  host.canvas.addEventListener('pointermove', onPinPointerMove);
+  host.canvas.addEventListener('pointerleave', clearPinHover);
+
   controls = new CameraControls({
     canvas: host.canvas,
     rig,
@@ -2007,14 +2220,14 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   });
   resizeObserver.observe(container);
 
-  // Initial view state.
-  applyTimeOfDay(13);
+  // Initial view state: the lighting clock starts on real Minsk time unless a
+  // fixed `?time=H` (or a UI slider value) pinned it to manual.
+  applyTimeOfDay(timeMode === 'auto' ? minskLocalHours() : timeHours);
   applyFacadeDetailFlags();
   applyFacadePixelFlagsInitial();
 
   function applyFacadePixelFlagsInitial(): void {
     applyPixelArtFlags();
-    updateSceneFog();
   }
 
   // URL-driven initial camera/time overrides (QA convenience).
@@ -2025,10 +2238,6 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   const initialAzimuth = Number.parseFloat(params.get('az') ?? '');
   if (Number.isFinite(initialAzimuth)) {
     handle.setCameraSettings({ azimuth: initialAzimuth });
-  }
-  const initialTime = Number.parseFloat(params.get('time') ?? '');
-  if (Number.isFinite(initialTime)) {
-    handle.setTimeOfDay(initialTime);
   }
 
   void streamer.start();
@@ -2053,6 +2262,21 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       /* ignore */
     }
     controls = null;
+    if (pinHoverTimer) {
+      window.clearTimeout(pinHoverTimer);
+      pinHoverTimer = 0;
+    }
+    try {
+      host?.canvas.removeEventListener('pointermove', onPinPointerMove);
+      host?.canvas.removeEventListener('pointerleave', clearPinHover);
+    } catch {
+      /* ignore */
+    }
+    try {
+      landmarkPins.dispose();
+    } catch {
+      /* ignore */
+    }
     try {
       museum.dispose();
       warMuseum.dispose();
@@ -2060,6 +2284,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       railTraffic.dispose();
       mobilityState.runtime = null;
       mobility.dispose();
+      cloudController?.dispose();
       streamer.dispose();
     } catch (error) {
       recordDiagnostic(`streamer dispose failed: ${String(error)}`);

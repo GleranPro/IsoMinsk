@@ -42,7 +42,7 @@ export const FACADE_ARCHETYPE_COUNT = ARCHETYPE_BY_ID.length;
 export const FACADE_PRESET_ROWS = FACADE_PRESET_COUNT;
 
 /** Program cache key for facade materials (identical GLSL for all instances). */
-export const FACADE_PROGRAM_CACHE_KEY = 'isometric-minsk-facade-v3';
+export const FACADE_PROGRAM_CACHE_KEY = 'isometric-minsk-facade-v4';
 
 /** Float uniforms the facade shader exposes (for tests / renderer wiring). */
 export const FACADE_FLOAT_UNIFORMS = [
@@ -51,6 +51,9 @@ export const FACADE_FLOAT_UNIFORMS = [
   'uPixelSize',
   'uPaletteMix',
   'uTimeHours',
+  'uWinter',
+  'uSnowCell',
+  'uAutumn',
 ] as const;
 
 /** Vertex attributes the facade shader consumes. */
@@ -85,6 +88,8 @@ varying vec2 vFacadeUV;
 varying vec3 vFacadeColor;
 varying vec4 vFacadeStyle;
 varying vec4 vFacadeFace;
+varying vec3 vFacadeWorldPos;
+varying float vFacadeWorldUp;
 `;
 
 export const FACADE_VERTEX_BODY = /* glsl */ `
@@ -92,6 +97,8 @@ vFacadeUV = aUV;
 vFacadeColor = aColor;
 vFacadeStyle = aStyle;
 vFacadeFace = aFace;
+vFacadeWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+vFacadeWorldUp = normalize(mat3(modelMatrix) * objectNormal).y;
 `;
 
 export const FACADE_FRAGMENT_DECLARATIONS = /* glsl */ `
@@ -118,6 +125,11 @@ uniform float uDetailScale;
 uniform float uPixelSize;
 uniform float uPaletteMix;
 uniform float uTimeHours;
+// Seasons P1: snow on roofs and horizontal trim only (walls stay clean).
+uniform float uWinter;
+uniform float uSnowCell;
+// Seasons P3: autumn/winter wetness for streaks and a dark plinth.
+uniform float uAutumn;
 
 uniform vec4 uPresetA[FACADE_PRESET_ROWS];
 uniform vec4 uPresetB[FACADE_PRESET_ROWS];
@@ -137,6 +149,8 @@ varying vec2 vFacadeUV;
 varying vec3 vFacadeColor;
 varying vec4 vFacadeStyle;
 varying vec4 vFacadeFace;
+varying vec3 vFacadeWorldPos;
+varying float vFacadeWorldUp;
 
 // ---------------------------------------------------------------- utilities
 
@@ -170,6 +184,52 @@ float facadeRect(vec2 p, vec2 lo, vec2 hi, vec2 aa) {
 float facadeBand(float x, float lo, float hi, float aa) {
   float w = max(aa, 0.00001);
   return smoothstep(lo - w, lo + w, x) * (1.0 - smoothstep(hi - w, hi + w, x));
+}
+
+// Fixed world-anchored snow octaves; uSnowCell cross-fades them so roof snow
+// stays pinned to the building while zooming (no sideways "scroll").
+float facadeSnowNoise(vec2 world) {
+  float fine = facadeHash21(floor(world / 2.0) + 17.0);
+  float coarse = facadeHash21(floor(world / 8.0) + 29.0);
+  return mix(fine, coarse, smoothstep(4.0, 12.0, uSnowCell));
+}
+
+// --------------------------------------------------------------------- snow
+// Seasons P1: snow is a property of the face, not a screen filter.
+//   roof / roofRidge: cover by world-up slope (flat roofs solid, steep slopes
+//     shed it); trim: a light cap on cornices and parapets.
+//   walls / ground / glass: gate 0 — the rejected winter whitened walls and
+//   windows too, which is exactly what must never happen again.
+// Colours are display sRGB and match the cold entries in PIXEL_PALETTE.
+
+const vec3 FACADE_SNOW_THIN = vec3(0.812, 0.855, 0.882);   // #cfdae1
+const vec3 FACADE_SNOW_DEEP = vec3(0.933, 0.957, 0.969);   // #eef4f7
+const vec3 FACADE_SNOW_SHADOW = vec3(0.576, 0.643, 0.698); // #93a4b2
+
+float facadeSnowCover(float faceKind, float up) {
+  if (uWinter < 0.001) return 0.0;
+  float u = clamp(up, 0.0, 1.0);
+  float isRoof = step(0.5, faceKind) * step(faceKind, 1.5)
+    + step(4.5, faceKind) * step(faceKind, 5.5);
+  float isTrim = step(2.5, faceKind) * step(faceKind, 3.5);
+  float gate = clamp(isRoof + isTrim * 0.45, 0.0, 1.0);
+  if (gate < 0.001) return 0.0;
+  float slope = smoothstep(0.50, 0.80, u);
+  float n = facadeSnowNoise(vFacadeWorldPos.xz);
+  float cover = gate * slope * smoothstep(0.30, 0.55, n * 0.6 + 0.55 * u);
+  // Keep a fifth of the roofing colour: a fully white slab loses the tile
+  // material and merges the roof into the snowy ground.
+  cover *= 0.80;
+  return clamp(cover * uWinter, 0.0, 1.0);
+}
+
+vec3 facadeApplySnow(vec3 albedo, float faceKind, float up) {
+  float cover = facadeSnowCover(faceKind, up);
+  if (cover < 0.001) return albedo;
+  float u = clamp(up, 0.0, 1.0);
+  vec3 snow = mix(FACADE_SNOW_SHADOW, FACADE_SNOW_THIN, smoothstep(0.0, 0.55, u));
+  snow = mix(snow, FACADE_SNOW_DEEP, smoothstep(0.55, 0.95, u));
+  return mix(albedo, snow, cover);
 }
 
 // -------------------------------------------------------------------- roofs
@@ -564,6 +624,19 @@ vec3 facadeUpperFloors(
   outWall = mix(outWall, sillCol, sillMask * 0.45);
   outWall = mix(outWall, uTrimColor * 0.86, lintelMask * 0.20);
 
+  // Wet seasons: a dirty streak runs down the wall below each sill. Kept at
+  // ~9% and faded out at overview zoom (crisp), so it adds weathering without
+  // becoming a pattern of vertical stripes.
+  float facadeWet = clamp(uWinter + uAutumn, 0.0, 1.0);
+  if (facadeWet > 0.001) {
+    float streakDepth = clamp(1.4 / fhLod, 0.04, 0.28);
+    float belowSill = facadeBand(v, winLo.y - streakDepth, winLo.y, aaV);
+    float across = step(winLo.x, uWin) * (1.0 - step(winHi.x, uWin));
+    float wetVar = 0.55 + 0.45 * facadeHash11(colWin * 3.7 + seed * 17.0);
+    float wetStreak = belowSill * across * wetVar * crisp * detail;
+    outWall *= 1.0 - wetStreak * 0.09 * facadeWet;
+  }
+
   if (ribbon) {
     float mullW = max(1.2 * px, 0.02) / bayLod;
     float mull = facadeBand(min(u, 1.0 - u), 0.0, mullW, aaU) * crisp * detail;
@@ -822,6 +895,13 @@ vec3 facadeGroundFloor(
       * night * (1.0 - groundDetail) * (shopfront ? 0.30 : 0.06);
   }
 
+  // Wet seasons: the plinth is the first 1-1.5 m — darker and slightly colder
+  // from splash-back. Not a global darkening: it fades with height.
+  float facadeWetGround = clamp(uWinter + uAutumn, 0.0, 1.0);
+  float plinthWet = facadeWetGround * (1.0 - smoothstep(0.12, 1.1, uv.y));
+  outWall *= 1.0 - plinthWet * 0.06;
+  outWall = mix(outWall, outWall * vec3(0.94, 0.97, 1.03), plinthWet * 0.4);
+
   return outWall;
 }
 
@@ -872,15 +952,27 @@ void facadeShade(out vec3 outAlbedo, out vec3 outEmissive) {
   if (faceKind > 0.5 && faceKind < 1.5) {
     // FACE_KIND.roof: aFace.w carries ROOF_SHAPE_ID here, not a detail hint.
     outAlbedo = facadeRoof(uv, baseSrgb, faceW, 0.0, seed, mPerPx, detail);
+    outAlbedo = facadeApplySnow(outAlbedo, faceKind, vFacadeWorldUp);
+    // Snowy roofs catch a little sky light at night; never a self-glow.
+    outEmissive += FACADE_SNOW_DEEP * facadeSnowCover(faceKind, vFacadeWorldUp)
+      * clamp(uNight, 0.0, 1.0) * 0.025;
     return;
   }
   if (faceKind > 4.5 && faceKind < 5.5) {
     // FACE_KIND.roofRidge: sloped roof surface, always shingle-ish.
     outAlbedo = facadeRoof(uv, baseSrgb, faceW, 1.0, seed, mPerPx, detail);
+    outAlbedo = facadeApplySnow(outAlbedo, faceKind, vFacadeWorldUp);
+    outEmissive += FACADE_SNOW_DEEP * facadeSnowCover(faceKind, vFacadeWorldUp)
+      * clamp(uNight, 0.0, 1.0) * 0.025;
     return;
   }
   if (faceKind > 2.5 && faceKind < 3.5) {
     outAlbedo = facadeTrimShade(uv, baseSrgb, trimK, seed, mPerPx, archetype);
+    // Cornices, ledges and parapet caps hold a light dusting; the vertical
+    // sides of the same trim geometry have up≈0 and stay clean.
+    outAlbedo = facadeApplySnow(outAlbedo, faceKind, vFacadeWorldUp);
+    outEmissive += FACADE_SNOW_DEEP * facadeSnowCover(faceKind, vFacadeWorldUp)
+      * clamp(uNight, 0.0, 1.0) * 0.02;
     return;
   }
   if (faceKind > 3.5 && faceKind < 4.5) {
@@ -973,6 +1065,13 @@ vec3 facadeAmbientFill = mix(
 );
 totalEmissiveRadiance += facadeAlbedoLinear * facadeAmbientFill;
 `;
+
+/**
+ * Tail of the facade albedo block: cloud shades anchor here so they darken the
+ * finished wall albedo (lit windows stay lit — see cloudShade.ts).
+ */
+export const FACADE_FRAGMENT_ALBEDO_TAIL =
+  'totalEmissiveRadiance += facadeAlbedoLinear * facadeAmbientFill;';
 
 /** Injection after output encoding: snap facade pixels to the shared palette. */
 export const FACADE_FRAGMENT_QUANTISE = /* glsl */ `

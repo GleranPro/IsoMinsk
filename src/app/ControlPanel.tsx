@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { EngineStats } from '../shared/appApi';
+import type { EngineStats, SeasonOverride, WeatherKind } from '../shared/appApi';
 import type { MobilityStatus } from '../shared/mobility';
 import type { UiState } from './App';
 
@@ -142,6 +142,18 @@ export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshSt
           <section>
             <h2>Time of day</h2>
             <label>
+              <input
+                type="checkbox"
+                checked={ui.timeMode === 'auto'}
+                disabled={disabled}
+                onChange={(event) =>
+                  onChange({ timeMode: event.target.checked ? 'auto' : 'manual' })
+                }
+                data-testid="toggle-live-time"
+              />
+              Live Minsk time
+            </label>
+            <label>
               <span data-testid="time-label">{formatHours(ui.timeOfDay)}</span>
             </label>
             <input
@@ -150,10 +162,53 @@ export function ControlPanel({ ui, onChange, onReset, onFocusMuseum, onRefreshSt
               max={24}
               step={0.25}
               value={ui.timeOfDay}
-              disabled={disabled}
-              onChange={(event) => onChange({ timeOfDay: Number(event.target.value) })}
+              disabled={disabled || ui.timeMode === 'auto'}
+              onChange={(event) =>
+                onChange({ timeMode: 'manual', timeOfDay: Number(event.target.value) })
+              }
               data-testid="time-slider"
             />
+          </section>
+
+          <section>
+            <h2>Atmosphere</h2>
+            <label>
+              <input
+                type="checkbox"
+                checked={ui.clouds}
+                disabled={disabled}
+                onChange={(event) => onChange({ clouds: event.target.checked })}
+                data-testid="toggle-clouds"
+              />
+              Cloud shades
+            </label>
+            <label>
+              <span>Weather</span>
+              <select
+                value={ui.weather}
+                disabled={disabled}
+                onChange={(event) => onChange({ weather: event.target.value as WeatherKind })}
+                data-testid="select-weather"
+              >
+                <option value="off">Clear</option>
+                <option value="rain">Rain</option>
+                <option value="snow">Snow</option>
+              </select>
+            </label>
+            <label>
+              <span>Season</span>
+              <select
+                value={ui.season}
+                disabled={disabled}
+                onChange={(event) => onChange({ season: event.target.value as SeasonOverride })}
+                data-testid="select-season"
+              >
+                <option value="auto">Auto (real date)</option>
+                <option value="spring">Spring</option>
+                <option value="summer">Summer</option>
+                <option value="autumn">Autumn</option>
+              </select>
+            </label>
           </section>
 
           <section>

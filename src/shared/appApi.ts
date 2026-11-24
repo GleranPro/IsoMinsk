@@ -91,6 +91,18 @@ export interface MobilityVehicleSelection {
   screenY: number;
 }
 
+/** Atmosphere state reported with the stats (honesty contract). */
+export interface AtmosphereStats {
+  /** Lighting clock mode (live Minsk time or manual). */
+  timeMode: TimeOfDayMode;
+  /** Active season (override resolved to a concrete season). */
+  season: 'spring' | 'summer' | 'autumn';
+  /** Cloud-shade strength 0..1 (0 when disabled). */
+  clouds: number;
+  /** Current precipitation. */
+  weather: WeatherKind;
+}
+
 export interface EngineStats {
   fps: number;
   frameMs: number;
@@ -109,6 +121,8 @@ export interface EngineStats {
    * city counters alone do not cover the dynamic layer.
    */
   mobility?: MobilityStatus;
+  /** Atmosphere state (time clock, season, clouds, weather, lamps). */
+  atmosphere?: AtmosphereStats;
 }
 
 export interface CityAppOptions {
@@ -123,6 +137,12 @@ export interface CityAppOptions {
   onExhibitSelect?: (selection: MuseumExhibitSelection | null) => void;
   /** Called when a landmark model is clicked (or the selection is cleared). */
   onLandmarkSelect?: (selection: LandmarkSelection | null) => void;
+  /**
+   * Display titles for the landmark pins, keyed by slug (the card titles, so
+   * the hover tooltip and the card never disagree). Slugs without an entry
+   * fall back to the baked model label.
+   */
+  landmarkTitles?: Record<string, string>;
   /** Called when a vehicle is clicked (or the selection is cleared). */
   onMobilitySelect?: (selection: MobilityVehicleSelection | null) => void;
   /** Called when a tile finishes loading (for the loading indicator). */
@@ -152,6 +172,22 @@ export interface CameraSettings {
   elevation: number;
 }
 
+/** Where the lighting clock comes from. */
+export type TimeOfDayMode = 'auto' | 'manual';
+
+export interface TimeOfDayInfo {
+  /** Lighting clock hours (0..24, fractional). */
+  hours: number;
+  /** `auto` = real Minsk time, `manual` = fixed slider / `?time=H` value. */
+  mode: TimeOfDayMode;
+}
+
+/** Screen-space precipitation kinds. */
+export type WeatherKind = 'off' | 'rain' | 'snow';
+
+/** Season override: `auto` follows the real calendar date. */
+export type SeasonOverride = 'auto' | 'spring' | 'summer' | 'autumn';
+
 export interface CityAppHandle {
   /** Render loop control. */
   start(): void;
@@ -170,8 +206,19 @@ export interface CityAppHandle {
   /** Rendering */
   setPixelArt(settings: Partial<PixelArtSettings>): void;
   getPixelArt(): PixelArtSettings;
+  /** Pin the lighting clock to a fixed hour (switches to manual mode). */
   setTimeOfDay(hours: number): void;
   getTimeOfDay(): number;
+  /** Switch the lighting clock between live Minsk time and manual mode. */
+  setTimeMode(mode: TimeOfDayMode): void;
+  getTimeOfDayInfo(): TimeOfDayInfo;
+  /** Atmosphere: cloud shades (drifting shadow fields), weather, season. */
+  setCloudsEnabled(enabled: boolean): void;
+  getCloudsEnabled(): boolean;
+  setWeather(kind: WeatherKind, amount?: number): void;
+  getWeather(): { kind: WeatherKind; amount: number };
+  setSeason(season: SeasonOverride): void;
+  getSeason(): SeasonOverride;
   setFacadeDetail(enabled: boolean): void;
   setDebugWireframe(enabled: boolean): void;
   setPixelEffectEnabled(enabled: boolean): void;

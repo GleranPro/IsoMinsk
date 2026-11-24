@@ -198,14 +198,46 @@ class TreeRowTests(unittest.TestCase):
         again, _ = build(row_raw=raw)
         self.assertEqual(placed, again)
 
-    def test_needleleaved_is_counted_without_new_payload_field(self):
+    def test_needleleaved_rows_carry_species(self):
         placed, stats = build(
             row_raw=[row(10, [(0, 0), (14, 0)], leaf_type="needleleaved")]
         )
         self.assertEqual(len(placed), 3)
         self.assertEqual(stats["trees_mapped_rows_needleleaved"], 3)
+        self.assertEqual(stats["trees_mapped_conifers"], 3)
         for instance in placed:
-            self.assertEqual(set(instance), TREE_FIELDS)
+            self.assertEqual(instance["species"], 1)
+        # The rest of the payload is unchanged.
+        self.assertEqual(set(placed[0]), TREE_FIELDS | {"species"})
+
+    def test_leaf_type_wins_over_genus(self):
+        placed, _ = build(
+            row_raw=[
+                row(10, [(0, 0), (7, 0)], leaf_type="broadleaved", genus="Picea"),
+                row(11, [(0, 20), (7, 20)], genus="Pinus"),
+                row(12, [(0, 40), (7, 40)], genus="Acer"),
+            ]
+        )
+        rows = {}
+        for instance in placed:
+            rows.setdefault(round(instance["y"]), []).append(instance)
+        self.assertNotIn("species", rows[0][0])
+        self.assertEqual(rows[20][0]["species"], 1)
+        self.assertNotIn("species", rows[40][0])
+
+    def test_mapped_nodes_carry_species_from_genus(self):
+        placed, stats = build(
+            mapped_raw=[
+                node(1, 0, 0, genus="Abies"),
+                node(2, 10, 0, leaf_type="needleleaved"),
+                node(3, 20, 0),
+            ]
+        )
+        by_x = {instance["x"]: instance for instance in placed}
+        self.assertEqual(by_x[0]["species"], 1)
+        self.assertEqual(by_x[10]["species"], 1)
+        self.assertNotIn("species", by_x[20])
+        self.assertEqual(stats["trees_mapped_conifers"], 2)
 
     def test_row_payload_fields_are_unchanged(self):
         placed, _ = build(row_raw=[row(10, [(0, 0), (7, 0)])])
