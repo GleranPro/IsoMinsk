@@ -55,6 +55,7 @@ import { publicAssetUrl } from '../shared/assets';
 import { MUSEUM, WAR_MUSEUM, isLi2Focus, isMuseumFocus } from '../shared/museum';
 import { MuseumLayer } from './museum/museumLayer';
 import { LandmarkLayer, type LandmarkMeta } from './landmarks/landmarkLayer';
+import { LandmarkPinLayer } from './landmarks/landmarkPins';
 import { landmarkFocusSlug, landmarkInfoSlug } from '../shared/landmarks';
 import { MobilityController } from './mobility/controller';
 import { RailTrafficLayer } from './rail/railTrafficLayer';
@@ -616,7 +617,17 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     onError: recordDiagnostic,
   });
   scene.add(landmarkModels.root);
-  void landmarkModels.load();
+  // DOM pins above the models (Warsaw IZO §4): the markers stay visible when
+  // the model is too small or hidden to raycast, and clicks within 20 px open
+  // the same card. The layer is pointer-inert; the canvas input path hit-tests
+  // it, so dragging a pin still pans the map.
+  const landmarkPins = new LandmarkPinLayer(container);
+  void landmarkModels.load().then(() => {
+    landmarkPins.setLandmarks(
+      landmarkModels.manifest?.landmarks ?? [],
+      options.landmarkTitles ?? {},
+    );
+  });
 
   // --- mobility: public transport + traffic signals ------------------------
   // Independent of the tile pipeline: a missing/incompatible payload leaves the
@@ -1093,6 +1104,8 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       error: landmarkModels.error,
     }),
     landmarkModelsObject: () => landmarkModels,
+    /** Visible DOM pins (slug + container-local position) for QA click tests. */
+    landmarkPins: () => landmarkPins.getState(),
     targetObject: () => post.targetHandle,
     lightsObject: () => lighting,
     /** Grid samples (RGB) from the low-res scene target. */
@@ -1778,6 +1791,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   function setLandmarkSelection(selection: LandmarkSelection | null): void {
     if (!selection && landmarkModels.selectedSlug === null) return;
     landmarkModels.setSelected(selection?.slug ?? null);
+    landmarkPins.setSelected(selection?.slug ?? null);
     try {
       options.onLandmarkSelect?.(selection);
     } catch {
@@ -1785,11 +1799,54 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
   }
 
+  /**
+   * Open one landmark's card: a document-like selection that closes the other
+   * cards. Shared by the model raycast, the DOM pins and the `?info=` deep link
+   * so the three entry points cannot drift apart.
+   */
+  function selectLandmark(selection: LandmarkSelection): void {
+    selected = null;
+    highlightId = null;
+    highlighter.setHighlight(null);
+    try {
+      options.onSelection?.(null);
+    } catch {
+      /* ignore shell errors */
+    }
+    try {
+      options.onExhibitSelect?.(null);
+    } catch {
+      /* ignore shell errors */
+    }
+    mobilityState.runtime?.setSelectedTrip(null);
+    try {
+      options.onMobilitySelect?.(null);
+    } catch {
+      /* ignore shell errors */
+    }
+    setLandmarkSelection(selection);
+  }
+
   function handleClick(clientX: number, clientY: number): void {
     if (disposed || !picker) return;
     const rect = host!.canvas.getBoundingClientRect();
-    // Транспорт проверяется ПЕРВЫМ: машина на экране стоит перед зданиями, и
-    // клик по ней должен открывать карточку рейса, а не выбор дома за ней.
+    // Pins are UI chrome: a click inside the 20 px marker radius wins over the
+    // scene so a landmark that is too small/occluded to raycast is still
+    // reachable. The reference also glides the camera onto the picked model.
+    const pinSlug = landmarkPins.hitTest(clientX, clientY);
+    if (pinSlug) {
+      const meta = landmarkModels.getMeta(pinSlug);
+      if (meta) {
+        selectLandmark(landmarkSelection(meta, clientX, clientY));
+        const point = landmarkModels.focusPoint(pinSlug);
+        if (point) rig.focusOnLocal(point.x, point.y, false);
+        landmarkPins.setHover(null);
+        return;
+      }
+    }
+    // Транспорт проверяется первым после пинов: машина на экране стоит перед
+    // зданиями, и клик по ней должен открывать карточку рейса, а не выбор дома
+    // за ней.
     const vehicle = pickMobilityTrip(clientX, clientY, rect);
     if (vehicle) {
       selected = null;
@@ -1832,26 +1889,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
     }
     const landmark = pickLandmark(clientX, clientY, rect);
     if (landmark) {
-      selected = null;
-      highlightId = null;
-      highlighter.setHighlight(null);
-      try {
-        options.onSelection?.(null);
-      } catch {
-        /* ignore shell errors */
-      }
-      try {
-        options.onExhibitSelect?.(null);
-      } catch {
-        /* ignore shell errors */
-      }
-      mobilityState.runtime?.setSelectedTrip(null);
-      try {
-        options.onMobilitySelect?.(null);
-      } catch {
-        /* ignore shell errors */
-      }
-      setLandmarkSelection(landmark);
+      selectLandmark(landmark);
       return;
     }
     setLandmarkSelection(null);
@@ -2093,6 +2131,7 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
 
     highlighter.update(now);
     landmarkModels.update(now);
+    landmarkPins.update(camera);
 
     renderer.info.reset();
     post.render(scene, camera);
@@ -2120,6 +2159,45 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
   }
 
   // --- wiring --------------------------------------------------------------
+  // Landmark pins are pointer-inert, so their hover is hit-tested from the
+  // canvas: the map stays draggable over a marker, the cursor changes to a
+  // pointer and the name tooltip appears after the reference's 66 ms delay.
+  // Touch input has no hover state.
+  let pinHoverTimer = 0;
+  let pinCursor = false;
+  const clearPinHover = (): void => {
+    if (pinHoverTimer) {
+      window.clearTimeout(pinHoverTimer);
+      pinHoverTimer = 0;
+    }
+    landmarkPins.setHover(null);
+    if (pinCursor) {
+      pinCursor = false;
+      host.canvas.style.cursor = '';
+    }
+  };
+  const onPinPointerMove = (event: PointerEvent): void => {
+    if (disposed) return;
+    if (event.pointerType === 'touch' || event.buttons !== 0) {
+      clearPinHover();
+      return;
+    }
+    const { clientX, clientY } = event;
+    if (pinHoverTimer) window.clearTimeout(pinHoverTimer);
+    pinHoverTimer = window.setTimeout(() => {
+      pinHoverTimer = 0;
+      if (disposed) return;
+      const slug = landmarkPins.hitTest(clientX, clientY);
+      landmarkPins.setHover(slug);
+      if (Boolean(slug) !== pinCursor) {
+        pinCursor = Boolean(slug);
+        host.canvas.style.cursor = slug ? 'pointer' : '';
+      }
+    }, 66);
+  };
+  host.canvas.addEventListener('pointermove', onPinPointerMove);
+  host.canvas.addEventListener('pointerleave', clearPinHover);
+
   controls = new CameraControls({
     canvas: host.canvas,
     rig,
@@ -2184,6 +2262,21 @@ export function createCityApp(options: CityAppOptions): CityAppHandle {
       /* ignore */
     }
     controls = null;
+    if (pinHoverTimer) {
+      window.clearTimeout(pinHoverTimer);
+      pinHoverTimer = 0;
+    }
+    try {
+      host?.canvas.removeEventListener('pointermove', onPinPointerMove);
+      host?.canvas.removeEventListener('pointerleave', clearPinHover);
+    } catch {
+      /* ignore */
+    }
+    try {
+      landmarkPins.dispose();
+    } catch {
+      /* ignore */
+    }
     try {
       museum.dispose();
       warMuseum.dispose();

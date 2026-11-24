@@ -137,6 +137,12 @@ export interface CityAppOptions {
   onExhibitSelect?: (selection: MuseumExhibitSelection | null) => void;
   /** Called when a landmark model is clicked (or the selection is cleared). */
   onLandmarkSelect?: (selection: LandmarkSelection | null) => void;
+  /**
+   * Display titles for the landmark pins, keyed by slug (the card titles, so
+   * the hover tooltip and the card never disagree). Slugs without an entry
+   * fall back to the baked model label.
+   */
+  landmarkTitles?: Record<string, string>;
   /** Called when a vehicle is clicked (or the selection is cleared). */
   onMobilitySelect?: (selection: MobilityVehicleSelection | null) => void;
   /** Called when a tile finishes loading (for the loading indicator). */

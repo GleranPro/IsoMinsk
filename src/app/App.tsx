@@ -26,9 +26,24 @@ import { InfoPanel } from './InfoPanel';
 import { MobilityPanel } from './MobilityPanel';
 import { MuseumPanel } from './MuseumPanel';
 import { LandmarkPanel } from './LandmarkPanel';
+import { LANDMARK_INFO } from './landmarkInfo';
 import { ControlPanel } from './ControlPanel';
 import { AttributionPanel } from './AttributionPanel';
 import { LoadingOverlay } from './LoadingOverlay';
+
+/**
+ * Mirror the open landmark card in the URL (`?info=<slug>`), as in the Warsaw
+ * reference: the card can be shared/reloaded and closing it clears the link.
+ * Unrelated query parameters (`dataset`, `time`, …) stay intact.
+ */
+function syncLandmarkInfoParam(slug: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (slug) url.searchParams.set('info', slug);
+  else url.searchParams.delete('info');
+  if (url.toString() === window.location.href) return;
+  window.history.replaceState(window.history.state, '', url);
+}
 
 export interface UiState {
   pixelEffect: boolean;
@@ -53,6 +68,11 @@ export interface UiState {
   /** Mobility: pause the simulation clock. */
   mobilityPaused: boolean;
 }
+
+/** Card titles reused by the landmark pins' hover tooltip. */
+const LANDMARK_TITLES: Record<string, string> = Object.fromEntries(
+  Object.entries(LANDMARK_INFO).map(([slug, info]) => [slug, info.title]),
+);
 
 const DEFAULT_UI: UiState = {
   pixelEffect: true,
@@ -133,7 +153,11 @@ export function App() {
       },
       onMobilitySelect: (next) => setVehicle(next),
       onExhibitSelect: (next) => setExhibit(next),
-      onLandmarkSelect: (next) => setLandmark(next),
+      onLandmarkSelect: (next) => {
+        setLandmark(next);
+        syncLandmarkInfoParam(next?.slug ?? null);
+      },
+      landmarkTitles: LANDMARK_TITLES,
       onLoadingChange: (isLoading, value) => {
         setLoading(isLoading);
         setProgress(value);
